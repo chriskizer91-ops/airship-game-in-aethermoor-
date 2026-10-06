@@ -201,6 +201,15 @@
   .tag.locked { border-color: #ffd36a; box-shadow: 0 0 10px rgba(255, 200, 90, 0.6); }
   .tag.captain { background: rgba(26, 18, 8, 0.82); border-color: #ffd36a; }
   .tag.captain b { color: #ffd36a; }
+  /* a raider off screen readying her broadside: her tag and its arrow flash red, and say "Broadside!" (main.js) */
+  .tag .bs { display: none; grid-column: 1 / -1; font-size: 12px; font-weight: 600; color: #fff; text-align: center; }
+  .tag.warn { opacity: 1; background: rgba(150, 18, 12, 0.92); border-color: #ff4636; animation: tag-warn 0.22s ease-in-out infinite alternate; }
+  .tag.warn .bs { display: block; }
+  .tag.warn b, .tag.warn .d { color: #ffe2d8; }
+  .tag.warn .arrow { color: #ff3a28; scale: 1.5; text-shadow: 0 0 6px #ff2a10, 0 0 2px #fff; animation: arrow-warn 0.22s ease-in-out infinite alternate; }
+  @keyframes tag-warn { from { background-color: rgba(190, 24, 14, 0.95); border-color: #ffd0c0; box-shadow: 0 0 16px rgba(255, 50, 30, 0.95); }
+    to { background-color: rgba(80, 8, 10, 0.88); border-color: #ff4636; box-shadow: 0 0 4px rgba(255, 50, 30, 0.4); } }
+  @keyframes arrow-warn { from { opacity: 1; } to { opacity: 0.5; } }
   #banner { position: fixed; left: 50%; top: 33%; translate: -50% 0; width: max-content; max-width: 92vw; text-align: center; pointer-events: none; opacity: 0; }
   #banner.on { animation: region 4.4s ease-in-out forwards; }
   #banner-title { margin: 0; font: 400 clamp(30px, 6vw, 56px)/1 var(--display); color: var(--gold); text-shadow: 0 2px 0 #000, 0 0 24px rgba(0, 0, 0, 0.9); }
@@ -277,7 +286,7 @@
     #touch-buttons { bottom: calc(var(--bottom) + 8px); }
     #touch-hint { bottom: calc(var(--bottom) + 140px); }
   }
-  @media (prefers-reduced-motion: reduce) { #region.on, #banner.on, #toast.on, #calm:not([hidden]) { animation-duration: 0.01s; } }
+  @media (prefers-reduced-motion: reduce) { #region.on, #banner.on, #toast.on, #calm:not([hidden]) { animation-duration: 0.01s; } .tag.warn, .tag.warn .arrow { animation: none; } }
 </style>
 </head>
 <body>
@@ -340,12 +349,13 @@
 <canvas id="minimap" aria-label="The map of Aethermoor: tap to make it bigger"></canvas>
 <div id="score" class="panel"><span class="wide">Raiders downed</span><span class="narrow">Downed</span>: <b id="score-n">0</b> · Wave <b id="wave-n">1</b> · <span class="shards">◆ <b id="voyage-n">0</b></span></div>
 <div id="tags" aria-hidden="true"></div>
-<div id="bounties" aria-hidden="true"><p class="bounty" hidden><small></small><b><i>◆</i> <span></span></b></p><p class="bounty" hidden><small></small><b><i>◆</i> <span></span></b></p><p class="bounty" hidden><small></small><b><i>◆</i> <span></span></b></p><p class="bounty" hidden><small></small><b><i>◆</i> <span></span></b></p><p class="bounty" hidden><small></small><b><i>◆</i> <span></span></b></p><p class="bounty" hidden><small></small><b><i>◆</i> <span></span></b></p></div>
 <div id="hurt" aria-hidden="true"></div>
 <div id="incoming" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
 <div id="banner" aria-live="polite"><p id="banner-title"></p><p id="banner-line"></p></div>
 <p id="toast" class="panel" aria-live="polite"></p>
 <p id="region" aria-live="polite"></p>
+<!-- (after the banner, so a bounty rising as a banner shows is drawn over it) -->
+<div id="bounties" aria-hidden="true"><p class="bounty" hidden><small></small><b><i>◆</i> <span></span></b></p><p class="bounty" hidden><small></small><b><i>◆</i> <span></span></b></p><p class="bounty" hidden><small></small><b><i>◆</i> <span></span></b></p><p class="bounty" hidden><small></small><b><i>◆</i> <span></span></b></p><p class="bounty" hidden><small></small><b><i>◆</i> <span></span></b></p><p class="bounty" hidden><small></small><b><i>◆</i> <span></span></b></p></div>
 <div id="aim" aria-hidden="true"><svg viewBox="-23 -23 46 46">
   <circle class="cross" r="14" fill="none" stroke="#ecdcb8" stroke-width="2" opacity="0.85"/><circle r="2.2" fill="#e2bd67"/>
   <path class="cross" d="M-22 0h6M16 0h6M0 -22v6M0 16v6" stroke="#ecdcb8" stroke-width="2" opacity="0.85"/>

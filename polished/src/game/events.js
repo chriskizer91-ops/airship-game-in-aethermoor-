@@ -82,20 +82,37 @@ export const PAYLOAD = {
   'port:power': { ship: '', power: 0 },
   'port:skies': { skies: '' },
 };
-const subs = {};
-for (const k in PAYLOAD) subs[k] = [];
+// Each event's listeners, in the order they started listening. A listener may stop listening (or another start) while
+// the event is being told: one that stops is only blanked out until the telling is over (taking it out of the list there
+// and then would make the next one miss it), and is told no more; one that starts is told from the next time on
+const subs = {}, telling = {}, blanked = {};
+for (const k in PAYLOAD) { subs[k] = []; telling[k] = 0; blanked[k] = false; }
 const known = (name) => { if (!subs[name]) throw new Error(`no such event: ${name}`); return subs[name]; };
 
 // listen for an event; returns a function that stops listening
 export function on(name, fn) { known(name).push(fn); return () => off(name, fn); }
-export function off(name, fn) { const L = known(name), i = L.indexOf(fn); if (i >= 0) L.splice(i, 1); }
+export function off(name, fn) {
+  const L = known(name), i = L.indexOf(fn);
+  if (i < 0) return;
+  if (telling[name]) { L[i] = null; blanked[name] = true; } else L.splice(i, 1);
+}
 // the payload to fill in before telling an event (the same object every time)
 export const payload = (name) => PAYLOAD[name];
 // tell everyone listening; the payload is the event's own unless another is given
 export function emit(name, p = PAYLOAD[name]) {
   const L = known(name);
-  for (let i = 0; i < L.length; i++) L[i](p, name);
+  telling[name]++;
+  try {
+    for (let i = 0, n = L.length; i < n; i++) { const f = L[i]; if (f) f(p, name); }
+  } finally {
+    if (--telling[name] === 0 && blanked[name]) {
+      blanked[name] = false;
+      let j = 0;
+      for (let i = 0; i < L.length; i++) if (L[i]) L[j++] = L[i];
+      L.length = j;
+    }
+  }
   return p;
 }
 // how many are listening (for tests)
-export const listeners = (name) => known(name).length;
+export const listeners = (name) => { let n = 0; for (const f of known(name)) if (f) n++; return n; };

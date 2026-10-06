@@ -2,10 +2,14 @@
 // ships bought, each ship's upgrades and crystal power setting, which skies (difficulty) were chosen, and the best
 // wave reached. Kept in the browser on this device, and, when the game is opened on claude.ai, also in the page's own
 // private store for this person, so it follows them between devices.
+// the three skies: how well the raiders aim, how quickly they reload, how hard they hit, how much they take, how fast
+// they fly, how many more of them come, what shards pay, and how much of a raider captain's edge over her crew she has
+// (raiders.js: on Fair Winds none, as she's the first big fight a new Captain meets, in a Skiff; only her bounty is
+// bigger)
 export const SKIES = {
-  fair: { name: 'Fair Winds', line: 'Raiders aim poorly and break easily. For learning the ropes.', aim: 1.8, reload: 1.35, damage: 0.6, toughness: 0.8, pace: 0.88, extra: 0, shards: 1 },
-  cross: { name: 'Crosswinds', line: 'A fair fight. Shards pay a quarter more.', aim: 1, reload: 1, damage: 1, toughness: 1, pace: 0.92, extra: 0, shards: 1.25 },
-  mael: { name: 'Maelstrom', line: 'Raiders hunt in bigger packs, hit harder and aim truer. Shards pay over half as much again.', aim: 0.8, reload: 0.92, damage: 1.15, toughness: 1.15, pace: 0.96, extra: 1, shards: 1.6 },
+  fair: { name: 'Fair Winds', line: 'Raiders aim poorly, hit lightly and break easily. For learning the ropes.', aim: 1.8, reload: 1.35, damage: 0.5, toughness: 0.8, pace: 0.88, extra: 0, shards: 1, captain: 0 },
+  cross: { name: 'Crosswinds', line: 'A fair fight. Shards pay a quarter more.', aim: 1, reload: 1, damage: 1, toughness: 1, pace: 0.92, extra: 0, shards: 1.25, captain: 1 },
+  mael: { name: 'Maelstrom', line: 'Raiders hunt in bigger packs, hit harder and aim truer. Shards pay over half as much again.', aim: 0.8, reload: 0.92, damage: 1.15, toughness: 1.15, pace: 0.96, extra: 1, shards: 1.6, captain: 1 },
 };
 export const PRICES = { skiff: 0, cutter: 300, brig: 900, frigate: 2200 };
 

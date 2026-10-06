@@ -18,6 +18,7 @@ import * as THREE from 'three';
 import { on, emit, payload } from './events.js';
 import { CLOUD_Y } from './world.js';
 import { RAIDER_LOOKS } from './fx.js';
+import { PUFF } from './effects.js';
 
 // when things happen (seconds after she goes down): her crystals sputter from..to; her sails flare up; how many wrecks
 // play their blasts and fire at once; the smoke column's puffs: one each time she has fallen `gap` of her length (plus
@@ -150,17 +151,21 @@ export function makeWrecks({ fx, tear = null, scene = null }) {
       }
       // a struck ship's pennants come down their masts, and her hold glints gold now and then
       if (w.why === 'struck') struck(w, dt);
-      // the column of smoke (and fire, from a burning one), from her stern and from the latest blast, until she's
-      // under the cloud deck. A puff left hanging where she was, so it marks her fall
+      // the column of smoke (and fire, from a burning one) until she's under the cloud deck: one broad column, each
+      // puff from somewhere between her stern and the latest blast (or her middle, if no blast), with its own size, shade
+      // and drift, at uneven times, so it rolls rather than running in smooth ropes; near her, a burning one's smoke is
+      // lit orange from below. Each puff is left hanging where she was, so the column marks her fall
       const hull = w.why === 'hull';
       if (w.why !== 'struck' && r.f.pos.y > CLOUD_Y - 30 && ((w.puff -= dt) <= 0 || r.f.pos.distanceTo(w.puffed) > (L * gap + 2) * (hull ? 1 : 1.6))) {
-        w.puff = every * (hull ? 1 : 1.6); w.puffed.copy(r.f.pos);
+        w.puff = every * (hull ? 1 : 1.6) * (0.7 + Math.random() * 0.6); w.puffed.copy(r.f.pos);
         if (smoke.room()) {
+          const bx = hb.max.x - hb.min.x, by = hb.max.y - hb.min.y, bz = hb.max.z - hb.min.z, y0 = (hb.min.y + hb.max.y) * 0.5, z0 = hb.min.z + bz * (hull ? 0.12 : 0.5);
           for (let k = 0; k < (hull ? 2 : 1); k++) {
-            if (k === 0) world(r, 0, (hb.min.y + hb.max.y) * 0.5, hb.min.z + (hb.max.z - hb.min.z) * (hull ? 0.12 : 0.5), p); else world(r, w.blast.x, w.blast.y, w.blast.z, p);
-            v.copy(vel).multiplyScalar(0.12); v.x += (Math.random() - 0.5) * 3; v.y += 1 + Math.random() * 2; v.z += (Math.random() - 0.5) * 3;
-            if (hull) smoke.emit(p, v, 7, L * 0.3, L * 0.9 + 6, 0.02 + Math.random() * 0.14, 0.6 + Math.random() * 0.2, 0, 1.5);
-            else smoke.emit(p, v, 6, L * 0.2, L * 0.6 + 4, 0.45 + Math.random() * 0.15, 0.6, 0, 1.5);
+            const u = hull ? Math.random() : 0, f = 0.7 + Math.random() * 0.6;
+            world(r, w.blast.x * u + (Math.random() - 0.5) * bx * 0.5, y0 + (w.blast.y - y0) * u + Math.random() * by * 0.25, z0 + (w.blast.z - z0) * u + (Math.random() - 0.5) * bz * (hull ? 0.1 : 0.4), p);
+            v.copy(vel).multiplyScalar(0.12); v.x += (Math.random() - 0.5) * 5; v.y += 1 + Math.random() * 2.5; v.z += (Math.random() - 0.5) * 5;
+            if (hull) smoke.emit(p, v, 6 + Math.random() * 2, L * 0.28 * f, (L * 0.9 + 6) * f, Math.random() < 0.2 ? 0.22 + Math.random() * 0.2 : 0.02 + Math.random() * 0.13, 0.55 + Math.random() * 0.25, PUFF.pour, 1.1 + Math.random() * 0.8, 0.5 + Math.random() * 0.5);
+            else smoke.emit(p, v, 5 + Math.random() * 2, L * 0.2 * f, (L * 0.6 + 4) * f, 0.38 + Math.random() * 0.22, 0.5 + Math.random() * 0.2, PUFF.pour, 1.1 + Math.random() * 0.8);
             if (hull && Math.random() < 0.5 && fx.room()) fx.spark(p, v.setY(v.y + 4), 0.5 + Math.random() * 0.4, 1.2 + L * 0.08, FIRE[(Math.random() * 2) | 0], 1, -1);
           }
         }
@@ -229,7 +234,10 @@ export function makeWrecks({ fx, tear = null, scene = null }) {
     const r = w.r, S = r.ship, cut = S.masts, M = S.parts.meshes;
     w.cut = true;
     for (const name in cut.keep) if (M[name]) M[name].geometry = cut.keep[name];
-    for (const m of S.parts.farRig) m.visible = false; // (her far model just loses its sails and rigging)
+    // (her far model, drawn once she's fallen far enough away, loses its masts too, and its sails and rigging)
+    const FM = S.parts.farMeshes;
+    for (const name in cut.farKeep) if (FM[name] && name !== 'canvas') FM[name].geometry = cut.farKeep[name];
+    for (const m of S.parts.farRig) m.visible = false;
     cut.masts.forEach((mast, i) => {
       const m = fallers.find((x) => !x.r);
       if (!m) return;
@@ -273,10 +281,13 @@ export function makeWrecks({ fx, tear = null, scene = null }) {
       m.v.y -= 9.8 * dt; m.g.position.addScaledVector(m.v, dt);
       m.g.quaternion.premultiply(tq.setFromAxisAngle(m.axis, m.side * m.om * dt)); m.om *= Math.exp(-dt * 0.4);
       m.g.updateMatrixWorld(true);
+      // (its trail: each puff its own size and shade, a little off the line and at uneven times, so the trail rolls
+      // rather than stringing out like beads)
       if ((m.smoke -= dt) <= 0) {
-        m.smoke = 0.06;
-        tm.set(0, m.H - 1, 0).applyMatrix4(m.g.matrixWorld);
-        if (smoke.room()) smoke.emit(tm, v.set(0, 1, 0), 3, 1 + m.H * 0.08, 4 + m.H * 0.3, 0.15 + Math.random() * 0.15, 0.6, 0, 1);
+        m.smoke = 0.045 + Math.random() * 0.03;
+        tm.set((Math.random() - 0.5) * 1.6, m.H - 1 - Math.random() * 2, (Math.random() - 0.5) * 1.6).applyMatrix4(m.g.matrixWorld);
+        const f = 0.7 + Math.random() * 0.6;
+        if (smoke.room()) smoke.emit(tm, v.set((Math.random() - 0.5) * 2, 1 + Math.random(), (Math.random() - 0.5) * 2), 3 + Math.random(), (2.2 + m.H * 0.1) * f, (6 + m.H * 0.45) * f, 0.08 + Math.random() * 0.22, 0.5 + Math.random() * 0.25, PUFF.pour, 1, 0.7);
         if (Math.random() < 0.4 && fx.room()) fx.spark(tm, v.set(0, 3, 0), 0.5, 1 + m.H * 0.05, FIRE[(Math.random() * 3) | 0], 1, -1);
       }
       // gone once all of it is under the cloud deck (its foot more than its height below); or, kept too long, shrunk away

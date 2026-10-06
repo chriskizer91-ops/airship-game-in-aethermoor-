@@ -1,7 +1,7 @@
 // fx.js: the effects engine, and how a fight feels. It owns every spark, flash and glowing point in the sky (in one
 // batch with the bolts' heads), the smoke and the debris (effects.js), and the camera's shake and kick, and it listens
 // to the game's news (events.js) to answer it:
-//   a gun going off      a tongue of flame out of its muzzle and a puff of white gunsmoke; the Captain's own guns
+//   a gun going off      a tongue of flame out of its muzzle and a billow of white-grey gunsmoke; the Captain's own guns
 //                        shove the view back a little each (a broadside rolls like thunder), and buzz an Android phone
 //   a shot landing       a burst of sparks the colour of what it hit, and what it knocks off: splinters from the hull
 //                        and a puff of dust, scraps of canvas in her sails' colour, or glittering crystal shards; hits
@@ -21,7 +21,7 @@
 // Players whose device asks for less motion get 0.3 of the shake and kick, and no buzzing.
 import * as THREE from 'three';
 import { upload, KINDS } from './guns.js';
-import { makeSmoke, makeDebris } from './effects.js';
+import { makeSmoke, makeDebris, PUFF } from './effects.js';
 import { on, emit, payload } from './events.js';
 
 export const MOTION = 0.3; // the share of shake and kick kept for reduced motion
@@ -152,11 +152,18 @@ export function makeFx({ scene, camera, touch = false }) {
     // a tongue of flame: three glows along the barrel, carried along with the ship, white-gold to orange
     for (let i = 1; i <= 3; i++) spark(fp.copy(e.p).addScaledVector(e.dir, i * 1.1 * ks), e.vel, 0.1, (i === 1 ? 10 : i === 2 ? 7 : 4.5) * ks, i === 1 ? 0xfff2c0 : i === 2 ? 0xffc060 : 0xff8a30, 0);
     for (let i = 0, m = Math.round(2 * q); i < m; i++) spark(e.p, fv.copy(e.vel).addScaledVector(e.dir, KINDS[e.kind].speed * 0.04).add(sp.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(6)), 0.5, 2.2, 0xff9a3a);
-    // and a puff of white gunsmoke that billows out and drifts back along her side (a phone smokes every other port of
-    // a big raider broadside)
+    // and powder smoke, white-grey, billowing out of the port: a jet blasting out a dozen metres or so and spreading
+    // wide, and (on a laptop) a slower cloud behind it that keeps more of her speed, so the bank she leaves rolls back
+    // along her side as she sails on. Thick at first, it thins away over five seconds. (A phone gets the jet alone, a
+    // little bigger, and smokes every other port of a big raider broadside)
     if (!(touch && !mine && e.n > 8 && e.i % 2)) {
-      fv.copy(e.vel).multiplyScalar(0.9).addScaledVector(e.dir, 16 * big); fv.y += 3;
-      smoke.emit(fp.copy(e.p).addScaledVector(e.dir, 1), fv, 3.2, 2.5 * big, 14 * big, 0.92, mine ? 0.65 : 0.55, 1, 0.5);
+      const s = big * (0.85 + Math.random() * 0.3);
+      fv.copy(e.vel).multiplyScalar(0.7).addScaledVector(e.dir, 32 * big); fv.y += 2.5;
+      smoke.emit(fp.copy(e.p).addScaledVector(e.dir, 1.5), fv, touch ? 5 : 4.5, 3 * s, (touch ? 23 : 19) * s, 0.52 + Math.random() * 0.14, mine ? 0.92 : 0.85, PUFF.gun, 0.7);
+      if (!touch) {
+        fv.copy(e.vel).multiplyScalar(0.95).addScaledVector(e.dir, 10 * big).add(sp.set(Math.random() - 0.5, Math.random() * 0.6, Math.random() - 0.5).multiplyScalar(5));
+        smoke.emit(fp.copy(e.p).addScaledVector(e.dir, 3), fv, 5.5, 4 * s, 25 * s, 0.6 + Math.random() * 0.14, 0.8, PUFF.bank, 1);
+      }
     }
     if (mine) { kick(0.22 * e.weight * (e.kind === 'broadside' ? 1 : 0.5), 0.004, 0.35); trauma(0.015); }
   });

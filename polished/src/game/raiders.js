@@ -9,7 +9,7 @@
 //   strikes her colours when her sails are gone or her hull is down to a quarter. Left too far behind, she gets away.
 // They come in waves, smallest first, and every fifth wave is led by a raider captain: tougher, harder-hitting and
 // quicker to reload, with black sails and a gold pennant, and worth four times the shards. How sharp the raiders are
-// depends on the skies the Captain chose (progress.js).
+// depends on the skies the Captain chose (progress.js); on Fair Winds a captain is no tougher than her crew.
 // Before a raider's broadside goes off, her gun ports glow red for half a second (a little longer on the two big ships),
 // brightening to gold: time to climb, dive or turn away. Then her side ripples off, bow to stern (guns.js).
 import * as THREE from 'three';
@@ -26,6 +26,8 @@ export const RAIDER = { slow: 1.5, aim: 0.02 };
 // how long her gun ports glow before a broadside (seconds), and the glow's colours, from first to firing. The glow's
 // time comes out of her next reload, so she fires her broadsides as often as she would without it
 export const WARN = { time: 0.5, big: 0.65 }, WARN_FROM = new THREE.Color(0xff4636), WARN_TO = new THREE.Color(0xffc070);
+// a raider captain's edge over her crew (times as tough, as hard-hitting, as long to reload), all of it on most skies
+// and none on Fair Winds (the skies' `captain`), and her bounty
 export const CAPTAIN = { toughness: 2, damage: 1.2, reload: 0.9, bounty: 4 };
 // the colours of what a shot knocks off her (fx.js): her planks, and her sails (rust-red for the crews, black for
 // their captains)
@@ -120,21 +122,21 @@ function cutMasts(R, model) {
 
 // One raider ship: copies of its class's middle and far models (sharing their shapes), swapped by how big it looks.
 // Her parts that a wreck changes (wrecks.js) are her own: her crystals' glows and embers, her sails and her pennants,
-// her middle model's meshes by name, and her far model's rigging (hidden when her masts fall)
+// her middle and far models' meshes by name, and her far model's rigging (hidden when her masts fall)
 function raiderShip(T) {
   const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
   const mid = T.mid.body.clone(), far = T.far.body.clone(); far.visible = false; body.add(mid, far);
-  const rudders = [], glows = [], embers = [], canvas = [], flags = [], meshes = {}, farRig = [];
+  const rudders = [], glows = [], embers = [], canvas = [], flags = [], meshes = {}, farMeshes = {}, farRig = [];
   body.traverse((o) => {
     if (o.name === 'rudder') rudders.push(o); else if (o.name === 'glow') glows.push(o); else if (o.name === 'embers') embers.push(o);
     else if (o.name === 'canvas') canvas.push(o); else if (o.name === 'flag') flags.push(o);
   });
   for (const o of mid.children) if (o.isMesh) meshes[o.name] = o;
-  for (const o of far.children) if (o.isMesh && CUT.includes(o.name) && o.name !== 'wood' && o.name !== 'brass') farRig.push(o);
+  for (const o of far.children) if (o.isMesh) { farMeshes[o.name] = o; if (CUT.includes(o.name) && o.name !== 'wood' && o.name !== 'brass') farRig.push(o); }
   const move = shipMotion(T.R, body, rudders);
   return {
     root, body, recipe: T.R, hull: T.mid.hull, length: T.R.length, level: 'middle', masts: T.masts ?? null,
-    parts: { glows, embers, canvas, flags, meshes, farRig },
+    parts: { glows, embers, canvas, flags, meshes, farMeshes, farRig },
     update(dt, opts) {
       const t = move(dt, opts);
       for (const g of glows) g.material.uniforms.uTime.value = t;
@@ -159,7 +161,8 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
     if (!T[key]) {
       const R = FLEET.find((s) => s.id === id), mid = buildShip(R, 'middle', arts[captain ? 'captain' : 'crew']), far = buildShip(R, 'far', arts[captain ? 'captain' : 'crew']);
       recolourPennants(mid, captain); recolourPennants(far, captain);
-      T[key] = { R, mid, far, zones: hitZones(mid), masts: falling ? cutMasts(R, mid) : null };
+      // (her far model's masts are cut out too, only to be left out of it as her middle model's fall)
+      T[key] = { R, mid, far, zones: hitZones(mid), masts: falling ? { ...cutMasts(R, mid), farKeep: cutMasts(R, far).keep } : null };
     }
     return T[key];
   }
@@ -168,7 +171,7 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
   let ai = true, foeNow = null; // (the ship they're fighting this frame, for working out each gun's aim)
 
   function spawn(id, pos, heading, frozen = false, captain = false) {
-    const S = skies(), Tm = template(id, captain), tough = S.toughness * (captain ? CAPTAIN.toughness : 1);
+    const S = skies(), Tm = template(id, captain), edge = (k) => (captain ? 1 + (CAPTAIN[k] - 1) * S.captain : 1), tough = S.toughness * edge('toughness');
     const ship = raiderShip(Tm), st = STATS[id];
     const stats = { ...st, hull: Math.round(st.hull * tough), sails: Math.round(st.sails * tough), crystals: Math.round(st.crystals * tough) };
     const f = makeFlyer(ship, stats, { pos, heading }, { speed: S.pace });
@@ -184,7 +187,7 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
     f.strikes = role === 'prize';
     ship.root.position.copy(pos); ship.root.rotation.y = heading;
     scene.add(ship.root);
-    const gun = makeGunnery(ship, { reload: RAIDER.slow * S.reload * (HEAVY[id] ?? 1) * (captain ? CAPTAIN.reload : 1), damage: S.damage * (captain ? CAPTAIN.damage : 1) }, f);
+    const gun = makeGunnery(ship, { reload: RAIDER.slow * S.reload * (HEAVY[id] ?? 1) * edge('reload'), damage: S.damage * edge('damage') }, f);
     const r = { id, R: Tm.R, name: `Raider ${captain ? 'captain\'s ' + Tm.R.cls : Tm.R.cls}`, captain, ship, f, gun, zones: Tm.zones, role, frozen,
       bounty: BOUNTY[id] * (captain ? CAPTAIN.bounty : 1), aim: RAIDER.aim * S.aim, looks: LOOKS[captain ? 'captain' : 'crew'],
       mode: 'attack', timer: 0, side: 1, alt: (Math.random() - 0.5) * (role === 'chaser' ? 50 : 20), counted: false, gone: false,

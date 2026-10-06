@@ -381,7 +381,13 @@ async function main() {
   let region = '', regionTimer = 0, hudTimer = 0, hurt = 0;
   const shardCount = { shown: 0, from: 0, to: 0, t: 1, n: -1 }; // the shard count shown, counting up to what's in the hold (n: the whole number written)
   const flash = (el) => { el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); };
-  function banner(title, line) { $('banner-title').textContent = title; $('banner-line').textContent = line; flash($('banner')); }
+  // the banner, and where it is on the screen and until when (real time, in ms) it shows, so a bounty keeps clear of it
+  const bannerAt = { left: 0, right: 0, top: 0, bottom: 0, until: 0 };
+  function banner(title, line) {
+    const el = $('banner'); $('banner-title').textContent = title; $('banner-line').textContent = line; flash(el);
+    const b = el.getBoundingClientRect(); // (cheap here: flash has just laid the page out)
+    Object.assign(bannerAt, { left: b.left, right: b.right, top: b.top, bottom: b.bottom, until: performance.now() + 4400 });
+  }
   function toast(text) { const t = $('toast'); t.textContent = text; flash(t); }
   const setText = (el, v) => { if (el._v !== v) { el._v = v; el.textContent = v; } };
   const setStyle = (el, k, v) => { if (el['_' + k] !== v) { el['_' + k] = v; el.style[k] = v; } };
@@ -429,7 +435,8 @@ async function main() {
     row._dt.animate(ROW, 300); row._bar.animate(BAR, 300);
   }
   const proj = new THREE.Vector3(), placed = [], byY = (a, b) => a._y - b._y;
-  // each raider's tag: over it, or at the edge of the screen pointing to it; its distance and health ten times a second
+  // each raider's tag: over it, or at the edge of the screen pointing to it (flashing red as she readies a broadside);
+  // its distance and health ten times a second
   function tags(slow) {
     const W2 = innerWidth / 2, H2 = innerHeight / 2;
     placed.length = 0;
@@ -437,7 +444,7 @@ async function main() {
       let el = r.tag;
       if (!el) {
         el = r.tag = document.createElement('div'); el.className = r.captain ? 'tag captain' : r.role === 'prize' ? 'tag captain prize' : 'tag';
-        el.innerHTML = `<span class="arrow">▲</span><b>${r.captain ? 'Captain · ' : r.role === 'prize' ? 'Treasure · ' : ''}${r.R.cls}</b> <span class="d"></span>${PARTS.map((k) => `<span class="meter ${k}"><b></b><i></i></span>`).join('')}`;
+        el.innerHTML = `<span class="arrow">▲</span><b>${r.captain ? 'Captain · ' : r.role === 'prize' ? 'Treasure · ' : ''}${r.R.cls}</b> <span class="d"></span>${PARTS.map((k) => `<span class="meter ${k}"><b></b><i></i></span>`).join('')}<span class="bs">Broadside!</span>`;
         el._d = el.querySelector('.d'); el._m = [...el.querySelectorAll('.meter i')].map(chip); el._arrow = el.querySelector('.arrow'); el._fresh = true;
         H.tags.append(el); // (raiders.js takes it away with its raider)
       }
@@ -450,6 +457,10 @@ async function main() {
       const edge = behind || k > 1;
       if (edge) { x /= Math.max(k, 1e-6); y /= Math.max(k, 1e-6); }
       if (el._edge !== edge) { el._edge = edge; el.classList.toggle('edge', edge); }
+      // off screen, her glowing gun ports can't be seen (on a phone a raider alongside usually is): while she readies a
+      // broadside, her tag at the edge flashes red, and says so
+      const warn = edge && !!r.charge.b;
+      if (el._warn !== warn) { el._warn = warn; el.classList.toggle('warn', warn); }
       if (el._locked !== (r === locked)) { el._locked = r === locked; el.classList.toggle('locked', el._locked); }
       el._x = W2 + x; el._y = H2 + y + (edge && y > 0 ? 40 : 0); placed.push(el);
       const turn = Math.round(Math.atan2(x, -y) * 50) / 50;
@@ -472,12 +483,18 @@ async function main() {
   }
   // ---------- bounties ----------
   // where a raider goes down, her bounty rises out of the wreck in gold and fades: "◆ 75", "Captain's bounty ◆ 600",
-  // "Treasure ◆ 400". Six labels, reused
-  const BOUNTY_LIFE = 2.2, BOUNTIES = [...document.querySelectorAll('#bounties .bounty')].map((el) => ({ el, at: new THREE.Vector3(), t: BOUNTY_LIFE, label: el.querySelector('small'), num: el.querySelector('b span') }));
+  // "Treasure ◆ 400". Six labels, reused. One that would rise over a banner showing then (a wave's, say) rises just
+  // under it instead (dy, in pixels), so both can be read
+  const BOUNTY_LIFE = 2.2, BOUNTIES = [...document.querySelectorAll('#bounties .bounty')].map((el) => ({ el, at: new THREE.Vector3(), t: BOUNTY_LIFE, dy: 0, label: el.querySelector('small'), num: el.querySelector('b span') }));
   let bountyN = 0;
   function bounty(r, total, at) {
     const b = BOUNTIES[bountyN]; bountyN = (bountyN + 1) % BOUNTIES.length;
-    b.at.copy(at).setY(at.y + r.R.length * 0.3); b.t = 0;
+    b.at.copy(at).setY(at.y + r.R.length * 0.3); b.t = 0; b.dy = 0;
+    if (performance.now() < bannerAt.until) {
+      proj.copy(b.at).project(camera);
+      const x = (proj.x + 1) * innerWidth / 2, y = (1 - proj.y) * innerHeight / 2;
+      if (proj.z < 1 && x > bannerAt.left - 90 && x < bannerAt.right + 90 && y > bannerAt.top - 70 && y < bannerAt.bottom + 40) b.dy = bannerAt.bottom + 44 - y;
+    }
     b.label.textContent = r.captain ? 'Captain\'s bounty' : r.role === 'prize' ? 'Treasure' : '';
     b.num.textContent = fmt(total);
     b.el.classList.toggle('rich', r.captain || r.role === 'prize'); b.el.hidden = false;
@@ -489,7 +506,7 @@ async function main() {
       const k = b.t / BOUNTY_LIFE;
       proj.copy(b.at).project(camera);
       if (proj.z > 1) { b.el.style.opacity = '0'; continue; }
-      const x = (proj.x + 1) * innerWidth / 2, y = (1 - proj.y) * innerHeight / 2 - 40 * k;
+      const x = (proj.x + 1) * innerWidth / 2, y = (1 - proj.y) * innerHeight / 2 - 40 * k + b.dy;
       b.el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) translate(-50%, -50%) scale(${(1 + 0.3 * (1 - k)).toFixed(3)})`;
       b.el.style.opacity = (k < 0.08 ? k / 0.08 : k > 0.7 ? (1 - k) / 0.3 : 1).toFixed(2);
     }

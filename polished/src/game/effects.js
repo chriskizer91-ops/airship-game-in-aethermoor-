@@ -1,64 +1,131 @@
-// effects.js: smoke and debris. The white gunsmoke that billows from every port as a broadside goes off, the smoke from
-// damaged ships, thickening and darkening as the hull goes, and the trail of the Captain's ship going down (a raider
-// going down pours a whole column of it: wrecks.js). One batch of soft round puffs for the whole sky (fire and sparks
-// are fx.js's glows). And the debris a shot knocks off a ship, matching what it hit.
+// effects.js: smoke and debris. The white-grey gunsmoke that billows from every port as a broadside goes off, the
+// smoke from damaged ships, thickening and darkening as the hull goes, and the trail of the Captain's ship going down (a
+// raider going down pours a whole column of it: wrecks.js). One batch of puffs for the whole sky, each a billowing heap
+// lit by the sun from above (fire and sparks are fx.js's glows). And the debris a shot knocks off a ship, matching what
+// it hit: splinters, torn scraps of canvas, crystal shards.
 // The puffs and pieces live in plain number arrays, a fixed number of them made once, so a phone never has to clear
 // away thousands of little objects mid-fight: one that burns out is swapped for the last, and when every one is in use
 // the oldest-placed is reused (and counted, as `dropped`).
 import * as THREE from 'three';
 import { upload } from './guns.js';
 
-const ATTRS = ['position', 'size', 'shade', 'alpha'];
+const ATTRS = ['position', 'size', 'shade', 'alpha', 'look', 'heat'];
+// The puffs' picture, made once: four puffs side by side in one small texture. Three are billowing heaps of round lobes
+// (cauliflower-like, with wispy edges), each lobe lit like a ball by the sun from above, so the creases between them
+// fall into shade; the fourth is a plain soft round puff, for thin vapour. Red is how thick the smoke is, green how
+// much sun it catches. (A puff is drawn mirrored or not and a little turned, so the three look like many)
+const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+function puffAtlas() {
+  const N = 128, W = N * 2, data = new Uint8Array(W * W * 4);
+  let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const Ll = Math.hypot(-0.3, 0.8, 0.5), Lx = -0.3 / Ll, Ly = 0.8 / Ll, Lz = 0.5 / Ll; // the sun: above, a little left, towards the viewer
+  for (let cell = 0; cell < 4; cell++) {
+    const ox = (cell % 2) * N, oy = (cell >> 1) * N, plain = cell === 3, lobes = [[0, -0.04, 0.26]];
+    for (let k = 0; k < 12; k++) {
+      const r = 0.09 + rnd() * 0.15, a = rnd() * Math.PI * 2, d = rnd() * (0.42 - r);
+      lobes.push([Math.cos(a) * d, Math.sin(a) * d * 0.85 + 0.02, r]);
+    }
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const x = (i + 0.5) / N - 0.5, y = (j + 0.5) / N - 0.5, rr = Math.hypot(x, y);
+      let dens, lit;
+      if (plain) { dens = smooth(0.5, 0.12, rr); lit = 0.62; }
+      else {
+        // the edge wavers a little (wisps), then the highest lobe over this point is the smoke's surface here
+        const wx = x + 0.022 * Math.sin(y * 31 + cell * 1.7) + 0.012 * Math.sin(y * 67 + x * 13), wy = y + 0.022 * Math.sin(x * 27 + cell * 2.9);
+        let h = 0, nx = 0, ny = 0, nz = 1, rad = 1;
+        for (const [cx, cy, r] of lobes) {
+          const dx = wx - cx, dy = wy - cy, q = r * r - dx * dx - dy * dy;
+          if (q > 0) { const z = Math.sqrt(q); if (z > h) { h = z; nx = dx / r; ny = dy / r; nz = z / r; rad = r; } }
+        }
+        dens = Math.pow(Math.min(1, h / 0.11), 0.8) * smooth(0.5, 0.44, rr);
+        lit = (0.2 + 0.8 * Math.max(0, nx * Lx + ny * Ly + nz * Lz)) * (0.75 + 0.25 * Math.min(1, h / rad));
+      }
+      const o = ((oy + j) * W + ox + i) * 4;
+      data[o] = Math.round(dens * 255); data[o + 1] = Math.round(Math.min(1, lit) * 255); data[o + 3] = 255;
+    }
+  }
+  const t = new THREE.DataTexture(data, W, W, THREE.RGBAFormat);
+  t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter; t.needsUpdate = true;
+  return t;
+}
+// The kinds of puff, and how each behaves: how quickly the air slows it (a share of its speed a second); how it grows
+// (0: quickly at first and slowing; 1: billowing out at once, then hanging; 2: blasting out at once, and still spreading
+// as it drifts); how quickly it shows (fully, a 6th, 14th or 25th of the way through its life); and whether it stays
+// thick a while before it thins away (gunsmoke) or thins from the start.
+//   pour    smoke pouring off a damaged ship or a wreck        billow  a blast, a hit's dust, a ring of cloud
+//   gun     a gun's jet of powder smoke, stopping a dozen      vapour  as billow, but a plain round puff (the Surge's
+//           metres out                                                 vapour trails)
+//   bank    the slower cloud of powder smoke behind the jet, keeping more of the ship's speed, so it drifts back along
+//           her side as she sails on
+export const PUFF = { pour: 0, billow: 1, gun: 2, vapour: 3, bank: 4 };
+const DRAG = [0.6, 0.6, 1.5, 0.6, 0.45], GROW = [0, 1, 2, 1, 2], SHOW = [6, 14, 25, 14, 25], LINGER = [0, 0, 1, 0, 1];
 // `max` puffs at once; `cap`: the most pixels across one may be drawn (a phone's limit is how much it fills)
 export function makeSmoke(scene, max = 900, cap = 700) {
-  const pos = new Float32Array(max * 3), size = new Float32Array(max), shade = new Float32Array(max), alpha = new Float32Array(max);
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage));
-  geo.setAttribute('size', new THREE.BufferAttribute(size, 1).setUsage(THREE.DynamicDrawUsage));
-  geo.setAttribute('shade', new THREE.BufferAttribute(shade, 1).setUsage(THREE.DynamicDrawUsage));
-  geo.setAttribute('alpha', new THREE.BufferAttribute(alpha, 1).setUsage(THREE.DynamicDrawUsage));
+  const pos = new Float32Array(max * 3), size = new Float32Array(max), shade = new Float32Array(max), alpha = new Float32Array(max), look = new Float32Array(max), heat = new Float32Array(max);
+  const geo = new THREE.BufferGeometry(), dyn = (a, n) => new THREE.BufferAttribute(a, n).setUsage(THREE.DynamicDrawUsage);
+  geo.setAttribute('position', dyn(pos, 3)); geo.setAttribute('size', dyn(size, 1)); geo.setAttribute('shade', dyn(shade, 1));
+  geo.setAttribute('alpha', dyn(alpha, 1)); geo.setAttribute('look', dyn(look, 1)); geo.setAttribute('heat', dyn(heat, 1));
   geo.setDrawRange(0, 0);
+  // each puff: which of the four pictures, mirrored or not, and turned how far (packed in `look`); its shade (0 black,
+  // 1 pale grey); and `heat`, fire below it lighting its shaded underside orange (a burning wreck's smoke, near her)
   const mat = new THREE.ShaderMaterial({
-    uniforms: { uScale: { value: 500 }, uMax: { value: cap } }, transparent: true, depthWrite: false,
-    vertexShader: `attribute float size; attribute float shade; attribute float alpha; uniform float uScale; uniform float uMax; varying float vS; varying float vA;
-      void main() { vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = min(size * uScale / -mv.z, uMax); vS = shade; vA = alpha; gl_Position = projectionMatrix * mv; }`,
-    fragmentShader: `varying float vS; varying float vA;
-      void main() { vec2 d = gl_PointCoord - 0.5; float r = length(d) * 2.0; float a = smoothstep(1.0, 0.25, r) * vA;
+    uniforms: { uScale: { value: 500 }, uMax: { value: cap }, uTex: { value: puffAtlas() } }, transparent: true, depthWrite: false,
+    vertexShader: `attribute float size; attribute float shade; attribute float alpha; attribute float look; attribute float heat;
+      uniform float uScale; uniform float uMax; varying float vS; varying float vA; varying float vH; varying vec4 vR; varying vec2 vC;
+      void main() { vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = min(size * uScale / -mv.z, uMax);
+        float k = floor(look / 8.0), a = look - k * 8.0 - 3.14159, m = k >= 4.0 ? -1.0 : 1.0, cell = k - (k >= 4.0 ? 4.0 : 0.0), c = cos(a), s = sin(a);
+        vR = vec4(m * c, -m * s, s, c); vC = vec2(mod(cell, 2.0), floor(cell / 2.0)) * 0.5;
+        vS = shade; vA = alpha; vH = heat; gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `uniform sampler2D uTex; varying float vS; varying float vA; varying float vH; varying vec4 vR; varying vec2 vC;
+      void main() { vec2 d = gl_PointCoord - 0.5;
+        if (dot(d, d) > 0.25) discard;
+        vec2 r = vec2(dot(vR.xy, d), dot(vR.zw, d));
+        vec4 t = texture2D(uTex, vC + vec2(r.x + 0.5, 0.5 - r.y) * 0.5);
+        float a = t.r * vA;
         if (a < 0.01) discard;
-        vec3 c = mix(vec3(0.07, 0.06, 0.06), vec3(0.72, 0.71, 0.7), vS) * (1.0 - d.y * 0.35);
+        vec3 c = mix(vec3(0.07, 0.06, 0.06), vec3(0.72, 0.71, 0.7), vS) * (0.45 + 0.9 * t.g) * (1.0 - d.y * 0.3);
+        c += vec3(1.0, 0.42, 0.12) * vH * (1.0 - t.g) * (0.6 + d.y);
         gl_FragColor = vec4(c, a);
         #include <colorspace_fragment>
       }`,
   });
   const points = new THREE.Points(geo, mat);
   points.frustumCulled = false; points.renderOrder = 3; scene.add(points);
-  // each puff: where, how it drifts, its life, its size from s0 to s1, shade, how opaque, how it grows and rises
+  // each puff: where, how it drifts, its life, its size from s0 to s1, shade, how opaque, its kind, how it rises, its
+  // picture and how it turns, and how hot
   const F = () => new Float32Array(max);
-  const px = F(), py = F(), pz = F(), vx = F(), vy = F(), vz = F(), life = F(), full = F(), s0 = F(), s1 = F(), sh = F(), al = F(), grow = new Uint8Array(max), rise = F();
+  const px = F(), py = F(), pz = F(), vx = F(), vy = F(), vz = F(), life = F(), full = F(), s0 = F(), s1 = F(), sh = F(), al = F(), kind = new Uint8Array(max), rise = F(),
+    pic = F(), ang = F(), spin = F(), hot = F();
   let n = 0, cursor = 0, dropped = 0;
-  // a puff at p drifting with v, growing from a to b metres across over its life; shade 0 is black, 1 pale grey.
-  // grow 0: quickly at first and slowing (smoke pouring off a ship); 1: billowing out at once, then hanging (gunsmoke,
-  // blasts). rise: how fast it lifts as it drifts (m/s each second)
-  function emit(p, v, lifeS, a, b, shadeOf, op = 0.75, growMode = 0, riseBy = 1.5) {
+  // a puff at p drifting with v, growing from a to b metres across over its life; shade 0 is black, 1 pale grey; `kind`
+  // (PUFF: how it slows, grows and fades); rise: how fast it lifts as it drifts (m/s each second); heat 0 to 1
+  function emit(p, v, lifeS, a, b, shadeOf, op = 0.75, kindOf = 0, riseBy = 1.5, heatOf = 0) {
     let i;
     if (n < max) i = n++;
     else { i = cursor; cursor = (cursor + 1) % max; dropped++; }
     px[i] = p.x; py[i] = p.y; pz[i] = p.z; vx[i] = v.x; vy[i] = v.y; vz[i] = v.z;
-    life[i] = full[i] = lifeS; s0[i] = a; s1[i] = b; sh[i] = shadeOf; al[i] = op; grow[i] = growMode; rise[i] = riseBy;
+    life[i] = full[i] = lifeS; s0[i] = a; s1[i] = b; sh[i] = shadeOf; al[i] = op; kind[i] = kindOf; rise[i] = riseBy; hot[i] = heatOf;
+    pic[i] = (kindOf === 3 ? (Math.random() < 0.5 ? 3 : 7) : ((Math.random() * 3) | 0) + (Math.random() < 0.5 ? 4 : 0)) * 8;
+    ang[i] = (Math.random() - 0.5) * 1.2; spin[i] = (Math.random() - 0.5) * 0.5;
   }
-  const ARR = [px, py, pz, vx, vy, vz, life, full, s0, s1, sh, al, grow, rise];
+  const ARR = [px, py, pz, vx, vy, vz, life, full, s0, s1, sh, al, kind, rise, pic, ang, spin, hot];
   const kill = (i) => { const j = --n; if (i !== j) for (let a = 0; a < ARR.length; a++) ARR[a][i] = ARR[a][j]; };
   function update(dt, camera) {
-    const drag = 1 - dt * 0.6;
     for (let i = n - 1; i >= 0; i--) {
       if ((life[i] -= dt) <= 0) { kill(i); continue; }
+      const d = 1 - dt * DRAG[kind[i]];
       px[i] += vx[i] * dt; py[i] += vy[i] * dt; pz[i] += vz[i] * dt;
-      vx[i] *= drag; vy[i] *= drag; vz[i] *= drag; vy[i] += dt * rise[i];
+      vx[i] *= d; vy[i] *= d; vz[i] *= d; vy[i] += dt * rise[i];
+      ang[i] = Math.max(-3, Math.min(3, ang[i] + spin[i] * dt));
     }
     for (let i = 0; i < n; i++) {
-      const k = 1 - life[i] / full[i], g = grow[i] ? 1 - (1 - k) * (1 - k) * (1 - k) : Math.sqrt(k);
+      const k = 1 - life[i] / full[i], K = kind[i], G = GROW[K];
+      const u = 1 - k, u3 = u * u * u, g = G === 0 ? Math.sqrt(k) : G === 2 ? 0.8 * (1 - u3 * u3) + 0.2 * k : 1 - u3;
       pos[i * 3] = px[i]; pos[i * 3 + 1] = py[i]; pos[i * 3 + 2] = pz[i];
-      size[i] = s0[i] + (s1[i] - s0[i]) * g; shade[i] = sh[i]; alpha[i] = al[i] * Math.min(1, k * (grow[i] ? 14 : 6)) * (1 - k);
+      size[i] = s0[i] + (s1[i] - s0[i]) * g; shade[i] = sh[i];
+      alpha[i] = al[i] * Math.min(1, k * SHOW[K]) * (LINGER[K] ? 1 - k * k : u);
+      look[i] = pic[i] + ang[i] + 3.14159;
+      const h = 1 - k * 3; heat[i] = h > 0 ? hot[i] * h * h : 0; // (the glow from below fades in the first third of its life)
     }
     geo.setDrawRange(0, n);
     for (let a = 0; a < ATTRS.length; a++) upload(geo.attributes[ATTRS[a]], n);
@@ -71,8 +138,8 @@ export function makeSmoke(scene, max = 900, cap = 700) {
   return { emit, update, clear, room, max, get count() { return n; }, get dropped() { return dropped; } };
 }
 
-// Debris: what a shot knocks off a ship, by what it hit. Splinters of wood tumble and fall fast; scraps of canvas, in
-// the colour of her sails, flutter slowly down; amber crystal shards glitter as they fall (a glow each, in fx.js's
+// Debris: what a shot knocks off a ship, by what it hit. Splinters of wood tumble and fall fast; torn scraps of canvas,
+// in the colour of her sails, flap and flutter slowly down; amber crystal shards glitter as they fall (a glow each, in fx.js's
 // batch). Three batches of pieces, one draw each, and none at all while nothing of theirs is in the air; how many of
 // each at most (times fx's q: fewer on a phone). Sized to the worst cases measured (tools/check.mjs): a Man-o'-war
 // going down beside two other wrecks in a fight needs up to about 150 splinters at once on a phone, and a barrage of 60
@@ -83,16 +150,53 @@ export const DEBRIS = { wood: 320, canvas: 128, crystal: 224 };
 // (radians a second, from..to), how long it lasts (seconds, from..to), and its size (metres, across x up x along)
 const FLY = {
   wood: { grav: 9.8, drag: 0.3, spin: [6, 14], life: [1.8, 2.6], size: [[0.08, 0.14], [0.06, 0.06], [0.4, 1.1]] },
-  canvas: { grav: 2.5, drag: 2.5, spin: [2, 5], life: [3, 3], size: [[0.5, 1.2]] },
+  canvas: { grav: 2.5, drag: 2.5, spin: [1.5, 4], life: [3, 3], size: [[0.55, 1.3], [0.45, 1.05], [0.6, 1.1]] },
   crystal: { grav: 6, drag: 0.6, spin: [10, 10], life: [1.6, 1.6], size: [[0.12, 0.12], [0.3, 0.3], [0.12, 0.12]] },
 };
+// A scrap of torn canvas (one shape, shared: each scrap is sized, stretched and turned its own way): a small sheet with
+// a ragged edge, a corner torn out and a tear across another, bent and curled, paler in the middle than at its frayed,
+// scorched edge
+function scrap() {
+  const g = new THREE.PlaneGeometry(1, 1, 4, 3), idx = g.index.array, P = g.attributes.position, keep = [];
+  for (let t = 0; t < idx.length; t += 3) {
+    let cx = 0, cy = 0;
+    for (let k = 0; k < 3; k++) { cx += P.getX(idx[t + k]) / 3; cy += P.getY(idx[t + k]) / 3; }
+    if ((cx > 0.25 && cy > 0.17) || (cx < -0.25 && cy < -0.36)) continue; // (the corner torn out, and the tear)
+    keep.push(idx[t], idx[t + 1], idx[t + 2]);
+  }
+  g.setIndex(keep);
+  let seed = 5; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const col = new Float32Array(P.count * 3);
+  for (let i = 0; i < P.count; i++) {
+    let x = P.getX(i), y = P.getY(i);
+    const rim = Math.abs(x) > 0.49 || Math.abs(y) > 0.49 || (x > 0.2 && y > 0.1) || (Math.abs(x + 0.25) < 0.01 && Math.abs(y + 0.1667) < 0.01);
+    if (rim) { const k = 0.7 + rnd() * 0.42; x *= k; y *= k; } // a ragged edge
+    P.setXYZ(i, x, y, 0.16 * Math.cos(x * 3.1) + 0.1 * Math.sin(y * 4.6 + x * 2) - 0.08 * y * y); // bent and curled
+    const c = rim ? 0.5 + rnd() * 0.15 : 0.92 + rnd() * 0.12;
+    col[i * 3] = c; col[i * 3 + 1] = c * 0.95; col[i * 3 + 2] = c * 0.88;
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.computeVertexNormals();
+  return g;
+}
 // `glowAt(p, r, g, b, size)` lights a point for one frame (fx.js): the crystal shards' glitter
 export function makeDebris(scene, q = 1, glowAt = null) {
-  const cloth = new THREE.PlaneGeometry(1, 1, 2, 1), cp = cloth.attributes.position; // a scrap, bent along its middle
-  for (let i = 0; i < cp.count; i++) if (Math.abs(cp.getX(i)) < 1e-6) cp.setZ(i, 0.15);
+  // the canvas flaps as it falls (each scrap at its own beat), shows a soft sheen on its folds, so even a black scrap
+  // reads as cloth, and lets a little sun through
+  const flap = { value: 0 }, canvas = new THREE.MeshLambertMaterial({ color: 0xffffff, side: THREE.DoubleSide, vertexColors: true });
+  canvas.onBeforeCompile = (sh) => {
+    sh.uniforms.uTime = flap;
+    sh.vertexShader = 'uniform float uTime;\n' + sh.vertexShader
+      .replace('#include <beginnormal_vertex>', `#include <beginnormal_vertex>
+        float fPh = float(gl_InstanceID) * 2.399, fA = uTime * 10.0 + fPh + position.x * 5.0, fB = uTime * 7.0 + fPh * 1.7 + position.y * 4.0;
+        objectNormal = normalize(objectNormal - vec3(cos(fA) * 0.6, cos(fB) * 0.32, 0.0));`)
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\n        transformed.z += sin(fA) * 0.12 + sin(fB) * 0.08;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <opaque_fragment>', `float fSheen = 1.0 - abs(dot(geometryViewDir, normal));
+      outgoingLight += vec3(0.14, 0.13, 0.12) * fSheen * fSheen + diffuseColor.rgb * 0.25;
+      #include <opaque_fragment>`);
+  };
   const shapes = {
     wood: [new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: 0xffffff })],
-    canvas: [cloth, new THREE.MeshLambertMaterial({ color: 0xffffff, side: THREE.DoubleSide })],
+    canvas: [scrap(), canvas],
     crystal: [new THREE.OctahedronGeometry(1, 0), new THREE.MeshBasicMaterial({ color: 0xffc061, toneMapped: false })],
   };
   const col = new THREE.Color(), B = {};
@@ -132,7 +236,7 @@ export function makeDebris(scene, q = 1, glowAt = null) {
   const m4 = new THREE.Matrix4(), qt = new THREE.Quaternion(), at = new THREE.Vector3(), axis = new THREE.Vector3(), sc = new THREE.Vector3();
   let time = 0;
   function update(dt) {
-    time += dt;
+    time += dt; flap.value = time;
     for (let k = 0; k < KINDS.length; k++) {
       const b = KINDS[k], F = b.fly, d = Math.max(0, 1 - dt * F.drag), canvas = b.kind === 'canvas', crystal = b.kind === 'crystal';
       for (let i = b.n - 1; i >= 0; i--) {
@@ -181,6 +285,8 @@ export function smokeFrom(flyer, fx, dt) {
   const body = flyer.ship.body;
   at.set((Math.random() - 0.5) * L * 0.08, 0.6, (Math.random() - 0.4) * L * 0.5).applyMatrix4(body.matrixWorld);
   drift.copy(flyer.velocity).multiplyScalar(0.15); drift.x += (Math.random() - 0.5) * 2; drift.y += 2 + Math.random() * 2; drift.z += (Math.random() - 0.5) * 2;
-  fx.smoke.emit(at, drift, 2.5 + burning * 3, L * 0.05 + 0.6, L * (0.22 + burning * 0.3) + 3, 0.6 - burning * 0.5, 0.3 + burning * 0.35);
+  const k = 0.75 + Math.random() * 0.5; // (each puff its own size and shade, and a burning ship's lit from below)
+  fx.smoke.emit(at, drift, 2.5 + burning * 3, (L * 0.05 + 0.6) * k, (L * (0.22 + burning * 0.3) + 3) * k, Math.max(0, 0.6 - burning * 0.5 + (Math.random() - 0.5) * 0.12), 0.3 + burning * 0.35, PUFF.pour, 1.5,
+    burning > 0.6 ? (burning - 0.5) * Math.random() : 0);
   if (burning > 0.5 && Math.random() < burning) fx.spark(at, rise.copy(drift).setY(drift.y + 3), 0.6 + Math.random() * 0.5, 1.2 + L * 0.06, Math.random() < 0.5 ? 0xff7a2a : 0xffc04a);
 }

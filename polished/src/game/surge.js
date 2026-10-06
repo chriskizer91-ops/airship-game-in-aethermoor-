@@ -7,6 +7,7 @@
 // of numbers, and only those change each frame; hidden, they cost nothing.
 import * as THREE from 'three';
 import { on } from './events.js';
+import { PUFF } from './effects.js';
 
 // how many streaks (times fx's q), how long a stretch of sky they fill (metres), how bright the crystals flare, blue
 // sparks a second, seconds between vapour puffs (a laptop, a phone), and the view's low rumble (trauma, fx.js)
@@ -106,7 +107,7 @@ export function makeSurge({ scene, fx }) {
     // two white vapour trails from her sail tips, left hanging where she's been
     if ((trail -= dt) <= 0) {
       trail = trailEvery;
-      if (fx.smoke.room()) for (const t of tips) fx.smoke.emit(p.copy(t).applyMatrix4(M()), v.set(0, 0, 0), 1.4, 0.9 * (0.6 + L / 50), 4 * (0.6 + L / 50), 1.3, 0.45, 1, 0);
+      if (fx.smoke.room()) for (const t of tips) fx.smoke.emit(p.copy(t).applyMatrix4(M()), v.set(0, 0, 0), 1.4, 0.9 * (0.6 + L / 50), 4 * (0.6 + L / 50), 1.3, 0.45, PUFF.vapour, 0);
     }
   }
   // a fresh voyage, or back to port: nothing showing, and her crystals back to their own glow
