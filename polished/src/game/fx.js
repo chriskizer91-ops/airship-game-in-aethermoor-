@@ -1,13 +1,18 @@
 // fx.js: the effects engine, and how a fight feels. It owns every spark, flash and glowing point in the sky (in one
-// batch with the bolts' heads), the smoke (effects.js), and the camera's shake and kick, and it listens to the game's
-// news (events.js) to answer it:
+// batch with the bolts' heads), the smoke and the debris (effects.js), and the camera's shake and kick, and it listens
+// to the game's news (events.js) to answer it:
 //   a gun going off      a tongue of flame out of its muzzle and a puff of white gunsmoke; the Captain's own guns
 //                        shove the view back a little each (a broadside rolls like thunder), and buzz an Android phone
-//   a shot landing       a burst of sparks the colour of what it hit; hits on the Captain's ship shake the view (the
-//                        hull hardest), lurch it towards the side hit, and buzz the phone
+//   a shot landing       a burst of sparks the colour of what it hit, and what it knocks off: splinters from the hull
+//                        and a puff of dust, scraps of canvas in her sails' colour, or glittering crystal shards; hits
+//                        on the Captain's ship shake the view (the hull hardest), lurch it towards the side hit, and
+//                        buzz the phone
 //   a near miss          a flash of white sparks where it passed, and a twitch of the view
-//   a raider going down  her blast (told on as `blast`, which shakes the view when it's close), and a longer buzz
-//   a Surge              a jolt
+//   a blast              (a raider blowing up: wrecks.js) shakes the view when it's close
+//   a raider going down  a longer buzz
+//   shards spilled       a gold flash and a spray of gold sparks; each shard gathered, a little gold glint at the hold
+//   a Surge              a jolt (how it looks: surge.js)
+//   the Captain's ship going down: the game slows to half speed for a moment
 // The sparks live in plain number arrays made once (a fixed number: 1,100 on a laptop, 700 on a phone), so a fight
 // leaves nothing for a phone to clear away; when every spark is in use the oldest-placed is reused and counted as
 // `dropped`. Every count asked for is scaled by `q`: 1 on a laptop, 0.6 on a phone. Points are drawn no bigger than
@@ -16,14 +21,17 @@
 // Players whose device asks for less motion get 0.3 of the shake and kick, and no buzzing.
 import * as THREE from 'three';
 import { upload, KINDS } from './guns.js';
-import { makeSmoke } from './effects.js';
+import { makeSmoke, makeDebris } from './effects.js';
 import { on, emit, payload } from './events.js';
 
 export const MOTION = 0.3; // the share of shake and kick kept for reduced motion
 export const SHAKE = { pos: 0.5, yaw: 0.07, pitch: 0.06, roll: 0.08 }; // the view's shake at full trauma (metres, radians)
 const K = 130, C = 2 * 0.9 * Math.sqrt(K); // the kick springs: back to rest about half a second after the last shove
-// a shot landing: the sparks' colour, how many, and how big, by what it hit
-const BURST = { hull: [0xffa040, 30, 1.1], sails: [0xf5e6c8, 18, 0.8], crystals: [0xffe08a, 40, 1.4] };
+// a shot landing: the sparks' colour, how many, and how big, by what it hit (fewer than before the debris came)
+const BURST = { hull: [0xffa040, 18, 1.1], sails: [0xf5e6c8, 11, 0.8], crystals: [0xffe08a, 24, 1.4] };
+// the debris a ship sheds: her planks' and her sails' colours (a raider's are set on her: raiders.js)
+export const PLAYER_LOOKS = { wood: 0x9a7650, sail: 0xf2e6cc }, RAIDER_LOOKS = { wood: 0x6e5440, sail: 0xc8735c };
+const GOLD = 0xffd27a;
 const noise = (t, a, b) => Math.sin(t * 23.1 + a) * 0.6 + Math.sin(t * 37.7 + b) * 0.4; // smooth, never repeating quite the same
 const CAM = ['back', 'pitch', 'side', 'fov'];
 
@@ -83,7 +91,9 @@ export function makeFx({ scene, camera, touch = false }) {
     gx[ng] = p.x; gy[ng] = p.y; gz[ng] = p.z; gr[ng] = r; gg[ng] = g; gb[ng] = b; gs[ng++] = size;
   }
 
-  const smoke = makeSmoke(scene, touch ? 600 : 900, touch ? 420 : 700);
+  const smoke = makeSmoke(scene, touch ? 600 : 900, touch ? 420 : 700), debris = makeDebris(scene, q, glowAt);
+  // room for sparks that can be left out (a wreck's fire, the Surge's), so a fight's own always find room
+  const room = (share = 0.85) => ns < SCAP * share;
 
   // ---------- the camera: trauma (shake) and kicks (springs back to rest) ----------
   const cam = { trauma: 0, back: 0, pitch: 0, side: 0, fov: 0 }, camV = { back: 0, pitch: 0, side: 0, fov: 0 };
@@ -106,14 +116,23 @@ export function makeFx({ scene, camera, touch = false }) {
   }
 
   // ---------- the time dial ----------
-  let dial = 1, hold = 0, low = 1;
-  // slow the game to `scale` of its speed for `seconds` (real time), easing in and back out
-  const slowmo = (seconds, scale = 0.3) => { hold = seconds; low = scale; };
+  // slowmo(seconds, low, hold): the game slows to `low` of its speed in an eighth of a second, stays there until `hold`
+  // seconds, and is back to full speed by `seconds` (all real time). Each frame's time is scaled by timeScale(realDt);
+  // tests step the game directly, so they never slow down
+  const SLOW = payload('slowmo');
+  let dial = 1, st = -1, sFrom = 1, sLow = 1, sHold = 0, sEnd = 0;
+  function slowmo(seconds, low = 0.25, hold = seconds * 0.625) {
+    st = 0; sFrom = dial; sLow = low; sHold = hold; sEnd = seconds;
+    trauma(0.15);
+    SLOW.seconds = seconds; SLOW.scale = low; emit('slowmo', SLOW);
+  }
   function timeScale(realDt) {
-    const want = hold > 0 ? low : 1;
-    hold = Math.max(0, hold - realDt);
-    dial += (want - dial) * (1 - Math.exp(-realDt * 8));
-    if (hold <= 0 && Math.abs(dial - 1) < 1e-3) dial = 1;
+    if (st < 0) return (dial = 1);
+    const t = (st += realDt);
+    if (t >= sEnd) { st = -1; return (dial = 1); }
+    if (t < 0.12) dial = sFrom + (sLow - sFrom) * (t / 0.12);
+    else if (t < sHold) dial = sLow;
+    else { const k = (t - sHold) / (sEnd - sHold); dial = sLow + (1 - sLow) * k * k * (3 - 2 * k); }
     return dial;
   }
 
@@ -126,8 +145,8 @@ export function makeFx({ scene, camera, touch = false }) {
   }
 
   // ---------- answering the game's news ----------
-  let focus = null; // where the Captain is (blasts near her shake the view)
-  const fp = new THREE.Vector3(), fv = new THREE.Vector3(), cs = new THREE.Vector3();
+  let focus = null, ship = null; // where the Captain is (blasts near her shake the view), and her ship (flight.js)
+  const fp = new THREE.Vector3(), fv = new THREE.Vector3(), cs = new THREE.Vector3(), hb = new THREE.Vector3(), hv = new THREE.Vector3();
   on('fire', (e) => {
     const ks = KINDS[e.kind].size, big = e.kind === 'broadside' ? 1 : 0.6, mine = e.owner === 'player';
     // a tongue of flame: three glows along the barrel, carried along with the ship, white-gold to orange
@@ -145,6 +164,16 @@ export function makeFx({ scene, camera, touch = false }) {
   on('hit', (e) => {
     const B = BURST[e.part], mine = e.target === 'player';
     burst(e.at, B[0], B[1], B[2], mine ? 0.45 : 1);
+    // what it knocks off, thrown back the way the shot came: splinters and a puff of dark dust from the hull, scraps
+    // of canvas and a pale puff from the sails, glittering shards from the crystals
+    const looks = mine ? PLAYER_LOOKS : e.raider?.looks ?? RAIDER_LOOKS, back = hb.copy(e.dir).negate();
+    if (e.part === 'hull') {
+      debris.toss('wood', e.at, back, 1.2, e.vel, 6, 1.4, looks.wood);
+      smoke.emit(e.at, hv.copy(e.vel).multiplyScalar(0.85), 1.4, 2, 7, 0.3, 0.7, 1, 0.5);
+    } else if (e.part === 'sails') {
+      debris.toss('canvas', e.at, back, 1.2, e.vel, 4, 1, looks.sail);
+      smoke.emit(e.at, hv.copy(e.vel).multiplyScalar(0.85), 0.8, 1, 4, 0.9, 0.5, 1, 0.3);
+    } else debris.toss('crystal', e.at, back, 1.2, e.vel, 8, 1);
     if (!mine) return;
     const sev = Math.min(1.5, e.damage / 55);
     trauma((e.part === 'hull' ? 0.35 : e.part === 'crystals' ? 0.3 : 0.15) * sev);
@@ -156,19 +185,27 @@ export function makeFx({ scene, camera, touch = false }) {
     for (let i = 0; i < 3; i++) spark(e.at, sv.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(14), 0.3, 2.4, 0xffffff);
     trauma(0.05);
   });
-  const blast = payload('blast');
-  on('raider:down', (e) => {
-    const L = e.raider?.R?.length ?? 25;
-    burst(e.at, 0xff8a3a, 60, 2.2); burst(fp.copy(e.at).setY(e.at.y + 3), 0xffe08a, 30, 1.6);
-    blast.at.copy(e.at); blast.size = L; blast.big = L >= 40; emit('blast', blast);
-    buzz(60);
-  });
+  on('raider:down', () => buzz(60)); // (her end in the sky: wrecks.js)
   on('blast', (e) => { if (focus) { const d = focus.distanceTo(e.at); if (d < 250) trauma(0.25 * (1 - d / 250) * (e.big ? 1.4 : 1)); } });
   on('surge', () => trauma(0.2));
+  // shards spilling out of a wreck: a gold flash and a spray of gold; each one gathered: a little glint at the hold
+  on('shards:spill', (e) => {
+    spark(e.at, ZERO, 0.35, 25, GOLD, 0);
+    for (let i = 0, m = Math.round(20 * q); i < m; i++) spark(e.at, sv.set(Math.random() - 0.5, Math.random() - 0.2, Math.random() - 0.5).normalize().multiplyScalar(6 + Math.random() * 14), 0.6 + Math.random() * 0.5, 1.6, i % 4 ? GOLD : 0xffffff, 1.2, 2);
+  });
+  on('shards:gather', (e) => {
+    for (let i = 0, m = Math.max(1, Math.round(3 * q)); i < m; i++) {
+      fv.set(Math.random() - 0.5, Math.random() + 0.2, Math.random() - 0.5).multiplyScalar(6); if (ship) fv.add(ship.velocity);
+      spark(e.at, fv, 0.35, 1.3, GOLD, 0.5, 0);
+    }
+  });
+  // the Captain's ship going down: the world slows to half speed for a moment
+  on('player:down', () => slowmo(1, 0.5));
 
   // ---------- every frame ----------
   function update(dt) {
     clock += dt;
+    debris.update(dt); // (first: its crystal shards' glitter is lit for this frame)
     // the camera's shake fades, and its kicks spring back
     cam.trauma = Math.max(0, cam.trauma - dt * 1.6);
     for (let i = 0; i < 4; i++) { const k = CAM[i], v = camV[k] + (-K * cam[k] - C * camV[k]) * dt; camV[k] = v; cam[k] += v * dt; }
@@ -197,15 +234,19 @@ export function makeFx({ scene, camera, touch = false }) {
   }
   // a fresh voyage: no sparks, smoke, shake or kick left over
   function clear() {
-    ns = 0; ng = 0; cursor = 0; ggeo.setDrawRange(0, 0); smoke.clear();
-    for (const k of CAM) { cam[k] = 0; camV[k] = 0; } cam.trauma = 0; hold = 0; dial = 1;
+    ns = 0; ng = 0; cursor = 0; ggeo.setDrawRange(0, 0); smoke.clear(); debris.clear();
+    for (const k of CAM) { cam[k] = 0; camV[k] = 0; } cam.trauma = 0; st = -1; dial = 1;
   }
   return {
-    q, touch, spark, burst, glowAt, smoke, cam, trauma, kick, applyCamera, slowmo, timeScale, update, clear, buzz,
-    follow: (p) => { focus = p; },
-    get dial() { return dial; },
-    // for tests: how many sparks and puffs are alive, the most sparks seen, and how many were cut short for room
-    stats: () => ({ sparks: ns, sparkCap: SCAP, peak, dropped, puffs: smoke.count, puffCap: smoke.max, puffsDropped: smoke.dropped }),
-    resetStats: () => { peak = ns; dropped = 0; },
+    q, touch, spark, burst, glowAt, smoke, debris, room, cam, trauma, kick, applyCamera, slowmo, timeScale, update, clear, buzz,
+    // the Captain's ship (flight.js), for the blasts near her and the glints at her hold
+    follow: (flyer) => { ship = flyer; focus = flyer.pos; },
+    get dial() { return dial; }, get timeScaleNow() { return dial; },
+    // how far into a slow motion the game is, 0 (none) to 1 (as slow as it gets): the view narrows with it
+    get slowness() { return st < 0 ? 0 : Math.min(1, (1 - dial) / 0.75); },
+    // for tests: how many sparks, puffs and pieces of debris are alive, the most sparks seen, and how many were cut
+    // short for room
+    stats: () => ({ sparks: ns, sparkCap: SCAP, peak, dropped, puffs: smoke.count, puffCap: smoke.max, puffsDropped: smoke.dropped, debris: debris.stats() }),
+    resetStats: () => { peak = ns; dropped = 0; debris.resetStats(); },
   };
 }

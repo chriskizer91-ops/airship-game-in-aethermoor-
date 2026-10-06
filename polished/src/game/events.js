@@ -19,19 +19,26 @@
 //   volley          { owner, battery, count, kind, ship, p }
 //                                                a battery starting to fire (its guns ripple off after it, bow first);
 //                                                p is its middle gun
-//   hit             { owner, target, part, at, damage, raider }
+//   hit             { owner, target, part, at, damage, raider, dir, vel }
 //                                                a shot landing: who fired it, 'player' or 'raider' hit, 'hull',
 //                                                'sails' or 'crystals', where (world), how hard, the raider hit or
-//                                                firing (or null)
+//                                                firing (or null), which way the shot was flying (a unit vector), and
+//                                                the velocity of the ship it hit
 //   nearMiss        { pan, close, at }           a raider's shot just missing the Captain's ship: pan -1 (left of the
 //                                                view) to 1 (right), close 0 (barely) to 1 (a hair's breadth)
 //   raider:down     { raider, why, at }          'hull', 'crystals' or 'struck' (a treasure ship giving up)
 //   raider:escaped  { raider }                   a treasure ship got away
-//   blast           { at, size, big }            an explosion: how big in metres, and whether it's a big one
+//   blast           { at, size, big }            an explosion (a raider blowing up, and each blast of the chain that
+//                                                walks along her hull after): how big in metres, and whether it's a big one
+//   wreck:deck      { at, size }                 a wreck falling through the cloud deck, tearing it open (size: her length)
+//   wreck:gone      { at, size, fire }           a wreck gone below the clouds; fire: she was burning (a glow and a
+//                                                muffled boom under the cloud)
 //   shards:spill    { at, total }                a downed raider spilling her shards
-//   shards:gather   { value, run }               one shard gathered; run counts the shards gathered close together
-//                                                (each within 1.5 s of the last), for a rising chime
+//   shards:gather   { value, run, at }           one shard gathered; run counts the shards gathered close together
+//                                                (each within 1.5 s of the last), for a rising chime; at: the ship's hold
 //   surge           { }                          the Captain's Surge
+//   slowmo          { seconds, scale }           the game slowing for a moment (the last raider of a wave going down,
+//                                                or the Captain's ship): for how long (real seconds), how slow at most
 //   wave:start      { n, title, captain, prize, fortress, count }
 //                                                wave n (from 1) arriving: its banner, and whether it has a raider
 //                                                captain, a treasure ship or a Man-o'-war, and how many ships
@@ -53,14 +60,17 @@ export const PAYLOAD = {
   'voyage:end': { kept: 0, sunk: false, waves: 0 },
   fire: { owner: '', kind: '', battery: '', p: v(), dir: v(), weight: 1, ship: '', vel: v(), i: 0, n: 1 },
   volley: { owner: '', battery: '', count: 0, kind: '', ship: '', p: v() },
-  hit: { owner: '', target: '', part: '', at: v(), damage: 0, raider: null },
+  hit: { owner: '', target: '', part: '', at: v(), damage: 0, raider: null, dir: v(), vel: v() },
   nearMiss: { pan: 0, close: 0, at: v() },
   'raider:down': { raider: null, why: '', at: v() },
   'raider:escaped': { raider: null },
   blast: { at: v(), size: 0, big: false },
+  'wreck:deck': { at: v(), size: 0 },
+  'wreck:gone': { at: v(), size: 0, fire: false },
   'shards:spill': { at: v(), total: 0 },
-  'shards:gather': { value: 0, run: 0 },
+  'shards:gather': { value: 0, run: 0, at: v() },
   surge: {},
+  slowmo: { seconds: 0, scale: 1 },
   'wave:start': { n: 0, title: '', captain: false, prize: false, fortress: false, count: 0 },
   'wave:cleared': { n: 0, bonus: 0 },
   'player:down': { why: '' },

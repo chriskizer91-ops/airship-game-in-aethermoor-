@@ -68,10 +68,11 @@ export function clampToArc(want, axis, yawMax, pitchMax, out = new THREE.Vector3
 }
 
 // Send the first `n` items of a buffer that changes every frame to the graphics card, and only those (nothing at all
-// when there are none: then nothing of it is drawn)
+// when there are none: then nothing of it is drawn). Each buffer keeps one range object, used again every frame
 export function upload(attr, n) {
   if (n <= 0) return;
-  attr.clearUpdateRanges(); attr.addUpdateRange(0, n * attr.itemSize); attr.needsUpdate = true;
+  const r = (attr.userRange ??= { start: 0, count: 0 });
+  r.count = n * attr.itemSize; attr.updateRanges.length = 0; attr.updateRanges.push(r); attr.needsUpdate = true;
 }
 
 

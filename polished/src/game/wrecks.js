@@ -1,0 +1,287 @@
+// wrecks.js: a raider going down, as a spectacle worth watching. Told of a raider going down (events.js), it plays her
+// end in the sky until she's gone below the clouds:
+//   blown apart (her hull gone)  a white flash and a great burst of sparks, splinters and canvas; then a chain of blasts
+//                                walks along her hull from stern to bow (more on a bigger ship: three on a Skiff, nine
+//                                on a Man-o'-war); her crystals sputter and go dark; her sails flare up and burn away
+//                                (on a laptop, her masts crack at the deck one after another, topple over the side with
+//                                their sails, break away and tumble down trailing smoke); she rolls over and falls,
+//                                trailing a thick column of black smoke and fire
+//   crystals dead                no blasts: her crystals sputter, shatter and go dark, and she sinks upright in grey smoke
+//   struck her colours           (a treasure ship giving up) no blasts: her pennants come down their masts, gold glints
+//                                from her hold, and she settles away
+// Falling through the cloud deck, every wreck tears it open and throws up a ring of cloud; a burning one glows orange
+// through the cloud a moment after she's gone. Each explosion is told as `blast` (the shake, and the sound).
+// At most two wrecks play their blasts and fire at once; another gets the flash and the smoke; and at most two ships'
+// masts fall at once (three draws a mast, for a few seconds). The smoke and sparks a wreck pours out are only made while
+// their batches have room, so a fight's own always find it.
+import * as THREE from 'three';
+import { on, emit, payload } from './events.js';
+import { CLOUD_Y } from './world.js';
+import { RAIDER_LOOKS } from './fx.js';
+
+// when things happen (seconds after she goes down): her crystals sputter from..to; her sails flare up; how many wrecks
+// play their blasts and fire at once; the smoke column's puffs: one each time she has fallen `gap` of her length (plus
+// 2 m), or at least every `puff` seconds (on a laptop, a phone), so the column is thick but not piled up
+export const WRECK = { crystals: [0.4, 1.6], sails: 0.6, full: 2, puff: [0.07, 0.12], gap: [0.12, 0.19] };
+// falling masts: when the first cracks, how long after it each next one does, the angle at which one breaks away
+// (radians), how long a falling one is kept, and how many ships' masts fall at once
+export const MASTS = { from: 0.7, every: 0.5, breaks: 1.0, life: 4.5, ships: 2 };
+const MAX = 8, UP = new THREE.Vector3(0, 1, 0), ZERO = new THREE.Vector3(), FALL = ['wood', 'brass', 'canvas'];
+const FIRE = [0xff7a2a, 0xffc04a, 0xffe8a0], AMBER = 0xffc061, GOLD = 0xffd27a;
+
+// `tear(x, z, radius)` opens a hole in the cloud deck (world.js); falling masts are added to `scene` once they break away
+export function makeWrecks({ fx, tear = null, scene = null }) {
+  const q = fx.q, every = WRECK.puff[fx.touch ? 1 : 0], gap = WRECK.gap[fx.touch ? 1 : 0], debris = fx.debris, smoke = fx.smoke;
+  const made = () => ({ r: null, why: '', t: 0, full: false, chain: 0, fired: 0, next: 0, busy: 0, puff: 0, flick: 0, flames: 0, lastY: 0,
+    crossed: false, gone: -1, told: false, burnt: false, dark: false, glint: 0, masts: false, cut: false, blast: new THREE.Vector3(), at: new THREE.Vector3(), puffed: new THREE.Vector3(), s: 1 });
+  const pool = Array.from({ length: MAX }, made), list = [];
+  const BLAST = payload('blast'), DECK = payload('wreck:deck'), GONE = payload('wreck:gone');
+  const p = new THREE.Vector3(), v = new THREE.Vector3(), c = new THREE.Vector3();
+
+  // a point in raider r's own frame (x, y, z), in the world
+  const world = (r, x, y, z, out = p) => out.set(x, y, z).applyMatrix4(r.ship.body.matrixWorld);
+  // a random point inside one of her boxes, in the world
+  const inBox = (r, b, out = p) => world(r, b.min.x + Math.random() * (b.max.x - b.min.x), b.min.y + Math.random() * (b.max.y - b.min.y), b.min.z + Math.random() * (b.max.z - b.min.z), out);
+  const looks = (w) => w.r.looks ?? RAIDER_LOOKS;
+  function tellBlast(at, size, big) { BLAST.at.copy(at); BLAST.size = size; BLAST.big = big; emit('blast', BLAST); }
+
+  on('raider:down', (e) => start(e.raider, e.why));
+  function start(r, why) {
+    if (!r?.ship) return;
+    const w = pool.find((x) => !x.r);
+    const L = r.R.length, f = r.f, hb = r.zones.hullBox;
+    if (w) {
+      // the first two burning at once get the whole show; another, the flash and the smoke
+      let busy = 0;
+      for (const o of list) if (o.full && o.t < o.busy) busy++;
+      Object.assign(w, { r, why, t: 0, full: why === 'hull' && busy < WRECK.full, chain: Math.min(9, 2 + Math.round(L / 12)), fired: 0, next: 0.35, puff: 0, flick: 0, flames: 0,
+        lastY: f.pos.y, crossed: false, gone: -1, told: false, burnt: false, dark: false, glint: 0, cut: false, s: THREE.MathUtils.clamp(L / 22, 0.7, 3) });
+      // her masts fall (a laptop's, drawn close enough for her middle model, two ships at a time, and room for them all,
+      // counting the masts of wrecks about to fall)
+      let felling = 0, spare = freeFallers();
+      for (const o of list) { if (o.masts && o.t < MASTS.from + 4) felling++; if (o.masts && !o.cut) spare -= o.r.ship.masts.masts.length; }
+      w.masts = w.full && !!scene && !!r.ship.masts && r.ship.level === 'middle' && felling < MASTS.ships && spare >= r.ship.masts.masts.length;
+      w.busy = 0.35 + w.chain * 0.5 + 1.2;
+      w.blast.set(0, (hb.min.y + hb.max.y) / 2, (hb.min.z + hb.max.z) / 2); w.puffed.copy(f.pos);
+      list.push(w); f.wreck = true;
+    }
+    const mid = world(r, 0, (hb.min.y + hb.max.y) / 2, (hb.min.z + hb.max.z) / 2, c);
+    if (why === 'hull') {
+      // a white flash at her heart, a great burst of fire and sparks, planks and canvas thrown out
+      fx.spark(mid, ZERO, 0.15, (60 * L) / 25, 0xffffff, 0);
+      fx.burst(mid, 0xff8a3a, 60, 2.2); fx.burst(v.copy(mid).setY(mid.y + 3), 0xffe08a, 30, 1.6);
+      const s = THREE.MathUtils.clamp(L / 22, 0.7, 3), lk = r.looks ?? RAIDER_LOOKS;
+      debris.toss('wood', mid, UP, 1.6, f.velocity, 12, s, lk.wood); debris.toss('canvas', mid, UP, 1.6, f.velocity, 6, s, lk.sail);
+      tellBlast(mid, L, L >= 40);
+    } else if (why === 'crystals') {
+      // her crystals crack open: amber shards and sparks from each column
+      for (const b of r.zones.crystals) {
+        if (b.isEmpty()) continue;
+        b.getCenter(v); world(r, v.x, b.max.y, v.z, p);
+        fx.burst(p, AMBER, 10, 0.7, 0.6); debris.toss('crystal', p, UP, 1.4, f.velocity, 6, THREE.MathUtils.clamp(L / 25, 0.8, 2.5));
+      }
+    } else {
+      // she gives up: a white puff, and a gold glint from her hold
+      smoke.emit(v.copy(mid).setY(mid.y + L * 0.1), f.velocity, 2.5, L * 0.1 + 2, L * 0.3 + 8, 1.3, 0.7, 1, 1);
+      fx.spark(mid, f.velocity, 0.6, L * 0.5 + 8, GOLD, 0);
+    }
+  }
+
+  function update(dt) {
+    toppling(dt);
+    for (let i = list.length - 1; i >= 0; i--) {
+      const w = list[i], r = w.r;
+      w.t += dt;
+      if (r.cleared) { end(i); continue; } // (the raiders cleared away: a fresh voyage, or a test)
+      if (r.gone) { if (after(w, dt)) end(i); continue; }
+      const t = w.t, L = r.R.length, Z = r.zones, hb = Z.hullBox, vel = r.f.velocity, lk = looks(w);
+      // the chain of blasts, stern to bow, each somewhere across her deck
+      if (w.full) while (w.fired < w.chain && t >= w.next) {
+        const k = (w.fired + 0.25 + Math.random() * 0.5) / w.chain;
+        w.blast.set((Math.random() - 0.5) * (hb.max.x - hb.min.x) * 0.6, hb.max.y - Math.random() * (hb.max.y - hb.min.y) * 0.3, hb.min.z + (hb.max.z - hb.min.z) * (0.08 + 0.84 * k));
+        world(r, w.blast.x, w.blast.y, w.blast.z, p);
+        fx.burst(p, 0xff7a2a, 18, 0.8 + L / 100, 0.8);
+        smoke.emit(p, v.copy(vel).multiplyScalar(0.5).add(UP), 2.6, 3 * w.s, 10 * w.s, 0.1, 0.85, 1, 1);
+        debris.toss('wood', p, UP, 1.4, vel, 4, w.s, lk.wood);
+        tellBlast(p, L * 0.4, false);
+        w.fired++; w.next += 0.3 + Math.random() * 0.2;
+      }
+      // her crystals sputter (flickering, a few times a second), then go dark
+      const C0 = w.why === 'crystals' ? 0 : WRECK.crystals[0], C1 = w.why === 'crystals' ? 1.2 : WRECK.crystals[1];
+      if (w.why !== 'struck' && !w.dark) {
+        if (t >= C1) { lights(r, false); w.dark = true; }
+        else if (t >= C0 && (w.flick -= dt) <= 0) {
+          w.flick = 0.05 + Math.random() * 0.07;
+          const g = r.ship.parts.glows, e = r.ship.parts.embers;
+          for (let k = 0; k < g.length; k++) g[k].visible = Math.random() < 0.45;
+          for (let k = 0; k < e.length; k++) e[k].visible = Math.random() < 0.3;
+        }
+        // as they start to go, amber shards burst from each column
+        if (w.why === 'hull' && w.full && t - dt < C0 && t >= C0) for (const b of Z.crystals) {
+          if (b.isEmpty()) continue;
+          b.getCenter(c); world(r, c.x, b.max.y, c.z, p);
+          debris.toss('crystal', p, UP, 1.4, vel, 3, w.s); fx.burst(p, AMBER, 6, 0.5, 0.5);
+        }
+      }
+      // her sails flare up and burn away, then fire licks the bare masts for a moment
+      if (w.full && !w.burnt && t >= WRECK.sails) {
+        w.burnt = true;
+        for (const b of Z.sails) {
+          if (b.isEmpty()) continue;
+          const size = THREE.MathUtils.clamp((b.max.y - b.min.y) * 0.3, 2, 12);
+          for (let k = 0, m = Math.round(6 * q); k < m; k++) fx.spark(inBox(r, b), v.set(Math.random() - 0.5, 3 + Math.random() * 5, Math.random() - 0.5).add(vel), 0.6 + Math.random() * 0.5, size, FIRE[k % 3], 0.6, -2);
+          b.getCenter(c); world(r, c.x, c.y, c.z, p);
+          debris.toss('canvas', p, UP, 1.6, vel, 2, w.s, lk.sail);
+        }
+        if (!w.masts) { for (const m of r.ship.parts.canvas) m.visible = false; for (const m of r.ship.parts.flags) m.visible = false; }
+      }
+      // her masts crack at the deck: cut out of her hull, standing for a moment, then toppling one after another
+      if (w.masts && !w.cut && t >= MASTS.from) fell(w);
+      if (w.burnt && t < WRECK.sails + 0.9 && fx.room()) {
+        w.flames += dt * 10 * q;
+        for (; w.flames >= 1; w.flames--) for (const b of Z.sails) if (!b.isEmpty()) fx.spark(inBox(r, b), v.set(0, 4 + Math.random() * 4, 0).add(vel), 0.5 + Math.random() * 0.4, THREE.MathUtils.clamp((b.max.y - b.min.y) * 0.18, 1.5, 8), FIRE[(Math.random() * 3) | 0], 0.6, -2);
+      }
+      // a struck ship's pennants come down their masts, and her hold glints gold now and then
+      if (w.why === 'struck') struck(w, dt);
+      // the column of smoke (and fire, from a burning one), from her stern and from the latest blast, until she's
+      // under the cloud deck. A puff left hanging where she was, so it marks her fall
+      const hull = w.why === 'hull';
+      if (w.why !== 'struck' && r.f.pos.y > CLOUD_Y - 30 && ((w.puff -= dt) <= 0 || r.f.pos.distanceTo(w.puffed) > (L * gap + 2) * (hull ? 1 : 1.6))) {
+        w.puff = every * (hull ? 1 : 1.6); w.puffed.copy(r.f.pos);
+        if (smoke.room()) {
+          for (let k = 0; k < (hull ? 2 : 1); k++) {
+            if (k === 0) world(r, 0, (hb.min.y + hb.max.y) * 0.5, hb.min.z + (hb.max.z - hb.min.z) * (hull ? 0.12 : 0.5), p); else world(r, w.blast.x, w.blast.y, w.blast.z, p);
+            v.copy(vel).multiplyScalar(0.12); v.x += (Math.random() - 0.5) * 3; v.y += 1 + Math.random() * 2; v.z += (Math.random() - 0.5) * 3;
+            if (hull) smoke.emit(p, v, 7, L * 0.3, L * 0.9 + 6, 0.02 + Math.random() * 0.14, 0.6 + Math.random() * 0.2, 0, 1.5);
+            else smoke.emit(p, v, 6, L * 0.2, L * 0.6 + 4, 0.45 + Math.random() * 0.15, 0.6, 0, 1.5);
+            if (hull && Math.random() < 0.5 && fx.room()) fx.spark(p, v.setY(v.y + 4), 0.5 + Math.random() * 0.4, 1.2 + L * 0.08, FIRE[(Math.random() * 2) | 0], 1, -1);
+          }
+        }
+      }
+      // through the cloud deck: torn open, with a ring of cloud thrown out
+      const y = r.f.pos.y;
+      if (!w.crossed && w.lastY >= CLOUD_Y && y < CLOUD_Y) deck(w);
+      w.lastY = y;
+      w.at.copy(r.f.pos);
+    }
+  }
+  // her crystals' light (the glows, and the embers drifting off them), on or off
+  function lights(r, on) {
+    for (const g of r.ship.parts.glows) g.visible = on;
+    for (const e of r.ship.parts.embers) e.visible = on;
+  }
+  function struck(w, dt) {
+    const r = w.r, flags = r.ship.parts.flags, t = w.t;
+    if (t < 2.6) {
+      for (const m of flags) {
+        if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+        const drop = Math.max(1, m.geometry.boundingBox.max.y - r.zones.hullBox.max.y);
+        m.position.y = -drop * Math.min(1, t / 2.5);
+        if (t >= 2.5) m.visible = false;
+      }
+    }
+    if (t < 4 && (w.glint -= dt) <= 0) {
+      w.glint = 0.3 + Math.random() * 0.3;
+      inBox(r, r.zones.hullBox); p.y += 1;
+      fx.spark(p, r.f.velocity, 0.4, 3 + r.R.length * 0.08, GOLD, 0);
+    }
+  }
+  // falling through the cloud deck
+  function deck(w) {
+    const r = w.r, L = r.R.length, x = r.f.pos.x, z = r.f.pos.z;
+    w.crossed = true;
+    for (let k = 0, n = Math.round(14 * q); k < n; k++) {
+      const a = (k / n) * Math.PI * 2 + Math.random() * 0.3, cx = Math.cos(a), sz = Math.sin(a);
+      smoke.emit(p.set(x + cx * L * 0.6, CLOUD_Y + 4, z + sz * L * 0.6), v.set(cx * 12, 2, sz * 12), 4, L * 0.3 + 6, L * 0.6 + 28, 1.3, 0.7, 1, 0.4);
+    }
+    if (tear) tear(x, z, L * 0.9 + 25);
+    DECK.at.set(x, CLOUD_Y, z); DECK.size = L; emit('wreck:deck', DECK);
+  }
+  // after she's gone: a burning wreck that fell through the deck glows orange under it a moment later; true when done
+  function after(w, dt) {
+    if (w.gone < 0) w.gone = 0; else w.gone += dt;
+    if (w.gone < 0.4) return false;
+    const fire = w.crossed && w.why === 'hull', L = w.r.R.length;
+    if (!w.told) { w.told = true; GONE.at.copy(w.at); GONE.size = L; GONE.fire = fire; emit('wreck:gone', GONE); }
+    if (!fire) return true;
+    const k = (w.gone - 0.4) / 0.9;
+    if (k >= 1) return true;
+    const pulse = (0.65 + 0.35 * Math.sin(w.gone * 19)) * (1 - k) * (1 - k);
+    fx.glowAt(p.set(w.at.x, CLOUD_Y - 60, w.at.z), 1, 0.45 * pulse + 0.2, 0.12, (90 + L * 1.5) * (0.6 + 0.4 * pulse));
+    return false;
+  }
+  function end(i) { const w = list[i]; w.r = null; list.splice(i, 1); }
+  function clear() { while (list.length) end(list.length - 1); for (const m of fallers) if (m.r) letGo(m); }
+
+  // ---------- falling masts (a laptop's) ----------
+  // a few kept and used over and over: a group holding a mast's wood, brass and canvas, pivoting at its foot
+  const fallers = Array.from({ length: 6 }, () => {
+    const g = new THREE.Group(), meshes = FALL.map((name) => { const m = new THREE.Mesh(); m.name = name; m.castShadow = false; m.frustumCulled = false; g.add(m); return m; });
+    g.name = 'falling mast';
+    return { g, meshes, r: null, at: 0, H: 1, th: 0, om: 0, side: 1, free: false, t: 0, smoke: 0, top0: 0, v: new THREE.Vector3(), axis: new THREE.Vector3(), prev: new THREE.Vector3() };
+  });
+  const freeFallers = () => { let n = 0; for (const m of fallers) if (!m.r) n++; return n; };
+  const tq = new THREE.Quaternion(), tm = new THREE.Vector3();
+  // the moment her masts crack: her middle model keeps only her hull, and each mast stands in its own group, on her
+  function fell(w) {
+    const r = w.r, S = r.ship, cut = S.masts, M = S.parts.meshes;
+    w.cut = true;
+    for (const name in cut.keep) if (M[name]) M[name].geometry = cut.keep[name];
+    for (const m of S.parts.farRig) m.visible = false; // (her far model just loses its sails and rigging)
+    cut.masts.forEach((mast, i) => {
+      const m = fallers.find((x) => !x.r);
+      if (!m) return;
+      Object.assign(m, { r, at: i * MASTS.every + Math.random() * 0.15, H: mast.height, th: 0, om: 0, side: r.f.down.roll || 1, free: false, t: 0, smoke: 0 });
+      m.meshes.forEach((mesh, k) => {
+        const geo = mast.geo[FALL[k]];
+        mesh.visible = !!geo && !!M[FALL[k]]; if (!mesh.visible) return;
+        mesh.geometry = geo; mesh.material = M[FALL[k]].material; mesh.position.copy(mast.pivot).negate();
+      });
+      m.g.position.copy(mast.pivot); m.g.rotation.set(0, 0, 0); m.g.scale.set(1, 1, 1);
+      S.body.add(m.g); m.g.updateMatrixWorld(true);
+      m.top0 = tm.set(0, m.H - 1, 0).applyMatrix4(m.g.matrixWorld).y;
+      m.prev.set(0, (m.H - 1) / 2, 0).applyMatrix4(m.g.matrixWorld);
+    });
+  }
+  // each frame: one standing waits its turn; toppling, it swings over faster and faster (a falling pole); past the
+  // breaking angle it breaks away and tumbles down on its own, trailing smoke from its top, until it's below the clouds
+  function toppling(dt) {
+    for (const m of fallers) {
+      const r = m.r;
+      if (!r) continue;
+      if (r.cleared || (!m.free && r.gone)) { letGo(m); continue; }
+      m.t += dt;
+      if (!m.free) {
+        if (m.t >= m.at) {
+          if (!m.om) m.om = 0.5 + Math.random() * 0.3; // (cracked by a blast: it starts to go with a jolt)
+          m.om += (3 * 9.8 / (2 * m.H)) * Math.sin(m.th + 0.1) * dt; m.th += m.om * dt;
+          m.g.rotation.z = m.side * m.th;
+        }
+        m.g.updateMatrixWorld(true);
+        tm.set(0, (m.H - 1) / 2, 0).applyMatrix4(m.g.matrixWorld);
+        if (m.th > MASTS.breaks) {
+          // she lets it go: it keeps the speed it had, and keeps turning the way it fell
+          m.v.copy(tm).sub(m.prev).divideScalar(Math.max(dt, 1e-3));
+          m.axis.set(0, 0, 1).transformDirection(r.ship.body.matrixWorld);
+          scene.attach(m.g); m.free = true; m.t = 0;
+        }
+        m.prev.copy(tm);
+        continue;
+      }
+      m.v.y -= 9.8 * dt; m.g.position.addScaledVector(m.v, dt);
+      m.g.quaternion.premultiply(tq.setFromAxisAngle(m.axis, m.side * m.om * dt)); m.om *= Math.exp(-dt * 0.4);
+      m.g.updateMatrixWorld(true);
+      if ((m.smoke -= dt) <= 0) {
+        m.smoke = 0.06;
+        tm.set(0, m.H - 1, 0).applyMatrix4(m.g.matrixWorld);
+        if (smoke.room()) smoke.emit(tm, v.set(0, 1, 0), 3, 1 + m.H * 0.08, 4 + m.H * 0.3, 0.15 + Math.random() * 0.15, 0.6, 0, 1);
+        if (Math.random() < 0.4 && fx.room()) fx.spark(tm, v.set(0, 3, 0), 0.5, 1 + m.H * 0.05, FIRE[(Math.random() * 3) | 0], 1, -1);
+      }
+      if (m.t > MASTS.life || m.g.position.y < CLOUD_Y - 150) letGo(m);
+    }
+  }
+  function letGo(m) { m.g.removeFromParent(); m.r = null; m.free = false; }
+  // for tests: the masts falling now, and how far each one's top has come down
+  const falling = () => fallers.filter((m) => m.r).map((m) => ({ free: m.free, fell: +(m.top0 - tm.set(0, m.H - 1, 0).applyMatrix4(m.g.matrixWorld).y).toFixed(1) }));
+  return { list, update, clear, start, falling };
+}

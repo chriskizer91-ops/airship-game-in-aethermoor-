@@ -1,6 +1,7 @@
 // world.js: Aethermoor to fly over. Chris's map (nine tiles, 5 m to a pixel, 23 km across) lies flat far below as the
 // ground, the open sea runs on past its edges, a broken deck of cloud floats between, and big clouds drift at the
-// ship's height. The sky is late afternoon with the sun low in the west.
+// ship's height. The sky is late afternoon with the sun low in the west. A wreck falling through the cloud deck tears
+// a hole in it (tear), which closes again over a few seconds (update).
 import * as THREE from 'three';
 import tile1 from '../../assets/map/tile-1.avif';
 import tile2 from '../../assets/map/tile-2.avif';
@@ -57,7 +58,7 @@ function makeSky() {
 // repeats every 16 units (about 35 km), so each pixel of the ground and the deck reads it from the picture instead of
 // working it out again: the deck and the ground used to work it out four times for every pixel, the biggest cost on a
 // phone. The picture keeps 16 bits in two channels, so cloud edges stay smooth.
-const CLOUD_P = 16, CLOUD_N = 1024;
+const CLOUD_P = 16, CLOUD_N = 1024, HOLES = 3;
 const CLOUD_GLSL = `
   uniform sampler2D uCloud;
   float cloudAt(vec2 uv) { return dot(texture2D(uCloud, uv).rg, vec2(255.0 * 256.0, 255.0) / 65535.0); }
@@ -132,14 +133,17 @@ export async function makeWorld(renderer) {
   const sea = new THREE.Mesh(new THREE.PlaneGeometry(160000, 160000).rotateX(-Math.PI / 2), shade(new THREE.MeshBasicMaterial({ color: 0x0a3b80, toneMapped: false, depthWrite: false })));
   sea.renderOrder = -5; group.add(sea);
 
-  // the deck of cloud: white and gold-edged from above, grey from beneath, gaps where the ground shows through
+  // the deck of cloud: white and gold-edged from above, grey from beneath, gaps where the ground shows through, and the
+  // holes torn by wrecks falling through it (x, z, how wide, how open: 0 is closed, and then it costs nothing)
+  const holes = Array.from({ length: HOLES }, () => new THREE.Vector4(0, 0, 1, 0)), torn = holes.map(() => ({ r: 1, age: 9 }));
   const deck = new THREE.Mesh(new THREE.PlaneGeometry(160000, 160000).rotateX(-Math.PI / 2), new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: false,
-    uniforms: { uTime: time, uSun: { value: SUN }, uCloud },
+    uniforms: { uTime: time, uSun: { value: SUN }, uCloud, uHoles: { value: holes } },
     vertexShader: 'varying vec3 vW; void main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
-    fragmentShader: `varying vec3 vW; uniform float uTime; uniform vec3 uSun; ${SKY_GLSL} ${CLOUD_GLSL}
+    fragmentShader: `varying vec3 vW; uniform float uTime; uniform vec3 uSun; uniform vec4 uHoles[${HOLES}]; ${SKY_GLSL} ${CLOUD_GLSL}
       void main() {
         float c = cover(vW.xz, uTime);
+        for (int i = 0; i < ${HOLES}; i++) { vec4 h = uHoles[i]; if (h.w > 0.0) c *= 1.0 - h.w * (1.0 - smoothstep(h.z * 0.4, h.z, length(vW.xz - h.xy))); }
         float lit = cover(vW.xz + uSun.xz * 160.0, uTime);
         vec3 top = mix(vec3(1.0, 0.97, 0.92), vec3(0.74, 0.77, 0.86), lit * 0.6) ;
         vec3 under = vec3(0.62, 0.65, 0.72);
@@ -158,7 +162,21 @@ export async function makeWorld(renderer) {
   const puffs = makePuffs();
   group.add(puffs.mesh);
 
-  return { group, time, puffs, deck, clouds };
+  // a hole torn in the deck at (x, z), `r` metres across at its widest: it opens in a moment, holds, and closes over
+  // about five seconds (the oldest is reused for a fourth)
+  function tear(x, z, r) {
+    let k = 0;
+    for (let i = 1; i < HOLES; i++) if (torn[i].age > torn[k].age) k = i;
+    holes[k].set(x, z, r * 0.5, 0); torn[k].r = r; torn[k].age = 0;
+  }
+  function update(dt) {
+    for (let i = 0; i < HOLES; i++) {
+      const t = (torn[i].age += dt), h = holes[i];
+      h.w = t < 0.25 ? t / 0.25 : Math.min(1, Math.max(0, 1 - (t - 1.5) / 5));
+      h.z = torn[i].r * (0.5 + 0.5 * Math.min(1, t / 0.8));
+    }
+  }
+  return { group, time, puffs, deck, clouds, tear, update, holes };
 }
 
 // A soft cumulus picture drawn once, and instanced billboards of it

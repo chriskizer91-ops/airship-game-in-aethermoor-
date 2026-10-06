@@ -63,7 +63,8 @@ function emberPoints(embers, per) {
   return pts;
 }
 
-// The glows: one batch of soft points for every crystal, lantern and gun muzzle
+// The glows: one batch of soft points for every crystal, lantern and gun muzzle. uBoost flares the crystals' (the
+// Captain's Surge: each built ship has its own, so it never touches another ship)
 function glowPoints(glows) {
   const pos = [], col = [], size = [], kind = [];
   const c = new THREE.Color();
@@ -77,12 +78,12 @@ function glowPoints(glows) {
   geo.setAttribute('size', new THREE.Float32BufferAttribute(size, 1));
   geo.setAttribute('kind', new THREE.Float32BufferAttribute(kind, 1));
   const mat = new THREE.ShaderMaterial({
-    uniforms: { uTime: { value: 0 }, uScale: { value: 400 } },
-    vertexShader: `attribute float size; attribute float kind; varying vec3 vCol; varying float vA; uniform float uTime; uniform float uScale;
+    uniforms: { uTime: { value: 0 }, uScale: { value: 400 }, uBoost: { value: 1 } },
+    vertexShader: `attribute float size; attribute float kind; varying vec3 vCol; varying float vA; uniform float uTime; uniform float uScale; uniform float uBoost;
       void main() {
         vec4 mv = modelViewMatrix * vec4(position, 1.0);
         float ph = position.x * 3.1 + position.z * 1.7;
-        float k = kind > 1.5 ? 0.88 + 0.08 * sin(uTime * 13.0 + ph) + 0.05 * sin(uTime * 7.3 + ph) : kind > 0.5 ? 0.86 + 0.14 * sin(uTime * 2.4 + ph) : 1.0;
+        float k = kind > 1.5 ? 0.88 + 0.08 * sin(uTime * 13.0 + ph) + 0.05 * sin(uTime * 7.3 + ph) : kind > 0.5 ? (0.86 + 0.14 * sin(uTime * 2.4 + ph)) * uBoost : 1.0;
         vCol = color; vA = k;
         gl_PointSize = min(size * k * uScale / -mv.z, 360.0);
         gl_Position = projectionMatrix * mv;

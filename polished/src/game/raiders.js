@@ -27,6 +27,9 @@ export const RAIDER = { slow: 1.5, aim: 0.02 };
 // time comes out of her next reload, so she fires her broadsides as often as she would without it
 export const WARN = { time: 0.5, big: 0.65 }, WARN_FROM = new THREE.Color(0xff4636), WARN_TO = new THREE.Color(0xffc070);
 export const CAPTAIN = { toughness: 2, damage: 1.2, reload: 0.9, bounty: 4 };
+// the colours of what a shot knocks off her (fx.js): her planks, and her sails (rust-red for the crews, black for
+// their captains)
+export const LOOKS = { crew: { wood: 0x6e5440, sail: 0xc8735c }, captain: { wood: 0x5a4838, sail: 0x3a3034 } };
 // the big ships' heavy guns take their crews longer to reload
 const HEAVY = { galleon: 1.15, manowar: 1.3 };
 // Crystal Shards for bringing one down (before the skies' and the wave's bonus)
@@ -76,15 +79,62 @@ function recolourPennants(ship, captain) {
   });
 }
 
-// One raider ship: copies of its class's middle and far models (sharing their shapes), swapped by how big it looks
+// The masts, cut out of a class's middle model once, as it's built (on a laptop: wrecks.js topples them when she's blown
+// apart). For each of her meshes of wood, brass and canvas: the triangles that stay with the hull, and for each mast,
+// the ones that fall with it (her pennants and all her rigging just go: snapped). A mast is everything a metre above
+// the deck round its foot, and everything from just under its lowest yard up, fore and aft of it as far as its sails
+// reach. The pieces share the model's own vertices, so they're only lists of numbers
+const CUT = ['wood', 'brass', 'canvas', 'flag', 'rope'], FALL = ['wood', 'brass', 'canvas'];
+function cutMasts(R, model) {
+  const hull = model.hull, masts = R.masts.map((M) => {
+    const y0 = hull.deckY(M.z), sweep = Math.max(...M.tiers.map((t) => t.sweep)), foot = 1 + (0.11 + 0.0045 * R.length) * 3;
+    return { y0, low: y0 + Math.min(...M.tiers.map((t) => t.at)) * M.height - 0.4, z: M.z, z0: M.z - sweep - 1.5, z1: M.z + 0.9, foot, H: M.height };
+  });
+  const which = (x, y, z) => {
+    for (let i = 0; i < masts.length; i++) {
+      const m = masts[i];
+      if (y > m.y0 + 1 && (y >= m.low ? z > m.z0 && z < m.z1 : Math.abs(x) < m.foot && Math.abs(z - m.z) < m.foot)) return i;
+    }
+    return -1;
+  };
+  const share = (src, list) => {
+    const g = new THREE.BufferGeometry();
+    for (const k in src.attributes) g.setAttribute(k, src.attributes[k]);
+    g.setIndex(new THREE.BufferAttribute(Uint32Array.from(list), 1)); g.boundingSphere = src.boundingSphere;
+    return g;
+  };
+  const keep = {}, fall = masts.map(() => ({}));
+  for (const o of model.body.children) {
+    if (!o.isMesh || !CUT.includes(o.name)) continue;
+    const p = o.geometry.attributes.position.array, lists = [[], ...masts.map(() => [])];
+    for (let t = 0, n = p.length / 9; t < n; t++) {
+      const a = t * 9, i = which((p[a] + p[a + 3] + p[a + 6]) / 3, (p[a + 1] + p[a + 4] + p[a + 7]) / 3, (p[a + 2] + p[a + 5] + p[a + 8]) / 3);
+      lists[i + 1].push(t * 3, t * 3 + 1, t * 3 + 2);
+    }
+    keep[o.name] = share(o.geometry, FALL.includes(o.name) ? lists[0] : []);
+    if (FALL.includes(o.name)) masts.forEach((m, i) => { if (lists[i + 1].length) fall[i][o.name] = share(o.geometry, lists[i + 1]); });
+  }
+  // (stern first, the way the blasts walk)
+  return { keep, masts: masts.map((m, i) => ({ pivot: new THREE.Vector3(0, m.y0 + 1, m.z), height: m.H, geo: fall[i] })).sort((a, b) => a.pivot.z - b.pivot.z) };
+}
+
+// One raider ship: copies of its class's middle and far models (sharing their shapes), swapped by how big it looks.
+// Her parts that a wreck changes (wrecks.js) are her own: her crystals' glows and embers, her sails and her pennants,
+// her middle model's meshes by name, and her far model's rigging (hidden when her masts fall)
 function raiderShip(T) {
   const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
   const mid = T.mid.body.clone(), far = T.far.body.clone(); far.visible = false; body.add(mid, far);
-  const rudders = [], glows = [], embers = [];
-  body.traverse((o) => { if (o.name === 'rudder') rudders.push(o); else if (o.name === 'glow') glows.push(o); else if (o.name === 'embers') embers.push(o); });
+  const rudders = [], glows = [], embers = [], canvas = [], flags = [], meshes = {}, farRig = [];
+  body.traverse((o) => {
+    if (o.name === 'rudder') rudders.push(o); else if (o.name === 'glow') glows.push(o); else if (o.name === 'embers') embers.push(o);
+    else if (o.name === 'canvas') canvas.push(o); else if (o.name === 'flag') flags.push(o);
+  });
+  for (const o of mid.children) if (o.isMesh) meshes[o.name] = o;
+  for (const o of far.children) if (o.isMesh && CUT.includes(o.name) && o.name !== 'wood' && o.name !== 'brass') farRig.push(o);
   const move = shipMotion(T.R, body, rudders);
   return {
-    root, body, recipe: T.R, hull: T.mid.hull, length: T.R.length, level: 'middle',
+    root, body, recipe: T.R, hull: T.mid.hull, length: T.R.length, level: 'middle', masts: T.masts ?? null,
+    parts: { glows, embers, canvas, flags, meshes, farRig },
     update(dt, opts) {
       const t = move(dt, opts);
       for (const g of glows) g.material.uniforms.uTime.value = t;
@@ -98,8 +148,10 @@ function raiderShip(T) {
   };
 }
 
-// `skies()` gives the current skies' settings (progress.js); `fx` draws the gun ports' glow (fx.js)
+// `skies()` gives the current skies' settings (progress.js); `fx` draws the gun ports' glow (fx.js). On a laptop each
+// class's masts are cut out of its model as it's built, so they can fall when she's blown apart (a phone skips that)
 export function makeRaiders(scene, art, bolts, skies, fx) {
+  const falling = !fx.touch;
   const arts = { crew: raiderArt(art, false), captain: raiderArt(art, true) }, T = {};
   // one middle and one far model per class (and per colours: the captains' are built when first needed)
   function template(id, captain) {
@@ -107,7 +159,7 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
     if (!T[key]) {
       const R = FLEET.find((s) => s.id === id), mid = buildShip(R, 'middle', arts[captain ? 'captain' : 'crew']), far = buildShip(R, 'far', arts[captain ? 'captain' : 'crew']);
       recolourPennants(mid, captain); recolourPennants(far, captain);
-      T[key] = { R, mid, far, zones: hitZones(mid) };
+      T[key] = { R, mid, far, zones: hitZones(mid), masts: falling ? cutMasts(R, mid) : null };
     }
     return T[key];
   }
@@ -134,7 +186,7 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
     scene.add(ship.root);
     const gun = makeGunnery(ship, { reload: RAIDER.slow * S.reload * (HEAVY[id] ?? 1) * (captain ? CAPTAIN.reload : 1), damage: S.damage * (captain ? CAPTAIN.damage : 1) }, f);
     const r = { id, R: Tm.R, name: `Raider ${captain ? 'captain\'s ' + Tm.R.cls : Tm.R.cls}`, captain, ship, f, gun, zones: Tm.zones, role, frozen,
-      bounty: BOUNTY[id] * (captain ? CAPTAIN.bounty : 1), aim: RAIDER.aim * S.aim,
+      bounty: BOUNTY[id] * (captain ? CAPTAIN.bounty : 1), aim: RAIDER.aim * S.aim, looks: LOOKS[captain ? 'captain' : 'crew'],
       mode: 'attack', timer: 0, side: 1, alt: (Math.random() - 0.5) * (role === 'chaser' ? 50 : 20), counted: false, gone: false,
       course: heading, fleeing: false, weave: Math.random() * 6,
       // a broadside being readied: which battery (null when none), seconds left of how many, the volley's aiming error,
@@ -286,9 +338,10 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
     return best;
   }
 
-  // a raider taken away, with her tag on screen (main.js) if she has one
+  // a raider taken away, with her tag on screen (main.js) if she has one; cleared away (a fresh voyage, or a test),
+  // she's marked so, and her wreck (wrecks.js) stops at once
   function drop(r) { scene.remove(r.ship.root); r.tag?.remove(); }
-  function clear() { for (const r of list) drop(r); list.length = 0; }
+  function clear() { for (const r of list) { r.gone = r.cleared = true; drop(r); } list.length = 0; }
   // build a class's models ahead of time (a captain's, before her wave), so nothing is built mid-fight
   const prepare = (id, captain = false) => { template(id, captain); };
   return { list, escaped, spawn, spawnWave, update, hitBy, clear, prepare, templates: T, setAI: (on) => { ai = on; } };

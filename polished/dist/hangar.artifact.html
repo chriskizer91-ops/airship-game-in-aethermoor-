@@ -4348,11 +4348,11 @@ transformed.y -= billow * billow * 0.35;`)},m.flag.customProgramCacheKey=()=>"pe
         gl_Position = projectionMatrix * mv;
       }`,fragmentShader:`varying float vA; varying float vHot;
       void main() { float r = length(gl_PointCoord - 0.5) * 2.0; float a = pow(max(0.0, 1.0 - r), 1.5) * vA;
-        if (a < 0.01) discard; gl_FragColor = vec4(mix(vec3(1.0, 0.45, 0.1), vec3(1.0, 0.9, 0.55), vHot) * a, a); }`,transparent:!0,depthWrite:!1,blending:os}),o=new Ki(r,a);return o.frustumCulled=!1,o.renderOrder=3,o}function Y_(i){let t=[],e=[],n=[],s=[],r=new Ht;for(let c of i)t.push(c.p.x,c.p.y,c.p.z),r.set(c.color),e.push(r.r,r.g,r.b),n.push(c.size),s.push(c.pulse?1:c.flicker?2:0);let a=new re;a.setAttribute("position",new It(t,3)),a.setAttribute("color",new It(e,3)),a.setAttribute("size",new It(n,1)),a.setAttribute("kind",new It(s,1));let o=new Se({uniforms:{uTime:{value:0},uScale:{value:400}},vertexShader:`attribute float size; attribute float kind; varying vec3 vCol; varying float vA; uniform float uTime; uniform float uScale;
+        if (a < 0.01) discard; gl_FragColor = vec4(mix(vec3(1.0, 0.45, 0.1), vec3(1.0, 0.9, 0.55), vHot) * a, a); }`,transparent:!0,depthWrite:!1,blending:os}),o=new Ki(r,a);return o.frustumCulled=!1,o.renderOrder=3,o}function Y_(i){let t=[],e=[],n=[],s=[],r=new Ht;for(let c of i)t.push(c.p.x,c.p.y,c.p.z),r.set(c.color),e.push(r.r,r.g,r.b),n.push(c.size),s.push(c.pulse?1:c.flicker?2:0);let a=new re;a.setAttribute("position",new It(t,3)),a.setAttribute("color",new It(e,3)),a.setAttribute("size",new It(n,1)),a.setAttribute("kind",new It(s,1));let o=new Se({uniforms:{uTime:{value:0},uScale:{value:400},uBoost:{value:1}},vertexShader:`attribute float size; attribute float kind; varying vec3 vCol; varying float vA; uniform float uTime; uniform float uScale; uniform float uBoost;
       void main() {
         vec4 mv = modelViewMatrix * vec4(position, 1.0);
         float ph = position.x * 3.1 + position.z * 1.7;
-        float k = kind > 1.5 ? 0.88 + 0.08 * sin(uTime * 13.0 + ph) + 0.05 * sin(uTime * 7.3 + ph) : kind > 0.5 ? 0.86 + 0.14 * sin(uTime * 2.4 + ph) : 1.0;
+        float k = kind > 1.5 ? 0.88 + 0.08 * sin(uTime * 13.0 + ph) + 0.05 * sin(uTime * 7.3 + ph) : kind > 0.5 ? (0.86 + 0.14 * sin(uTime * 2.4 + ph)) * uBoost : 1.0;
         vCol = color; vA = k;
         gl_PointSize = min(size * k * uScale / -mv.z, 360.0);
         gl_Position = projectionMatrix * mv;

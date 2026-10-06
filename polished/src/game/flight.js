@@ -97,9 +97,10 @@ export function makeFlyer(ship, stats, start, tune = {}) {
     if (d.why === 'hull') { s.vy -= 7 * dt; s.heading -= d.roll * 0.15 * dt; }
     else s.vy += ((d.why === 'struck' ? -7 : -16) - s.vy) * (1 - Math.exp(-dt * 0.8));
     move(dt);
+    // a holed hull goes nose-down and rolls right over as she falls; the others stay nearly upright
     const k = Math.min(1, d.t / 6);
-    ship.root.rotation.x = (d.why === 'hull' ? 0.55 : d.why === 'struck' ? 0.04 : 0.12) * k * k;
-    ship.root.rotation.z = d.roll * (d.why === 'hull' ? 0.9 : d.why === 'struck' ? 0.12 : 0.25) * k;
+    ship.root.rotation.x = (d.why === 'hull' ? 0.75 : d.why === 'struck' ? 0.04 : 0.12) * k * k;
+    ship.root.rotation.z = d.roll * (d.why === 'hull' ? 1.4 : d.why === 'struck' ? 0.12 : 0.25) * k;
     settle(dt);
     look.turn = 0; look.climb = 0; look.heel = s.heel;
     ship.update(dt, look);

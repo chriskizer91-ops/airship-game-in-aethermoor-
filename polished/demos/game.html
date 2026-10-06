@@ -114,6 +114,12 @@
   .card p { margin: 8px 0 12px; color: var(--cream); font-size: 14px; }
   .choices { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; }
   #calm { position: fixed; left: 50%; top: 40%; translate: -50% 0; }
+  /* it rises into view (after the slow motion when the wave's last raider went down: .late); until then it can't be
+     pressed. Shown or hidden, the game knows at once */
+  #calm:not([hidden]) { animation: calm-in 0.45s ease-out both; }
+  #calm.late:not([hidden]) { animation-delay: 1.4s; }
+  @keyframes calm-in { from { opacity: 0; visibility: hidden; translate: -50% 24px; } to { opacity: 1; visibility: visible; translate: -50% 0; } }
+  #calm-bonus { font-weight: 400; color: var(--gold); font-variant-numeric: tabular-nums; }
   #btn-pause { position: fixed; top: var(--top); left: calc(50% + 64px); width: 38px; height: 34px; padding: 0; font-size: 12px; }
 
   #ship { position: fixed; top: var(--top); left: var(--gutter); padding: 6px 12px 8px; pointer-events: none; }
@@ -168,11 +174,18 @@
   #battery b { color: var(--gold); font-weight: 400; }
   #battery .meter { width: 110px; margin: 3px auto 0; }
   #warn { position: fixed; left: 50%; top: 32%; translate: -50% 0; margin: 0; padding: 6px 14px; color: var(--warn); font-size: 15px; pointer-events: none; }
-  #score { position: fixed; right: var(--gutter); top: calc(var(--top) + clamp(100px, 13.3vw, 174px) + 10px); padding: 4px 10px; font-size: 13px; pointer-events: none; }
-  #score b { color: var(--gold); font-weight: 400; }
-  /* shards gathered: the counter pops gold */
-  #score.on { animation: shard-pop 0.5s ease-out; transform-origin: 100% 50%; }
-  @keyframes shard-pop { 0% { transform: scale(1.15); box-shadow: 0 0 0 1px var(--gold), 0 0 18px rgba(226, 189, 103, 0.8); } 100% { transform: none; box-shadow: none; } }
+  #score { position: fixed; right: var(--gutter); top: calc(var(--top) + clamp(100px, 13.3vw, 174px) + 10px); padding: 4px 10px; font-size: 13px; pointer-events: none;
+    transform-origin: 100% 50%; } /* (shards gathered: it pops gold, and the count counts up: main.js) */
+  #score b { color: var(--gold); font-weight: 400; font-variant-numeric: tabular-nums; }
+  /* a raider's bounty, rising in gold out of her wreck (placed and faded by main.js) */
+  #bounties { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+  .bounty { position: absolute; left: 0; top: 0; margin: 0; white-space: nowrap; opacity: 0; will-change: transform, opacity;
+    font: 400 26px/1 var(--display); color: var(--gold); text-shadow: 0 2px 0 #000, 0 0 12px rgba(0, 0, 0, 0.9), 0 0 24px rgba(255, 180, 70, 0.55); }
+  .bounty small { display: block; margin-bottom: 3px; font: 500 13px/1 var(--body); color: var(--cream); text-align: center; }
+  .bounty small:empty { display: none; }
+  .bounty b { font-weight: 400; }
+  .bounty i { font: normal 0.62em/1 var(--body); vertical-align: 0.12em; }
+  .bounty.rich { font-size: 32px; }
   .narrow { display: none; }
 
   /* the raiders: a tag over each one, or at the edge of the screen pointing to it */
@@ -255,6 +268,8 @@
     #health .meter { width: 46px; }
     #health dd { display: none; }
     #score { font-size: 12px; padding: 3px 8px; }
+    .bounty { font-size: 20px; }
+    .bounty.rich { font-size: 24px; }
     .wide { display: none; }
     .narrow { display: inline; }
     #toast { top: calc(var(--top) + 46px); font-size: 13px; }
@@ -262,7 +277,7 @@
     #touch-buttons { bottom: calc(var(--bottom) + 8px); }
     #touch-hint { bottom: calc(var(--bottom) + 140px); }
   }
-  @media (prefers-reduced-motion: reduce) { #region.on, #banner.on, #toast.on, #score.on { animation-duration: 0.01s; } }
+  @media (prefers-reduced-motion: reduce) { #region.on, #banner.on, #toast.on, #calm:not([hidden]) { animation-duration: 0.01s; } }
 </style>
 </head>
 <body>
@@ -325,6 +340,7 @@
 <canvas id="minimap" aria-label="The map of Aethermoor: tap to make it bigger"></canvas>
 <div id="score" class="panel"><span class="wide">Raiders downed</span><span class="narrow">Downed</span>: <b id="score-n">0</b> · Wave <b id="wave-n">1</b> · <span class="shards">◆ <b id="voyage-n">0</b></span></div>
 <div id="tags" aria-hidden="true"></div>
+<div id="bounties" aria-hidden="true"><p class="bounty" hidden><small></small><b><i>◆</i> <span></span></b></p><p class="bounty" hidden><small></small><b><i>◆</i> <span></span></b></p><p class="bounty" hidden><small></small><b><i>◆</i> <span></span></b></p><p class="bounty" hidden><small></small><b><i>◆</i> <span></span></b></p><p class="bounty" hidden><small></small><b><i>◆</i> <span></span></b></p><p class="bounty" hidden><small></small><b><i>◆</i> <span></span></b></p></div>
 <div id="hurt" aria-hidden="true"></div>
 <div id="incoming" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
 <div id="banner" aria-live="polite"><p id="banner-title"></p><p id="banner-line"></p></div>
