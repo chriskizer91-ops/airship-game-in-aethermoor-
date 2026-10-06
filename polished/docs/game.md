@@ -5,7 +5,7 @@ The game is one page, `dist/game.html`, with everything inside it, so it works w
 ## How it goes
 
 1. **The title screen.** Choose your skies, the game's difficulty (see [The skies](#the-skies)), then go to port.
-2. **The port.** Your ship turns slowly in a quiet void, on a round stone berth with a brass rim. Pick which ship to sail, buy ships and upgrades with Crystal Shards, and set where the crystals' power goes (see [The port](#the-port)).
+2. **The port.** Your ship turns slowly in a quiet void, on a round stone berth with a brass rim; drag her (here or on the title screen) to turn her round. Pick which ship to sail, buy ships and upgrades with Crystal Shards, and set where the crystals' power goes (see [The port](#the-port)).
 3. **A voyage.** Set sail over Aethermoor and fight off waves of raiders, each harder than the last (see [A voyage](#a-voyage)). Downed raiders spill Crystal Shards; fly through them to gather them. After each wave, sail on for more or go back to port to keep what you've gathered. If your ship goes down, the crew get her home with half.
 
 What's built, by stage (all October 6):
@@ -48,15 +48,18 @@ Steps cost ◆ 60, 140 and 280 on the Skiff, and more on bigger ships: 1.6 times
 
 **Your progress is saved** (Crystal Shards, ships, upgrades, skies and best waves): in the browser on that device, and, on claude.ai, in the game page's own private store for you, so it follows you to another device. Nobody else can see it.
 
+Playing on your phone and your laptop, **the newest progress always wins**. A game left open on one device picks up what you did on the other (the port says "Your progress from your other device is here"), and it checks again just before it saves, so it never writes its older progress over newer. The one thing that can be lost is a change made on the old page in the moment before it catches up, like a skies button tapped as it reconnects.
+
 ## A voyage
 
 - **The waves.** The first comes a few seconds after you set sail, 1.5 to 1.9 km ahead of you, more or less. A banner says what's coming, from where, and where the wind's from.
-- **Crystal Shards.** A downed raider spills its shards as glowing amber crystals that drift slowly down. Fly within about 140 m and they're drawn to your ship; leave them 30 seconds and they're gone. Skiffs are worth ◆ 15, Cutters 30, Brigs 60 and Frigates 100, and a raider captain four times as much. Each wave adds 10% (the fifth wave's raiders are worth 40% more than the first's), the skies add their share, and beating a wave adds ◆ 20 for each wave so far.
-- **After each wave.** A card shows what you earned, what's in the hold this voyage, and **what the next wave is**. **Sail on** (it sails on by itself after 25 seconds) or go **Back to port** and keep it all. Meanwhile the crew patch her up, back to full in about 8 seconds.
+- **Crystal Shards.** A downed raider spills its shards as glowing amber crystals that drift slowly down. Fly within about 140 m and they're drawn to your ship, and the shard count in the corner pops gold as they come in; leave them 30 seconds and they're gone. Skiffs are worth ◆ 15, Cutters 30, Brigs 60 and Frigates 100, and a raider captain four times as much. Each wave adds 10% (the fifth wave's raiders are worth 40% more than the first's), the skies add their share, and beating a wave adds ◆ 20 for each wave so far.
+- **After each wave.** A card shows what you earned, what's in the hold this voyage, and **what the next wave is**. **Sail on** (it sails on by itself after 25 seconds) or go **Back to port** and keep it all. Meanwhile the crew patch her up, back to full in about 8 seconds. Every voyage from port starts afresh at wave 1.
 - **Going down.** If your ship goes down, the crew get her home with half this voyage's shards. Pausing and going back to port in the middle of a fight also keeps half; between waves it keeps all.
 - **The wind** changes with every wave. It's shown next to the compass: the arrow points the way it blows (up is the way you're heading), and the number is how much it adds to or takes from your top speed, up to 14%. Raiders feel it too.
+- **The sun** is low in the west, and it throws the shadows of your masts, sails and rigging across your deck.
 - **The Surge.** **R**, or the Surge button on a phone: the crystals pour into the sails for 3 seconds, 60% more top speed, then 15 seconds to build up again (the bar in the top-left panel). For running from a broadside, catching a fleeing raider, or reaching shards before they fall.
-- **Raider captains** lead every fifth wave: wave 5 is a captain's Brig. A captain's ship has black sails and a gold pennant, and a gold tag. It's twice as sturdy, hits 20% harder and reloads 10% faster, and it's worth four times the shards. (A Man-o'-war needs no captain: in a wave with one, the captain sails the next biggest ship.)
+- **Raider captains** lead every fifth wave: wave 5 is a captain's Brig. A captain's ship has black sails and a gold pennant, and a gold tag. It's twice as sturdy, hits 20% harder and reloads 10% faster, and it's worth four times the shards. (A Man-o'-war needs no captain: in a wave with one, the captain sails the next biggest ship.) Her ship is made ready while the card before her wave is up, so her wave arrives without a stutter.
 - **Treasure ships.** A Galleon is a rich prize, worth ◆ 300 before the bonuses. She sails across your path until you come within a kilometre or hit her, then runs, weaving, covering her escape with her stern guns. Your guns lock on to her sails rather than her hull: **shoot her sails away (or her hull down to a quarter) and she strikes her colours**, gives up and settles away below the clouds, spilling her shards. Let her get 3.6 km away and she escapes with her treasure. Don't pull alongside her: two decks of eight guns a side.
 - **The Man-o'-war** is a fortress: hull 7,000, two decks of twelve guns a side, four in the bow. Her broadside can wreck a Frigate in a few volleys, but she turns slowly and barely climbs, so stay off her beam: above or below her, or off her bow or stern. From above, her five crystal columns are open to your guns; sink her crystals and she's out of the fight.
 
@@ -73,7 +76,7 @@ Steps cost ◆ 60, 140 and 280 on the Skiff, and more on bigger ships: 1.6 times
 | **Mouse** | Aim. Click the sky once and the mouse is locked to the view; moving it swings the camera round the ship. **Esc** lets go. Without the lock, dragging also aims. |
 | **Left click** or **F** | Fire |
 | **R** | Surge |
-| **Mouse wheel** | Closer / further |
+| **Mouse wheel** | Closer / further (a trackpad's two-finger swipe moves it a little at a time) |
 | **C** | Look ahead again |
 | **M** | Big map |
 | **P** | Pause (and the way back to port) |
@@ -85,12 +88,14 @@ On a laptop the ships are drawn at full sharpness.
 ### Phone
 
 - **Left thumb**: put it down anywhere on the left side and a stick appears under it. Push left or right to turn, up to climb, down to dive.
-- **Right thumb**: drag anywhere on the right side to swing the camera round the ship and aim.
-- **Fire**: hold to keep firing as the guns reload. **Surge**: the round blue button beside it.
+- **Right thumb**: drag anywhere on the right side to swing the camera round the ship and aim. While your thumb rests there the view stays where you aimed it; lift it, and after a few seconds the view eases back behind the ship.
+- **Fire**: hold to keep firing as the guns reload, and **slide your thumb off it to aim while you fire**. **Surge**: the round blue button beside it.
 - **Sail − / Sail +**: hold to take in or let out sail.
 - **❚❚** under the compass pauses. Tap the corner map to make it big.
 
-On a phone the game draws a little less sharply so it stays smooth, and pauses by itself if you leave the page.
+On a phone the game draws a little less sharply so it stays smooth, and pauses by itself if you leave the page. If the phone clears the game's pictures while you're away (phones do, after a long while), the game draws them again when you come back.
+
+The cloud deck's pattern is worked out once, when the game starts, and kept as a picture; the deck and the cloud shadows on the ground read it from there. That saves a phone most of the work of drawing the sky, and looks the same.
 
 ## Aiming and the guns
 
@@ -133,7 +138,7 @@ Measured by `npm run check`, with no upgrades and no wind, 20 seconds at full sa
 
 Each shot hits whatever it meets first: the sails (one zone per mast), the crystals (each furnace column and its crown of gems), or the hull (the shape it was built from, up to the rail). What damage does, following `docs/ships.md`:
 
-- **Hull**: at zero, the ship goes down. A ship below half hull trails smoke, thicker and darker as the hull goes; below a quarter it burns too. The crew falls with the hull (for boarding, later).
+- **Hull**: at zero, the ship goes down. A ship going down falls away below the clouds before she's gone (at least 150 m, if she was flying low). A ship below half hull trails smoke, thicker and darker as the hull goes; below a quarter it burns too. The crew falls with the hull (for boarding, later).
 - **Sails**: torn sails slow the ship, down to 30% of its top speed with none left, and make it turn badly, down to 45%.
 - **Crystals**: cracked crystals climb badly, down to 25%, and can't lift as high. Below half, the ship starts to sink, faster as they go. At zero, the ship sinks out of the fight.
 
@@ -170,7 +175,7 @@ The raiders fly the same four classes as the Captain, by the same rules. They're
 
 **How hard it is.** `node tools/sim-fight.mjs skiff 5 cross` sends out a simulated Captain. It simply points at the nearest raider and fires, keeps a raider abeam in a ship with broadsides, and waits for repairs between waves. It never climbs out of a broadside, never surges and never dodges. On Crosswinds it:
 
-- gets the Skiff through four waves, with about ◆ 420 in the hold (enough for the Cutter), and then the wave-5 captain sinks it
+- usually gets the Skiff through four waves (now and then only three), with about ◆ 390 in the hold (enough for the Cutter), and then the wave-5 captain sinks it
 - gets the Brig through seven or eight waves
 - gets the Frigate through five to eight waves on Maelstrom
 - beats the treasure ship's wave (wave 6) in a Cutter, catching her in about three minutes; in a Brig it goes for her escort first, and she gets away
@@ -196,11 +201,15 @@ On Fair Winds the Skiff gets through all five. A real Captain who uses height, t
 - `tools/map-art.mjs`: packs the nine map tiles into `assets/map/` (run it if the tiles change)
 - `tools/sim-fight.mjs`: the simulated Captain, for tuning the raiders
 
-`npm run check` plays the game in a hidden browser:
+`npm run check` (or `node tools/check.mjs`) plays the game in a hidden browser:
 
-- It opens on the title screen, goes to port, and checks a ship can't be bought without the shards. With shards, it buys the Cutter and armour, sets the crystal power, and checks the stats change.
+- It runs the save as two devices sharing one store, and checks the newest progress always wins: a tab left open, a tap before the store answers, play with no connection, and a phone whose clock is slow.
+- It opens on the title screen, drags the ship round, goes to port, and checks a ship can't be bought without the shards. With shards, it buys the Cutter and armour, sets the crystal power, and checks the stats change. It changes the window's size in port and checks the corner map is still drawn at sea, and the big map at its own size.
 - It flies each ship and fires every battery at a raider of the same class 260 m off, checking the guns lock on and hit.
-- It shoots a raider down, watches it fall away spilling shards, and flies through shards to gather them.
+- It shoots a raider down, watches it fall away spilling shards, and flies through shards to gather them (the shard count pops). It brings a raider down low, under the clouds, and checks she falls before she goes. It checks the sun's shadows reach the ship.
 - It checks raiders far off use the far model, sends a Cutter at a Captain who does nothing and checks it does harm, and checks a captain leads wave 5, a treasure ship comes in wave 6 and a Man-o'-war in waves 12 and 15. It shoots a treasure ship's sails until she strikes her colours, and lets another run until she gets away.
-- It plays a whole voyage from the port: beats wave 1, sails on, sinks, and checks half the shards come home. It checks the save survives a reload.
-- It tries the keys, the mouse and the touch controls, and saves pictures of the title, the port and a battle into `shots/`.
+- It goes back to port from the card after wave 4 (checking the next wave's captain was made ready), buys the Cutter it had been looking at, and sets sail: wave 1 must be one Skiff, and only the Cutter is in the sky.
+- It plays a whole voyage from the port: beats wave 1 (one Skiff), sails on, sinks, and checks half the shards come home. It checks the save survives a reload.
+- It tries the keys, the mouse, the wheel (a trackpad's flick and a mouse's notch) and the touch controls (on a phone: aiming, a thumb resting still, a drag while paused, and sliding off Fire to aim while firing). It drops the drawing context and checks the sky's light and the cloud pattern come back. It saves pictures of the title, the port and a battle into `shots/`.
+
+`node tools/check.mjs --quick` plays only the game page at laptop size, for checking during work; it ends with "all good (quick)". The full check is the one that counts.

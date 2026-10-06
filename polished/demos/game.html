@@ -45,6 +45,10 @@
   .big:disabled { filter: grayscale(0.8) brightness(0.7); cursor: default; }
   .plain { padding: 10px 16px; background: var(--panel); border: 1px solid rgba(236, 220, 184, 0.6); border-radius: 8px; font-size: 15px; }
   .screen { position: fixed; inset: 0; }
+  /* the title screen and the port lie over the ship: presses on their open sky reach it (drag to turn her), and only
+     their cards and panels take presses themselves */
+  #title, #port { pointer-events: none; }
+  #title .title-card, #port-ships, #port-panel { pointer-events: auto; }
   .screen.dim { background: rgba(6, 4, 12, 0.55); display: grid; place-items: center; }
 
   /* the title screen */
@@ -158,6 +162,9 @@
   #warn { position: fixed; left: 50%; top: 32%; translate: -50% 0; margin: 0; padding: 6px 14px; color: var(--warn); font-size: 15px; pointer-events: none; }
   #score { position: fixed; right: var(--gutter); top: calc(var(--top) + clamp(100px, 13.3vw, 174px) + 10px); padding: 4px 10px; font-size: 13px; pointer-events: none; }
   #score b { color: var(--gold); font-weight: 400; }
+  /* shards gathered: the counter pops gold */
+  #score.on { animation: shard-pop 0.5s ease-out; transform-origin: 100% 50%; }
+  @keyframes shard-pop { 0% { transform: scale(1.15); box-shadow: 0 0 0 1px var(--gold), 0 0 18px rgba(226, 189, 103, 0.8); } 100% { transform: none; box-shadow: none; } }
   .narrow { display: none; }
 
   /* the raiders: a tag over each one, or at the edge of the screen pointing to it */
@@ -245,7 +252,7 @@
     #touch-buttons { bottom: calc(var(--bottom) + 8px); }
     #touch-hint { bottom: calc(var(--bottom) + 140px); }
   }
-  @media (prefers-reduced-motion: reduce) { #region.on, #banner.on, #toast.on { animation-duration: 0.01s; } }
+  @media (prefers-reduced-motion: reduce) { #region.on, #banner.on, #toast.on, #score.on { animation-duration: 0.01s; } }
 </style>
 </head>
 <body>
@@ -322,7 +329,7 @@
   <div class="fire-row"><button id="btn-surge" type="button">Surge</button><button id="btn-fire" type="button" aria-label="Fire">Fire</button></div>
   <div class="sail"><button id="btn-sail-down" type="button">Sail −</button><button id="btn-sail-up" type="button">Sail +</button></div>
 </div>
-<p id="touch-hint" class="touch-only shadow">Left thumb: steer and climb · drag on the right: aim</p>
+<p id="touch-hint" class="touch-only shadow">Left thumb: steer and climb · drag on the right: aim · hold Fire and slide to aim while firing</p>
 <div id="dock">
   <section id="help" class="panel mouse-only">
     <h2>Flying</h2>

@@ -122,7 +122,7 @@ export function makeRaiders(scene, art, bolts, skies) {
     const sails = Tm.zones.sails.filter((b) => !b.isEmpty());
     if (role === 'prize' && sails.length) {
       const c = sails[0].getCenter(new THREE.Vector3()), at = new THREE.Vector3();
-      f.aimAt = () => at.copy(c).applyMatrix4(ship.body.matrixWorld).clone();
+      f.aimAt = () => at.copy(c).applyMatrix4(ship.body.matrixWorld);
     }
     f.strikes = role === 'prize';
     ship.root.position.copy(pos); ship.root.rotation.y = heading;
@@ -149,7 +149,9 @@ export function makeRaiders(scene, art, bolts, skies) {
     return base;
   }
 
-  // where to steer: chasers come at the foe bow-first and break away when close; broadside ships keep it abeam
+  // where to steer: chasers come at the foe bow-first and break away when close; broadside ships keep it abeam.
+  // (The answer is one kept object, read straight away by flight.js)
+  const ahead = new THREE.Vector3(), wish = { turn: 0, climb: 0, sailTo: 1 };
   function steer(r, foe, dt) {
     const me = r.f, L = r.R.length, P = foe.pos, dx = P.x - me.pos.x, dz = P.z - me.pos.z, d = Math.hypot(dx, dz, P.y - me.pos.y);
     const bearing = Math.atan2(dx, dz), rel = wrap(bearing - me.heading);
@@ -166,7 +168,7 @@ export function makeRaiders(scene, art, bolts, skies) {
       if (r.timer <= 0) r.mode = 'attack';
     } else if (r.role === 'chaser' || d > 1500) {
       // an attack run: come at the foe, then peel away, side-on, when close or after 10-15 seconds of chasing
-      const ahead = P.clone().addScaledVector(foe.velocity, Math.min(3, d / 250));
+      ahead.copy(P).addScaledVector(foe.velocity, Math.min(3, d / 250));
       want = Math.atan2(ahead.x - me.pos.x, ahead.z - me.pos.z);
       sailTo = d < 300 ? 0.6 : 1;
       if (d < 900) r.run = (r.run ?? 0) + dt;
@@ -189,18 +191,19 @@ export function makeRaiders(scene, art, bolts, skies) {
       if (dd < keep && dd > 0.1) { const w = ((keep - dd) / keep) * 1.5; vx += (ox / dd) * w; vz += (oz / dd) * w; }
     }
     const err = wrap(Math.atan2(vx, vz) - me.heading), wantY = clamp(P.y + r.alt, 150, 2200);
-    return { turn: clamp(-err * 2.2, -1, 1), climb: clamp((wantY - me.pos.y) / 60, -1, 1), sailTo };
+    wish.turn = clamp(-err * 2.2, -1, 1); wish.climb = clamp((wantY - me.pos.y) / 60, -1, 1); wish.sailTo = sailTo;
+    return wish;
   }
 
   // fire every battery that can reach where the foe will be, a little off
-  const off = new THREE.Vector3();
+  const off = new THREE.Vector3(), aim = new THREE.Vector3(), SIDES = ['bow', 'port', 'starboard', 'stern'], drift = { turn: 0, climb: 0, sailTo: 0.6 };
   function shoot(r, foe) {
-    for (const b of ['bow', 'port', 'starboard', 'stern']) {
+    for (const b of SIDES) {
       if (r.gun.ready[b] > 0 || !r.gun.count(b)) continue;
       const m = r.gun.muzzle(b);
-      const aim = intercept(m.p, r.f.velocity, foe.aimAt(), foe.velocity, m.K.speed);
+      intercept(m.p, r.f.velocity, foe.aimAt(), foe.velocity, m.K.speed, aim);
       const dist = aim.distanceTo(m.p);
-      if (dist > m.K.speed * m.K.life * 0.7 || !r.gun.reaches(b, aim)) continue; // they hold fire till it's worth it
+      if (dist > m.K.speed * m.K.life * 0.7 || !r.gun.reaches(b, aim, m)) continue; // they hold fire till it's worth it
       const e = dist * r.aim + 1.5;
       aim.add(off.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(2 * e));
       r.gun.fire(b, aim, bolts, 'raider', r.f.velocity);
@@ -208,25 +211,27 @@ export function makeRaiders(scene, art, bolts, skies) {
   }
 
   // every frame: steer, fly, fire, pick the detail level; returns the raiders that went down this frame
+  const downed = []; // (kept, and read straight away by main.js)
   function update(dt, foe, camera) {
-    const downed = [];
-    escaped.length = 0;
+    downed.length = 0; escaped.length = 0;
     const toScreen = 1 / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
     for (const r of list) {
       const live = !r.f.down;
       if (r.frozen && live) r.ship.update(dt, { calm: true });
-      else r.f.update(dt, live && ai && !foe.down ? steer(r, foe, dt) : { turn: 0, climb: 0, sailTo: 0.6 });
+      else r.f.update(dt, live && ai && !foe.down ? steer(r, foe, dt) : drift);
       r.ship.root.updateMatrixWorld(true);
       r.gun.update(dt);
       if (live && ai && !r.frozen && !foe.down) shoot(r, foe);
       if (r.f.down && !r.counted) { r.counted = true; downed.push(r); }
       // a treasure ship that gets far enough away has escaped
       if (r.role === 'prize' && r.fleeing && !r.f.down && r.f.pos.distanceTo(foe.pos) > 3600) { r.gone = true; r.escaped = true; escaped.push(r); }
-      if (r.f.down && (r.f.pos.y < CLOUD_Y - 140 || r.f.down.t > 16)) r.gone = true;
+      // a wreck falls away below the clouds before it's taken away, or at least 150 m if she went down low
+      const D = r.f.down;
+      if (D) { D.y0 ??= r.f.pos.y; if (D.t > 16 || r.f.pos.y < Math.max(15, Math.min(CLOUD_Y - 140, D.y0 - 150))) r.gone = true; }
       const size = (r.R.length / Math.max(1, camera.position.distanceTo(r.f.pos))) * toScreen;
       r.ship.detail(size < 0.06 ? 'far' : 'middle', camera.userData.pixelScale ?? 500);
     }
-    for (let i = list.length - 1; i >= 0; i--) if (list[i].gone) { scene.remove(list[i].ship.root); list.splice(i, 1); }
+    for (let i = list.length - 1; i >= 0; i--) if (list[i].gone) { drop(list[i]); list.splice(i, 1); }
     return downed;
   }
 
@@ -241,6 +246,10 @@ export function makeRaiders(scene, art, bolts, skies) {
     return best;
   }
 
-  function clear() { for (const r of list) scene.remove(r.ship.root); list.length = 0; }
-  return { list, escaped, spawn, spawnWave, update, hitBy, clear, templates: T, setAI: (on) => { ai = on; } };
+  // a raider taken away, with her tag on screen (main.js) if she has one
+  function drop(r) { scene.remove(r.ship.root); r.tag?.remove(); }
+  function clear() { for (const r of list) drop(r); list.length = 0; }
+  // build a class's models ahead of time (a captain's, before her wave), so nothing is built mid-fight
+  const prepare = (id, captain = false) => { template(id, captain); };
+  return { list, escaped, spawn, spawnWave, update, hitBy, clear, prepare, templates: T, setAI: (on) => { ai = on; } };
 }

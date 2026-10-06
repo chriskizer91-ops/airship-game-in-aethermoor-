@@ -14,6 +14,7 @@ From this folder (it uses the repository's `node_modules`, so run `npm install` 
 ```
 node tools/build.mjs    # makes dist/game.html and dist/hangar.html (and their .artifact.html copies)
 node tools/check.mjs    # plays the game in a hidden browser; must end with "all good"
+node tools/check.mjs --quick   # only the game page at laptop size, while working ("all good (quick)")
 node tools/sim-fight.mjs brig 5 cross   # the simulated Captain, for tuning the fights
 ```
 

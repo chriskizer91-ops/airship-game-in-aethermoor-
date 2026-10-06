@@ -1,7 +1,8 @@
 // input.js: one set of controls from the keyboard and mouse (a laptop) or the touch screen (a phone), both at once.
 //   Laptop: W/S sails, A/D or arrows turn, Space/E or Up climb, Shift/Q or Down dive, mouse aims (click the view to
 //   lock the mouse to it; Esc lets go), left click or F fires, R surges, C looks ahead, M map, P pause, H help.
-//   Phone: a stick under the left thumb steers and climbs, dragging on the right aims, Fire, Surge and the sail buttons.
+//   Phone: a stick under the left thumb steers and climbs, dragging on the right aims, Fire (slide the thumb off it to
+//   aim while firing), Surge and the sail buttons.
 // Only while `active` (flying); in port and on the title screen the controls are left alone.
 export function makeInput(canvas, el) {
   const keys = new Set();
@@ -50,11 +51,18 @@ export function makeInput(canvas, el) {
     drag = null;
   });
   addEventListener('mousemove', (e) => {
-    if (s.locked) { s.look.x += e.movementX; s.look.y += e.movementY; s.lastLook = now(); return; }
-    if (drag) { const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.moved += Math.abs(dx) + Math.abs(dy); s.look.x += dx; s.look.y += dy; drag.x = e.clientX; drag.y = e.clientY; s.lastLook = now(); }
+    if (s.locked) { if (s.active) { s.look.x += e.movementX; s.look.y += e.movementY; s.lastLook = now(); } return; }
+    if (drag) {
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.moved += Math.abs(dx) + Math.abs(dy); drag.x = e.clientX; drag.y = e.clientY;
+      if (s.active) { s.look.x += dx; s.look.y += dy; s.lastLook = now(); } // (paused, the drag goes nowhere)
+    }
   });
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-  canvas.addEventListener('wheel', (e) => { e.preventDefault(); s.zoom += Math.sign(e.deltaY); }, { passive: false });
+  // the wheel: a mouse's notch is about one step closer or further; a trackpad's many small nudges are each a little
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    s.zoom += Math.max(-1, Math.min(1, e.deltaY * (e.deltaMode === 1 ? 0.33 : e.deltaMode === 2 ? 3 : 0.01)));
+  }, { passive: false });
 
   // ---------- touch: the stick on the left, aiming on the right, buttons ----------
   const stick = { id: null, ox: 0, oy: 0, x: 0, y: 0 }, aims = new Map();
@@ -77,10 +85,13 @@ export function makeInput(canvas, el) {
       return;
     }
     const a = aims.get(e.pointerId); if (!a) return;
-    s.look.x += (e.clientX - a.x) * 1.6; s.look.y += (e.clientY - a.y) * 1.6; a.x = e.clientX; a.y = e.clientY; s.lastLook = now();
+    aimBy(e.clientX - a.x, e.clientY - a.y); a.x = e.clientX; a.y = e.clientY;
   });
+  // an aiming thumb swings the camera (not while paused: it would all land at once on Resume)
+  const aimBy = (dx, dy) => { if (!s.active) return; s.look.x += dx * 1.6; s.look.y += dy * 1.6; s.lastLook = now(); };
+  // (on the window, so a finger lifted anywhere is let go of, and a lost one can't hold the camera still for good)
   const up = (e) => { if (e.pointerId === stick.id) { stick.id = null; stick.x = stick.y = 0; knob.hidden = true; } aims.delete(e.pointerId); };
-  canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
+  addEventListener('pointerup', up); addEventListener('pointercancel', up);
   let touchFire = false, sailHold = 0;
   const hold = (id, on, off) => {
     const b = el.querySelector(id);
@@ -89,24 +100,38 @@ export function makeInput(canvas, el) {
     b.addEventListener('contextmenu', (e) => e.preventDefault());
   };
   hold('#btn-fire', () => { touchFire = true; }, () => { touchFire = false; });
+  // a thumb on Fire can slide off it to aim while it keeps firing (the button keeps hold of the finger)
+  const fireBtn = el.querySelector('#btn-fire'); let fireAt = null;
+  fireBtn.addEventListener('pointerdown', (e) => { fireAt = { id: e.pointerId, x: e.clientX, y: e.clientY }; });
+  fireBtn.addEventListener('pointermove', (e) => {
+    if (!fireAt || e.pointerId !== fireAt.id) return;
+    aimBy(e.clientX - fireAt.x, e.clientY - fireAt.y); fireAt.x = e.clientX; fireAt.y = e.clientY;
+  });
+  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) fireBtn.addEventListener(ev, () => { fireAt = null; });
   hold('#btn-sail-up', () => { sailHold = 1; }, () => { sailHold = 0; });
   hold('#btn-sail-down', () => { sailHold = -1; }, () => { sailHold = 0; });
   el.querySelector('#btn-surge').addEventListener('pointerdown', (e) => { e.preventDefault(); s.pressed.add('r'); });
 
-  // every frame: combine everything into one set of controls
+  // every frame: combine everything into one set of controls (one kept object, filled afresh each frame)
+  const out = { turn: 0, climb: 0, sail: 0, fire: false, look: { x: 0, y: 0 }, zoom: 0, pressed: new Set(), lastLook: 0, locked: false };
+  const k = (a, b, c) => keys.has(a) || keys.has(b) || keys.has(c) ? 1 : 0;
   s.read = () => {
+    out.pressed.clear();
     if (!s.active) {
       keys.clear(); s.pressed.clear(); s.look.x = s.look.y = 0; s.zoom = 0; mouseFire = touchFire = false; sailHold = 0;
-      return { turn: 0, climb: 0, sail: 0, fire: false, look: { x: 0, y: 0 }, zoom: 0, pressed: new Set(), lastLook: s.lastLook, locked: s.locked };
+      out.turn = out.climb = out.sail = out.zoom = out.look.x = out.look.y = 0; out.fire = false; out.lastLook = s.lastLook; out.locked = s.locked;
+      return out;
     }
-    const k = (...names) => names.some((n) => keys.has(n)) ? 1 : 0;
+    if (aims.size) s.lastLook = now(); // a thumb resting on the aiming side is still aiming: the camera stays put
     s.turn = Math.max(-1, Math.min(1, k('d', 'ArrowRight') - k('a', 'ArrowLeft') + stick.x));
     s.climb = Math.max(-1, Math.min(1, k(' ', 'e', 'ArrowUp') - k('Shift', 'q', 'ArrowDown') - stick.y));
     s.sail = k('w') - k('s') + sailHold;
     s.fire = mouseFire || touchFire || !!k('f');
-    const look = { ...s.look }, zoom = s.zoom, pressed = new Set(s.pressed);
+    for (const p of s.pressed) out.pressed.add(p);
+    out.turn = s.turn; out.climb = s.climb; out.sail = s.sail; out.fire = s.fire; out.zoom = s.zoom; out.lastLook = s.lastLook; out.locked = s.locked;
+    out.look.x = s.look.x; out.look.y = s.look.y;
     s.look.x = s.look.y = 0; s.zoom = 0; s.pressed.clear();
-    return { turn: s.turn, climb: s.climb, sail: s.sail, fire: s.fire, look, zoom, pressed, lastLook: s.lastLook, locked: s.locked };
+    return out;
   };
   return s;
 }

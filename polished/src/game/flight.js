@@ -38,7 +38,8 @@ export function makeFlyer(ship, stats, start, tune = {}) {
     surge: { on: 0, charge: 1 }, // seconds of Surge left, and how built up the next one is (1 = ready)
   };
   s.startSurge = () => { if (s.down || s.surge.charge < 1) return false; s.surge.on = SURGE.time; s.surge.charge = 0; return true; };
-  s.aimAt = () => s.pos.clone().setY(s.pos.y + s.aimY);
+  const aim = new THREE.Vector3();
+  s.aimAt = () => aim.copy(s.pos).setY(s.pos.y + s.aimY); // (the same vector each time: use it before asking again)
   ship.root.rotation.order = 'YXZ';
   s.frac = (k) => s.health[k] / full[k];
   s.crew = () => Math.ceil(stats.crew * s.frac('hull')); // the crew falls with the hull
@@ -95,7 +96,7 @@ export function makeFlyer(ship, stats, start, tune = {}) {
     ship.update(dt, { turn: 0, climb: 0 });
   }
   function move(dt) {
-    s.velocity.copy(s.forward()).multiplyScalar(s.speed).setY(s.vy);
+    s.velocity.set(Math.sin(s.heading) * s.speed, s.vy, Math.cos(s.heading) * s.speed);
     s.pos.addScaledVector(s.velocity, dt);
     ship.root.position.copy(s.pos);
     ship.root.rotation.y = s.heading;

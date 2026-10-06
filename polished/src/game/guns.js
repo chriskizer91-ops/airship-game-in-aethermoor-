@@ -39,25 +39,34 @@ export function batteryFor(rel) {
 export const BATTERY_NAMES = { bow: 'Bow guns', stern: 'Stern guns', port: 'Port broadside', starboard: 'Starboard broadside' };
 
 // Where to aim to hit a moving ship: a bolt takes on its ship's speed when fired, so it's where the target will be
-// relative to the shooter when the bolt gets there, raised a little for the bolt's slow fall (G below)
+// relative to the shooter when the bolt gets there, raised a little for the bolt's slow fall (G below). Written into
+// `out` (a new vector if none is given); these run for every gun every frame, so they make nothing new themselves
 const G = 9.8 * 0.15;
-export function intercept(from, shooterVel, target, targetVel, speed) {
-  const rel = targetVel.clone().sub(shooterVel), p = target.clone();
+const rel = new THREE.Vector3(), tf = new THREE.Vector3(), ts = new THREE.Vector3(), th = new THREE.Vector3();
+export function intercept(from, shooterVel, target, targetVel, speed, out = new THREE.Vector3()) {
+  rel.copy(targetVel).sub(shooterVel); out.copy(target);
   let t = 0;
-  for (let i = 0; i < 3; i++) { t = p.distanceTo(from) / speed; p.copy(target).addScaledVector(rel, t); }
-  p.y += 0.5 * G * t * t;
-  return p;
+  for (let i = 0; i < 3; i++) { t = out.distanceTo(from) / speed; out.copy(target).addScaledVector(rel, t); }
+  out.y += 0.5 * G * t * t;
+  return out;
 }
 
 // Turn `want` towards `axis` until it's inside the gun's swing (yaw) and tilt (pitch), measured in the gun's own frame
-export function clampToArc(want, axis, yawMax, pitchMax) {
-  const f = axis.clone().setY(0).normalize(), side = new THREE.Vector3(-f.z, 0, f.x); // side: f turned a quarter
-  const h = want.clone().setY(0);
+export function clampToArc(want, axis, yawMax, pitchMax, out = new THREE.Vector3()) {
+  const f = tf.copy(axis).setY(0).normalize(), side = ts.set(-f.z, 0, f.x); // side: f turned a quarter
+  const h = th.copy(want).setY(0);
   const yaw = Math.max(-yawMax, Math.min(yawMax, Math.atan2(h.dot(side), h.dot(f))));
   const base = Math.atan2(axis.y, Math.hypot(axis.x, axis.z));
   const pitch = base + Math.max(-pitchMax, Math.min(pitchMax, Math.atan2(want.y, Math.hypot(want.x, want.z)) - base));
-  const horiz = f.multiplyScalar(Math.cos(yaw)).addScaledVector(side, Math.sin(yaw));
-  return horiz.multiplyScalar(Math.cos(pitch)).setY(Math.sin(pitch)).normalize();
+  out.copy(f).multiplyScalar(Math.cos(yaw)).addScaledVector(side, Math.sin(yaw));
+  return out.multiplyScalar(Math.cos(pitch)).setY(Math.sin(pitch)).normalize();
+}
+
+// Send the first `n` items of a buffer that changes every frame to the graphics card, and only those (nothing at all
+// when there are none: then nothing of it is drawn)
+export function upload(attr, n) {
+  if (n <= 0) return;
+  attr.clearUpdateRanges(); attr.addUpdateRange(0, n * attr.itemSize); attr.needsUpdate = true;
 }
 
 // All the bolts in flight, for every ship, drawn as one batch of glowing streaks
@@ -85,7 +94,7 @@ export function makeBolts(scene, max = 400) {
   const glows = new THREE.Points(ggeo, gmat); glows.frustumCulled = false; glows.renderOrder = 4; scene.add(glows);
 
   const bolts = [], sparks = [];
-  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), FWD = V(0, 0, 1);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), FWD = V(0, 0, 1), mid = new THREE.Vector3(), size3 = new THREE.Vector3();
   const spark = (p, v, life, size, color) => { if (sparks.length < GMAX - max) sparks.push({ p: p.clone(), v: v.clone(), life, max: life, size, c: new THREE.Color(color) }); };
   function fire(from, dir, kind, owner, inherit, weight = 1) {
     if (bolts.length >= max) return;
@@ -109,19 +118,19 @@ export function makeBolts(scene, max = 400) {
       if (hit(b, b.prev, b.p)) { burst(b.p); bolts.splice(i, 1); }
     }
     for (let i = sparks.length - 1; i >= 0; i--) { const s = sparks[i]; s.life -= dt; if (s.life <= 0) { sparks.splice(i, 1); continue; } s.p.addScaledVector(s.v, dt); s.v.multiplyScalar(1 - dt * 1.5); }
-    bolts.forEach((b, i) => {
-      const len = Math.min(14, b.v.length() * 0.03) * b.K.size;
+    for (let i = 0; i < bolts.length; i++) {
+      const b = bolts[i], len = Math.min(14, b.v.length() * 0.03) * b.K.size;
       q.setFromUnitVectors(FWD, sc.copy(b.v).normalize());
-      m4.compose(b.p.clone().addScaledVector(sc, -len / 2), q, V(b.K.size, b.K.size, len));
+      m4.compose(mid.copy(b.p).addScaledVector(sc, -len / 2), q, size3.set(b.K.size, b.K.size, len));
       mesh.setMatrixAt(i, m4); mesh.setColorAt(i, b.color);
-    });
-    mesh.count = bolts.length; mesh.instanceMatrix.needsUpdate = true; mesh.instanceColor.needsUpdate = true;
+    }
+    mesh.count = bolts.length; upload(mesh.instanceMatrix, bolts.length); upload(mesh.instanceColor, bolts.length);
     let n = 0;
-    const put = (p, c, size) => { gpos.set([p.x, p.y, p.z], n * 3); gcol.set([c.r, c.g, c.b], n * 3); gsize[n] = size; n++; };
-    for (const b of bolts) put(b.p, b.head, 4.5 * b.K.size);
-    for (const s of sparks) { const k = s.life / s.max; put(s.p, s.c.clone().multiplyScalar(k), s.size * (0.6 + 0.4 * k)); }
+    const put = (p, r, g, bl, size) => { const j = n * 3; gpos[j] = p.x; gpos[j + 1] = p.y; gpos[j + 2] = p.z; gcol[j] = r; gcol[j + 1] = g; gcol[j + 2] = bl; gsize[n++] = size; };
+    for (const b of bolts) put(b.p, b.head.r, b.head.g, b.head.b, 4.5 * b.K.size);
+    for (const s of sparks) { const k = s.life / s.max; put(s.p, s.c.r * k, s.c.g * k, s.c.b * k, s.size * (0.6 + 0.4 * k)); }
     ggeo.setDrawRange(0, n);
-    ggeo.attributes.position.needsUpdate = ggeo.attributes.color.needsUpdate = ggeo.attributes.size.needsUpdate = true;
+    upload(ggeo.attributes.position, n); upload(ggeo.attributes.color, n); upload(ggeo.attributes.size, n);
     if (camera) gmat.uniforms.uScale.value = camera.userData.pixelScale ?? 500;
   }
   const clear = () => { bolts.length = 0; sparks.length = 0; update(0, () => false); };
@@ -133,23 +142,26 @@ export function makeBolts(scene, max = 400) {
 // the raiders' slower crews)
 export function makeGunnery(ship, { reload: slow = 1, damage = 1 } = {}) {
   const B = gunsOf(ship), ready = { bow: 0, stern: 0, port: 0, starboard: 0 }, weight = damage * (GUN_WEIGHT[ship.recipe.id] ?? 1);
-  const world = new THREE.Vector3(), dirW = new THREE.Vector3(), nm = new THREE.Matrix3();
+  const world = new THREE.Vector3(), dirW = new THREE.Vector3(), nm = new THREE.Matrix3(), want = new THREE.Vector3(), arc = new THREE.Vector3();
+  const M = { p: new THREE.Vector3(), d: new THREE.Vector3(), K: null }; // the muzzle last asked for (kept, not made each time)
   const reload = (b) => (B[b][0] ? KINDS[B[b][0].kind].reload * slow : 1);
   return {
     B, ready, reload,
     count: (b) => B[b].length,
     update(dt) { for (const k in ready) ready[k] = Math.max(0, ready[k] - dt); },
-    // the middle gun of a battery, in the world: where it is, which way it points, and its kind
+    // the middle gun of a battery, in the world: where it is, which way it points, and its kind (the same object each
+    // time: read it before asking for another battery's)
     muzzle(b) {
       const g = B[b][B[b].length >> 1]; if (!g) return null;
       nm.getNormalMatrix(ship.body.matrixWorld);
-      return { p: g.p.clone().applyMatrix4(ship.body.matrixWorld), d: g.d.clone().applyMatrix3(nm).normalize(), K: KINDS[g.kind] };
+      M.p.copy(g.p).applyMatrix4(ship.body.matrixWorld); M.d.copy(g.d).applyMatrix3(nm).normalize(); M.K = KINDS[g.kind];
+      return M;
     },
-    // can battery b reach this point? (inside its swing and tilt, and its range)
-    reaches(b, aim) {
-      const m = this.muzzle(b); if (!m) return false;
-      const want = aim.clone().sub(m.p), dist = want.length(); want.normalize();
-      return dist < m.K.speed * m.K.life * 0.92 && want.angleTo(clampToArc(want, m.d, m.K.yaw, m.K.pitch)) < 0.02;
+    // can battery b reach this point? (inside its swing and tilt, and its range); `m` is its muzzle, if already known
+    reaches(b, aim, m = this.muzzle(b)) {
+      if (!m) return false;
+      want.copy(aim).sub(m.p); const dist = want.length(); want.normalize();
+      return dist < m.K.speed * m.K.life * 0.92 && want.angleTo(clampToArc(want, m.d, m.K.yaw, m.K.pitch, arc)) < 0.02;
     },
     // fire battery b at the aim point (world); returns how many guns fired
     fire(b, aim, bolts, owner, inherit) {
@@ -159,8 +171,9 @@ export function makeGunnery(ship, { reload: slow = 1, damage = 1 } = {}) {
       for (const g of B[b]) {
         world.copy(g.p).applyMatrix4(ship.body.matrixWorld);
         dirW.copy(g.d).applyMatrix3(nm).normalize();
-        const K = KINDS[g.kind], want = aim.clone().sub(world).normalize();
-        bolts.fire(world, clampToArc(want, dirW, K.yaw, K.pitch), g.kind, owner, inherit, weight);
+        const K = KINDS[g.kind];
+        want.copy(aim).sub(world).normalize();
+        bolts.fire(world, clampToArc(want, dirW, K.yaw, K.pitch, arc), g.kind, owner, inherit, weight);
       }
       ready[b] = reload(b);
       return B[b].length;

@@ -112,18 +112,20 @@ async function main() {
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap; // (three.js no longer has the soft kind, and used this anyway)
 
   const scene = new THREE.Scene();
   const sky = makeSky(), clouds = makeClouds(), peaks = makePeaks();
   scene.add(sky, clouds, peaks);
   scene.fog = new THREE.Fog(0xd9958c, 900, 5200);
 
-  // the sky itself lights the brass: reflections come from a blurred copy of it
-  const pmrem = new THREE.PMREMGenerator(renderer);
+  // the sky itself lights the brass: reflections come from a blurred copy of it, drawn again if the phone drops the
+  // drawing context (three.js puts everything else back by itself)
   const envScene = new THREE.Scene(); envScene.add(makeSky());
   const cl = makeClouds(); cl.position.y = -40; envScene.add(cl);
-  scene.environment = pmrem.fromScene(envScene, 0.04, 1, 4000).texture;
+  const skyLight = () => { const pmrem = new THREE.PMREMGenerator(renderer), t = pmrem.fromScene(envScene, 0.04, 1, 4000).texture; pmrem.dispose(); return t; };
+  scene.environment = skyLight();
+  canvas.addEventListener('webglcontextrestored', () => { scene.environment = skyLight(); });
   scene.environmentIntensity = 0.85;
 
   const hemi = new THREE.HemisphereLight(0x8d9cff, 0xe39a7c, 0.55);

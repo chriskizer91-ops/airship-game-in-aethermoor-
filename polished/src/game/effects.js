@@ -1,7 +1,9 @@
 // effects.js: smoke from damaged ships, thickening and darkening as the hull goes, and the black trail of a ship
 // going down. One batch of soft round puffs for the whole sky (fire and sparks are the bolts' glows, guns.js).
 import * as THREE from 'three';
+import { upload } from './guns.js';
 
+const ATTRS = ['position', 'size', 'shade', 'alpha'];
 export function makeSmoke(scene, max = 900) {
   const pos = new Float32Array(max * 3), size = new Float32Array(max), shade = new Float32Array(max), alpha = new Float32Array(max);
   const geo = new THREE.BufferGeometry();
@@ -35,20 +37,20 @@ export function makeSmoke(scene, max = 900) {
       if (q.life <= 0) { puffs.splice(i, 1); continue; }
       q.p.addScaledVector(q.v, dt); q.v.multiplyScalar(1 - dt * 0.6); q.v.y += dt * 1.5;
     }
-    puffs.forEach((q, i) => {
-      const k = 1 - q.life / q.max;
+    for (let i = 0; i < puffs.length; i++) {
+      const q = puffs[i], k = 1 - q.life / q.max;
       pos[i * 3] = q.p.x; pos[i * 3 + 1] = q.p.y; pos[i * 3 + 2] = q.p.z;
       size[i] = q.s0 + (q.s1 - q.s0) * Math.sqrt(k); shade[i] = q.shade; alpha[i] = q.a * Math.min(1, k * 6) * (1 - k);
-    });
+    }
     geo.setDrawRange(0, puffs.length);
-    for (const a of ['position', 'size', 'shade', 'alpha']) geo.attributes[a].needsUpdate = true;
+    for (const a of ATTRS) upload(geo.attributes[a], puffs.length);
     if (camera) mat.uniforms.uScale.value = camera.userData.pixelScale ?? 500;
   }
   return { emit, update, puffs };
 }
 
 // Smoke (and fire) pouring off a ship as it's damaged: none above half hull, then more and darker
-const at = new THREE.Vector3(), drift = new THREE.Vector3();
+const at = new THREE.Vector3(), drift = new THREE.Vector3(), rise = new THREE.Vector3();
 export function smokeFrom(flyer, smoke, sparks, dt) {
   const f = flyer.frac('hull'), L = flyer.ship.recipe.length;
   const burning = flyer.down ? 1 : Math.max(0, (0.5 - f) * 2);
@@ -58,7 +60,7 @@ export function smokeFrom(flyer, smoke, sparks, dt) {
   flyer.smokeClock = flyer.down ? 0.03 : 0.12 - burning * 0.07;
   const body = flyer.ship.body;
   at.set((Math.random() - 0.5) * L * 0.08, 0.6, (Math.random() - 0.4) * L * 0.5).applyMatrix4(body.matrixWorld);
-  drift.copy(flyer.velocity).multiplyScalar(0.15).add({ x: (Math.random() - 0.5) * 2, y: 2 + Math.random() * 2, z: (Math.random() - 0.5) * 2 });
+  drift.copy(flyer.velocity).multiplyScalar(0.15); drift.x += (Math.random() - 0.5) * 2; drift.y += 2 + Math.random() * 2; drift.z += (Math.random() - 0.5) * 2;
   smoke.emit(at, drift, 2.5 + burning * 3, L * 0.05 + 0.6, L * (0.22 + burning * 0.3) + 3, 0.6 - burning * 0.5, 0.3 + burning * 0.35);
-  if (burning > 0.5 && Math.random() < burning) sparks(at, drift.clone().add({ x: 0, y: 3, z: 0 }), 0.6 + Math.random() * 0.5, 1.2 + L * 0.06, Math.random() < 0.5 ? 0xff7a2a : 0xffc04a);
+  if (burning > 0.5 && Math.random() < burning) sparks(at, rise.copy(drift).setY(drift.y + 3), 0.6 + Math.random() * 0.5, 1.2 + L * 0.06, Math.random() < 0.5 ? 0xff7a2a : 0xffc04a);
 }

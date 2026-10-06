@@ -48,13 +48,13 @@ function makeBerth() {
   return g;
 }
 
-export function makePort({ renderer, env, progress, shipFor, onSail, onMode }) {
+export function makePort({ renderer, env, progress, shipFor, touch = false, onSail, onMode }) {
   const scene = new THREE.Scene();
   scene.environment = env; scene.environmentIntensity = 0.75;
   scene.add(makeVoid());
   const berth = makeBerth(); scene.add(berth);
   scene.add(new THREE.HemisphereLight(0x8a90c8, 0x2a1820, 0.6));
-  const key = new THREE.DirectionalLight(0xffe2b8, 2.8); key.castShadow = true; key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -0.0004; key.shadow.normalBias = 0.04;
+  const key = new THREE.DirectionalLight(0xffe2b8, 2.8); key.castShadow = true; key.shadow.mapSize.setScalar(touch ? 1024 : 2048); key.shadow.bias = -0.0004; key.shadow.normalBias = 0.04;
   const rimLight = new THREE.DirectionalLight(0x8fc8ff, 1.6);
   scene.add(key, key.target, rimLight);
   const camera = new THREE.PerspectiveCamera(36, 1, 0.5, 9000);
@@ -90,7 +90,7 @@ export function makePort({ renderer, env, progress, shipFor, onSail, onMode }) {
     camera.setViewOffset(w, h, w / 2 - cx, h / 2 - cy, w, h);
   }
 
-  // ---------- drag to turn the ship ----------
+  // ---------- drag to turn the ship (the title and port panels let presses through to it, game.html) ----------
   const canvas = renderer.domElement;
   canvas.addEventListener('pointerdown', (e) => { if (mode === 'voyage') return; drag = { x: e.clientX, id: e.pointerId }; spinV = 0; });
   addEventListener('pointermove', (e) => { if (!drag || e.pointerId !== drag.id) return; const dx = e.clientX - drag.x; drag.x = e.clientX; spin += dx * 0.008; spinV = dx * 0.008; });
@@ -228,5 +228,5 @@ export function makePort({ renderer, env, progress, shipFor, onSail, onMode }) {
   }
   function render() { place(); renderer.render(scene, camera); camera.clearViewOffset(); }
   function resize() { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
-  return { scene, camera, show, setMode, update, render, resize, refresh, get mode() { return mode; }, set mode(m) { mode = m; } };
+  return { scene, camera, show, setMode, update, render, resize, refresh, get mode() { return mode; }, set mode(m) { mode = m; }, get spin() { return spin; } };
 }

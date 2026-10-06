@@ -1,6 +1,7 @@
 // pickups.js: Crystal Shards, Aethermoor's money. A raider brought down spills its shards, glowing amber, and they
 // drift down slowly; fly close and they're drawn to your ship. Left too long, they fall away into the clouds.
 import * as THREE from 'three';
+import { upload } from './guns.js';
 
 const MAX = 200, LIFE = 30, PULL = 140, PULL_SPEED = 120;
 export function makePickups(scene) {
@@ -48,13 +49,13 @@ export function makePickups(scene) {
       s.p.addScaledVector(s.v, dt);
       if (s.life <= 0 && !s.pulled) list.splice(i, 1);
     }
-    list.forEach((s, i) => {
-      const k = Math.min(1, s.life / 3);
+    for (let i = 0; i < list.length; i++) {
+      const s = list[i], k = Math.min(1, s.life / 3);
       q.setFromEuler(e.set(0.3, s.spin, 0)); m4.compose(s.p, q, one.setScalar(0.4 + 0.6 * Math.max(0, k)));
-      mesh.setMatrixAt(i, m4); gpos.set([s.p.x, s.p.y, s.p.z], i * 3);
-    });
-    mesh.count = list.length; mesh.instanceMatrix.needsUpdate = true;
-    ggeo.setDrawRange(0, list.length); ggeo.attributes.position.needsUpdate = true;
+      mesh.setMatrixAt(i, m4); gpos[i * 3] = s.p.x; gpos[i * 3 + 1] = s.p.y; gpos[i * 3 + 2] = s.p.z;
+    }
+    mesh.count = list.length; upload(mesh.instanceMatrix, list.length);
+    ggeo.setDrawRange(0, list.length); upload(ggeo.attributes.position, list.length);
     gmat.uniforms.uTime.value = time;
     if (camera) gmat.uniforms.uScale.value = camera.userData.pixelScale ?? 500;
     return got;
