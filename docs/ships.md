@@ -74,7 +74,7 @@ How the game turns damage into slower sailing, worse turning and sinking is in `
 
 ## The six ships
 
-**The player is the Captain** (Chris, October 6). The Captain moves up through the first four ships: Skiff, then Cutter, Brig and Frigate. The Galleon and the Man-o'-war are only ever enemies: a rich prize and a fortress.
+**The player is the Captain** (Chris, October 6). The Captain moves up through the first four ships: Skiff, then Cutter, Brig and Frigate, bought in port with Crystal Shards (◆ 300, 900 and 2,200; `docs/game.md`). The Galleon and the Man-o'-war are only ever enemies: a rich prize and a fortress.
 
 **Every ship has a name** (Chris, October 6). These are proposals for Chris to keep or change. They're all winds and weather, growing with the ship, and none of them comes from the Magpie page or other games' lore:
 

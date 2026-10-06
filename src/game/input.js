@@ -1,17 +1,19 @@
 // input.js: one set of controls from the keyboard and mouse (a laptop) or the touch screen (a phone), both at once.
 //   Laptop: W/S sails, A/D or arrows turn, Space/E or Up climb, Shift/Q or Down dive, mouse aims (click the view to
-//   lock the mouse to it; Esc lets go), left click or F fires, C looks ahead, M map, 1-4 ships, H help.
-//   Phone: a stick under the left thumb steers and climbs, dragging on the right aims, Fire and the sail buttons.
+//   lock the mouse to it; Esc lets go), left click or F fires, R surges, C looks ahead, M map, P pause, H help.
+//   Phone: a stick under the left thumb steers and climbs, dragging on the right aims, Fire, Surge and the sail buttons.
+// Only while `active` (flying); in port and on the title screen the controls are left alone.
 export function makeInput(canvas, el) {
   const keys = new Set();
   const s = {
     turn: 0, climb: 0, sail: 0, fire: false, look: { x: 0, y: 0 }, zoom: 0, lastLook: -1e9, locked: false,
     pressed: new Set(), // keys pressed since the last frame (for one-off actions)
+    active: true,
   };
   const now = () => performance.now() / 1000;
   const typing = (e) => /input|textarea|select/i.test(e.target.tagName);
   addEventListener('keydown', (e) => {
-    if (typing(e)) return;
+    if (typing(e) || !s.active) return;
     const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
     if (!keys.has(k)) s.pressed.add(k);
     keys.add(k);
@@ -34,7 +36,7 @@ export function makeInput(canvas, el) {
   document.addEventListener('pointerlockchange', () => { s.locked = lockOK(); everLocked ||= s.locked; el.classList.toggle('locked', s.locked); });
   document.addEventListener('pointerlockerror', noLock);
   canvas.addEventListener('mousedown', (e) => {
-    if (fromTouch()) return;
+    if (fromTouch() || !s.active) return;
     if (e.button === 0 && (s.locked || !lockable)) mouseFire = true;
     if (s.locked) return;
     if (e.button === 0 || e.button === 2) drag = { x: e.clientX, y: e.clientY, moved: 0, button: e.button };
@@ -58,7 +60,7 @@ export function makeInput(canvas, el) {
   const stick = { id: null, ox: 0, oy: 0, x: 0, y: 0 }, aims = new Map();
   const knob = el.querySelector('#stick'), knobDot = el.querySelector('#stick i');
   canvas.addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'mouse') return;
+    if (e.pointerType === 'mouse' || !s.active) return;
     lastTouch = now();
     try { canvas.setPointerCapture(e.pointerId); } catch { /* still works without */ }
     if (e.clientX < innerWidth * 0.42 && stick.id === null) {
@@ -89,9 +91,14 @@ export function makeInput(canvas, el) {
   hold('#btn-fire', () => { touchFire = true; }, () => { touchFire = false; });
   hold('#btn-sail-up', () => { sailHold = 1; }, () => { sailHold = 0; });
   hold('#btn-sail-down', () => { sailHold = -1; }, () => { sailHold = 0; });
+  el.querySelector('#btn-surge').addEventListener('pointerdown', (e) => { e.preventDefault(); s.pressed.add('r'); });
 
   // every frame: combine everything into one set of controls
   s.read = () => {
+    if (!s.active) {
+      keys.clear(); s.pressed.clear(); s.look.x = s.look.y = 0; s.zoom = 0; mouseFire = touchFire = false; sailHold = 0;
+      return { turn: 0, climb: 0, sail: 0, fire: false, look: { x: 0, y: 0 }, zoom: 0, pressed: new Set(), lastLook: s.lastLook, locked: s.locked };
+    }
     const k = (...names) => names.some((n) => keys.has(n)) ? 1 : 0;
     s.turn = Math.max(-1, Math.min(1, k('d', 'ArrowRight') - k('a', 'ArrowLeft') + stick.x));
     s.climb = Math.max(-1, Math.min(1, k(' ', 'e', 'ArrowUp') - k('Shift', 'q', 'ArrowDown') - stick.y));

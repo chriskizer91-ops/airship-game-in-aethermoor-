@@ -1,6 +1,8 @@
-// main.js: Skies of Aethermoor. Fly any of the Captain's four ships over Chris's map and fight off waves of raiders:
-// swing the camera round the ship to aim, and whichever guns face where you look fire. Shots tear the hull, the sails
-// or the crystals (docs/ships.md); a raider with no hull left goes down, and so does the Captain.
+// main.js: Skies of Aethermoor. The title screen (choose your skies), the port (choose and upgrade your ship), and
+// voyages: set sail over Chris's map and fight off waves of raiders, each harder than the last. Swing the camera round
+// the ship to aim, and whichever guns face where you look fire. Shots tear the hull, the sails or the crystals
+// (docs/ships.md). Downed raiders spill Crystal Shards to fly through and gather; after each wave, sail on or go back
+// to port to keep them. Lose the ship and the crew get her home with half.
 // Works on a laptop (keyboard and mouse, full detail) and on a phone (touch stick, aiming drag, buttons).
 import * as THREE from 'three';
 import { loadShipArt } from '../ship/materials.js';
@@ -8,9 +10,13 @@ import { buildShip } from '../ship/build.js';
 import { SHIPS, STATS } from '../ships/index.js';
 import { makeWorld, regionAt, SUN, HAZE, MAP, THINNING } from './world.js';
 import { makeInput } from './input.js';
-import { makeFlyer } from './flight.js';
+import { makeFlyer, WIND, windHelp } from './flight.js';
 import { makeBolts, makeGunnery, batteryFor, BATTERY_NAMES, intercept } from './guns.js';
 import { makeRaiders, waveAt } from './raiders.js';
+import { makeProgress, SKIES } from './progress.js';
+import { loadout } from './mods.js';
+import { makePickups } from './pickups.js';
+import { makePort } from './port.js';
 import { hitZones, firstHit } from './damage.js';
 import { makeSmoke, smokeFrom } from './effects.js';
 import minimapUrl from '../../assets/map/minimap.webp';
@@ -50,34 +56,61 @@ async function main() {
   sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.04;
   scene.add(hemi, sun, sun.target);
 
-  const bolts = makeBolts(scene), smoke = makeSmoke(scene);
-  const raiders = makeRaiders(scene, art, bolts);
+  const progress = makeProgress(), skies = () => SKIES[progress.data.skies];
+  const bolts = makeBolts(scene), smoke = makeSmoke(scene), pickups = makePickups(scene);
+  const raiders = makeRaiders(scene, art, bolts, skies);
 
-  // ---------- the ship you fly ----------
+  // ---------- the ship you fly, and a voyage ----------
   const built = new Map(), zones = new Map();
-  const shipFor = (R) => { if (!built.has(R.id)) built.set(R.id, buildShip(R, 'full', art)); return built.get(R.id); };
-  const start = { pos: new THREE.Vector3(0, 680, 2600), heading: Math.PI };
-  let player = null, gunnery = null;
-  function fly(id) {
-    if (player?.down) return;
-    const R = SHIPS.find((s) => s.id === id), ship = shipFor(R);
-    const keep = player ? { pos: player.pos.clone(), heading: player.heading } : start;
-    const worn = player ? PARTS.map((k) => player.frac(k)) : null; // damage carries over to the next ship
-    if (player) scene.remove(player.ship.root);
-    ship.root.rotation.set(0, keep.heading, 0);
-    player = makeFlyer(ship, STATS[id], keep);
-    if (worn) PARTS.forEach((k, i) => { player.health[k] = player.full[k] * worn[i]; });
+  const shipFor = (R) => { if (!built.has(R.id)) { const s = buildShip(R, 'full', art); s.glow.material.uniforms.uScale.value = camera.userData.pixelScale ?? 500; built.set(R.id, s); } return built.get(R.id); };
+  const port = makePort({ renderer, env: scene.environment, progress, shipFor, onSail: (id) => sail(id), onMode: (m) => enter(m) });
+  let mode = 'title', paused = false, player = null, gunnery = null;
+  const V = { shards: 0, downed: 0, hits: 0 }; // this voyage
+  const W = { n: 0, state: 'calm', timer: 5, lost: 0, choose: 0, sunk: false };
+  function enter(m) {
+    mode = m; document.body.dataset.mode = m;
+    input.active = m === 'voyage' && !paused;
+    if (m !== 'voyage' && document.pointerLockElement) document.exitPointerLock();
+  }
+  // set sail: a fresh voyage in this ship, built as it stands in port (`force` sails a ship not owned, for tests)
+  function sail(id, force = false) {
+    const d = progress.data;
+    if (!d.ships[id].owned && !force) return;
+    const R = SHIPS.find((s) => s.id === id), ship = shipFor(R), L = loadout(id, d.ships[id]);
+    const a = Math.random() * Math.PI * 2, at = { pos: new THREE.Vector3(Math.sin(a) * 2500, 680, Math.cos(a) * 2500), heading: a + Math.PI };
+    ship.root.rotation.set(0, at.heading, 0); ship.root.position.copy(at.pos);
+    player = makeFlyer(ship, L.stats, at, L.tune);
     if (!zones.has(id)) zones.set(id, hitZones(ship));
     player.aimY = zones.get(id).aim.y;
-    gunnery = makeGunnery(ship);
+    gunnery = makeGunnery(ship, L.guns);
     scene.add(ship.root);
     const r = R.length * 0.85;
     Object.assign(sun.shadow.camera, { left: -r, right: r, top: r, bottom: -r, near: 1, far: r * 8 });
     sun.shadow.camera.updateProjectionMatrix();
     cam.dist = camDistFor(R);
     $('ship-name').textContent = R.name; $('ship-cls').textContent = `${R.cls} · ${R.length} m`;
-    for (const b of $('ships').children) b.setAttribute('aria-pressed', String(b.dataset.ship === id));
+    raiders.clear(); bolts.clear(); pickups.clear(); smoke.puffs.length = 0;
+    Object.assign(V, { shards: 0, downed: 0, hits: 0 }); Object.assign(W, { n: 0, state: 'calm', timer: 5, lost: 0, choose: 0, sunk: false });
+    cam.yaw = 0; cam.pitch = 0.2; cam.zoom = 1;
+    newWind();
+    paused = false; $('paused').hidden = true; $('calm').hidden = true;
+    port.mode = 'voyage'; $('title').hidden = true; $('port').hidden = true;
+    enter('voyage');
+    banner(`The ${R.name} sets sail`, `${skies().name} · ${windWords()}`);
   }
+  // back to port: keep this share of the voyage's shards
+  function endVoyage(keep) {
+    const d = progress.data, got = Math.round(V.shards * keep);
+    d.shards += got; d.best[d.skies] = Math.max(d.best[d.skies], W.n); progress.save();
+    raiders.clear(); bolts.clear(); pickups.clear();
+    paused = false; $('paused').hidden = true; $('calm').hidden = true;
+    port.setMode('port');
+    if (got) note(`◆ ${got.toLocaleString('en')} banked from the voyage`);
+    return got;
+  }
+  function newWind() { WIND.dir = Math.random() * Math.PI * 2; WIND.strength = 0.06 + Math.random() * 0.08; }
+  const windWords = () => `the wind from the ${COMPASS[Math.round(compassDeg(WIND.dir + Math.PI) / 45) % 8]}`;
+  function note(text) { const n = $('port-note'); n.textContent = text; n.classList.remove('on'); void n.offsetWidth; n.classList.add('on'); }
 
   // ---------- the camera: behind the ship, swung round it by the mouse or a drag ----------
   const cam = { yaw: 0, pitch: 0.2, dist: 40, zoom: 1, look: new THREE.Vector3(), shake: 0 };
@@ -124,70 +157,101 @@ async function main() {
   }
 
   // ---------- shots landing ----------
-  let hits = 0, downed = 0;
   const BURST = { hull: [0xffa040, 22, 1], sails: [0xf5e6c8, 14, 0.7], crystals: [0xffe08a, 34, 1.4] };
   function hitTest(b, a, c) {
     if (b.owner === 'player') {
       const h = raiders.hitBy(a, c);
       if (!h) return false;
-      h.r.f.hit(h.h.part, b.K.damage); hits++;
+      h.r.f.hit(h.h.part, b.damage); V.hits++;
       bolts.burst(h.h.at, ...BURST[h.h.part]);
       return true;
     }
     if (player.down) return false;
     const h = firstHit(zones.get(player.ship.recipe.id), player.ship.body, a, c);
     if (!h) return false;
-    player.hit(h.part, b.K.damage);
+    player.hit(h.part, b.damage);
     bolts.burst(h.at, ...BURST[h.part]);
     hurt = Math.min(1, hurt + 0.45); cam.shake = 0.3;
     return true;
   }
 
-  // ---------- the raiders come in waves ----------
-  const W = { n: 0, state: 'calm', timer: 6, lost: 0 };
+  // ---------- the raiders come in waves; between them, sail on or go home ----------
   function describe(ids) {
     const count = {};
     for (const id of ids) count[id] = (count[id] ?? 0) + 1;
     const parts = Object.entries(count).map(([id, n]) => { const c = SHIPS.find((s) => s.id === id).cls; return `${NUMBER[n]} ${c}${n > 1 ? 's' : ''}`; });
     return parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}` : parts[0];
   }
+  const fmt = (n) => Math.round(n).toLocaleString('en');
   function waves(dt, gone) {
     for (const r of gone) {
-      downed++;
+      V.downed++;
       bolts.burst(r.f.pos, 0xff8a3a, 60, 2.2); bolts.burst(r.f.pos.clone().add({ x: 0, y: 3, z: 0 }), 0xffe08a, 30, 1.6);
-      toast(`${r.name} ${r.f.down.why === 'hull' ? 'going down' : 'sinking, crystals dead'}`);
+      pickups.spill(r.f.pos.clone().add({ x: 0, y: 2, z: 0 }), r.f.velocity, r.bounty * skies().shards * (1 + 0.1 * W.n));
+      toast(`${r.name} ${r.f.down.why === 'hull' ? 'going down' : 'sinking, crystals dead'}: fly through the shards`);
     }
+    if (W.sunk) return;
     if (W.lost > 0) {
       if ((W.lost -= dt) <= 0) {
-        raiders.clear();
-        player.reset(new THREE.Vector3(player.pos.x, 700, player.pos.z), player.heading);
-        W.state = 'calm'; W.timer = 10;
-        banner('Back in the air', 'The raiders will be back');
+        W.sunk = true;
+        $('paused-title').textContent = `The ${player.ship.recipe.name} went down`;
+        $('paused-line').textContent = V.shards ? `Your crew got her home with half this voyage's shards: ◆ ${fmt(V.shards / 2)}.` : 'Your crew got her home.';
+        $('btn-resume').hidden = true; $('btn-abandon').textContent = 'To port'; $('paused').hidden = false;
+        input.active = false;
       }
       return;
     }
-    if (player.down) { W.lost = 6; banner(`The ${player.ship.recipe.name} is going down`, 'Your crew will get her back up'); return; }
-    W.timer -= dt;
+    if (player.down) { W.lost = 4; $('calm').hidden = true; banner(`The ${player.ship.recipe.name} is going down`, 'All hands to the boats'); return; }
+    if (W.state !== 'fight') player.repair(dt * 0.12); // between fights the crew patch her up
     if (W.state === 'calm') {
-      player.repair(dt * 0.12); // between fights the crew patch her up
-      if (W.timer <= 0) {
-        const ids = waveAt(W.n), a = raiders.spawnWave(ids, player);
-        banner(`Raiders, wave ${W.n + 1}`, `${describe(ids)}, to the ${COMPASS[Math.round(compassDeg(a) / 45) % 8]}`);
+      if ((W.timer -= dt) <= 0) {
+        const wave = W.next ?? waveAt(W.n, skies().extra), a = raiders.spawnWave(wave, player);
+        W.next = null;
+        banner(wave.captain ? `Wave ${W.n + 1}: a raider captain` : `Raiders, wave ${W.n + 1}`, `${describe(wave.ids)}, to the ${COMPASS[Math.round(compassDeg(a) / 45) % 8]} · ${windWords()}`);
         W.state = 'fight';
       }
-    } else if (!raiders.list.some((r) => !r.f.down)) {
-      W.n++; W.state = 'calm'; W.timer = 12;
-      banner(`Wave ${W.n} beaten`, 'The crew patch her up');
+    } else if (W.state === 'fight') {
+      if (!raiders.list.some((r) => !r.f.down)) {
+        W.n++;
+        const bonus = Math.round(20 * W.n * skies().shards);
+        V.shards += bonus;
+        W.state = 'choose'; W.choose = 25;
+        $('calm-title').textContent = `Wave ${W.n} beaten`;
+        const next = waveAt(W.n, skies().extra);
+        W.next = next;
+        $('calm-line').textContent = `◆ ${fmt(bonus)} for the wave · ◆ ${fmt(V.shards)} this voyage. Next: ${next.captain ? 'a raider captain, with ' : ''}${describe(next.ids)}. Sail on for more, or go back to port to keep them.`;
+        $('calm').hidden = false;
+      }
+    } else if (W.state === 'choose') {
+      W.choose -= dt;
+      $('btn-sail-on').textContent = `Sail on (${Math.max(0, Math.ceil(W.choose))})`;
+      if (W.choose <= 0) sailOn();
     }
   }
-
-  // ---------- the ship buttons and the help ----------
-  for (const R of SHIPS) {
-    const b = document.createElement('button');
-    b.type = 'button'; b.dataset.ship = R.id; b.innerHTML = `<b>${R.name}</b><small>${R.cls}</small>`;
-    b.addEventListener('click', () => fly(R.id));
-    $('ships').append(b);
+  function sailOn() {
+    if (W.state !== 'choose') return;
+    $('calm').hidden = true; W.state = 'calm'; W.timer = 4; newWind();
   }
+  $('btn-sail-on').addEventListener('click', sailOn);
+  $('btn-go-port').addEventListener('click', () => { if (W.state === 'choose') endVoyage(1); });
+  function pause(on) {
+    if (mode !== 'voyage' || W.sunk) return;
+    paused = on; input.active = !on;
+    if (on) {
+      if (document.pointerLockElement) document.exitPointerLock();
+      const fighting = W.state === 'fight' || player.down;
+      $('paused-title').textContent = 'Paused';
+      $('paused-line').textContent = !V.shards ? 'Back to port now ends the voyage.' : fighting ? `Back to port now, mid-fight, and you keep half this voyage's shards: ◆ ${fmt(V.shards / 2)}.` : `Back to port now keeps all this voyage's shards: ◆ ${fmt(V.shards)}.`;
+      $('btn-resume').hidden = false; $('btn-abandon').textContent = 'Back to port';
+    }
+    $('paused').hidden = !on;
+  }
+  $('btn-pause').addEventListener('click', () => pause(true));
+  $('btn-resume').addEventListener('click', () => pause(false));
+  $('btn-abandon').addEventListener('click', () => endVoyage(W.sunk || W.state === 'fight' || player.down ? 0.5 : 1));
+  document.addEventListener('visibilitychange', () => { if (document.hidden && mode === 'voyage' && !paused) pause(true); });
+
+  // ---------- the help ----------
   const toggleHelp = () => { const h = $('help'); h.hidden = !h.hidden; $('btn-help').hidden = !h.hidden; };
   $('btn-help').addEventListener('click', toggleHelp);
   const mini = $('minimap'), mctx = mini.getContext('2d'), mimg = new Image(); mimg.src = minimapUrl;
@@ -202,10 +266,11 @@ async function main() {
     camera.userData.pixelScale = renderer.domElement.height / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
     for (const s of built.values()) s.glow.material.uniforms.uScale.value = camera.userData.pixelScale;
     const r = mini.getBoundingClientRect(); mini.width = Math.round(r.width * devicePixelRatio); mini.height = Math.round(r.height * devicePixelRatio);
+    port.resize();
   }
   addEventListener('resize', resize);
-  fly(touch ? 'skiff' : 'brig');
   resize();
+  port.setMode('title');
 
   // ---------- the HUD ----------
   let region = '', regionTimer = 0, hudTimer = 0, hurt = 0;
@@ -218,8 +283,8 @@ async function main() {
     for (const r of raiders.list) {
       let el = r.tag;
       if (!el) {
-        el = r.tag = document.createElement('div'); el.className = 'tag';
-        el.innerHTML = `<span class="arrow">▲</span><b>${r.R.cls}</b> <span class="d"></span>${PARTS.map((k) => `<span class="meter ${k}"><i></i></span>`).join('')}`;
+        el = r.tag = document.createElement('div'); el.className = r.captain ? 'tag captain' : 'tag';
+        el.innerHTML = `<span class="arrow">▲</span><b>${r.captain ? 'Captain · ' : ''}${r.R.cls}</b> <span class="d"></span>${PARTS.map((k) => `<span class="meter ${k}"><i></i></span>`).join('')}`;
         $('tags').append(el);
       }
       if (r.f.down) { el.remove(); continue; }
@@ -265,9 +330,18 @@ async function main() {
       $(`n-${k}`).textContent = Math.ceil(player.health[k]);
       $(`row-${k}`).classList.toggle('low', player.frac(k) < 0.3);
     }
-    $('score-n').textContent = downed; $('wave-n').textContent = W.n + 1;
+    $('score-n').textContent = V.downed; $('wave-n').textContent = W.n + 1; $('voyage-n').textContent = fmt(V.shards);
     const deg = compassDeg(player.heading);
-    $('compass').textContent = `${['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.round(deg / 45) % 8]} ${Math.round(deg)}°`;
+    $('heading').textContent = `${['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.round(deg / 45) % 8]} ${Math.round(deg)}°`;
+    // the wind, against the ship: the arrow points the way it blows (up is the way you're heading), and how much it
+    // adds to or takes from your top speed
+    const help = Math.round(windHelp(player.heading) * 100);
+    $('wind-arrow').style.transform = `rotate(${-(WIND.dir - player.heading)}rad)`;
+    $('wind-n').textContent = `${help > 0 ? '+' : help < 0 ? '−' : ''}${Math.abs(help)}%`;
+    const sg = player.surge;
+    $('h-surge').style.width = `${(sg.on > 0 ? sg.on / 3 : sg.charge) * 100}%`;
+    $('row-surge').classList.toggle('ready', sg.charge >= 1);
+    $('btn-surge').disabled = sg.charge < 1;
     const w = $('warn');
     if (player.down) w.hidden = true;
     else if (player.frac('crystals') < 0.5) { w.hidden = false; w.textContent = 'The crystals are cracked: she\'s sinking'; }
@@ -296,10 +370,12 @@ async function main() {
     time += dt;
     const inp = held ?? input.read();
     for (const k of inp.pressed) {
-      if (k >= '1' && k <= '4') fly(SHIPS[+k - 1].id);
-      else if (k === 'c') { cam.yaw = 0; cam.pitch = 0.2; }
+      if (k === 'c') { cam.yaw = 0; cam.pitch = 0.2; }
       else if (k === 'm') mini.classList.toggle('big');
       else if (k === 'h') toggleHelp();
+      else if (k === 'p') pause(true);
+      else if (k === 'r') { if (player.startSurge()) toast('Surge!'); }
+      else if (k === 'Enter') sailOn();
     }
     player.update(dt, inp);
     player.ship.root.updateMatrixWorld(true);
@@ -313,7 +389,12 @@ async function main() {
     smokeFrom(player, smoke, bolts.spark, dt);
     for (const r of raiders.list) smokeFrom(r.f, smoke, bolts.spark, dt);
     smoke.update(dt, camera);
+    const got = pickups.update(dt, player.ship.body.localToWorld(new THREE.Vector3(0, 0.5, 0)), player.ship.recipe.length * 0.6 + 8, camera);
+    if (got && !player.down) { V.shards += got; flash($('score')); }
     waves(dt, gone);
+    // a Surge widens the view a little
+    const fov = (innerWidth < innerHeight ? 68 : 55) + (player.surge.on > 0 ? 7 : 0);
+    if (Math.abs(camera.fov - fov) > 0.05) { camera.fov += (fov - camera.fov) * (1 - Math.exp(-dt * 5)); camera.updateProjectionMatrix(); }
     world.time.value = time;
     world.puffs.follow(player.pos);
     sun.target.position.copy(player.pos); sun.position.copy(player.pos).addScaledVector(SUN, 400);
@@ -324,8 +405,8 @@ async function main() {
   }
   function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
-    tick(dt);
-    renderer.render(scene, camera);
+    if (mode === 'voyage') { if (!paused && !W.sunk) tick(dt); renderer.render(scene, camera); }
+    else { input.read(); port.update(dt); port.render(); }
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
@@ -333,8 +414,10 @@ async function main() {
 
   // for tools/check.mjs
   window.__game = {
-    ready: true, get player() { return player; }, get gunnery() { return gunnery; }, cam, fly, input, raiders, bolts, renderer, camera, scene, waves: W,
-    get hits() { return hits; }, get downed() { return downed; }, get locked() { return locked; },
+    ready: true, get player() { return player; }, get gunnery() { return gunnery; }, cam, input, raiders, bolts, pickups, renderer, camera, scene, waves: W, voyage: V,
+    progress, port, sail, endVoyage, pause, sailOn, wind: WIND, get mode() { return mode; }, get paused() { return paused; },
+    fly: (id) => sail(id, true), // a voyage in any ship, owned or not (for tests)
+    get hits() { return V.hits; }, get downed() { return V.downed; }, get locked() { return locked; },
     // run the game's clock without drawing, holding these controls (for tests on slow software rendering)
     step(seconds, controls = {}) {
       held = { turn: 0, climb: 0, sail: 0, fire: false, look: { x: 0, y: 0 }, zoom: 0, pressed: new Set(), lastLook: performance.now() / 1000, locked: false, ...controls };

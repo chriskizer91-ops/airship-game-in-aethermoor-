@@ -2,11 +2,11 @@
 
 A game about flying and fighting airships over Aethermoor.
 
-**Play it:** https://claude.ai/artifact/8uZvk4JeowYMt7n5xBvoa7 (or open `dist/game.html` in a browser; it works with no internet). Fly any of the Captain's four ships over Aethermoor and fight off waves of raiders, on a laptop (keyboard and mouse) or a phone (touch). `docs/game.md` has the controls.
+**Play it:** https://claude.ai/artifact/8uZvk4JeowYMt7n5xBvoa7 (or open `dist/game.html` in a browser; it works with no internet). Choose your skies, fit out your ship in port, then set sail over Aethermoor and fight off waves of raiders for their Crystal Shards, to buy bigger ships and upgrades. On a laptop (keyboard and mouse) or a phone (touch). `docs/game.md` has how it all works and the controls.
 
 **See the Captain's four ships:** https://claude.ai/artifact/4uQ6NogD2FyGGijwq1ew4K (or open `dist/hangar.html` in a browser; it works with no internet). Drag to turn a ship, pinch to zoom, and use the buttons to switch ships, views and the detail dial.
 
-- `docs/game.md`: the game so far, its controls, how each ship flies and fires, damage, and the raiders
+- `docs/game.md`: the game so far: the skies, the port, voyages, the controls, how ships fly and fire, damage, and the raiders
 - `docs/ships.md`: the six ships and their stats
 - `docs/art-requests/01-ships.md`: the picture prompts for the six ships, ready to paste
 - `docs/map.md`: the map, how big it is, and the camera

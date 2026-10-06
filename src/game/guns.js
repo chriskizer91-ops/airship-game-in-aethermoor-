@@ -4,6 +4,8 @@
 import * as THREE from 'three';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
+// Bigger ships carry bigger guns: each shot's weight is scaled by the ship's class
+export const GUN_WEIGHT = { skiff: 0.8, cutter: 0.9, brig: 1, frigate: 1.1 };
 // Long-focus chasers are fast, light and accurate; short-focus broadsides are heavy, slower and spread a little
 export const KINDS = {
   chaser: { speed: 430, damage: 28, reload: 1.1, yaw: 0.62, pitch: 0.26, spread: 0.002, life: 3.2, size: 1 },
@@ -85,11 +87,12 @@ export function makeBolts(scene, max = 400) {
   const bolts = [], sparks = [];
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), FWD = V(0, 0, 1);
   const spark = (p, v, life, size, color) => { if (sparks.length < GMAX - max) sparks.push({ p: p.clone(), v: v.clone(), life, max: life, size, c: new THREE.Color(color) }); };
-  function fire(from, dir, kind, owner, inherit) {
+  function fire(from, dir, kind, owner, inherit, weight = 1) {
     if (bolts.length >= max) return;
     const K = KINDS[kind], color = new THREE.Color(BOLT_COLORS[owner] ?? BOLT_COLORS.player);
     const d = dir.clone().add(V((Math.random() - 0.5) * K.spread * 2, (Math.random() - 0.5) * K.spread * 2, (Math.random() - 0.5) * K.spread * 2)).normalize();
-    bolts.push({ p: from.clone(), prev: from.clone(), v: d.multiplyScalar(K.speed).add(inherit ?? V(0, 0, 0)), life: K.life, K, owner, color, head: color.clone().lerp(new THREE.Color(0xffffff), 0.3) });
+    bolts.push({ p: from.clone(), prev: from.clone(), v: d.multiplyScalar(K.speed).add(inherit ?? V(0, 0, 0)), life: K.life, K, owner, damage: K.damage * weight,
+      color, head: color.clone().lerp(new THREE.Color(0xffffff), 0.3) });
     spark(from, inherit ?? V(0, 0, 0), 0.18, 9 * K.size, owner === 'raider' ? 0xff8a5a : 0xffd27a);
     for (let i = 0; i < 4; i++) spark(from, d.clone().multiplyScalar(K.speed * 0.04).add(V((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6)), 0.5, 2.2, 0xff9a3a);
   }
@@ -121,13 +124,15 @@ export function makeBolts(scene, max = 400) {
     ggeo.attributes.position.needsUpdate = ggeo.attributes.color.needsUpdate = ggeo.attributes.size.needsUpdate = true;
     if (camera) gmat.uniforms.uScale.value = camera.userData.pixelScale ?? 500;
   }
-  return { fire, update, burst, spark, bolts };
+  const clear = () => { bolts.length = 0; sparks.length = 0; update(0, () => false); };
+  return { fire, update, burst, spark, bolts, clear };
 }
 
 // A ship's gunnery: reload clocks per battery, and firing the battery that faces the aim point.
-// `slow` stretches the reload (the raiders' crews are slower than the Captain's)
-export function makeGunnery(ship, slow = 1) {
-  const B = gunsOf(ship), ready = { bow: 0, stern: 0, port: 0, starboard: 0 };
+// `reload` stretches or shortens the reload, `damage` makes each shot heavier or lighter (upgrades, crystal power, and
+// the raiders' slower crews)
+export function makeGunnery(ship, { reload: slow = 1, damage = 1 } = {}) {
+  const B = gunsOf(ship), ready = { bow: 0, stern: 0, port: 0, starboard: 0 }, weight = damage * (GUN_WEIGHT[ship.recipe.id] ?? 1);
   const world = new THREE.Vector3(), dirW = new THREE.Vector3(), nm = new THREE.Matrix3();
   const reload = (b) => (B[b][0] ? KINDS[B[b][0].kind].reload * slow : 1);
   return {
@@ -155,7 +160,7 @@ export function makeGunnery(ship, slow = 1) {
         world.copy(g.p).applyMatrix4(ship.body.matrixWorld);
         dirW.copy(g.d).applyMatrix3(nm).normalize();
         const K = KINDS[g.kind], want = aim.clone().sub(world).normalize();
-        bolts.fire(world, clampToArc(want, dirW, K.yaw, K.pitch), g.kind, owner, inherit);
+        bolts.fire(world, clampToArc(want, dirW, K.yaw, K.pitch), g.kind, owner, inherit, weight);
       }
       ready[b] = reload(b);
       return B[b].length;

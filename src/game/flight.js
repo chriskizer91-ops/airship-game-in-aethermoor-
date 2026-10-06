@@ -7,6 +7,8 @@
 //   torn sails slow the ship and make it turn badly
 //   cracked crystals make it climb badly and sink, and at zero force it down out of the fight
 //   at zero hull it goes down
+// Upgrades bought in port (mods.js) scale the speed, speeding up, turning and climbing. The wind helps a ship sailing
+// with it and holds back one sailing into it, and a Surge pours the crystals into the sails for a few seconds.
 import * as THREE from 'three';
 import { THINNING } from './world.js';
 
@@ -16,9 +18,16 @@ export function handling(st) {
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
-// `pace` scales top speed (the raiders sail a little slower than the Captain)
-export function makeFlyer(ship, stats, start, pace = 1) {
-  const H = handling(stats);
+// The wind: the way it blows (a heading), and how much it helps or holds back (0.1 is 10% of top speed)
+export const WIND = { dir: 0, strength: 0 };
+export const windHelp = (heading) => WIND.strength * Math.cos(heading - WIND.dir);
+// A Surge: 60% more top speed for 3 seconds, then 15 seconds to build up again
+export const SURGE = { boost: 0.6, time: 3, recharge: 15 };
+
+// `tune` scales top speed, speeding up, turning and climbing (upgrades, and the raiders sailing a little slower)
+export function makeFlyer(ship, stats, start, tune = {}) {
+  const T = { speed: 1, accel: 1, turn: 1, climb: 1, ...tune };
+  const H = handling(stats), pace = T.speed;
   const full = { hull: stats.hull, sails: stats.sails, crystals: stats.crystals };
   const s = {
     ship, stats, H, full, health: { ...full },
@@ -26,7 +35,9 @@ export function makeFlyer(ship, stats, start, pace = 1) {
     velocity: new THREE.Vector3(),
     down: null, // how it's going down, once it is: 'hull' or 'crystals', and for how long
     aimY: 0, // how far below its deck to aim at it (the middle of its hull)
+    surge: { on: 0, charge: 1 }, // seconds of Surge left, and how built up the next one is (1 = ready)
   };
+  s.startSurge = () => { if (s.down || s.surge.charge < 1) return false; s.surge.on = SURGE.time; s.surge.charge = 0; return true; };
   s.aimAt = () => s.pos.clone().setY(s.pos.y + s.aimY);
   ship.root.rotation.order = 'YXZ';
   s.frac = (k) => s.health[k] / full[k];
@@ -44,10 +55,13 @@ export function makeFlyer(ship, stats, start, pace = 1) {
   s.update = (dt, c) => {
     if (s.down) return sink(dt);
     const sf = s.frac('sails'), cf = s.frac('crystals');
-    const vmax = H.vmax * pace * (0.3 + 0.7 * sf), turnRate = H.turn * (0.45 + 0.55 * sf), climbRate = H.climb * (0.25 + 0.75 * cf);
+    const surging = s.surge.on > 0;
+    if (surging) s.surge.on = Math.max(0, s.surge.on - dt); else s.surge.charge = Math.min(1, s.surge.charge + dt / SURGE.recharge);
+    const vmax = H.vmax * pace * (0.3 + 0.7 * sf) * (1 + windHelp(s.heading)) * (surging ? 1 + SURGE.boost : 1);
+    const turnRate = H.turn * T.turn * (0.45 + 0.55 * sf), climbRate = H.climb * T.climb * (0.25 + 0.75 * cf);
     s.sail = c.sailTo != null ? clamp(c.sailTo, 0, 1) : clamp(s.sail + (c.sail ?? 0) * dt * 0.5, 0, 1);
-    const target = s.sail * vmax;
-    s.speed += (target - s.speed) * (1 - Math.exp(-dt * (target > s.speed ? 0.35 : 0.6)));
+    const target = (surging ? 1 : s.sail) * vmax;
+    s.speed += (target - s.speed) * (1 - Math.exp(-dt * (target > s.speed ? (surging ? 1.6 : 0.35 * T.accel) : 0.6)));
     // controls are eased in, the way a heavy ship answers its wheel
     s.turn += ((c.turn ?? 0) - s.turn) * (1 - Math.exp(-dt * 3));
     s.climb += ((c.climb ?? 0) - s.climb) * (1 - Math.exp(-dt * 2.5));
@@ -86,7 +100,7 @@ export function makeFlyer(ship, stats, start, pace = 1) {
   // back to new, for a fresh start
   s.reset = (pos, heading) => {
     Object.assign(s.health, full); s.down = null; s.pos.copy(pos); s.heading = heading; s.vy = 0; s.turn = 0; s.climb = 0;
-    s.speed = H.vmax * 0.45 * pace; s.sail = 0.5; ship.root.rotation.set(0, heading, 0);
+    s.speed = H.vmax * 0.45 * pace; s.sail = 0.5; s.surge.on = 0; s.surge.charge = 1; ship.root.rotation.set(0, heading, 0);
   };
   return s;
 }
