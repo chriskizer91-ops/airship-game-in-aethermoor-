@@ -18,12 +18,14 @@
 //                     batteries all rippling at once; comet tails; a busy fight with two raiders downed in it fitting
 //                     its sparks' and smoke's budgets, and a step's cost; back to port from the pause menu ending the
 //                     pause; on the phone, smaller budgets, a buzz for a hit and a kill, and none for a ship that gives up
-//                     wrecks worth watching: debris matching the part hit and staying within its batches; a raider
+//                     wrecks worth watching: debris matching the part hit, with room for a 60-shot barrage; a raider
 //                     blown apart in a chain of blasts, her crystals going dark, through the cloud deck; her bounty
-//                     rising; a treasure ship striking without a blast; the shard count counting up; masts falling
-//                     on a laptop; slow motion for a wave's last raider and the card rising after it; the Surge's
-//                     streaks, wider view, vapour and flare; on the phone, a Man-o'-war going down beside two other
-//                     wrecks within every budget
+//                     rising; a treasure ship striking without a blast, and sinking through the clouds (and a raider
+//                     whose crystals die); the holes in the clouds closed for the next voyage; the shard count
+//                     counting up; masts falling on a laptop, and going only under the clouds; slow motion for a
+//                     wave's last raider and the card waiting for it before it rises; the Surge's streaks, wider view,
+//                     vapour and flare, and its view the same at 20 frames a second as at 60; on the phone, a
+//                     Man-o'-war going down beside two other wrecks within every budget
 // Run: node tools/build.mjs && node tools/check.mjs [--quick] [folder]
 //   --quick: only the game page at laptop size (for checking during work; the full run is the one that counts)
 import { chromium } from 'playwright';
@@ -353,14 +355,30 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
     // she gives up without blowing up: no blasts, and her pennants come down
     let gaveUp = 0; const offB = g.events.on('blast', () => gaveUp++); g.step(3, {}); offB();
     const struck = { why: prize.f.down?.why, t, sails: Math.round(prize.f.health.sails), canvas, blasts: gaveUp, flags: prize.ship.parts.flags.every((m) => !m.visible) };
+    // then she settles away, faster and faster, through the cloud deck (tearing it) before she's gone, from 906 m; so does
+    // a raider Brig whose crystals die at 740 m. (When each crossed the deck and was gone, in seconds since she went down)
+    const through = (r, t0) => {
+      let s = t0, deck = -1; const off = g.events.on('wreck:deck', () => { if (deck < 0) deck = s; });
+      while (s < 45 && g.raiders.list.includes(r)) { g.step(0.25, {}); s += 0.25; }
+      off(); return { deck, gone: g.raiders.list.includes(r) ? -1 : s };
+    };
+    struck.sank = through(prize, 3);
+    g.raiders.clear();
+    const dead = g.raiders.spawn('brig', P.pos.clone().add({ x: 0, y: -160, z: 300 }), 0, true); g.step(0.1, {}); dead.f.hit('crystals', 1e9);
+    const crystalsDead = { why: dead.f.down?.why, ...through(dead, 0) };
     g.raiders.clear(); g.raiders.setAI(true);
     const runner = g.raiders.spawn('galleon', P.pos.clone().add({ x: 0, y: 0, z: 3400 }), 0);
     runner.fleeing = true; g.step(15, {});
     const away = { gone: !g.raiders.list.includes(runner), escaped: !!runner.escaped };
     g.raiders.setAI(false); g.raiders.clear();
     const tagsLeft = document.getElementById('tags').children.length; // a raider's tag goes with her
+    // a hole torn in the clouds just before going back to port is closed for the next voyage
+    g.world.tear(P.pos.x, P.pos.z, 120); g.step(0.5, {});
+    const holes = { open: +Math.max(...g.world.holes.map((h) => h.w)).toFixed(2) };
+    g.endVoyage(0); g.fly('brig'); g.waves.timer = 1e9; g.step(1 / 60, {});
+    holes.next = +Math.max(...g.world.holes.map((h) => h.w)).toFixed(2);
     g.endVoyage(0);
-    return { res, sinking, gathered, popped, counted, lowFall, shadowed, tagsLeft, detail, fight, captain, wave6, wave12, wave15, struck, away, killMark, crystalMark, wreck, bounty };
+    return { res, sinking, gathered, popped, counted, lowFall, shadowed, tagsLeft, detail, fight, captain, wave6, wave12, wave15, struck, crystalsDead, away, killMark, crystalMark, wreck, bounty, holes };
   }, ships);
   const NAMES = { bow: 'Bow guns', port: 'Port broadside', starboard: 'Starboard broadside', stern: 'Stern guns' };
   for (const r of flown.res) {
@@ -374,7 +392,7 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
       if (!x.locked || x.reach === 'out of reach') problems.push(`${r.id}: ${b} guns didn't lock on to a raider in reach`);
     }
   }
-  const { sinking, gathered, popped, counted, lowFall, shadowed, tagsLeft, detail, fight, captain, wave6, wave12, wave15, struck, away, killMark, crystalMark, wreck, bounty } = flown;
+  const { sinking, gathered, popped, counted, lowFall, shadowed, tagsLeft, detail, fight, captain, wave6, wave12, wave15, struck, crystalsDead, away, killMark, crystalMark, wreck, bounty, holes } = flown;
   console.log(`hit marks: every battery's hits marked in the part's colour; a kill ${killMark.ring && killMark.x === 'kill' ? 'rings red' : 'DOES NOT RING'}; shots on a raider's crystals marked "${crystalMark.part}" (hits: ${crystalMark.hits})`);
   if (!killMark.ring || killMark.x !== 'kill') problems.push(`the shot that brings a raider down isn't marked with the red kill ring: ${JSON.stringify(killMark)}`);
   if (!crystalMark.playing || crystalMark.part !== 'crystals' || !crystalMark.right) problems.push(`shots on a raider's crystals aren't marked in the crystals' colour: ${JSON.stringify(crystalMark)}`);
@@ -408,6 +426,13 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   if (!wave12.includes('manowar')) problems.push(`wave 12 should bring a Man-o'-war: ${wave12}`);
   if (!wave15.includes('manowar') || wave15.includes('manowar (captain)') || !wave15.includes('(captain)')) problems.push(`wave 15 should have a Man-o'-war and a captain who isn't it: ${wave15}`);
   if (struck.why !== 'struck') problems.push(`a treasure ship shot in her sails didn't strike: ${JSON.stringify(struck)}`);
+  console.log(`wrecks sinking: a struck treasure ship from 906 m through the cloud deck at ${struck.sank.deck} s, gone at ${struck.sank.gone} s; a raider whose crystals died at 740 m (${crystalsDead.why}) through at ${crystalsDead.deck} s, gone at ${crystalsDead.gone} s`);
+  for (const [what, x, most] of [['a struck treasure ship from 906 m', struck.sank, 16], ['a raider whose crystals died at 740 m', crystalsDead, 14]]) {
+    if (x.deck < 0 || x.gone < 0 || x.deck > x.gone || x.deck > most) problems.push(`${what} should sink through the cloud deck within ${most} s, before she's gone: ${JSON.stringify(x)}`);
+  }
+  if (crystalsDead.why !== 'crystals') problems.push(`a raider whose crystals were shot away should sink with them dead: ${crystalsDead.why}`);
+  console.log(`a hole torn in the clouds (open ${holes.open}) before going back to port: ${holes.next ? `STILL OPEN (${holes.next})` : 'closed'} on the next voyage`);
+  if (!(holes.open > 0.5) || holes.next !== 0) problems.push(`the holes torn in the cloud deck should be closed when a new voyage starts: ${JSON.stringify(holes)}`);
   if (!away.gone || !away.escaped) problems.push(`a treasure ship running far didn't get away: ${JSON.stringify(away)}`);
 
   // ---------- how a fight feels (fx.js, events.js) ----------
@@ -533,8 +558,8 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
     g.raiders.setAI(false); g.raiders.clear(); FX.clear();
     const k1 = g.raiders.spawn('cutter', P.pos.clone().add({ x: 0, y: 0, z: 300 }), 0, true); k1.f.hit('hull', 1e9); g.step(1 / 60, {});
     out.fight.blast = FX.stats().sparks;
-    // a barrage of 60 shots into a raider Frigate's hull, sails and crystals: the debris never needs more room than its
-    // batches have, and it has all fallen away 4 s later
+    // a barrage of 60 shots in a second into a raider Frigate's hull, sails and crystals (a big broadside's worth): the
+    // debris never needs more room than its batches have (not one piece cut short), and it has all fallen away 4 s later
     g.raiders.clear(); P = voyage('brig'); P.pos.set(0, 900, 0); P.heading = 0; still(P); FX.clear(); FX.resetStats();
     const tgt = g.raiders.spawn('frigate', P.pos.clone().add({ x: 0, y: 0, z: 200 }), Math.PI / 2, true);
     for (const k of ['hull', 'sails', 'crystals']) tgt.f.full[k] = tgt.f.health[k] = 1e9;
@@ -549,7 +574,7 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
     }
     for (let k = 0; k < 10; k++) { g.step(0.05, {}); track(); }
     const sd = FX.stats().debris;
-    out.barrage = { most: heaps, caps: sd.caps, dropped: sd.dropped, hits: ['hull', 'sails', 'crystals'].filter((k) => tgt.f.health[k] < 1e9).join('+') };
+    out.barrage = { most: heaps, caps: sd.caps, cut: sd.cut, tossed: sd.tossed, hits: ['hull', 'sails', 'crystals'].filter((k) => tgt.f.health[k] < 1e9).join('+') };
     g.step(4, {}); const left = FX.stats().debris; out.barrage.left = left.wood + left.canvas + left.crystal;
     // a Surge: half a second in, streaks of wind rush past and the view is over 9 degrees wider; 4 s later they're gone
     // and the view is back (within half a degree), and her vapour trails made smoke while it lasted
@@ -559,13 +584,16 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
     out.surge = { on: P.surge.on > 0, streaks: g.surge.streaks.visible, wider: +(g.camera.fov - fov0).toFixed(1), smoke: FX.stats().puffs - puffs1, flare: +P.ship.glow.material.uniforms.uBoost.value.toFixed(2) };
     g.step(4, { sail: 1 });
     Object.assign(out.surge, { after: g.surge.streaks.visible, back: +Math.abs(g.camera.fov - fov0).toFixed(2), flareAfter: +P.ship.glow.material.uniforms.uBoost.value.toFixed(2) });
-    // on a laptop, a raider Frigate blown apart 150 m off: her three masts crack and topple, her canvas all going with
-    // them, and they're gone 10 s later
+    // on a laptop, a raider Frigate blown apart 150 m off at 900 m: her three masts crack and topple, her canvas all
+    // going with them, and each one goes only once it's all under the cloud deck (or shrinks away, kept too long), never
+    // vanishing in the open sky. (Each one's top, as it was last seen a 20th of a second before it went)
     g.raiders.clear(); P = voyage('brig'); P.pos.set(0, 900, 0); P.heading = 0; still(P); FX.clear();
     const mf = g.raiders.spawn('frigate', P.pos.clone().add({ x: 40, y: 0, z: 150 }), Math.PI / 2, true); g.step(0.1, {});
     mf.f.hit('hull', 1e9); g.step(2.5, {});
-    out.masts = { level: mf.ship.level, falling: g.wrecks.falling(), canvas: mf.ship.parts.meshes.canvas.geometry.index?.count ?? -1 };
-    g.step(7.5, {}); out.masts.left = g.wrecks.falling().length;
+    out.masts = { level: mf.ship.level, falling: g.wrecks.falling(), canvas: mf.ship.parts.meshes.canvas.geometry.index?.count ?? -1, deck: g.world.deck.position.y };
+    const lastSeen = new Map(); let mt = 2.5;
+    while (mt < 16 && g.wrecks.falling().length) { for (const m of g.wrecks.falling()) lastSeen.set(m.i, m); g.step(0.05, {}); mt += 0.05; }
+    Object.assign(out.masts, { left: g.wrecks.falling().length, t: +mt.toFixed(1), went: [...lastSeen.values()].map((m) => ({ top: +(m.y + m.H).toFixed(1), s: m.s })) });
     // paused, then back to port from the pause menu: the pause is told as ended, before the voyage's end
     g.raiders.clear();
     const told = [], offP = [E.on('pause', (e) => told.push(`pause ${e.on}`)), E.on('voyage:end', () => told.push('voyage:end'))];
@@ -596,13 +624,14 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   if (busy.dropped || busy.most > busy.cap || busy.puffsDropped) problems.push(`a busy fight's sparks or smoke ran out of room: ${JSON.stringify(busy)}`);
   if (busy.ms >= 1) problems.push(`a step of a busy fight takes ${busy.ms} ms (should be under 1)`);
   if (busy.blast < 90) problems.push(`a raider's blast should throw at least 90 sparks: ${busy.blast}`);
-  console.log(`a 60-shot barrage (hit ${barrage.hits}): at most ${barrage.most.wood} splinters, ${barrage.most.canvas} scraps and ${barrage.most.crystal} shards (room for ${barrage.caps.wood}, ${barrage.caps.canvas} and ${barrage.caps.crystal}; ${barrage.dropped} reused), ${barrage.left} left 4 s later`);
-  if (['wood', 'canvas', 'crystal'].some((k) => barrage.most[k] > barrage.caps[k] || !barrage.most[k]) || barrage.left) problems.push(`a barrage's debris should show every kind, stay within its batches, and fall away within 4 s: ${JSON.stringify(barrage)}`);
+  console.log(`a 60-shot barrage (hit ${barrage.hits}): at most ${barrage.most.wood} splinters, ${barrage.most.canvas} scraps and ${barrage.most.crystal} shards (room for ${barrage.caps.wood}, ${barrage.caps.canvas} and ${barrage.caps.crystal}; cut short ${barrage.cut.wood}, ${barrage.cut.canvas} and ${barrage.cut.crystal}), ${barrage.left} left 4 s later`);
+  if (['wood', 'canvas', 'crystal'].some((k) => barrage.cut[k] > 0 || !barrage.most[k]) || barrage.left) problems.push(`a barrage's debris should show every kind, all fit its batches (none cut short), and fall away within 4 s: ${JSON.stringify(barrage)}`);
   console.log(`a Surge, 0.5 s in: streaks ${surge.streaks ? 'showing' : 'MISSING'}, the view ${surge.wider}° wider, ${surge.smoke} puffs of vapour, crystals at ${surge.flare}x; 4 s later: streaks ${surge.after ? 'STILL SHOWING' : 'gone'}, the view ${surge.back}° off, crystals at ${surge.flareAfter}x`);
   if (!surge.on || !surge.streaks || surge.wider <= 9 || surge.smoke <= 0 || surge.flare < 1.5) problems.push(`a Surge should show streaks, widen the view over 9 degrees, trail vapour and flare the crystals: ${JSON.stringify(surge)}`);
   if (surge.after || surge.back > 0.5 || surge.flareAfter > 1.05) problems.push(`after a Surge the streaks should go and the view and crystals come back: ${JSON.stringify(surge)}`);
-  console.log(`a raider Frigate blown apart 150 m off (${masts.level}): 2.5 s later ${masts.falling.length} masts falling (tops come down ${masts.falling.map((m) => m.fell + ' m').join(', ')}), her canvas left on her: ${masts.canvas}; 10 s later ${masts.left} left`);
-  if (masts.falling.length !== 3 || masts.falling.some((m) => !(m.fell > 0)) || masts.canvas !== 0 || masts.left) problems.push(`a raider Frigate blown apart should topple her three masts with all their canvas, gone 10 s later: ${JSON.stringify(masts)}`);
+  console.log(`a raider Frigate blown apart 150 m off (${masts.level}): 2.5 s later ${masts.falling.length} masts falling (tops come down ${masts.falling.map((m) => m.fell + ' m').join(', ')}), her canvas left on her: ${masts.canvas}; all gone ${masts.t} s after, last seen with their tops at ${masts.went.map((m) => m.top + ' m' + (m.s < 1 ? ` (shrunk to ${m.s})` : '')).join(', ')} (the clouds at ${masts.deck} m)`);
+  if (masts.falling.length !== 3 || masts.falling.some((m) => !(m.fell > 0)) || masts.canvas !== 0) problems.push(`a raider Frigate blown apart should topple her three masts with all their canvas: ${JSON.stringify(masts)}`);
+  if (masts.left || masts.went.length !== 3 || masts.went.some((m) => !(m.top < masts.deck || m.s < 0.5))) problems.push(`a falling mast should go only once it's under the cloud deck (or shrink away), never vanish in the open sky: ${JSON.stringify(masts)}`);
   console.log(`paused, then back to port from the pause menu: told "${leave.told}"`);
   if (leave.told !== 'pause true, pause false, voyage:end' || leave.paused || leave.mode !== 'port') problems.push(`going back to port from the pause menu should tell the pause ended before the voyage's end: ${JSON.stringify(leave)}`);
   // less motion: a player whose device asks for it gets at most 0.35 of the kick
@@ -614,6 +643,26 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   await page.evaluate(() => window.__game.endVoyage(0));
   console.log(`reduced motion: the view kicks back ${calm.toFixed(2)} m instead of ${full.toFixed(2)} m`);
   if (!(full > 0.5) || calm > full * 0.35) problems.push(`with reduced motion the kick should be at most 0.35 of the full one: ${calm} of ${full}`);
+  // a Surge on a phone running slowly (20 frames a second), with less motion and without: the view widens just as it
+  // does at 60 frames a second, and never flies off (the most and least it's widened, where it ends, and how far the
+  // camera got from the ship)
+  const surgeAt = (frame) => page.evaluate((frame) => {
+    const g = window.__game; g.fly('brig'); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false);
+    const P = g.player; P.pos.set(0, 900, 0); P.heading = 0; P.sail = 1; P.speed = P.H.vmax * 0.8;
+    g.step(0.5, { sail: 1 }, frame); g.step(frame, { sail: 1, pressed: new Set(['r']) }, frame);
+    let lo = Infinity, hi = -Infinity, far = 0;
+    for (let t = 0; t < 5; t += frame) { g.step(frame, { sail: 1 }, frame); lo = Math.min(lo, g.surgeView); hi = Math.max(hi, g.surgeView); far = Math.max(far, g.camera.position.distanceTo(P.pos)); }
+    const out = { lo: +lo.toFixed(2), hi: +hi.toFixed(2), end: +g.surgeView.toFixed(2), far: +far.toFixed(1) };
+    g.endVoyage(0);
+    return out;
+  }, frame);
+  const surge60 = await surgeAt(1 / 60), surge20 = await surgeAt(0.05);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const calm60 = await surgeAt(1 / 60), calm20 = await surgeAt(0.05);
+  await page.emulateMedia({ reducedMotion: null });
+  console.log(`a Surge at 20 frames a second: the view widens ${surge20.lo}° to ${surge20.hi}° (at 60: ${surge60.lo}° to ${surge60.hi}°), camera at most ${surge20.far} m off (${surge60.far}); with less motion ${calm20.lo}° to ${calm20.hi}° (at 60: ${calm60.lo}° to ${calm60.hi}°)`);
+  if (!(surge60.hi > 9) || Math.abs(surge20.hi - surge60.hi) > 1 || Math.abs(surge20.lo - surge60.lo) > 1 || Math.abs(surge20.end) > 0.5 || surge20.far > surge60.far * 1.05) problems.push(`a Surge on a slow phone should widen the view as it does at 60 frames a second: ${JSON.stringify({ surge20, surge60 })}`);
+  for (const c of [calm20, calm60]) if (!(c.lo >= -0.1 && c.hi <= 12.5 && c.hi > 9 && Math.abs(c.end) < 0.5)) problems.push(`with less motion a Surge should widen the view by up to 12 degrees with no overshoot, at any frame rate: ${JSON.stringify({ calm20, calm60 })}`);
 
   // between waves, back to port and out again, the way a player moves up: look at the Cutter in port (too dear), sail
   // the Skiff, beat wave 4 (the card shows a raider captain's Brig coming next, built while the card is up), bank the
@@ -669,14 +718,20 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
     }
     off();
     const calm = document.getElementById('calm');
-    out.wave1 = Math.round(t); out.choose = !calm.hidden; out.rising = getComputedStyle(calm).visibility === 'hidden'; out.shards = Math.round(g.voyage.shards); out.slow = slow.join(' ');
+    // (the card is shown at once, for the game, but waits for the slow motion before it rises: its rising is held back)
+    out.wave1 = Math.round(t); out.choose = !calm.hidden; out.shards = Math.round(g.voyage.shards); out.slow = slow.join(' ');
+    out.waits = parseFloat(getComputedStyle(calm).animationDelay) || 0;
     window.__voyageP = P;
     return out;
   });
-  // in real time: a moment after the last raider went down the world is still slow; then the card rises, and Sail on
-  // can be pressed once it's there
+  // in real time: a moment after the last raider went down the world is still slow, and the card not yet in view (as
+  // long as its rising is still held back: `since`, how long its rising has been under way, in ms on the page's own
+  // animation clock, which moves on as frames are drawn); then the card rises, and Sail on can be pressed once it's there
   await page.waitForTimeout(300); await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(r)))));
-  fought.dial = await page.evaluate(() => +window.__game.fx.timeScaleNow.toFixed(2));
+  Object.assign(fought, await page.evaluate(() => {
+    const c = document.getElementById('calm'), cs = getComputedStyle(c), a = c.getAnimations()[0];
+    return { dial: +window.__game.fx.timeScaleNow.toFixed(2), unseen: cs.visibility === 'hidden' && +cs.opacity === 0, since: a ? Math.round(a.currentTime) : -1 };
+  }));
   await page.waitForFunction(() => { const c = getComputedStyle(document.getElementById('calm')); return c.visibility === 'visible' && +c.opacity > 0.99; }, null, { timeout: 30000 }).catch(() => problems.push('the card between waves never rose into view'));
   await page.click('#btn-sail-on');
   const voyage = await page.evaluate(async (out) => {
@@ -691,8 +746,9 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
     return out;
   }, fought);
   console.log(`voyage: wave 1 (${voyage.raiders}) beaten in ${voyage.wave1} s (◆ ${voyage.shards}), sailed on, sank, home with ◆ ${voyage.banked}`);
-  console.log(`the last raider of wave 1 down: slow motion told "${voyage.slow}", the world at ${voyage.dial} of its speed 0.3 s later; the card ${voyage.choose ? 'shown' : 'NOT SHOWN'} at once, ${voyage.rising ? 'rising after' : 'IN VIEW AT ONCE'}`);
-  if (voyage.slow !== 'last' || !(voyage.dial < 0.5) || !voyage.rising) problems.push(`bringing down a wave's last raider should slow the world once, then the card rise: ${JSON.stringify({ slow: voyage.slow, dial: voyage.dial, rising: voyage.rising })}`);
+  console.log(`the last raider of wave 1 down: slow motion told "${voyage.slow}", the world at ${voyage.dial} of its speed 0.3 s later; the card ${voyage.choose ? 'shown' : 'NOT SHOWN'} at once, held back ${voyage.waits} s before it rises, ${voyage.unseen ? 'not yet in view' : 'IN VIEW'} ${voyage.since} ms after it was shown`);
+  if (voyage.slow !== 'last' || !(voyage.dial < 0.5)) problems.push(`bringing down a wave's last raider should slow the world once: ${JSON.stringify({ slow: voyage.slow, dial: voyage.dial })}`);
+  if (!(voyage.waits >= 1.2) || !(voyage.since > 0) || (voyage.since < 1200 && !voyage.unseen)) problems.push(`the card between waves should wait for the slow motion before it rises: ${JSON.stringify({ waits: voyage.waits, since: voyage.since, unseen: voyage.unseen })}`);
   if (voyage.raiders !== 'skiff') problems.push(`a voyage's wave 1 should be one Skiff, got: ${voyage.raiders}`);
   if (!voyage.sailed || !voyage.choose || !voyage.shards || !voyage.wave2 || !voyage.sunk || !voyage.home || Math.abs(voyage.banked - voyage.half) > 1) problems.push(`a voyage went wrong: ${JSON.stringify(voyage)}`);
   // the save survives a reload
@@ -852,7 +908,8 @@ if (!quick) {
   if (phoneFx.can && !phoneFx.kill) problems.push('phone: a raider blown apart doesn\'t buzz the phone');
   if (phoneFx.gaveUp.why !== 'struck' || (phoneFx.can && phoneFx.gaveUp.buzzes)) problems.push(`phone: a treasure ship striking her colours shouldn't buzz the phone: ${JSON.stringify(phoneFx.gaveUp)}`);
   // the worst case for a phone: a Man-o'-war blown apart beside two other wrecks (a Frigate and a Brig), in a fight.
-  // The sparks and smoke never run out of room, the debris stays within its batches, and a step of the game stays quick
+  // The sparks and smoke never run out of room, the debris's batches are big enough (hardly a piece cut short: at most
+  // one in twenty of each kind), and a step of the game stays quick
   const worst = await page.evaluate(async () => {
     const g = window.__game, FX = g.fx;
     g.fly('frigate'); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false);
@@ -880,10 +937,10 @@ if (!quick) {
     const st = FX.stats();
     g.raiders.setAI(false); g.raiders.clear(); FX.clear();
     g.fly('skiff'); g.waves.timer = 1e9; // (back in the Skiff, for the picture of a battle)
-    return { most, cap: st.sparkCap, dropped: st.dropped, puffs, puffCap: st.puffCap, puffsDropped: st.puffsDropped, debris: st.debris.peak, caps: st.debris.caps, reused: st.debris.dropped, ms: +times[8].toFixed(2), calls, masts };
+    return { most, cap: st.sparkCap, dropped: st.dropped, puffs, puffCap: st.puffCap, puffsDropped: st.puffsDropped, debris: st.debris.peak, caps: st.debris.caps, cut: st.debris.cut, tossed: st.debris.tossed, ms: +times[8].toFixed(2), calls, masts };
   });
-  console.log(`phone, a Man-o'-war going down beside two other wrecks: at most ${worst.most} sparks of ${worst.cap} (${worst.dropped} cut short), ${worst.puffs} puffs of ${worst.puffCap} (${worst.puffsDropped} cut short), debris ${worst.debris.wood}/${worst.caps.wood} splinters, ${worst.debris.canvas}/${worst.caps.canvas} scraps, ${worst.debris.crystal}/${worst.caps.crystal} shards (${worst.reused} reused); ${worst.ms} ms a step, ${worst.calls} draws in a frame`);
-  if (worst.dropped || worst.puffsDropped || worst.most > worst.cap || ['wood', 'canvas', 'crystal'].some((k) => worst.debris[k] > worst.caps[k])) problems.push(`phone: three wrecks at once ran out of room: ${JSON.stringify(worst)}`);
+  console.log(`phone, a Man-o'-war going down beside two other wrecks: at most ${worst.most} sparks of ${worst.cap} (${worst.dropped} cut short), ${worst.puffs} puffs of ${worst.puffCap} (${worst.puffsDropped} cut short), debris at most ${worst.debris.wood}/${worst.caps.wood} splinters, ${worst.debris.canvas}/${worst.caps.canvas} scraps, ${worst.debris.crystal}/${worst.caps.crystal} shards (cut short ${worst.cut.wood} of ${worst.tossed.wood}, ${worst.cut.canvas} of ${worst.tossed.canvas} and ${worst.cut.crystal} of ${worst.tossed.crystal}); ${worst.ms} ms a step, ${worst.calls} draws in a frame`);
+  if (worst.dropped || worst.puffsDropped || worst.most > worst.cap || ['wood', 'canvas', 'crystal'].some((k) => worst.cut[k] > worst.tossed[k] * 0.05)) problems.push(`phone: three wrecks at once ran out of room: ${JSON.stringify(worst)}`);
   if (worst.ms >= 1) problems.push(`phone: a step with three wrecks takes ${worst.ms} ms (should be under 1)`);
   if (worst.masts) problems.push(`phone: masts shouldn't fall on a phone (${worst.masts} did)`);
   await page.evaluate(battle, ['cutter', 'skiff']);

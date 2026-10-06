@@ -85,7 +85,7 @@ async function main() {
   let mode = 'title', paused = false, player = null, gunnery = null;
   const V = { shards: 0, downed: 0, hits: 0 }; // this voyage
   // the waves: which (n, from 0), what's happening between them, and the next wave once it's known (shown on the card)
-  const W = { n: 0, state: 'calm', timer: 5, lost: 0, choose: 0, sunk: false, next: null, bonus: 0, bonusAt: 0 };
+  const W = { n: 0, state: 'calm', timer: 5, lost: 0, choose: 0, sunk: false, next: null, bonus: 0, bonusAt: 0, bonusShown: -1 };
   let told = null; // the screen the events were last told of
   function enter(m) {
     mode = m; document.body.dataset.mode = m;
@@ -94,12 +94,12 @@ async function main() {
     if (m !== 'voyage' && document.pointerLockElement) document.exitPointerLock();
   }
   // everything a voyage leaves behind, cleared for the next: the waves (and the next one, if a card was showing), the
-  // hold, the raiders, shots, smoke and shards, and the camera
+  // hold, the raiders, shots, smoke and shards, wrecks and the holes they tore in the clouds, and the camera
   function resetVoyage() {
     Object.assign(W, { n: 0, state: 'calm', timer: 5, lost: 0, choose: 0, sunk: false, next: null });
     Object.assign(V, { shards: 0, downed: 0, hits: 0 });
-    raiders.clear(); bolts.clear(); pickups.clear(); fx.clear(); wrecks.clear(); surge.clear(); hideBounties();
-    hurt = 0; Object.assign(cam, { yaw: 0, pitch: 0.2, zoom: 1 }); Object.assign(shardCount, { shown: 0, from: 0, to: 0, t: 1 }); surgeFov.x = surgeFov.v = 0;
+    raiders.clear(); bolts.clear(); pickups.clear(); fx.clear(); wrecks.clear(); world.clear(); surge.clear(); hideBounties();
+    hurt = 0; Object.assign(cam, { yaw: 0, pitch: 0.2, zoom: 1 }); Object.assign(shardCount, { shown: 0, from: 0, to: 0, t: 1, n: -1 }); surgeFov.x = surgeFov.v = 0;
   }
   // set sail: a fresh voyage in this ship, built as it stands in port (`force` sails a ship not owned, for tests)
   function sail(id, force = false) {
@@ -135,7 +135,7 @@ async function main() {
   function endVoyage(keep) {
     const got = Math.round(V.shards * keep);
     progress.bank(got, W.n);
-    raiders.clear(); bolts.clear(); pickups.clear(); gunnery.cancel(); wrecks.clear(); surge.clear(); hideBounties(); W.next = null;
+    raiders.clear(); bolts.clear(); pickups.clear(); gunnery.cancel(); wrecks.clear(); world.clear(); surge.clear(); hideBounties(); W.next = null;
     scene.remove(player.ship.root); // the port shows her (or the ship you were looking at) in its own scene
     setPaused(false); // (leaving from the pause menu ends the pause, and that's told before the voyage's end)
     const E = payload('voyage:end'); E.kept = got; E.sunk = W.sunk; E.waves = W.n; emit('voyage:end');
@@ -155,8 +155,14 @@ async function main() {
   let viewFov = 55; // the view's width (degrees) before a Surge, slow motion and the guns' punch: wider on a phone held upright
   const camDistFor = (R) => R.length * 1.35 + 16;
   // a Surge widens the view by `fov` degrees, with a jolt: a spring that overshoots a little, peaking about 0.15 s in
-  // (with no overshoot for players whose device asks for less motion)
-  const SURGE_VIEW = { fov: 12, k: 550, c: 21, calm: 47 }, surgeFov = { x: 0, v: 0 }, lessMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  // (with no overshoot for players whose device asks for less motion). The spring is worked out in steps of at most
+  // `step` seconds, so it moves the same on a phone running slowly as on a fast laptop (in one big step it would fly off)
+  const SURGE_VIEW = { fov: 12, k: 550, c: 21, calm: 47, step: 1 / 120 }, surgeFov = { x: 0, v: 0 }, lessMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  function surgeView(dt) {
+    const want = player.surge.on > 0 && !player.down ? SURGE_VIEW.fov : 0, c = lessMotion.matches ? SURGE_VIEW.calm : SURGE_VIEW.c;
+    const n = Math.ceil(dt / SURGE_VIEW.step - 1e-6), h = dt / Math.max(1, n);
+    for (let i = 0; i < n; i++) { surgeFov.v += (SURGE_VIEW.k * (want - surgeFov.x) - c * surgeFov.v) * h; surgeFov.x += surgeFov.v * h; }
+  }
   const aimPoint = new THREE.Vector3(), target = new THREE.Vector3(), toR = new THREE.Vector3(); // (kept, not made each frame)
   let locked = null, reach = true;
   function placeCamera(dt, inp) {
@@ -251,7 +257,7 @@ async function main() {
     const parts = Object.entries(count).map(([id, n]) => { const c = FLEET.find((s) => s.id === id).cls; return `${NUMBER[n]} ${n > 1 ? plural(c) : c}`; });
     return parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}` : parts[0];
   }
-  const fmt = (n) => Math.round(n).toLocaleString('en');
+  const NUM = new Intl.NumberFormat('en'), fmt = (n) => NUM.format(Math.round(n)); // (one formatter, made once: a phone is slow to make them)
   const DOWN = payload('raider:down'), SPILL = payload('shards:spill');
   function waves(dt, gone) {
     for (const r of gone) {
@@ -310,7 +316,7 @@ async function main() {
         $('calm-line').innerHTML = `◆ <b id="calm-bonus">0</b> for the wave · ◆ ${fmt(V.shards)} this voyage. Next: ${next.captain >= 0 ? 'a raider captain, with ' : ''}${describe(next.ids)}. Sail on for more, or go back to port to keep them.`;
         // (shown at once, for the game; it rises into view after the slow motion, and its bonus counts up as it does)
         $('calm').classList.toggle('late', last); $('calm').hidden = false;
-        W.bonus = bonus; W.bonusAt = performance.now() / 1000 + (last ? 1.4 : 0.1);
+        W.bonus = bonus; W.bonusShown = -1; W.bonusAt = performance.now() / 1000 + (last ? 1.4 : 0.1);
       }
     } else if (W.state === 'choose') {
       W.choose -= dt;
@@ -373,7 +379,7 @@ async function main() {
   // Written sparingly: what changes every frame (the tags' places, the reload bar) is written every frame, the rest ten
   // times a second, and nothing is written that hasn't changed, so a phone spends its time on the sky, not the page
   let region = '', regionTimer = 0, hudTimer = 0, hurt = 0;
-  const shardCount = { shown: 0, from: 0, to: 0, t: 1 }; // the shard count shown, counting up to what's in the hold
+  const shardCount = { shown: 0, from: 0, to: 0, t: 1, n: -1 }; // the shard count shown, counting up to what's in the hold (n: the whole number written)
   const flash = (el) => { el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); };
   function banner(title, line) { $('banner-title').textContent = title; $('banner-line').textContent = line; flash($('banner')); }
   function toast(text) { const t = $('toast'); t.textContent = text; flash(t); }
@@ -507,17 +513,22 @@ async function main() {
     if (H.aim._v !== aim) { H.aim._v = aim; H.aim.className = aim; }
     tags(slow);
     bounties(dt);
-    // the shard count counts up to what's in the hold
+    // the shard count counts up to what's in the hold (written only when the whole number shown changes)
     const C = shardCount;
     if (V.shards !== C.to) { C.from = C.shown; C.to = V.shards; C.t = 0; }
     if (C.t < 1) { C.t = Math.min(1, C.t + dt / 0.6); const k = 1 - (1 - C.t) ** 3; C.shown = C.from + (C.to - C.from) * k; }
-    setText(H['voyage-n'], fmt(C.shown));
-    // and the card's bonus for the wave, as the card rises
-    if (W.state === 'choose') { const b = $('calm-bonus'), k = Math.min(1, Math.max(0, (performance.now() / 1000 - W.bonusAt) / 0.8)); if (b) setText(b, fmt(W.bonus * (1 - (1 - k) ** 3))); }
+    const sn = Math.round(C.shown);
+    if (sn !== C.n) { C.n = sn; setText(H['voyage-n'], fmt(sn)); }
+    // and the card's bonus for the wave, as the card rises (the same)
+    if (W.state === 'choose' && W.bonusShown !== W.bonus) {
+      const k = Math.min(1, Math.max(0, (performance.now() / 1000 - W.bonusAt) / 0.8)), bn = Math.round(W.bonus * (1 - (1 - k) ** 3)), b = $('calm-bonus');
+      if (b && b._n !== bn) { b._n = bn; b.textContent = fmt(bn); }
+      if (k >= 1) W.bonusShown = W.bonus;
+    }
     if (!slow) return;
     hudTimer = 0.1;
     setText(H['r-speed'], `${Math.round(player.speed * 3.6)} km/h`);
-    setText(H['r-height'], `${Math.round(player.pos.y).toLocaleString()} m`);
+    setText(H['r-height'], `${fmt(player.pos.y)} m`);
     setText(H['r-sail'], `${Math.round(player.sail * 100)}%`);
     setWidth(H['sail-bar'], player.sail);
     for (const k of PARTS) {
@@ -604,7 +615,7 @@ async function main() {
     // the view: wider on a phone held upright; a Surge widens it with a jolt (a spring), slow motion narrows it a
     // little, and each of your guns punches it wider for a moment
     viewFov += ((innerWidth < innerHeight ? 68 : 55) - viewFov) * (1 - Math.exp(-dt * 5));
-    surgeFov.v += (SURGE_VIEW.k * ((player.surge.on > 0 && !player.down ? SURGE_VIEW.fov : 0) - surgeFov.x) - (lessMotion.matches ? SURGE_VIEW.calm : SURGE_VIEW.c) * surgeFov.v) * dt; surgeFov.x += surgeFov.v * dt;
+    surgeView(dt);
     const fov = viewFov + surgeFov.x - 6 * fx.slowness + fx.cam.fov;
     if (Math.abs(camera.fov - fov) > 0.01) { camera.fov = fov; camera.updateProjectionMatrix(); }
     world.time.value = time;
@@ -631,10 +642,13 @@ async function main() {
     progress, port, sail, endVoyage, pause, sailOn, wind: WIND, get mode() { return mode; }, get paused() { return paused; },
     fly: (id) => sail(id, true), // a voyage in any ship, owned or not (for tests)
     get hits() { return V.hits; }, get downed() { return V.downed; }, get locked() { return locked; },
-    // run the game's clock without drawing, holding these controls (for tests on slow software rendering)
-    step(seconds, controls = {}) {
+    // how much wider a Surge has made the view, in degrees (for tests)
+    get surgeView() { return surgeFov.x; },
+    // run the game's clock without drawing, holding these controls (for tests on slow software rendering), in frames
+    // of `frame` seconds (a 60th of a second, or longer to play a slow phone)
+    step(seconds, controls = {}, frame = 1 / 60) {
       held = { turn: 0, climb: 0, sail: 0, fire: false, look: { x: 0, y: 0 }, zoom: 0, pressed: new Set(), lastLook: performance.now() / 1000, locked: false, ...controls };
-      for (let t = 0; t < seconds; t += 1 / 60) tick(1 / 60);
+      for (let t = 0; t < seconds; t += frame) tick(frame);
       held = null;
     },
   };

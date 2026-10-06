@@ -319,9 +319,10 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
       if (live && ai && !r.frozen && !foe.down) { shoot(r, foe, dt); if (r.charge.b) glowPorts(r); } else r.charge.b = null;
       // a treasure ship that gets far enough away has escaped
       if (r.role === 'prize' && r.fleeing && !r.f.down && r.f.pos.distanceTo(foe.pos) > 3600) { r.gone = true; r.escaped = true; escaped.push(r); }
-      // a wreck falls away below the clouds before it's taken away, or at least 150 m if she went down low
+      // a wreck falls away below the clouds before it's taken away (140 m under them), or at least 150 m if she went
+      // down low, never vanishing in the open sky (every wreck falls faster and faster: flight.js); 40 s at the most
       const D = r.f.down;
-      if (D) { D.y0 ??= r.f.pos.y; if (D.t > 16 || r.f.pos.y < Math.max(15, Math.min(CLOUD_Y - 140, D.y0 - 150))) r.gone = true; }
+      if (D) { D.y0 ??= r.f.pos.y; if (D.t > 40 || r.f.pos.y < Math.max(15, Math.min(CLOUD_Y - 140, D.y0 - 150))) r.gone = true; }
       const size = (r.R.length / Math.max(1, camera.position.distanceTo(r.f.pos))) * toScreen;
       r.ship.detail(size < 0.06 ? 'far' : 'middle', camera.userData.pixelScale ?? 500);
     }

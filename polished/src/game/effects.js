@@ -74,8 +74,11 @@ export function makeSmoke(scene, max = 900, cap = 700) {
 // Debris: what a shot knocks off a ship, by what it hit. Splinters of wood tumble and fall fast; scraps of canvas, in
 // the colour of her sails, flutter slowly down; amber crystal shards glitter as they fall (a glow each, in fx.js's
 // batch). Three batches of pieces, one draw each, and none at all while nothing of theirs is in the air; how many of
-// each at most (times fx's q: fewer on a phone):
-export const DEBRIS = { wood: 96, canvas: 64, crystal: 64 };
+// each at most (times fx's q: fewer on a phone). Sized to the worst cases measured (tools/check.mjs): a Man-o'-war
+// going down beside two other wrecks in a fight needs up to about 150 splinters at once on a phone, and a barrage of 60
+// shots in a second (a big broadside's worth) about 110 scraps and 190 shards on a laptop. Only the pieces in the air
+// cost anything each frame; when a batch is full, its oldest piece is reused
+export const DEBRIS = { wood: 320, canvas: 128, crystal: 224 };
 // how each kind flies: gravity (m/s each second), how quickly the air slows it (a share a second), how fast it spins
 // (radians a second, from..to), how long it lasts (seconds, from..to), and its size (metres, across x up x along)
 const FLY = {
@@ -99,7 +102,7 @@ export function makeDebris(scene, q = 1, glowAt = null) {
     if (kind !== 'crystal') { mesh.setColorAt(0, col.set(0xffffff)); mesh.instanceColor.setUsage(THREE.DynamicDrawUsage); }
     scene.add(mesh);
     const F = () => new Float32Array(cap);
-    const b = { kind, mesh, cap, n: 0, cursor: 0, dropped: 0, peak: 0, fly: FLY[kind], rgb: mesh.instanceColor?.array ?? null,
+    const b = { kind, mesh, cap, n: 0, cursor: 0, dropped: 0, peak: 0, tossed: 0, fly: FLY[kind], rgb: mesh.instanceColor?.array ?? null,
       px: F(), py: F(), pz: F(), vx: F(), vy: F(), vz: F(), ax: F(), ay: F(), az: F(), ang: F(), spin: F(), life: F(), full: F(), sx: F(), sy: F(), sz: F(), seed: F() };
     b.arrays = [b.px, b.py, b.pz, b.vx, b.vy, b.vz, b.ax, b.ay, b.az, b.ang, b.spin, b.life, b.full, b.sx, b.sy, b.sz, b.seed];
     B[kind] = b;
@@ -109,7 +112,7 @@ export function makeDebris(scene, q = 1, glowAt = null) {
   // (1 is about 50 degrees), at 10 to 24 m/s plus `vel` (the ship's own), `size` times their usual size, in colour `hex`
   function toss(kind, p, dir, spread, vel, n, size = 1, hex = 0xffffff) {
     const b = B[kind], m = Math.max(1, Math.round(n * q)), F = b.fly;
-    col.setHex(hex);
+    col.setHex(hex); b.tossed += m;
     for (let k = 0; k < m; k++) {
       let i;
       if (b.n < b.cap) i = b.n++;
@@ -154,10 +157,12 @@ export function makeDebris(scene, q = 1, glowAt = null) {
     }
   }
   function clear() { for (const b of KINDS) { b.n = 0; b.cursor = 0; b.mesh.count = 0; b.mesh.visible = false; } }
-  // for tests: how many of each are in the air, their caps, the most seen, and how many were cut short for room
+  // for tests: how many of each are in the air, their caps, the most seen, how many were cut short for room (in all,
+  // and of each kind), and how many were thrown
   const stats = () => ({ wood: B.wood.n, canvas: B.canvas.n, crystal: B.crystal.n, caps: { wood: B.wood.cap, canvas: B.canvas.cap, crystal: B.crystal.cap },
-    peak: { wood: B.wood.peak, canvas: B.canvas.peak, crystal: B.crystal.peak }, dropped: B.wood.dropped + B.canvas.dropped + B.crystal.dropped });
-  const resetStats = () => { for (const b of KINDS) { b.peak = b.n; b.dropped = 0; } };
+    peak: { wood: B.wood.peak, canvas: B.canvas.peak, crystal: B.crystal.peak }, dropped: B.wood.dropped + B.canvas.dropped + B.crystal.dropped,
+    cut: { wood: B.wood.dropped, canvas: B.canvas.dropped, crystal: B.crystal.dropped }, tossed: { wood: B.wood.tossed, canvas: B.canvas.tossed, crystal: B.crystal.tossed } });
+  const resetStats = () => { for (const b of KINDS) { b.peak = b.n; b.dropped = 0; b.tossed = 0; } };
   return { toss, update, clear, stats, resetStats, meshes: KINDS.map((b) => b.mesh) };
 }
 

@@ -24,6 +24,9 @@ export const WIND = { dir: 0, strength: 0 };
 export const windHelp = (heading) => WIND.strength * Math.cos(heading - WIND.dir);
 // A Surge: 60% more top speed for 3 seconds, then 15 seconds to build up again
 export const SURGE = { boost: 0.6, time: 3, recharge: 15 };
+// A ship sinking (dead crystals, or struck colours): from `from` seconds her lift gives out over `ramp` seconds, and
+// she falls faster by `fall` m/s each second, up to `most` m/s
+export const SINK = { from: 2.5, ramp: 2, fall: 8, most: 70 };
 
 // `tune` scales top speed, speeding up, turning and climbing (upgrades, and the raiders sailing a little slower)
 export function makeFlyer(ship, stats, start, tune = {}) {
@@ -90,12 +93,18 @@ export function makeFlyer(ship, stats, start, tune = {}) {
   };
 
   // going down: a holed hull rolls over and falls; dead crystals let the ship sink, still upright; a ship that has
-  // struck her colours drifts to a stop and settles slowly, her crew abandoning her
+  // struck her colours drifts to a stop and settles slowly, her crew abandoning her. A few seconds in, the last of a
+  // sinking ship's lift gives out and she drops away faster and faster (SINK), so she's through the cloud deck within
+  // about 14 seconds from a fight's height, like a ship blown apart
   function sink(dt) {
     const d = s.down; d.t += dt;
     s.speed *= Math.exp(-dt * (d.why === 'hull' ? 0.5 : d.why === 'struck' ? 0.6 : 0.25));
     if (d.why === 'hull') { s.vy -= 7 * dt; s.heading -= d.roll * 0.15 * dt; }
-    else s.vy += ((d.why === 'struck' ? -7 : -16) - s.vy) * (1 - Math.exp(-dt * 0.8));
+    else {
+      const k = clamp((d.t - SINK.from) / SINK.ramp, 0, 1);
+      s.vy += ((d.why === 'struck' ? -7 : -16) - s.vy) * (1 - Math.exp(-dt * 0.8)) * (1 - k);
+      s.vy = Math.max(-SINK.most, s.vy - SINK.fall * k * dt);
+    }
     move(dt);
     // a holed hull goes nose-down and rolls right over as she falls; the others stay nearly upright
     const k = Math.min(1, d.t / 6);

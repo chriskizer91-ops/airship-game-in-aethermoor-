@@ -4,11 +4,11 @@
 //                                walks along her hull from stern to bow (more on a bigger ship: three on a Skiff, nine
 //                                on a Man-o'-war); her crystals sputter and go dark; her sails flare up and burn away
 //                                (on a laptop, her masts crack at the deck one after another, topple over the side with
-//                                their sails, break away and tumble down trailing smoke); she rolls over and falls,
-//                                trailing a thick column of black smoke and fire
+//                                their sails, break away and tumble down through the clouds trailing smoke); she rolls
+//                                over and falls, trailing a thick column of black smoke and fire
 //   crystals dead                no blasts: her crystals sputter, shatter and go dark, and she sinks upright in grey smoke
 //   struck her colours           (a treasure ship giving up) no blasts: her pennants come down their masts, gold glints
-//                                from her hold, and she settles away
+//                                from her hold, and she settles away (sinking faster and faster: flight.js)
 // Falling through the cloud deck, every wreck tears it open and throws up a ring of cloud; a burning one glows orange
 // through the cloud a moment after she's gone. Each explosion is told as `blast` (the shake, and the sound).
 // At most two wrecks play their blasts and fire at once; another gets the flash and the smoke; and at most two ships'
@@ -24,8 +24,9 @@ import { RAIDER_LOOKS } from './fx.js';
 // 2 m), or at least every `puff` seconds (on a laptop, a phone), so the column is thick but not piled up
 export const WRECK = { crystals: [0.4, 1.6], sails: 0.6, full: 2, puff: [0.07, 0.12], gap: [0.12, 0.19] };
 // falling masts: when the first cracks, how long after it each next one does, the angle at which one breaks away
-// (radians), how long a falling one is kept, and how many ships' masts fall at once
-export const MASTS = { from: 0.7, every: 0.5, breaks: 1.0, life: 4.5, ships: 2 };
+// (radians), how many ships' masts fall at once, and the longest a falling one is kept (each goes once it's wholly under
+// the cloud deck; one that's still above it then, from a fight high up, shrinks away over its last `fade` seconds)
+export const MASTS = { from: 0.7, every: 0.5, breaks: 1.0, ships: 2, life: 12, fade: 0.6 };
 const MAX = 8, UP = new THREE.Vector3(0, 1, 0), ZERO = new THREE.Vector3(), FALL = ['wood', 'brass', 'canvas'];
 const FIRE = [0xff7a2a, 0xffc04a, 0xffe8a0], AMBER = 0xffc061, GOLD = 0xffd27a;
 
@@ -57,9 +58,11 @@ export function makeWrecks({ fx, tear = null, scene = null }) {
       Object.assign(w, { r, why, t: 0, full: why === 'hull' && busy < WRECK.full, chain: Math.min(9, 2 + Math.round(L / 12)), fired: 0, next: 0.35, puff: 0, flick: 0, flames: 0,
         lastY: f.pos.y, crossed: false, gone: -1, told: false, burnt: false, dark: false, glint: 0, cut: false, s: THREE.MathUtils.clamp(L / 22, 0.7, 3) });
       // her masts fall (a laptop's, drawn close enough for her middle model, two ships at a time, and room for them all,
-      // counting the masts of wrecks about to fall)
+      // counting the masts of wrecks about to fall). The ships whose masts are falling: those still to crack, and those
+      // with masts in the air
       let felling = 0, spare = freeFallers();
-      for (const o of list) { if (o.masts && o.t < MASTS.from + 4) felling++; if (o.masts && !o.cut) spare -= o.r.ship.masts.masts.length; }
+      for (const o of list) if (o.masts && !o.cut) { felling++; spare -= o.r.ship.masts.masts.length; }
+      for (let i = 0; i < fallers.length; i++) { const fr = fallers[i].r; if (fr && fallers.findIndex((m) => m.r === fr) === i) felling++; }
       w.masts = w.full && !!scene && !!r.ship.masts && r.ship.level === 'middle' && felling < MASTS.ships && spare >= r.ship.masts.masts.length;
       w.busy = 0.35 + w.chain * 0.5 + 1.2;
       w.blast.set(0, (hb.min.y + hb.max.y) / 2, (hb.min.z + hb.max.z) / 2); w.puffed.copy(f.pos);
@@ -93,6 +96,10 @@ export function makeWrecks({ fx, tear = null, scene = null }) {
       const w = list[i], r = w.r;
       w.t += dt;
       if (r.cleared) { end(i); continue; } // (the raiders cleared away: a fresh voyage, or a test)
+      // through the cloud deck: torn open, with a ring of cloud thrown out (first: she may be taken away as she goes)
+      const y = r.f.pos.y;
+      if (!w.crossed && w.lastY >= CLOUD_Y && y < CLOUD_Y) deck(w);
+      w.lastY = y; w.at.copy(r.f.pos);
       if (r.gone) { if (after(w, dt)) end(i); continue; }
       const t = w.t, L = r.R.length, Z = r.zones, hb = Z.hullBox, vel = r.f.velocity, lk = looks(w);
       // the chain of blasts, stern to bow, each somewhere across her deck
@@ -158,11 +165,6 @@ export function makeWrecks({ fx, tear = null, scene = null }) {
           }
         }
       }
-      // through the cloud deck: torn open, with a ring of cloud thrown out
-      const y = r.f.pos.y;
-      if (!w.crossed && w.lastY >= CLOUD_Y && y < CLOUD_Y) deck(w);
-      w.lastY = y;
-      w.at.copy(r.f.pos);
     }
   }
   // her crystals' light (the glows, and the embers drifting off them), on or off
@@ -277,11 +279,15 @@ export function makeWrecks({ fx, tear = null, scene = null }) {
         if (smoke.room()) smoke.emit(tm, v.set(0, 1, 0), 3, 1 + m.H * 0.08, 4 + m.H * 0.3, 0.15 + Math.random() * 0.15, 0.6, 0, 1);
         if (Math.random() < 0.4 && fx.room()) fx.spark(tm, v.set(0, 3, 0), 0.5, 1 + m.H * 0.05, FIRE[(Math.random() * 3) | 0], 1, -1);
       }
-      if (m.t > MASTS.life || m.g.position.y < CLOUD_Y - 150) letGo(m);
+      // gone once all of it is under the cloud deck (its foot more than its height below); or, kept too long, shrunk away
+      if (m.g.position.y < CLOUD_Y - m.H - 15 || m.t > MASTS.life) letGo(m);
+      else if (m.t > MASTS.life - MASTS.fade) m.g.scale.setScalar(Math.max(0.01, (MASTS.life - m.t) / MASTS.fade));
     }
   }
   function letGo(m) { m.g.removeFromParent(); m.r = null; m.free = false; }
-  // for tests: the masts falling now, and how far each one's top has come down
-  const falling = () => fallers.filter((m) => m.r).map((m) => ({ free: m.free, fell: +(m.top0 - tm.set(0, m.H - 1, 0).applyMatrix4(m.g.matrixWorld).y).toFixed(1) }));
+  // for tests: the masts falling now: which (of the few kept), broken away or not, how far its top has come down, how
+  // high its foot is and how tall it is (metres), and its size (1, or less as it shrinks away)
+  const falling = () => fallers.map((m, i) => ({ m, i })).filter((x) => x.m.r).map(({ m, i }) => ({ i, free: m.free, fell: +(m.top0 - tm.set(0, m.H - 1, 0).applyMatrix4(m.g.matrixWorld).y).toFixed(1),
+    y: +m.g.getWorldPosition(tm).y.toFixed(1), H: +m.H.toFixed(1), s: +m.g.scale.x.toFixed(2) }));
   return { list, update, clear, start, falling };
 }

@@ -176,7 +176,9 @@ export async function makeWorld(renderer) {
       h.z = torn[i].r * (0.5 + 0.5 * Math.min(1, t / 0.8));
     }
   }
-  return { group, time, puffs, deck, clouds, tear, update, holes };
+  // a fresh voyage (or back to port): every hole closed at once, so none is left open from the last fight
+  function clear() { for (let i = 0; i < HOLES; i++) { holes[i].w = 0; torn[i].age = 9; } }
+  return { group, time, puffs, deck, clouds, tear, update, clear, holes };
 }
 
 // A soft cumulus picture drawn once, and instanced billboards of it
