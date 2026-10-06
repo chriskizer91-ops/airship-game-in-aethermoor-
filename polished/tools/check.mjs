@@ -1,6 +1,7 @@
 // check.mjs: opens the built pages in a headless browser the size of a laptop and of a phone, checks nothing went
 // wrong, and takes pictures into shots/ (or the folder given).
-//   the save          two devices sharing one save on claude.ai: the newest save always wins (no browser needed)
+//   the save          two devices sharing one save on claude.ai: the newest save always wins, and no voyage's shards are
+//                     lost, even when a write fails or a tab stops hearing the store (no browser needed)
 //   dist/hangar.html  every ship at every level of detail, with its triangle count kept near its budget
 //   dist/game.html    the title screen and the port (buying a ship and an upgrade, crystal power, dragging the ship
 //                     round); each of the four ships flown: how fast it goes, turns and climbs; every battery fired at a
@@ -44,42 +45,54 @@ const wait = (page, fn, arg, what) => page.waitForFunction(fn, arg, { timeout: 6
 
 // ---------- the save, on two devices ----------
 // progress.js run twice in plain JS, as a laptop and a phone with their own storage, sharing one pretend claude.ai
-// store: a tab left open must never write its old save over newer progress from the other device
+// store: a tab left open must never write its old save over newer progress from the other device, and shards won on a
+// voyage must never be lost, even when a write fails or a tab stops hearing the store
 {
   const src = readFileSync(root + 'src/game/progress.js', 'utf8').replace(/^export /gm, '');
-  let store = null, clock = 1e12;
+  let store = null, clock = 1e12, fail = 0; // `fail`: how many of the next writes fail, as when the link blinks
   const tick = () => new Promise((r) => setTimeout(r, 20));
   const subs = new Set(), snap = () => ({ exists: !!store, data: () => JSON.parse(JSON.stringify(store)), metadata: { hasPendingWrites: false } });
-  const db = { doc: () => ({ get: async () => { await tick(); return snap(); }, set: async (d) => { await tick(); store = JSON.parse(JSON.stringify(d)); for (const f of subs) setTimeout(() => f(snap()), 5); },
+  const db = { doc: () => ({ get: async () => { await tick(); return snap(); },
+    set: async (d) => { await tick(); if (fail > 0) { fail--; throw { code: 'unavailable', message: 'the link blinked' }; } store = JSON.parse(JSON.stringify(d)); for (const f of subs) setTimeout(() => f(snap()), 5); },
     onSnapshot: (f) => { subs.add(f); setTimeout(() => f(snap()), 5); return () => subs.delete(f); } }) };
-  // a device: the game opened in a browser with its own storage; opening it again closes the page that was open
-  let open = [];
-  const device = (ls, online = true) => {
-    for (const f of open.filter((o) => o.ls === ls)) subs.delete(f.sub);
-    open = open.filter((o) => o.ls !== ls);
-    const mine = { doc: (p) => { const d = db.doc(p); return { ...d, onSnapshot: (f) => { open.push({ ls, sub: f }); return d.onSnapshot(f); } }; } };
-    const ctx = vm.createContext({ localStorage: { getItem: (k) => ls.get(k) ?? null, setItem: (k, v) => ls.set(k, v) }, Date: { now: () => clock }, JSON, Object, Math, Promise, setTimeout,
-      document: { hidden: false, addEventListener() {} } });
+  // a device: the game opened in a browser with its own storage; opening it again closes the page that was open there
+  // (a closed page hears and sends nothing). `dead`: how many of its streams die at once, as one does when the link to
+  // the store stops answering. Its pauses run 20 times faster than a real page's
+  const pages = [], never = new Promise(() => {});
+  const shut = (ls) => { for (const p of pages) if (p.ls === ls && !p.closed) { p.closed = true; for (const f of p.subs) subs.delete(f); } };
+  const device = (ls, { online = true, dead = 0 } = {}) => {
+    shut(ls);
+    const page = { ls, closed: false, subs: [] }; pages.push(page);
+    const mine = { doc: (path) => { const d = db.doc(path); return {
+      get: () => (page.closed ? never : d.get()), set: (v) => (page.closed ? never : d.set(v)),
+      onSnapshot: (f, err) => {
+        if (page.closed) return () => {};
+        if (dead-- > 0) { setTimeout(() => err({ code: 'unavailable', message: 'the stream died' }), 5); return () => {}; }
+        page.subs.push(f); return d.onSnapshot(f);
+      } }; } };
+    const ctx = vm.createContext({ localStorage: { getItem: (k) => ls.get(k) ?? null, setItem: (k, v) => ls.set(k, v) }, Date: { now: () => clock }, JSON, Object, Math, Promise,
+      setTimeout: (f, ms) => setTimeout(() => { if (!page.closed) f(); }, ms / 20), document: { hidden: false, addEventListener() {} } });
     ctx.window = online ? { claude: { use: async (n) => (n === 'db' ? mine : { id: async () => 'chris' }) } } : {};
     vm.runInContext(src + '\nthis.makeProgress = makeProgress;', ctx);
     return ctx.makeProgress();
   };
   const laptopLS = new Map(), phoneLS = new Map(), wait = (ms = 150) => new Promise((r) => setTimeout(r, ms)), got = (p) => `${p.data.shards}${p.data.ships.brig.owned ? '+brig' : ''}`;
+  const all = () => `${got(laptop)} / ${got(phone)} / store ${store.shards}`;
   const sync = [];
   let laptop = device(laptopLS); await wait(); clock += 1000; laptop.data.shards = 1000; laptop.save(); await wait();
   // the phone buys the Brig and banks a voyage while the laptop's tab sits open; then a tap on the laptop saves
   clock += 3600e3; let phone = device(phoneLS); await wait();
   clock += 1000; phone.data.shards -= 900; phone.data.ships.brig.owned = true; phone.save(); await wait();
-  clock += 1000; phone.data.shards += 700; phone.save(); await wait();
+  clock += 1000; phone.bank(700, 4); await wait();
   clock += 3600e3; laptop.data.skies = 'mael'; laptop.save(); await wait();
   clock += 1000; phone = device(phoneLS); await wait();
   sync.push(['a tab left open', got(phone), '800+brig']);
-  // a tap on the phone before it has heard from the store, which the laptop has moved on since
-  clock += 1000; laptop.data.shards += 50; laptop.save(); await wait();
+  // a tap on the phone before it has heard from the store, which the laptop has moved on since the phone was closed
+  shut(phoneLS); clock += 1000; laptop.data.shards += 50; laptop.save(); await wait();
   clock += 86400e3; phone = device(phoneLS); phone.data.skies = 'fair'; phone.save(); await wait(250);
-  sync.push(['a tap before the store answers', got(phone), '850+brig']);
+  sync.push(['a tap before the store answers', `${got(phone)} ${phone.data.skies}`, '850+brig mael']);
   // played with no connection, then back online: nothing newer in the store, so it goes up
-  clock += 1000; const off = device(phoneLS, false); off.data.shards += 5; off.save(); await wait(50);
+  clock += 1000; let off = device(phoneLS, { online: false }); off.data.shards += 5; off.save(); await wait(50);
   clock += 1000; phone = device(phoneLS); await wait(250);
   sync.push(['played offline, then online', `${got(phone)} / store ${store.shards}`, '855+brig / store 855']);
   // a phone whose clock is an hour slow still saves over what it has seen
@@ -89,8 +102,37 @@ const wait = (page, fn, arg, what) => page.waitForFunction(fn, arg, { timeout: 6
   // and the laptop's open tab hears of it without reloading
   await wait(100);
   sync.push(['an open tab hears the other device', got(laptop), '866+brig']);
+  // a voyage banked as the link blinks: the write fails, and goes again a moment later
+  clock += 1000; fail = 1; laptop.bank(100, 3); await wait(300);
+  sync.push(['a write that failed once', all(), '966+brig / 966+brig / store 966']);
+  // it fails again too, and the phone saves not having heard of it: the laptop hears the phone and adds its voyage on
+  clock += 1000; fail = 2; laptop.bank(100, 5); await wait(300);
+  clock += 1000; phone.data.skies = 'fair'; phone.save(); await wait(300);
+  sync.push(['a write that failed twice', `${all()}, best ${laptop.data.best.mael} ${phone.data.best.mael}, ${laptop.data.skies}`, '1066+brig / 1066+brig / store 1066, best 5 5, fair']);
+  // a tab whose stream died: the phone buys an upgrade the laptop never hears of, then the laptop banks a voyage
+  clock += 1000; laptop = device(laptopLS, { dead: 99 }); await wait();
+  clock += 1000; phone.data.shards -= 140; phone.data.ships.brig.mods.armour = 1; phone.save(); await wait();
+  const deaf = got(laptop);
+  clock += 1000; laptop.bank(500, 2); await wait(300);
+  sync.push(['a tab whose stream died', `${deaf}, then ${all()}, armour ${laptop.data.ships.brig.mods.armour}`, '1066+brig, then 1426+brig / 1426+brig / store 1426, armour 1']);
+  // a stream that dies once is opened again, and hears the other device; this tab had progress of its own, so says so
+  const told = { open: [], fresh: [] };
+  clock += 1000; laptop = device(laptopLS, { dead: 1 }); laptop.onLoad((d, had) => told.open.push(had)); await wait(400);
+  clock += 1000; phone.data.shards -= 26; phone.save(); await wait();
+  sync.push(['a stream that died and came back', `${got(laptop)}, told ${told.open[0]}`, '1400+brig, told true']);
+  // both devices bank a voyage at the very same moment: neither is lost
+  clock += 1000; laptop.bank(300, 1); clock += 1; phone.bank(200, 1); await wait(400);
+  sync.push(['two voyages banked at once', all(), '1900+brig / 1900+brig / store 1900']);
+  // a voyage played with no connection while the laptop buys an upgrade: back online, the phone keeps both
+  clock += 1000; off = device(phoneLS, { online: false }); off.bank(70, 6); await wait(50);
+  clock += 1000; laptop.data.shards -= 100; laptop.data.ships.brig.mods.drill = 1; laptop.save(); await wait();
+  clock += 1000; phone = device(phoneLS); await wait(300);
+  sync.push(['a voyage played offline', `${all()}, drill ${phone.data.ships.brig.mods.drill}, best ${phone.data.best.fair}`, '1870+brig / 1870+brig / store 1870, drill 1, best 6']);
+  // a new browser (or one with its site data cleared) takes the save without being told it came from another device
+  const fresh = device(new Map()); fresh.onLoad((d, had) => told.fresh.push(had)); await wait();
+  sync.push(['a new browser', `${got(fresh)}, told ${told.fresh.join(' ')}`, '1870+brig, told false']);
   for (const [what, was, want] of sync) if (was !== want) problems.push(`the save between two devices, ${what}: ${was}, should be ${want}`);
-  console.log(`the save between two devices: ${sync.every(([, a, b]) => a === b) ? 'the newest save always wins' : 'WRONG'}`);
+  console.log(`the save between two devices: ${sync.every(([, a, b]) => a === b) ? 'the newest save always wins, and no voyage is lost' : 'WRONG'}`);
 }
 
 // ---------- the hangar ----------

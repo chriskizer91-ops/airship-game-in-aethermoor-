@@ -73,7 +73,7 @@
   .port-top h1 { margin: 0; font: 400 40px/1 var(--display); color: var(--gold); text-shadow: 0 2px 0 #000, 0 0 20px rgba(0, 0, 0, 0.8); }
   #port-shards { padding: 5px 12px; font-size: 17px; }
   #btn-skies { margin-left: auto; padding: 6px 12px; font-size: 13px; }
-  #port-note { position: fixed; top: calc(var(--top) + 56px); left: var(--gutter); margin: 0; padding: 6px 12px; color: var(--gold); opacity: 0; pointer-events: none; }
+  #port-note { position: fixed; top: calc(var(--top) + 56px); left: var(--gutter); max-width: calc(100% - 2 * var(--gutter)); margin: 0; padding: 6px 12px; color: var(--gold); opacity: 0; pointer-events: none; }
   #port-note.on { animation: region 5s ease-in-out forwards; }
   #port-ships { position: fixed; left: var(--gutter); bottom: var(--bottom); display: flex; gap: 3px; padding: 3px; max-width: calc(100% - 2 * var(--gutter)); overflow-x: auto; scrollbar-width: none; }
   #port-ships button { display: grid; justify-items: center; gap: 2px; padding: 6px 12px 5px; background: none; border: 0; border-radius: 6px; flex: 0 0 auto; }

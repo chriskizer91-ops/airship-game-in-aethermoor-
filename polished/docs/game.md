@@ -49,7 +49,7 @@ Steps cost ◆ 60, 140 and 280 on the Skiff, and more on bigger ships: 1.6 times
 
 **Your progress is saved** (Crystal Shards, ships, upgrades, skies and best waves): in the browser on that device, and, on claude.ai, in the game page's own private store for you, so it follows you to another device. Nobody else can see it.
 
-Playing on your phone and your laptop, **the newest progress always wins**. A game left open on one device picks up what you did on the other (the port says "Your progress from your other device is here"), and it checks again just before it saves, so it never writes its older progress over newer. The one thing that can be lost is a change made on the old page in the moment before it catches up, like a skies button tapped as it reconnects.
+Playing on your phone and your laptop, **the newest progress always wins**. A game left open on one device picks up what you did on the other (the port says "Your progress from your other device is here"; a new browser just shows it), and it checks again just before it saves, so it never writes its older progress over newer. **Shards won on a voyage are never lost that way**: if the other device saved something this one hadn't heard about yet, the voyage's shards are added to the newer progress, and the port says so. A save that can't get through (the connection blinks, or there's none) goes up a moment later, or the next time the game is open and online on that device. What can still be lost is a change made in port on a device that hadn't caught up yet: a ship or an upgrade bought, the skies or the crystal power. The newer progress replaces it, and any shards it cost come back.
 
 ## A voyage
 
@@ -218,7 +218,7 @@ On Fair Winds the Skiff gets through all five. A real Captain who uses height, t
 
 `npm run check` (or `node tools/check.mjs`) plays the game in a hidden browser:
 
-- It runs the save as two devices sharing one store, and checks the newest progress always wins: a tab left open, a tap before the store answers, play with no connection, and a phone whose clock is slow.
+- It runs the save as two devices sharing one store, and checks the newest progress always wins: a tab left open, a tap before the store answers, play with no connection, and a phone whose clock is slow. It checks no voyage's shards are lost: a save that fails once or twice, a tab that stopped hearing the store (and one that hears it again), both devices banking a voyage at the same moment, and a voyage played with no connection. And a new browser isn't told its progress came from another device.
 - It opens on the title screen, drags the ship round, goes to port, and checks a ship can't be bought without the shards. With shards, it buys the Cutter and armour, sets the crystal power, and checks the stats change. It changes the window's size in port and checks the corner map is still drawn at sea, and the big map at its own size.
 - It flies each ship and fires every battery at a raider of the same class 260 m off, checking the guns lock on and hit.
 - It shoots a raider down, watches it fall away spilling shards, and flies through shards to gather them (the shard count pops). It brings a raider down low, under the clouds, and checks she falls before she goes. It checks the sun's shadows reach the ship.

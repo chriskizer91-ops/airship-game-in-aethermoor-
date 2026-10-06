@@ -11,12 +11,19 @@ export const PRICES = { skiff: 0, cutter: 300, brig: 900, frigate: 2200 };
 
 const KEY = 'skies-of-aethermoor/save-1';
 const IDS = ['skiff', 'cutter', 'brig', 'frigate'];
+// what the claude.ai store answers when it will never take a write on this page (others, like busy or out of reach, pass)
+const STOP = ['invalid_argument', 'not_granted', 'revoked', 'capability_disabled', 'capability_removed', 'transform_error'];
+const HELD = 600e3; // how long a voyage stays on this device's own list after the store took it (see adopt)
 // `saved` is when this save was last changed; `synced` is the `saved` of the copy in the claude.ai store that this
-// device last read or wrote (so saved > synced means this device has changes the store hasn't got yet)
+// device last read or wrote (so saved > synced means this device has changes the store hasn't got yet). `got` names
+// the voyages whose shards the store's copy holds (the latest 100). `banked` is this device's own voyages that the
+// store hasn't got, or took less than ten minutes ago: { id, n: shards, sent: 1 once a write has carried it, at: when
+// the store took it }
 function fresh() {
   return {
     v: 1, saved: 0, synced: 0, skies: 'cross', shards: 0, flying: 'skiff', best: { fair: 0, cross: 0, mael: 0 },
     ships: Object.fromEntries(IDS.map((id) => [id, { owned: id === 'skiff', power: 0, mods: { armour: 0, canvas: 0, drill: 0, crystals: 0 } }])),
+    got: [], banked: [],
   };
 }
 // fill in anything an older save is missing
@@ -25,7 +32,7 @@ function merge(base, d) {
   for (const k of Object.keys(base)) {
     if (!(k in d)) continue;
     if (base[k] && typeof base[k] === 'object' && !Array.isArray(base[k])) base[k] = merge(base[k], d[k]);
-    else if (typeof d[k] === typeof base[k]) base[k] = d[k];
+    else if (typeof d[k] === typeof base[k] && Array.isArray(d[k]) === Array.isArray(base[k])) base[k] = d[k];
   }
   return base;
 }
@@ -34,60 +41,113 @@ export function makeProgress() {
   let data = fresh();
   try { const raw = localStorage.getItem(KEY); if (raw) data = merge(fresh(), JSON.parse(raw)); } catch { /* no storage here */ }
   const listeners = [];
-  let remote = null, writing = false, again = false;
+  let remote = null, writing = false, again = false, live = false, tries = 0;
   const writeLocal = () => { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch { /* no storage here */ } };
+  const later = (f) => setTimeout(f, 1000 + Math.random() * 2000); // a moment, and not the same moment on every device
 
   // On claude.ai: this person's own save in the page's store (data/users/<id>/save), shared by their devices. The newest
   // save wins: whenever the store holds a save this device hasn't seen (another device played since), this device
   // takes it, and it looks again just before every write, so a tab left open never writes its old save over newer
-  // progress. An open tab also hears of another device's saves as they happen.
+  // progress. Shards won on a voyage are never lost that way: the newer save takes them on (adopt). What this device
+  // changed in port before it heard (a ship, an upgrade, the skies) gives way to the newer save, shards spent and all.
+  // An open tab hears of another device's saves as they happen, and sends what it couldn't send before.
   const news = (d) => !!d && (d.saved ?? 0) > data.synced && d.saved !== data.saved;
   function adopt(d) {
-    data = merge(fresh(), JSON.parse(JSON.stringify(d))); data.synced = data.saved; writeLocal();
-    for (const f of listeners) f(data);
+    const old = data, now = Date.now();
+    data = merge(fresh(), JSON.parse(JSON.stringify(d))); data.synced = data.saved;
+    // this device's voyages the newer save hasn't got are added to it. One the store took a moment ago counts too:
+    // another device saving at that same moment may have written over it
+    const lost = old.banked.filter((b) => b?.n > 0 && !data.got.includes(b.id) && (!b.at || now - b.at < HELD));
+    data.banked = lost.map((b) => ({ ...b, sent: 1, at: 0 }));
+    for (const b of lost) data.shards += b.n;
+    if (lost.length) for (const k in data.best) data.best[k] = Math.max(data.best[k], old.best[k] ?? 0);
+    writeLocal();
+    // (whether this device had progress of its own, so a new browser isn't told it came from another device)
+    for (const f of listeners) f(data, old.saved > 0, lost.length > 0);
+    if (lost.length) save();
   }
   async function connect() {
     if (!window.claude?.use) return;
     try {
       const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
-      if (!db || !user) return;
-      const id = await user.id();
+      const id = db && user && await user.id();
       if (!id) return;
-      const ref = db.doc(`data/users/${id}/save`), snap = await ref.get();
-      remote = ref;
-      const d = snap.exists ? snap.data() : null;
-      if (news(d)) adopt(d);
-      else if (data.saved > data.synced) push(); // played here while away from the store: send it
-      // another device's saves, as they come (this never writes: writes only follow the player's own changes)
-      ref.onSnapshot((s) => { const n = s.exists ? s.data() : null; if (!writing && !s.metadata?.hasPendingWrites && news(n)) adopt(n); }, () => {});
-      // and a look when the page comes back into view, in case the stream slept while it was hidden
-      document.addEventListener('visibilitychange', () => { if (!document.hidden) refetch(); });
-    } catch { remote = null; }
+      remote = db.doc(`data/users/${id}/save`);
+    } catch { return; }
+    await look(); // the first look: take a newer save, or send what was played here while away from the store
+    listen();
+    // and a look when the page comes back into view, in case the stream slept, or died, while it was hidden
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) { tries = 0; listen(); look(); } });
   }
-  async function refetch() {
+  // another device's saves, as they come. A stream that dies is opened again after a pause, longer each time
+  function listen() {
+    if (!remote || live) return;
+    live = true;
+    try {
+      remote.onSnapshot((s) => {
+        if (writing || s.metadata?.hasPendingWrites) return;
+        const d = s.exists ? s.data() : null;
+        if (news(d)) adopt(d); else push(); // (push only sends this device's own changes the store hasn't got)
+      }, (e) => { live = false; if (STOP.includes(e?.code)) remote = null; else if (tries < 5) setTimeout(listen, 2000 * 2 ** tries++ * (1 + Math.random())); });
+    } catch { live = false; }
+  }
+  // a look at the store: take a newer save, or send this device's changes the store hasn't got
+  async function look(retried = false) {
     if (!remote || writing) return;
-    try { const snap = await remote.get(), d = snap.exists ? snap.data() : null; if (!writing && news(d)) adopt(d); } catch { /* try again next time */ }
+    try {
+      const snap = await remote.get(), d = snap.exists ? snap.data() : null;
+      if (writing) return;
+      if (news(d)) adopt(d); else push();
+    } catch (e) { if (STOP.includes(e?.code)) remote = null; else if (!retried) later(() => look(true)); }
   }
-  async function push() {
+  async function push(retried = false) {
     if (!remote || data.saved <= data.synced) return;
     if (writing) { again = true; return; }
     writing = true;
+    let retry = false;
     try {
       // one last look: if another device has saved since this one last synced, its save wins
       const snap = await remote.get(), d = snap.exists ? snap.data() : null;
       if (news(d)) adopt(d);
-      else { const out = JSON.parse(JSON.stringify(data)); out.synced = out.saved; await remote.set(out); data.synced = out.saved; writeLocal(); }
-    } catch (e) { if (['invalid_argument', 'not_granted', 'revoked', 'capability_disabled', 'capability_removed'].includes(e?.code)) remote = null; }
+      else {
+        const sending = data.banked.filter((b) => !b.at), out = JSON.parse(JSON.stringify(data));
+        for (const b of sending) b.sent = 1; // (a voyage won after this goes on a list of its own)
+        out.got = [...new Set([...data.got, ...sending.map((b) => b.id)])].slice(-100); out.banked = []; out.synced = out.saved;
+        await remote.set(out);
+        const now = Date.now();
+        for (const b of sending) b.at = now;
+        data.got = out.got; data.synced = out.saved; writeLocal();
+      }
+    } catch (e) {
+      if (STOP.includes(e?.code)) remote = null;
+      else retry = !retried && e?.code !== 'quota_exceeded';
+    }
     writing = false;
-    if (again) { again = false; push(); }
+    // the store busy or out of reach: once more in a moment (after that, the next save, look or news sends it)
+    if (retry) { again = false; later(() => push(true)); } else if (again) { again = false; push(); }
+  }
+  // the stamp never goes backwards, even on a device whose clock is slow
+  function save() {
+    const now = Date.now();
+    data.saved = Math.max(now, data.synced + 1, data.saved + 1);
+    data.banked = data.banked.filter((b) => !b.at || now - b.at < HELD); // the store has long had these
+    writeLocal(); push();
   }
   connect();
   return {
     get data() { return data; },
-    // the stamp never goes backwards, even on a device whose clock is slow
-    save() { data.saved = Math.max(Date.now(), data.synced + 1, data.saved + 1); writeLocal(); push(); },
+    save,
+    // shards brought home from a voyage, and the wave it reached
+    bank(n, wave) {
+      if (n > 0) {
+        const last = data.banked[data.banked.length - 1];
+        if (last && !last.sent) last.n += n; else data.banked.push({ id: Math.random().toString(36).slice(2, 10), n, sent: 0, at: 0 });
+      }
+      data.shards += n; data.best[data.skies] = Math.max(data.best[data.skies], wave); save();
+    },
+    // (f(data, had, kept): `had` is whether this device had progress of its own, `kept` whether a voyage won here was added)
     onLoad: (f) => listeners.push(f),
-    // a fresh start (it keeps the sync stamp, or the store would bring the old save straight back)
-    reset() { const synced = data.synced; data = fresh(); data.synced = synced; this.save(); },
+    // a fresh start (it keeps the stamps and the voyages the store holds, or the store would bring them straight back)
+    reset() { const { saved, synced, got } = data; data = fresh(); Object.assign(data, { saved, synced, got }); save(); },
   };
 }

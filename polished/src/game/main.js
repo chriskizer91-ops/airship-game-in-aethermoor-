@@ -128,8 +128,8 @@ async function main() {
   }
   // back to port: keep this share of the voyage's shards
   function endVoyage(keep) {
-    const d = progress.data, got = Math.round(V.shards * keep);
-    d.shards += got; d.best[d.skies] = Math.max(d.best[d.skies], W.n); progress.save();
+    const got = Math.round(V.shards * keep);
+    progress.bank(got, W.n);
     raiders.clear(); bolts.clear(); pickups.clear(); gunnery.cancel(); W.next = null;
     scene.remove(player.ship.root); // the port shows her (or the ship you were looking at) in its own scene
     const E = payload('voyage:end'); E.kept = got; E.sunk = W.sunk; E.waves = W.n; emit('voyage:end');
@@ -141,7 +141,8 @@ async function main() {
   function newWind() { WIND.dir = Math.random() * Math.PI * 2; WIND.strength = 0.06 + Math.random() * 0.08; }
   const windWords = () => `the wind from the ${COMPASS[Math.round(compassDeg(WIND.dir + Math.PI) / 45) % 8]}`;
   function note(text) { const n = $('port-note'); n.textContent = text; n.classList.remove('on'); void n.offsetWidth; n.classList.add('on'); }
-  progress.onLoad(() => note('Your progress from your other device is here'));
+  // newer progress came from the store: say so when this device had its own (a new browser just shows it)
+  progress.onLoad((d, had, kept) => { if (had) note(kept ? 'Your other device\'s progress is here, plus the shards you won here' : 'Your progress from your other device is here'); });
 
   // ---------- the camera: behind the ship, swung round it by the mouse or a drag ----------
   const cam = { yaw: 0, pitch: 0.2, dist: 40, zoom: 1, look: new THREE.Vector3() };
