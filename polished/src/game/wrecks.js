@@ -45,7 +45,7 @@ export function makeWrecks({ fx, tear = null, scene = null }) {
   // a random point inside one of her boxes, in the world
   const inBox = (r, b, out = p) => world(r, b.min.x + Math.random() * (b.max.x - b.min.x), b.min.y + Math.random() * (b.max.y - b.min.y), b.min.z + Math.random() * (b.max.z - b.min.z), out);
   const looks = (w) => w.r.looks ?? RAIDER_LOOKS;
-  function tellBlast(at, size, big) { BLAST.at.copy(at); BLAST.size = size; BLAST.big = big; emit('blast', BLAST); }
+  function tellBlast(at, size, big, first = false) { BLAST.at.copy(at); BLAST.size = size; BLAST.big = big; BLAST.first = first; emit('blast', BLAST); }
 
   on('raider:down', (e) => start(e.raider, e.why));
   function start(r, why) {
@@ -76,7 +76,7 @@ export function makeWrecks({ fx, tear = null, scene = null }) {
       fx.burst(mid, 0xff8a3a, 60, 2.2); fx.burst(v.copy(mid).setY(mid.y + 3), 0xffe08a, 30, 1.6);
       const s = THREE.MathUtils.clamp(L / 22, 0.7, 3), lk = r.looks ?? RAIDER_LOOKS;
       debris.toss('wood', mid, UP, 1.6, f.velocity, 12, s, lk.wood); debris.toss('canvas', mid, UP, 1.6, f.velocity, 6, s, lk.sail);
-      tellBlast(mid, L, L >= 40);
+      tellBlast(mid, L, L >= 40, true);
     } else if (why === 'crystals') {
       // her crystals crack open: amber shards and sparks from each column
       for (const b of r.zones.crystals) {

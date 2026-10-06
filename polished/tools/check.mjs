@@ -29,11 +29,21 @@
 //                     it rises; the Surge's streaks, wider view, vapour and flare, and its view the same at 20 frames
 //                     a second as at 60; on the phone, a Man-o'-war going down beside two other wrecks within every
 //                     budget
+//                     the sound: Chris's two files (music.js, sounds.js) exactly as he gave them; nothing made before
+//                     the first touch, which starts it (on the phone too, and again after it was stopped); going quiet
+//                     when the page is left and back when it's shown; the title's, the port's and a wave's music; the
+//                     port's sounds; the Settings card silencing the music and keeping it through a reload (and
+//                     fitting a phone); the recordings made for the game none silent, each sounding as it should (a
+//                     bright crack, a deep boom, a glassy crystal...); a real volley heard; hits, a raider blown apart
+//                     and shards gathered all sounding; the sounds gated while paused; tests that run the clock only
+//                     counting; a five-raider melee with a Man-o'-war, over a recording of the battle music, never
+//                     clipping (an offline render); and what the sound costs a volley and a frame
 // Run: node tools/build.mjs && node tools/check.mjs [--quick] [folder]
 //   --quick: only the game page at laptop size (for checking during work; the full run is the one that counts)
 import { chromium } from 'playwright';
 import { mkdirSync, readFileSync } from 'node:fs';
 import vm from 'node:vm';
+import { createHash } from 'node:crypto';
 
 const root = new URL('..', import.meta.url).pathname;
 const quick = process.argv.includes('--quick');
@@ -55,6 +65,14 @@ async function open(file, name, ready) {
 }
 const shot = (page, path) => page.screenshot({ path: `${out}/${path}.png`, timeout: 120000 });
 const wait = (page, fn, arg, what) => page.waitForFunction(fn, arg, { timeout: 60000, polling: 100 }).catch(() => problems.push(`${what}: didn't happen`));
+
+// ---------- Chris's music and instruments, exactly as he gave them ----------
+{
+  const SHA = { 'sounds.js': '6deb613023cd8ef483b505ad53670eb996fa312a1d2ff87c55acc859125acfa9', 'music.js': '130a02a5ae5e945d33f9f777b21a3b6bf53add145923b098abae7c6f3a7a0b0a' };
+  const changed = Object.keys(SHA).filter((f) => createHash('sha256').update(readFileSync(root + 'src/audio/thareia/' + f)).digest('hex') !== SHA[f]);
+  console.log(`Chris's music and instruments: ${changed.length ? 'CHANGED: ' + changed.join(', ') : 'as he gave them'}`);
+  if (changed.length) problems.push(`src/audio/thareia/${changed.join(' and ')} must stay exactly as Chris gave them (src/audio/thareia/NOTE.md)`);
+}
 
 // ---------- the save, on two devices ----------
 // progress.js run twice in plain JS, as a laptop and a phone with their own storage, sharing one pretend claude.ai
@@ -229,9 +247,72 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   // the ship on the title screen can be dragged round: presses on the open sky reach it, through the title screen
   const under = await page.evaluate(() => document.elementFromPoint(innerWidth * 0.72, innerHeight / 2)?.id);
   const spin0 = await page.evaluate(() => window.__game.port.spin);
+  const soundBefore = await page.evaluate(() => window.__game.audio.state); // (nothing made before the first touch)
   await page.mouse.move(920, 400); await page.mouse.down(); await page.mouse.move(1070, 400, { steps: 5 }); await page.mouse.up();
   const turned = (await page.evaluate(() => window.__game.port.spin)) - spin0;
   if (under !== 'stage' || turned < 0.8) problems.push(`dragging the ship on the title screen doesn't turn her (the press reaches "${under}", turned ${turned.toFixed(2)})`);
+  // the sound: that first touch starts it, its recordings are made, and the title's music plays (Thareia)
+  await wait(page, () => window.__game.audio.state === 'running' && window.__game.audio.ready, null, 'the first touch starts the sound and makes its recordings');
+  await wait(page, () => window.__game.audio.music === 'title', null, 'the title screen plays Thareia');
+  // leaving the page (another app, the phone locked) fades the sound and stops its clock; coming back starts it again
+  const leaving = await page.evaluate(async () => {
+    const A = window.__game.audio, pause = (ms) => new Promise((r) => setTimeout(r, ms));
+    const seen = (h) => { for (const [k, v] of [['hidden', h], ['visibilityState', h ? 'hidden' : 'visible']]) Object.defineProperty(document, k, { configurable: true, get: () => v }); document.dispatchEvent(new Event('visibilitychange')); };
+    seen(true); await pause(400);
+    const gone = { state: A.state, master: +A.mixer.master.gain.value.toFixed(3) };
+    seen(false); await pause(400);
+    delete document.hidden; delete document.visibilityState; // (the page's own again)
+    return { before: '', gone, back: A.state, master: +A.mixer.master.gain.value.toFixed(3) };
+  });
+  console.log(`the sound: ${soundBefore === 'none' ? 'nothing made' : `MADE (${soundBefore})`} before the first touch, then ${await page.evaluate(() => `${window.__game.audio.state}, its recordings ${window.__game.audio.ready ? 'made' : 'NOT MADE'}, playing "${window.__game.audio.music}"`)}; leaving the page: ${leaving.gone.state} (volume ${leaving.gone.master}), back: ${leaving.back} (volume ${leaving.master})`);
+  if (soundBefore !== 'none') problems.push(`the sound shouldn't be started before the first touch: ${soundBefore}`);
+  if (leaving.gone.state !== 'suspended' || leaving.gone.master > 0.05 || leaving.back !== 'running' || leaving.master < 0.9) problems.push(`leaving the page should fade the sound and stop it, and coming back start it again: ${JSON.stringify(leaving)}`);
+  // the recordings made for the game: none silent, and each sounding as it should, from its spectrum: the Captain's
+  // crack bright (most of its first moment over 2.5 kHz), a raider's darker, a broadside's boom, its roll and a blast
+  // deep (mostly under 120 Hz), the canvas tearing and the crystals ringing in the 2-6 kHz band, the crystals dying in
+  // falling bells; and a whole broadside, through the mix, rolling on for over two seconds
+  const sounds = await page.evaluate(async () => {
+    function spectrum(d, from, n) {
+      const re = new Float64Array(n), im = new Float64Array(n);
+      for (let i = 0; i < n; i++) re[i] = (d[from + i] || 0) * (0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (n - 1)));
+      for (let i = 1, j = 0; i < n; i++) { let bit = n >> 1; for (; j & bit; bit >>= 1) j ^= bit; j ^= bit; if (i < j) { [re[i], re[j]] = [re[j], re[i]]; [im[i], im[j]] = [im[j], im[i]]; } }
+      for (let len = 2; len <= n; len <<= 1) {
+        const a = (-2 * Math.PI) / len, wr = Math.cos(a), wi = Math.sin(a);
+        for (let i = 0; i < n; i += len) for (let k = 0, cr = 1, ci = 0; k < len / 2; k++) {
+          const p = i + k, q = p + len / 2, vr = re[q] * cr - im[q] * ci, vi = re[q] * ci + im[q] * cr;
+          re[q] = re[p] - vr; im[q] = im[p] - vi; re[p] += vr; im[p] += vi; const t = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = t;
+        }
+      }
+      const p = new Float64Array(n / 2); for (let i = 0; i < n / 2; i++) p[i] = re[i] * re[i] + im[i] * im[i];
+      return p;
+    }
+    // a recording's centroid (Hz) and its share of energy under 120 Hz and in 2-6 kHz, over [from, to) seconds
+    function look(b, from = 0, to = Infinity) {
+      const d = b.getChannelData(0), sr = b.sampleRate, N = 2048, end = Math.min(d.length, Math.round(to * sr));
+      let all = 0, low = 0, mid = 0, c = 0;
+      for (let s = Math.round(from * sr); s + N <= end || s === Math.round(from * sr); s += N / 2) {
+        const p = spectrum(d, s, N);
+        for (let i = 1; i < p.length; i++) { const f = (i * sr) / N; all += p[i]; c += p[i] * f; if (f < 120) low += p[i]; if (f >= 2000 && f <= 6000) mid += p[i]; }
+        if (s + N > end) break;
+      }
+      return { c: Math.round(c / all), low: +(low / all).toFixed(2), mid: +(mid / all).toFixed(2) };
+    }
+    const A = window.__game.audio, B = A.bank, avg = (k, f, ...a) => +(B[k].reduce((n, b) => n + look(b, ...a)[f], 0) / B[k].length).toFixed(2);
+    const fall = B.crystalsDie[0];
+    const out = { silent: A.silent(), crack: avg('crack', 'c', 0, 0.064), crackR: avg('crackR', 'c', 0, 0.064), boom: avg('boom', 'low'), roll: avg('roll', 'low'), blast: avg('blast', 'low'),
+      canvas: avg('canvas', 'mid'), crystal: avg('crystal', 'mid'), dying: [look(fall, 0, 0.5).c, look(fall, fall.duration - 0.8, fall.duration).c] };
+    const V = (x, y, z) => ({ x, y, z });
+    out.broadside = await window.__game.sound.scene(5, (c, m) => { for (let i = 0; i < 10; i++) { m.clock = 0.1 + i * 0.055; c.fire({ owner: 'player', kind: 'broadside', battery: 'port', p: V(6, 900, 14 - i * 3), weight: 1.1, ship: 'frigate', i, n: 10, raider: null }); } });
+    return out;
+  });
+  console.log(`the sounds made for the game: ${sounds.silent.length ? `SILENT: ${sounds.silent.join(', ')}` : 'none silent'}; the Captain's crack at ${sounds.crack} Hz, a raider's at ${sounds.crackR} Hz; under 120 Hz: boom ${sounds.boom}, roll ${sounds.roll}, blast ${sounds.blast}; in 2-6 kHz: canvas ${sounds.canvas}, crystal ${sounds.crystal}; crystals dying from ${sounds.dying[0]} Hz to ${sounds.dying[1]} Hz; a broadside peaks at ${sounds.broadside.peak} and rolls on ${sounds.broadside.ring} s`);
+  if (sounds.silent.length) problems.push(`these recordings made for the game are silent: ${sounds.silent.join(', ')}`);
+  if (!(sounds.crack > 2500) || !(sounds.crackR < sounds.crack - 500)) problems.push(`the Captain's crack should be bright (over 2.5 kHz) and a raider's darker: ${sounds.crack} Hz, ${sounds.crackR} Hz`);
+  if (!(sounds.boom > 0.85 && sounds.roll > 0.85 && sounds.blast > 0.85)) problems.push(`a broadside's boom and roll and a blast should be deep (over 85% under 120 Hz): ${JSON.stringify(sounds)}`);
+  if (!(sounds.canvas > 0.45 && sounds.crystal > 0.8)) problems.push(`tearing canvas and ringing crystal should sit in 2-6 kHz: ${JSON.stringify(sounds)}`);
+  if (!(sounds.dying[1] < sounds.dying[0])) problems.push(`a ship's crystals dying should fall: ${sounds.dying}`);
+  if (!(sounds.broadside.ring > 2) || sounds.broadside.clipped || sounds.broadside.peak > 0.95) problems.push(`a broadside should roll on for over 2 s, without clipping: ${JSON.stringify(sounds.broadside)}`);
+  const fx0 = await page.evaluate(() => window.__game.audio.stats.effects);
   await page.click('#skies [data-skies="mael"]'); await page.click('#skies [data-skies="cross"]');
   await page.click('#btn-to-port');
   if (await mode(page) !== 'port') problems.push('"To port" does not open the port');
@@ -247,9 +328,25 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   console.log(`port: bought the Cutter and armour (◆ 2,000 → ◆ ${portState.shards}); hull ${hullBefore} → ${hullAfter}; power "${portState.note}"`);
   if (!portState.cutter.owned || portState.cutter.mods.armour !== 1 || portState.shards !== 2000 - 300 - 95 || portState.flying !== 'cutter') problems.push(`buying in port went wrong: ${JSON.stringify(portState)}`);
   if (hullAfter === hullBefore || portState.cutter.power !== 2) problems.push('upgrades and crystal power do not change the ship');
+  // the port's music (Market Day), and its sounds: the skies, the buttons, buying a ship, an upgrade, crystal power
+  await wait(page, () => window.__game.audio.music === 'town', null, 'the port plays Market Day');
+  const portSound = await page.evaluate((fx0) => { const A = window.__game.audio; return { effects: A.stats.effects - fx0, buy: A.stats.events['port:buy'], upgrade: A.stats.events['port:upgrade'], skies: A.stats.events['port:skies'], music: A.music }; }, fx0);
+  console.log(`port sounds: ${portSound.effects} of Chris's effects played (skies ${portSound.skies}, buy ${portSound.buy}, upgrade ${portSound.upgrade}); the music "${portSound.music}"`);
+  if (portSound.effects < 8 || portSound.buy !== 1 || portSound.upgrade !== 1 || portSound.skies !== 2) problems.push(`the port's sounds didn't all play: ${JSON.stringify(portSound)}`);
   await page.waitForTimeout(1500);
   await shot(page, 'laptop-port');
   if (await page.evaluate(() => document.elementFromPoint(innerWidth / 3, innerHeight / 2)?.id) !== 'stage') problems.push('in port, presses on the ship don\'t reach her');
+  // Settings, from the gear in port: the music slider taken down to nothing silences the music straight away, and it's
+  // kept on this device (through the reload further on)
+  await page.click('#btn-settings-port');
+  const opened = await page.evaluate(() => !document.getElementById('settings').hidden);
+  await page.$eval('#set-music', (el) => { el.value = '0'; el.dispatchEvent(new Event('input')); el.dispatchEvent(new Event('change')); });
+  await wait(page, () => window.__game.audio.mixer.music.gain.value < 0.01, null, 'the music slider at nothing silences the music');
+  await shot(page, 'laptop-settings');
+  await page.click('#btn-settings-done');
+  const settingsKept = await page.evaluate(() => ({ closed: document.getElementById('settings').hidden, saved: JSON.parse(localStorage.getItem('skies-of-aethermoor/settings-1') ?? '{}'), gain: +window.__game.audio.mixer.music.gain.value.toFixed(4) }));
+  console.log(`settings: ${opened ? 'opened from the port' : 'DID NOT OPEN'}; music at nothing: the music's volume ${settingsKept.gain}, saved ${JSON.stringify(settingsKept.saved)}`);
+  if (!opened || !settingsKept.closed || settingsKept.saved.music !== 0 || settingsKept.gain >= 0.01) problems.push(`the Settings card should open from the port, silence the music at nothing, save it and close: ${JSON.stringify({ opened, ...settingsKept })}`);
   // the window changing size while the HUD is hidden (a phone turned in port), then setting sail: the corner map
   // still has a size and is drawn; the big map is drawn at its own size
   await page.setViewportSize({ width: 1200, height: 760 }); await page.waitForTimeout(300); await page.setViewportSize({ width: 1280, height: 800 }); await page.waitForTimeout(300);
@@ -264,6 +361,7 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   // Each ship flown on the game's own clock (software drawing is too slow to fly in real time), with no upgrades and
   // no wind: 20 seconds at full sail turning and climbing, then each battery fired at a raider of the same class
   // sitting 260 m off on its side.
+  const quiet0 = await page.evaluate(() => { const A = window.__game.audio; return { fire: A.stats.events.fire ?? 0, started: Object.values(A.mixer.stats.started).reduce((a, b) => a + b, 0) }; });
   const flown = await page.evaluate((ships) => {
     const g = window.__game, res = [], PARTS = ['hull', 'sails', 'crystals'];
     // the marks on the crosshair: what each hit was, and the mark's colour for it
@@ -413,6 +511,10 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
     g.endVoyage(0);
     return { res, sinking, gathered, popped, counted, lowFall, shadowed, tagsLeft, detail, fight, captain, tougher, wave6, wave12, wave15, struck, crystalsDead, away, killMark, crystalMark, wreck, bounty, holes };
   }, ships);
+  // (all that ran the game's clock without drawing: the sound counted its news, and played none of it)
+  const quiet1 = await page.evaluate(() => { const A = window.__game.audio; return { fire: A.stats.events.fire ?? 0, started: Object.values(A.mixer.stats.started).reduce((a, b) => a + b, 0) }; });
+  console.log(`running the clock without drawing: ${quiet1.fire - quiet0.fire} guns fired were counted, ${quiet1.started - quiet0.started} sounds played`);
+  if (quiet1.fire - quiet0.fire < 20 || quiet1.started !== quiet0.started) problems.push(`while tests run the clock, the sound should only count the news: ${JSON.stringify({ quiet0, quiet1 })}`);
   const NAMES = { bow: 'Bow guns', port: 'Port broadside', starboard: 'Starboard broadside', stern: 'Stern guns' };
   for (const r of flown.res) {
     console.log(`${r.id.padEnd(8)} ${String(r.kmh).padStart(3)} km/h, turned ${String(r.turned).padStart(3)}° and climbed ${String(r.climbed).padStart(3)} m in 20 s;`,
@@ -819,9 +921,12 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   // long as its rising is still held back: `since`, how long its rising has been under way, in ms on the page's own
   // animation clock, which moves on as frames are drawn); then the card rises, and Sail on can be pressed once it's there
   await page.waitForTimeout(300); await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(r)))));
+  fought.dial = await page.evaluate(() => +window.__game.fx.timeScaleNow.toFixed(2));
+  // (drawn slowly, in software, the card's rising can wait a few frames to get under way: it's read once it has)
+  await page.waitForFunction(() => { const a = document.getElementById('calm').getAnimations()[0]; return a && !a.pending && a.currentTime > 0; }, null, { timeout: 30000 }).catch(() => {});
   Object.assign(fought, await page.evaluate(() => {
     const c = document.getElementById('calm'), cs = getComputedStyle(c), a = c.getAnimations()[0];
-    return { dial: +window.__game.fx.timeScaleNow.toFixed(2), unseen: cs.visibility === 'hidden' && +cs.opacity === 0, since: a ? Math.round(a.currentTime) : -1 };
+    return { unseen: cs.visibility === 'hidden' && +cs.opacity === 0, since: a ? Math.round(a.currentTime) : -1 };
   }));
   await page.waitForFunction(() => { const c = getComputedStyle(document.getElementById('calm')); return c.visibility === 'visible' && +c.opacity > 0.99; }, null, { timeout: 30000 }).catch(() => problems.push('the card between waves never rose into view'));
   await page.click('#btn-sail-on');
@@ -850,6 +955,9 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   await countEvents();
   const kept = await page.evaluate(() => window.__game.progress.data.shards);
   if (kept !== 1234) problems.push(`the save didn't survive a reload (${kept})`);
+  const keptMusic = await page.evaluate(() => window.__game.settings.data.music);
+  if (keptMusic !== 0) problems.push(`the music setting didn't survive a reload (${keptMusic})`);
+  await page.evaluate(() => { const el = document.getElementById('set-music'); el.value = '0.8'; el.dispatchEvent(new Event('input')); el.dispatchEvent(new Event('change')); });
 
   // the real keys and mouse, at sea in the Brig
   await page.evaluate(() => { const g = window.__game; g.fly('brig'); g.waves.timer = 1e9; g.raiders.setAI(false); g.cam.yaw = 0; });
@@ -878,13 +986,89 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   await reloaded(); await page.mouse.down();
   await wait(page, () => window.__game.bolts.bolts.length > 0, null, 'left click fires');
   await page.mouse.up(); await page.keyboard.press('Escape');
-  await reloaded(); await page.keyboard.down('f');
+  // (how loud the sound has been since the audio clock read `from`, measured on the sound's own thread: `mark` reads it)
+  const mark = () => page.evaluate(() => window.__game.audio.ctx.currentTime);
+  const loudestSince = (from) => page.evaluate((from) => +window.__game.audio.mixer.peak(from).toFixed(3), from);
+  await wait(page, () => window.__game.audio.state === 'running' && window.__game.audio.ready, null, 'the sound starts again with a key after the page is reloaded');
+  await page.evaluate(() => window.__game.audio.level()); await wait(page, () => window.__game.audio.mixer.metered, null, 'the sound\'s level meter starts');
+  await page.evaluate(() => window.__game.gunnery.cancel()); await page.waitForTimeout(900); // (the last volley's guns all gone quiet)
+  await reloaded(); const calm0 = await mark(); await page.waitForTimeout(400); const calmLevel = await loudestSince(calm0); // (the music and the wind)
+  const guns0 = await page.evaluate(() => window.__game.audio.mixer.stats.started.gun), volley0 = await mark();
+  await page.keyboard.down('f');
   await wait(page, () => window.__game.bolts.bolts.length > 0, null, 'F fires');
   await page.keyboard.up('f');
+  await page.waitForTimeout(900);
+  const volleyLevel = await loudestSince(volley0), gunsPlayed = await page.evaluate((g0) => window.__game.audio.mixer.stats.started.gun - g0, guns0);
+  console.log(`a real volley: ${gunsPlayed} gun sounds, the sound peaking at ${volleyLevel} (${calmLevel} before, the wind and the music)`);
+  if (!gunsPlayed || !(volleyLevel > 0.2) || !(volleyLevel > calmLevel + 0.1)) problems.push(`a real volley should be heard: ${JSON.stringify({ gunsPlayed, volleyLevel, calmLevel })}`);
   await page.keyboard.press('p');
   await wait(page, () => window.__game.paused && !document.getElementById('paused').hidden, null, 'P pauses');
+  await wait(page, () => window.__game.audio.mixer.hold.gain.value < 0.05, null, 'the sounds go quiet while paused');
+  // Settings from the pause card too
+  await page.click('#btn-settings-pause');
+  if (await page.evaluate(() => document.getElementById('settings').hidden)) problems.push('the pause card\'s Settings button doesn\'t open the Settings card');
+  await page.keyboard.press('Escape');
+  if (!(await page.evaluate(() => document.getElementById('settings').hidden))) problems.push('Esc doesn\'t close the Settings card');
   await page.click('#btn-resume');
   if (await page.evaluate(() => window.__game.paused)) problems.push('Resume does not resume');
+  await wait(page, () => window.__game.audio.mixer.hold.gain.value > 0.9, null, 'the sounds come back on Resume');
+  // sounds for a fight, played as the game's clock runs (a test asking for them): a raider Brig 240 m ahead, nearly
+  // sunk, shot by the bow guns (a crack, hits), blown apart (blasts), her shards spilling (coins) and gathered (chimes)
+  const fightSound = await page.evaluate(() => {
+    const g = window.__game, A = g.audio, S = A.mixer.stats.started, was = { ...S }, fx0 = A.stats.effects, P = g.player;
+    A.loudSteps = true;
+    let down = '';
+    try {
+      g.raiders.clear(); g.bolts.clear(); g.waves.timer = 1e9; P.pos.set(0, 900, 0); P.heading = 0; P.speed = 3; P.sail = 0.05; P.vy = 0; P.repair(1);
+      const foe = g.raiders.spawn('brig', P.pos.clone().add({ x: 0, y: 4, z: 240 }), 2, true); foe.f.health.hull = 40;
+      for (const k in g.gunnery.ready) g.gunnery.ready[k] = 0;
+      let t = 0;
+      while (t < 4 && !foe.f.down) {
+        const T = P.pos.clone(); T.y += P.ship.recipe.length * 0.42 + 2; const look = foe.f.pos.clone().sub(T).normalize();
+        g.cam.pitch = -Math.asin(look.y); g.cam.yaw = Math.atan2(look.x, look.z) - P.heading;
+        g.step(0.05, { fire: true }); t += 0.05;
+      }
+      down = foe.f.down?.why ?? '';
+      g.step(2, {});
+      g.pickups.spill(P.pos.clone().add({ x: 0, y: 0, z: 30 }), P.velocity, 60); g.step(2, { sail: 0.2 });
+    } finally { A.loudSteps = false; }
+    const d = {}; for (const k in S) d[k] = S[k] - was[k];
+    return { ...d, effects: A.stats.effects - fx0, down };
+  });
+  console.log(`a fight's sounds: a raider Brig shot down (${fightSound.down || 'NOT DOWN'}): ${fightSound.gun} gun, ${fightSound.hit} hit, ${fightSound.blast} blast and ${fightSound.chime} shard sounds, ${fightSound.effects} of Chris's`);
+  if (fightSound.down !== 'hull' || !fightSound.gun || !fightSound.hit || !fightSound.blast || !fightSound.chime || !fightSound.effects) problems.push(`firing, hits, a raider blown apart and shards gathered should all sound: ${JSON.stringify(fightSound)}`);
+  // a wave arriving changes the music: Break the Grip for a wave of raiders
+  await page.evaluate(() => { const g = window.__game; g.raiders.clear(); g.raiders.setAI(false); Object.assign(g.waves, { n: 0, state: 'calm', timer: 0.05, next: null }); });
+  await wait(page, () => window.__game.audio.music === 'battle', null, 'a wave of raiders arriving plays Break the Grip');
+  // the worst a fight can sound (five raiders and a Man-o'-war, the Captain's broadside, hits, a blast, shards...), over
+  // three seconds of the battle music recorded as it plays: an offline render that must never clip
+  const self = await page.evaluate(async () => {
+    const A = window.__game.audio, rec = await A.recordMusic(3);
+    let music = 0; if (rec) for (const d of [rec.getChannelData(0), rec.getChannelData(1)]) for (let i = 0; i < d.length; i++) music = Math.max(music, Math.abs(d[i]));
+    return { ...(await window.__game.sound.selfTest(rec)), music: +music.toFixed(3) };
+  });
+  console.log(`the worst fight (offline, ${self.stats.started.gun + self.stats.started.foe} gun sounds, ${self.stats.merged} hits merged, ${self.stats.dropped} sounds left out), over the battle music (peaking at ${self.music}): peaks at ${self.peak}, ${self.clipped} samples clipped, ${self.rmsDb} dB; 7 s made in ${self.made} ms and rendered in ${self.rendered} ms`);
+  if (!(self.music > 0.05)) problems.push(`the battle music didn't record: ${self.music}`);
+  if (self.peak > 0.99 || self.clipped || !(self.rmsDb > -40)) problems.push(`the worst fight's sound should never clip: ${JSON.stringify(self)}`);
+  // what the sound costs: each volley's sounds and each frame's (the music and the sky), on this machine
+  const cost = await page.evaluate(() => {
+    const g = window.__game, A = g.audio, ms0 = A.stats.ms, P = g.player, hull0 = P.full.hull;
+    let volleys = 0; const off = g.events.on('volley', () => volleys++);
+    A.loudSteps = true;
+    try {
+      g.raiders.clear(); g.raiders.setAI(true); g.waves.timer = 1e9; P.full.hull = P.health.hull = 1e6;
+      const f = P.forward();
+      ['frigate', 'brig', 'cutter'].forEach((id, i) => g.raiders.spawn(id, P.pos.clone().addScaledVector(f, 260 + i * 90).add({ x: (i - 1) * 140, y: 10, z: 0 }), P.heading + (i ? 2.4 : -1.2), false));
+      for (let k = 0; k < 24; k++) {
+        const r = g.raiders.list.find((x) => !x.f.down);
+        if (r) { const T = P.pos.clone(); T.y += P.ship.recipe.length * 0.42 + 2; const look = r.f.pos.clone().sub(T).normalize(); g.cam.pitch = -Math.asin(look.y); g.cam.yaw = Math.atan2(look.x, look.z) - P.heading; }
+        g.step(0.25, { fire: true, sail: 0 });
+      }
+    } finally { A.loudSteps = false; off(); g.raiders.setAI(false); g.raiders.clear(); P.full.hull = hull0; P.repair(1); }
+    return { volleys, perVolley: +((A.stats.ms - ms0) / Math.max(1, volleys)).toFixed(2), perFrame: +(g.sound.frame.ms / Math.max(1, g.sound.frame.frames)).toFixed(3), frames: g.sound.frame.frames };
+  });
+  console.log(`what the sound costs here: ${cost.perVolley} ms a volley (${cost.volleys} volleys, with their hits), ${cost.perFrame} ms a frame (${cost.frames} frames)`);
+  if (cost.perVolley > 2 || cost.perFrame > 0.25) problems.push(`the sound costs too much: ${JSON.stringify(cost)}`);
   // a battle to look at: a raider captain's Frigate and two Cutters against the Brig
   await page.evaluate(battle, ['frigate', 'cutter', 'cutter']);
   await page.waitForTimeout(2500);
@@ -924,7 +1108,22 @@ if (!quick) {
   if (!start.touch) problems.push('phone: the touch controls are not showing');
   await page.waitForTimeout(2500); // let the loading cover fade
   await shot(page, 'phone-title');
+  const phoneBefore = await page.evaluate(() => window.__game.audio.state);
   await page.tap('#btn-to-port');
+  // the first tap starts the sound; stopped (as an iPhone does after a call), the next tap starts it again
+  await wait(page, () => window.__game.audio.state === 'running', null, 'phone: the first tap starts the sound');
+  await page.evaluate(() => window.__game.audio.ctx.suspend());
+  await wait(page, () => window.__game.audio.state === 'suspended', null, 'phone: the sound stops');
+  await page.tap('#port-ships [data-ship="skiff"]');
+  await wait(page, () => window.__game.audio.state === 'running', null, 'phone: a tap starts the stopped sound again');
+  // the Settings card fits the phone, and says where the iPhone's silent switch is
+  await page.tap('#btn-settings-port');
+  const phoneSettings = await page.evaluate(() => { const b = document.querySelector('#settings .card').getBoundingClientRect(), n = document.querySelector('.settings-note'); return { left: Math.round(b.left), right: Math.round(b.right), top: Math.round(b.top), bottom: Math.round(b.bottom), note: n.offsetHeight > 0 && n.textContent.includes('silent switch'), rows: document.querySelectorAll('#settings-rows .setting').length }; });
+  await shot(page, 'phone-settings');
+  await page.tap('#btn-settings-done');
+  console.log(`phone: sound ${phoneBefore === 'none' ? 'not made' : 'MADE'} before the first tap, started by it, and again after it stopped; Settings ${phoneSettings.left}-${phoneSettings.right} px across, ${phoneSettings.rows} rows, ${phoneSettings.note ? 'with' : 'WITHOUT'} the iPhone note`);
+  if (phoneBefore !== 'none') problems.push(`phone: the sound shouldn't start before the first tap (${phoneBefore})`);
+  if (phoneSettings.left < 0 || phoneSettings.right > 390 || phoneSettings.top < 0 || phoneSettings.bottom > 844 || !phoneSettings.note || phoneSettings.rows < 3) problems.push(`phone: the Settings card should fit the screen, with the iPhone note: ${JSON.stringify(phoneSettings)}`);
   await page.evaluate(() => { window.__game.progress.data.shards = 500; window.__game.port.refresh(); });
   await page.tap('#port-ships [data-ship="cutter"]');
   await page.waitForTimeout(1500);

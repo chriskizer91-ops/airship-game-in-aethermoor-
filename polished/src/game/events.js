@@ -12,11 +12,12 @@
 //                                                for port tells it ended (false) just before voyage:end
 //   voyage:start    { ship, skies }              set sail: the ship's id ('brig'...), the skies' id ('cross'...)
 //   voyage:end      { kept, sunk, waves }        back in port: shards banked, whether she went down, waves beaten
-//   fire            { owner, kind, battery, p, dir, weight, ship, vel, i, n }
+//   fire            { owner, kind, battery, p, dir, weight, ship, vel, i, n, raider }
 //                                                one gun going off: 'player' or 'raider'; 'chaser' or 'broadside';
 //                                                'bow', 'port', 'starboard' or 'stern'; where its muzzle is and which
 //                                                way it points (world); the shot's weight; the ship's class id; the
-//                                                ship's velocity; this gun's place in the volley (from 0) of n guns
+//                                                ship's velocity; this gun's place in the volley (from 0) of n guns;
+//                                                the raider firing (null for the Captain's guns)
 //   volley          { owner, battery, count, kind, ship, p }
 //                                                a battery starting to fire (its guns ripple off after it, bow first);
 //                                                p is its middle gun
@@ -30,8 +31,9 @@
 //                                                view) to 1 (right), close 0 (barely) to 1 (a hair's breadth)
 //   raider:down     { raider, why, at }          'hull', 'crystals' or 'struck' (a treasure ship giving up)
 //   raider:escaped  { raider }                   a treasure ship got away
-//   blast           { at, size, big }            an explosion (a raider blowing up, and each blast of the chain that
-//                                                walks along her hull after): how big in metres, and whether it's a big one
+//   blast           { at, size, big, first }     an explosion (a raider blowing up, and each blast of the chain that
+//                                                walks along her hull after): how big in metres, whether it's a big one,
+//                                                and whether it's the first (her blowing apart) or one of the chain
 //   wreck:deck      { at, size }                 a wreck falling through the cloud deck, tearing it open (size: her length)
 //   wreck:gone      { at, size, fire }           a wreck gone below the clouds; fire: she was burning (a glow and a
 //                                                muffled boom under the cloud)
@@ -39,6 +41,9 @@
 //   shards:gather   { value, run, at }           one shard gathered; run counts the shards gathered close together
 //                                                (each within 1.5 s of the last), for a rising chime; at: the ship's hold
 //   surge           { }                          the Captain's Surge
+//   lock            { raider }                   the Captain's guns locking on to a raider (another than just before)
+//   guns:ready      { battery, firing }          one of the Captain's broadsides loaded again ('port' or 'starboard'),
+//                                                and whether she's holding the trigger (it fires at once, then)
 //   slowmo          { seconds, scale }           the game slowing for a moment (the last raider of a wave going down,
 //                                                or the Captain's ship): for how long (real seconds), how slow at most
 //   wave:start      { n, title, captain, prize, fortress, count }
@@ -51,6 +56,7 @@
 //   port:upgrade    { ship, mod, step }          an upgrade bought (step: how many of it she has now)
 //   port:power      { ship, power }              the crystal power moved (-2 sails .. 2 guns)
 //   port:skies      { skies }                    other skies chosen
+// (the sound, sound.js, answers nearly all of them)
 import { Vector3 } from 'three';
 
 const v = () => new Vector3();
@@ -60,18 +66,20 @@ export const PAYLOAD = {
   pause: { on: false },
   'voyage:start': { ship: '', skies: '' },
   'voyage:end': { kept: 0, sunk: false, waves: 0 },
-  fire: { owner: '', kind: '', battery: '', p: v(), dir: v(), weight: 1, ship: '', vel: v(), i: 0, n: 1 },
+  fire: { owner: '', kind: '', battery: '', p: v(), dir: v(), weight: 1, ship: '', vel: v(), i: 0, n: 1, raider: null },
   volley: { owner: '', battery: '', count: 0, kind: '', ship: '', p: v() },
   hit: { owner: '', target: '', part: '', at: v(), damage: 0, raider: null, dir: v(), vel: v() },
   nearMiss: { pan: 0, close: 0, at: v() },
   'raider:down': { raider: null, why: '', at: v() },
   'raider:escaped': { raider: null },
-  blast: { at: v(), size: 0, big: false },
+  blast: { at: v(), size: 0, big: false, first: false },
   'wreck:deck': { at: v(), size: 0 },
   'wreck:gone': { at: v(), size: 0, fire: false },
   'shards:spill': { at: v(), total: 0 },
   'shards:gather': { value: 0, run: 0, at: v() },
   surge: {},
+  lock: { raider: null },
+  'guns:ready': { battery: '', firing: false },
   slowmo: { seconds: 0, scale: 1 },
   'wave:start': { n: 0, title: '', captain: false, prize: false, fortress: false, count: 0 },
   'wave:cleared': { n: 0, bonus: 0 },

@@ -10,6 +10,9 @@
 // red arc pointing where the shot came from. A raider going down shows her bounty rising from the wreck, and the shard
 // count in the corner counts up as they come in. Bringing down the last raider of a wave slows the world for a moment
 // before the card between waves rises.
+// The sound (sound.js, through audio.js) answers the same news, and plays Chris's music; it starts with the first touch
+// anywhere on the page. The Settings card (settings.js: sound on, music, sounds) opens from a gear on the title screen,
+// in port and on the pause card.
 import * as THREE from 'three';
 import { loadShipArt } from '../ship/materials.js';
 import { buildShip } from '../ship/build.js';
@@ -29,6 +32,9 @@ import { makePickups } from './pickups.js';
 import { makePort } from './port.js';
 import { hitZones, firstHit } from './damage.js';
 import { smokeFrom } from './effects.js';
+import { makeAudio } from '../audio/audio.js';
+import { makeSound } from './sound.js';
+import { makeSettings } from './settings.js';
 import minimapUrl from '../../assets/map/minimap.webp';
 
 const $ = (id) => document.getElementById(id);
@@ -69,6 +75,10 @@ async function main() {
   scene.add(hemi, sun, sun.target);
 
   const progress = makeProgress(), skies = () => SKIES[progress.data.skies];
+  // the sound: made at the first touch, set by the Settings card (kept on this device), answering the game's news
+  const settings = makeSettings({ touch }), audio = makeAudio({ touch, settings: () => settings.data });
+  const sound = makeSound({ audio, touch, where: () => player?.pos });
+  settings.on((id, v, done) => { audio.apply(); if (done && (id === 'effects' || (id === 'sound' && v))) sound.ui('ui-cursor'); }); // (a tick, to hear the new level)
   const fx = makeFx({ scene, camera, touch }), bolts = makeBolts(scene, fx), pickups = makePickups(scene);
   const wrecks = makeWrecks({ fx, tear: world.tear, scene }), surge = makeSurge({ scene, fx });
   const raiders = makeRaiders(scene, art, bolts, skies, fx);
@@ -112,7 +122,7 @@ async function main() {
     player = makeFlyer(ship, L.stats, at, L.tune);
     if (!zones.has(id)) zones.set(id, hitZones(ship));
     player.aimY = zones.get(id).aim.y;
-    gunnery = makeGunnery(ship, L.guns, player);
+    gunnery = makeGunnery(ship, L.guns, player); loaded.port = loaded.starboard = 0; wasLocked = null;
     fx.follow(player); surge.follow(player, zones.get(id));
     scene.add(ship.root);
     // the sun's shadows: a box round the ship, sized to her, so her masts and sails shade her deck. The sun sits
@@ -164,7 +174,8 @@ async function main() {
     for (let i = 0; i < n; i++) { surgeFov.v += (SURGE_VIEW.k * (want - surgeFov.x) - c * surgeFov.v) * h; surgeFov.x += surgeFov.v * h; }
   }
   const aimPoint = new THREE.Vector3(), target = new THREE.Vector3(), toR = new THREE.Vector3(); // (kept, not made each frame)
-  let locked = null, reach = true;
+  let locked = null, reach = true, wasLocked = null;
+  const LOCK = payload('lock');
   function placeCamera(dt, inp) {
     const sens = inp.locked ? 0.0026 : touch ? 0.0042 : 0.005;
     cam.yaw -= inp.look.x * sens;
@@ -194,6 +205,7 @@ async function main() {
       const ang = v.angleTo(cam.look), tol = Math.max(0.05, Math.atan((r.R.length * 0.8) / along));
       if (ang < tol && ang < bestA) { bestA = ang; locked = r; }
     }
+    if (locked !== wasLocked) { wasLocked = locked; if (locked) { LOCK.raider = locked; emit('lock'); LOCK.raider = null; } }
     aimPoint.copy(target).addScaledVector(cam.look, 800);
   }
   function aimFor(battery) {
@@ -590,6 +602,7 @@ async function main() {
   }
 
   let last = performance.now(), time = 0, held = null, lastPop = -1, lastShard = -9, run = 0;
+  const loaded = { port: 0, starboard: 0 }, SIDES = ['port', 'starboard'], READY = payload('guns:ready'); // (each broadside's reload, as it was)
   const hold = new THREE.Vector3(); // where the ship's hold is, that the shards fly to
   const GATHER = payload('shards:gather');
   // the shard count pops gold as they come in (once in a while, as they stream in)
@@ -611,10 +624,17 @@ async function main() {
     player.ship.root.updateMatrixWorld(true);
     const gone = raiders.update(dt, player, camera);
     placeCamera(dt, inp);
+    sound.listen(camera, player.pos); // (where the sounds of this step are heard from)
     const battery = batteryFor(cam.yaw);
     aimFor(battery);
     gunnery.update(dt);
+    // a broadside loaded again is told (a clack: sound.js)
+    for (let i = 0; i < 2; i++) {
+      const b = SIDES[i];
+      if (loaded[b] > 0 && gunnery.ready[b] === 0 && gunnery.B[b][0]?.kind === 'broadside' && !player.down) { READY.battery = b; READY.firing = !!inp.fire; emit('guns:ready'); }
+    }
     if (inp.fire && !player.down) gunnery.fire(battery, aimPoint, bolts, 'player', player.velocity);
+    loaded.port = gunnery.ready.port; loaded.starboard = gunnery.ready.starboard;
     bolts.update(dt, hitTest);
     smokeFrom(player, fx, dt);
     for (let i = 0; i < raiders.list.length; i++) smokeFrom(raiders.list[i].f, fx, dt);
@@ -647,6 +667,7 @@ async function main() {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
     if (mode === 'voyage') { if (!paused && !W.sunk) tick(dt * fx.timeScale(dt)); renderer.render(scene, camera); }
     else { input.read(); port.update(dt); port.render(); }
+    sound.update(dt, mode === 'voyage' ? player : null); // (real time: the music, and the sky's sound)
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
@@ -655,18 +676,19 @@ async function main() {
   // for tools/check.mjs
   window.__game = {
     ready: true, get player() { return player; }, get gunnery() { return gunnery; }, cam, input, raiders, bolts, pickups, renderer, camera, scene, world, sun, waves: W, voyage: V,
-    fx, events, wrecks, surge, get lastArc() { return lastArc; }, get time() { return time; },
+    fx, events, wrecks, surge, get lastArc() { return lastArc; }, get time() { return time; }, audio, sound, settings,
     progress, port, sail, endVoyage, pause, sailOn, wind: WIND, get mode() { return mode; }, get paused() { return paused; },
     fly: (id) => sail(id, true), // a voyage in any ship, owned or not (for tests)
     get hits() { return V.hits; }, get downed() { return V.downed; }, get locked() { return locked; },
     // how much wider a Surge has made the view, in degrees (for tests)
     get surgeView() { return surgeFov.x; },
     // run the game's clock without drawing, holding these controls (for tests on slow software rendering), in frames
-    // of `frame` seconds (a 60th of a second, or longer to play a slow phone)
+    // of `frame` seconds (a 60th of a second, or longer to play a slow phone). The sound only counts the news meanwhile
+    // (minutes of a fight in a moment would all sound at once), unless a test asks for it (audio.loudSteps)
     step(seconds, controls = {}, frame = 1 / 60) {
       held = { turn: 0, climb: 0, sail: 0, fire: false, look: { x: 0, y: 0 }, zoom: 0, pressed: new Set(), lastLook: performance.now() / 1000, locked: false, ...controls };
-      for (let t = 0; t < seconds; t += frame) tick(frame);
-      held = null;
+      const quiet = audio.quiet; audio.quiet = !audio.loudSteps;
+      try { for (let t = 0; t < seconds; t += frame) tick(frame); } finally { audio.quiet = quiet; held = null; }
     },
   };
 }

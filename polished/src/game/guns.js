@@ -183,8 +183,9 @@ export function makeGunnery(ship, { reload: slow = 1, damage = 1 } = {}, flyer =
     const bolt = c.bolts.fire(world, clampToArc(want, dirW, K.yaw, K.pitch, arc), g.kind, c.owner, c.inherit, weight);
     if (bolt) bolt.from = gunnery.from;
     FIRE.owner = c.owner; FIRE.kind = g.kind; FIRE.battery = b; FIRE.p.copy(world); FIRE.dir.copy(dirW); FIRE.weight = weight; FIRE.ship = R.id;
-    FIRE.vel.copy(c.inherit ?? V0); FIRE.i = i; FIRE.n = c.n;
+    FIRE.vel.copy(c.inherit ?? V0); FIRE.i = i; FIRE.n = c.n; FIRE.raider = gunnery.from;
     emit('fire', FIRE);
+    FIRE.raider = null; // (not kept: a raider long gone isn't held on to)
     // the recoil heels her away from the side that fired (a bigger ship, less)
     if (flyer && g.kind === 'broadside') flyer.heelV += Math.sign(g.d.x) * 0.012 * weight * (25 / R.length);
   }

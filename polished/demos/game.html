@@ -230,6 +230,30 @@
   #help p { margin: 6px 0 0; color: var(--gold); }
   #btn-help { padding: 6px 10px; min-height: 34px; }
 
+  /* the gear that opens Settings (title screen, port, pause card), and the Settings card */
+  .gear { display: grid; place-items: center; width: 38px; height: 34px; padding: 0; color: var(--cream); }
+  .gear svg { width: 20px; height: 20px; }
+  #btn-settings-title { position: fixed; top: var(--top); right: var(--gutter); pointer-events: auto; }
+  .gear-text { display: inline-flex; align-items: center; gap: 6px; }
+  .gear-text svg { width: 16px; height: 16px; }
+  #settings { z-index: 20; background: rgba(6, 4, 12, 0.6); }
+  #settings .card { text-align: left; background: rgba(24, 12, 30, 0.97); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6); }
+  #settings h2 { text-align: center; }
+  #settings-rows { display: grid; gap: 4px; margin: 10px 0 6px; }
+  .setting { display: grid; grid-template-columns: 7em 1fr auto; gap: 14px; align-items: center; min-height: 40px; color: var(--cream); font-size: 15px; }
+  .setting output { min-width: 3.6em; text-align: right; color: var(--dim); font-variant-numeric: tabular-nums; font-size: 13px; }
+  .setting input[type='range'] { width: 100%; accent-color: var(--gold); }
+  .setting.switch input { grid-column: 2 / -1; justify-self: start; appearance: none; -webkit-appearance: none; width: 48px; height: 26px; margin: 0; border-radius: 13px;
+    background: rgba(236, 220, 184, 0.2); border: 1px solid rgba(236, 220, 184, 0.6); position: relative; cursor: pointer; transition: background 0.15s; }
+  .setting.switch input::after { content: ''; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: var(--cream); transition: transform 0.15s; }
+  .setting.switch input:checked { background: var(--gold); border-color: #fff3d0; }
+  .setting.switch input:checked::after { transform: translateX(22px); background: var(--plum); }
+  .setting .pick { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 4px; }
+  .setting .pick button { padding: 6px 10px; background: var(--panel); border: 1px solid rgba(236, 220, 184, 0.45); border-radius: 6px; font-size: 13px; }
+  .setting .pick button[aria-checked='true'] { background: var(--plum); border-color: var(--gold); color: var(--gold); }
+  .settings-note { margin: 4px 0 10px; font-size: 12.5px; color: var(--dim); text-align: center; }
+  #settings .choices { margin-top: 6px; }
+
   /* touch controls, shown on phones and tablets */
   .touch-only { display: none; }
   body.touch .touch-only { display: grid; }
@@ -302,11 +326,12 @@
     <div id="skies" role="radiogroup" aria-label="Skies"></div>
     <button id="btn-to-port" class="big" type="button">To port</button>
   </div>
+  <button id="btn-settings-title" class="panel gear" type="button" aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M10.09 4.03 L10.54 1.10 L13.46 1.10 L13.91 4.03 L16.28 5.01 L18.67 3.26 L20.74 5.33 L18.99 7.72 L19.97 10.09 L22.90 10.54 L22.90 13.46 L19.97 13.91 L18.99 16.28 L20.74 18.67 L18.67 20.74 L16.28 18.99 L13.91 19.97 L13.46 22.90 L10.54 22.90 L10.09 19.97 L7.72 18.99 L5.33 20.74 L3.26 18.67 L5.01 16.28 L4.03 13.91 L1.10 13.46 L1.10 10.54 L4.03 10.09 L5.01 7.72 L3.26 5.33 L5.33 3.26 L7.72 5.01Z M12 8.4a3.6 3.6 0 1 0 0.001 0Z"/></svg></button>
 </section>
 
 <!-- the port: your ships in the void, their upgrades and crystal power, and setting sail -->
 <section id="port" class="screen" hidden>
-  <header class="port-top"><h1>Port</h1><span id="port-shards" class="panel shards">◆ 0</span><button id="btn-skies" class="panel" type="button">Skies</button></header>
+  <header class="port-top"><h1>Port</h1><span id="port-shards" class="panel shards">◆ 0</span><button id="btn-skies" class="panel" type="button">Skies</button><button id="btn-settings-port" class="panel gear" type="button" aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M10.09 4.03 L10.54 1.10 L13.46 1.10 L13.91 4.03 L16.28 5.01 L18.67 3.26 L20.74 5.33 L18.99 7.72 L19.97 10.09 L22.90 10.54 L22.90 13.46 L19.97 13.91 L18.99 16.28 L20.74 18.67 L18.67 20.74 L16.28 18.99 L13.91 19.97 L13.46 22.90 L10.54 22.90 L10.09 19.97 L7.72 18.99 L5.33 20.74 L3.26 18.67 L5.01 16.28 L4.03 13.91 L1.10 13.46 L1.10 10.54 L4.03 10.09 L5.01 7.72 L3.26 5.33 L5.33 3.26 L7.72 5.01Z M12 8.4a3.6 3.6 0 1 0 0.001 0Z"/></svg></button></header>
   <p id="port-note" class="panel" aria-live="polite"></p>
   <div id="port-ships" class="panel" role="group" aria-label="Ships"></div>
   <section id="port-panel" class="panel">
@@ -400,7 +425,16 @@
   <div class="panel card">
     <h2 id="paused-title">Paused</h2>
     <p id="paused-line"></p>
-    <div class="choices"><button id="btn-resume" class="big" type="button">Resume</button><button id="btn-abandon" class="plain" type="button">Back to port</button></div>
+    <div class="choices"><button id="btn-resume" class="big" type="button">Resume</button><button id="btn-abandon" class="plain" type="button">Back to port</button><button id="btn-settings-pause" class="plain gear-text" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M10.09 4.03 L10.54 1.10 L13.46 1.10 L13.91 4.03 L16.28 5.01 L18.67 3.26 L20.74 5.33 L18.99 7.72 L19.97 10.09 L22.90 10.54 L22.90 13.46 L19.97 13.91 L18.99 16.28 L20.74 18.67 L18.67 20.74 L16.28 18.99 L13.91 19.97 L13.46 22.90 L10.54 22.90 L10.09 19.97 L7.72 18.99 L5.33 20.74 L3.26 18.67 L5.01 16.28 L4.03 13.91 L1.10 13.46 L1.10 10.54 L4.03 10.09 L5.01 7.72 L3.26 5.33 L5.33 3.26 L7.72 5.01Z M12 8.4a3.6 3.6 0 1 0 0.001 0Z"/></svg>Settings</button></div>
+  </div>
+</section>
+<!-- settings: sound and music (src/game/settings.js builds the rows); kept on this device -->
+<section id="settings" class="screen dim" hidden>
+  <div class="panel card" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <h2 id="settings-title">Settings</h2>
+    <div id="settings-rows"></div>
+    <p class="touch-only settings-note">No sound? Check the silent switch on the side of your iPhone.</p>
+    <div class="choices"><button id="btn-settings-done" class="big" type="button">Done</button></div>
   </div>
 </section>
 <p id="error" hidden></p>
