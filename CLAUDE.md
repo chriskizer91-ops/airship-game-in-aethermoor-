@@ -19,7 +19,7 @@
   - map, scale and camera: `docs/map.md`
   - the game, its controls and how ships fly and fire: `docs/game.md`
 - The map is nine tiles in `art/map/tiles/`, painted almost straight down, at 5 m per pixel (23 km across). It's just the flat ground under where you fly: keep it simple (Chris, October 6). The camera stays high, above a cloud floor.
-- Get the Captain's four ships fully playable before modelling the Galleon and the Man-o'-war (Chris, October 6).
+- All six classes are built (October 6). The Galleon and the Man-o'-war are only ever raiders: a treasure ship that runs and a fortress. They came from Chris's art packs (`art/ships/galleon-*.png`, `man-o-war-*.png`), which he sent so the fights' balance could take them in.
 - The game works on a laptop at full detail (WASD and keys, mouse aiming) and on a phone (touch stick, aiming drag, buttons). Keep both working.
 - The game is ship-to-ship fighting in the air, like at sea; fill that out before boarding (Chris, October 6). A title screen with three skies (difficulties, not called easy/medium/hard), a port like a racing game's garage (ships, upgrades, crystal power), and Crystal Shards, Aethermoor's money, earned from raiders.
 - When tuning the fights, run `node tools/sim-fight.mjs <ship> <waves> <skies>` and keep `docs/game.md` ("How hard it is") in step.

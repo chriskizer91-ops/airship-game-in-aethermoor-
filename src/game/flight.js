@@ -44,11 +44,13 @@ export function makeFlyer(ship, stats, start, tune = {}) {
   s.crew = () => Math.ceil(stats.crew * s.frac('hull')); // the crew falls with the hull
   s.forward = () => new THREE.Vector3(Math.sin(s.heading), 0, Math.cos(s.heading));
   s.repair = (k) => { for (const p in full) s.health[p] = Math.min(full[p], s.health[p] + full[p] * k); };
+  s.strikes = false; // a treasure ship strikes her colours (gives up) with no sails left, or a quarter of her hull
   s.hit = (part, damage) => {
     if (s.down) return;
     s.health[part] = Math.max(0, s.health[part] - damage);
     if (s.health.hull <= 0) s.down = { why: 'hull', t: 0, roll: Math.random() < 0.5 ? -1 : 1 };
     else if (s.health.crystals <= 0) s.down = { why: 'crystals', t: 0, roll: Math.random() < 0.5 ? -1 : 1 };
+    else if (s.strikes && (s.health.sails <= 0 || s.health.hull <= full.hull * 0.25)) s.down = { why: 'struck', t: 0, roll: Math.random() < 0.5 ? -1 : 1 };
   };
 
   // c: turn (-1 port .. 1 starboard), climb (-1 .. 1), and either sail (a rate, from the keys) or sailTo (set outright)
@@ -79,16 +81,17 @@ export function makeFlyer(ship, stats, start, tune = {}) {
     ship.update(dt, { turn: s.turn * Math.min(1, s.speed / (H.vmax * 0.4) + 0.2), climb: s.vy / H.climb });
   };
 
-  // going down: a holed hull rolls over and falls; dead crystals let the ship sink, still upright
+  // going down: a holed hull rolls over and falls; dead crystals let the ship sink, still upright; a ship that has
+  // struck her colours drifts to a stop and settles slowly, her crew abandoning her
   function sink(dt) {
     const d = s.down; d.t += dt;
-    s.speed *= Math.exp(-dt * (d.why === 'hull' ? 0.5 : 0.25));
+    s.speed *= Math.exp(-dt * (d.why === 'hull' ? 0.5 : d.why === 'struck' ? 0.6 : 0.25));
     if (d.why === 'hull') { s.vy -= 7 * dt; s.heading -= d.roll * 0.15 * dt; }
-    else s.vy += (-16 - s.vy) * (1 - Math.exp(-dt * 0.8));
+    else s.vy += ((d.why === 'struck' ? -7 : -16) - s.vy) * (1 - Math.exp(-dt * 0.8));
     move(dt);
     const k = Math.min(1, d.t / 6);
-    ship.root.rotation.x = (d.why === 'hull' ? 0.55 : 0.12) * k * k;
-    ship.root.rotation.z = d.roll * (d.why === 'hull' ? 0.9 : 0.25) * k;
+    ship.root.rotation.x = (d.why === 'hull' ? 0.55 : d.why === 'struck' ? 0.04 : 0.12) * k * k;
+    ship.root.rotation.z = d.roll * (d.why === 'hull' ? 0.9 : d.why === 'struck' ? 0.12 : 0.25) * k;
     ship.update(dt, { turn: 0, climb: 0 });
   }
   function move(dt) {

@@ -15,8 +15,8 @@ const out = process.argv[2] ?? root + 'shots';
 mkdirSync(out, { recursive: true });
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const problems = [];
-const ships = ['skiff', 'cutter', 'brig', 'frigate'];
-const BUDGET = { full: [80000, 125000], middle: [10000, 32000], far: [1000, 6000] };
+const ships = ['skiff', 'cutter', 'brig', 'frigate'], fleet = [...ships, 'galleon', 'manowar'];
+const BUDGET = { full: [80000, 125000], middle: [10000, 50000], far: [1000, 8000] };
 const SIZES = { laptop: { viewport: { width: 1280, height: 800 } }, phone: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true } };
 
 async function open(file, name, ready) {
@@ -34,14 +34,14 @@ const wait = (page, fn, arg, what) => page.waitForFunction(fn, arg, { timeout: 6
 for (const name of ['laptop', 'phone']) {
   const page = await open('hangar', name, () => window.__hangar?.ready || !document.getElementById('error').hidden);
   if (name === 'laptop') {
-    const table = await page.evaluate((ships) => ships.map((id) => [id, ...['full', 'middle', 'far'].map((l) => window.__hangar.stats(id, l))]), ships);
+    const table = await page.evaluate((ships) => ships.map((id) => [id, ...['full', 'middle', 'far'].map((l) => window.__hangar.stats(id, l))]), fleet);
     for (const [id, ...levels] of table) {
       console.log(id.padEnd(8), levels.map((s, i) => `${['full', 'middle', 'far'][i]} ${s.triangles.toLocaleString().padStart(7)} (${s.drawCalls} calls)`).join('  '));
       levels.forEach((s, i) => { const l = ['full', 'middle', 'far'][i], [a, b] = BUDGET[l]; if (s.triangles < a || s.triangles > b) problems.push(`${id} ${l}: ${s.triangles} triangles, outside ${a}-${b}`); });
     }
   }
   const shots = name === 'laptop'
-    ? ships.flatMap((id) => [[id, 'turn', 0.9, 0.28], [id, 'side', Math.PI / 2, 0.04]]).concat([['all', 'turn', 0.75, 0.32]])
+    ? fleet.flatMap((id) => [[id, 'turn', 0.9, 0.28], [id, 'side', Math.PI / 2, 0.04]]).concat([['all', 'turn', 0.75, 0.32]])
     : [['brig', 'turn', 0.9, 0.3], ['skiff', 'turn', 0.9, 0.3], ['all', 'turn', 0.75, 0.32]];
   for (const [id, view, yaw, pitch] of shots) {
     await page.evaluate(([id, view, yaw, pitch]) => { window.__hangar.select(id); window.__hangar.view(view, yaw, pitch); }, [id, view, yaw, pitch]);
@@ -122,7 +122,7 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
         aimAt(P, tp); g.step(0.05, { fire: false });
         const label = document.getElementById('battery-name').textContent, reach = document.getElementById('battery-count').textContent;
         const locked = g.locked === foe;
-        aimAt(P, tp); g.step(2, { fire: true });
+        aimAt(P, tp); g.step(6, { fire: true }); // three broadside volleys: a single one can spread wide
         r.guns[b] = { n, label, locked, reach, parts: PARTS.filter((k) => foe.f.health[k] < foe.f.full[k]) };
       }
       res.push(r);
@@ -146,10 +146,28 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
     Object.assign(g.waves, { n: 2, state: 'calm', timer: 0.1 });
     g.step(60, {});
     const fight = { raiders: g.raiders.list.map((r) => r.id).join(' '), hurt: PARTS.filter((k) => P.health[k] < P.full[k]) };
-    // a raider captain leads wave 5, and Maelstrom skies send more raiders
+    // a raider captain leads wave 5; wave 6 brings a treasure ship, wave 12 a Man-o'-war, wave 15 both a Man-o'-war
+    // and a captain (who isn't the Man-o'-war)
     Object.assign(g.waves, { n: 4, state: 'calm', timer: 0.1 }); g.raiders.clear(); g.step(0.2, {});
     const captain = g.raiders.list.filter((r) => r.captain).map((r) => `${r.id} (hull ${r.f.full.hull})`).join(' ');
-    return { res, sinking, gathered, detail, fight, captain };
+    Object.assign(g.waves, { n: 5, state: 'calm', timer: 0.1 }); g.raiders.clear(); g.step(0.2, {});
+    const wave6 = g.raiders.list.map((r) => r.id + (r.role === 'prize' ? ' (treasure)' : '')).join(' ');
+    Object.assign(g.waves, { n: 11, state: 'calm', timer: 0.1 }); g.raiders.clear(); g.step(0.2, {});
+    const wave12 = g.raiders.list.map((r) => r.id).join(' ');
+    Object.assign(g.waves, { n: 14, state: 'calm', timer: 0.1 }); g.raiders.clear(); g.step(0.2, {});
+    const wave15 = g.raiders.list.map((r) => r.id + (r.captain ? ' (captain)' : '')).join(' ');
+    // a treasure ship: shoot her sails and she strikes her colours; let her run far enough and she gets away
+    g.raiders.clear(); g.waves.timer = 1e9; still(P); P.pos.set(0, 900, 0); P.heading = 0;
+    const prize = g.raiders.spawn('galleon', P.pos.clone().add({ x: 0, y: 6, z: 380 }), Math.PI / 2, true);
+    let t = 0;
+    while (t < 90 && !prize.f.down) { aimAt(P, prize.f.pos.clone().add({ x: 0, y: 12, z: 0 })); g.step(0.5, { fire: true }); t += 0.5; }
+    const struck = { why: prize.f.down?.why, t, sails: Math.round(prize.f.health.sails) };
+    g.raiders.clear(); g.raiders.setAI(true);
+    const runner = g.raiders.spawn('galleon', P.pos.clone().add({ x: 0, y: 0, z: 3400 }), 0);
+    runner.fleeing = true; g.step(15, {});
+    const away = { gone: !g.raiders.list.includes(runner), escaped: !!runner.escaped };
+    g.raiders.setAI(false); g.raiders.clear();
+    return { res, sinking, gathered, detail, fight, captain, wave6, wave12, wave15, struck, away };
   }, ships);
   const NAMES = { bow: 'Bow guns', port: 'Port broadside', starboard: 'Starboard broadside', stern: 'Stern guns' };
   for (const r of flown.res) {
@@ -162,7 +180,7 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
       if (!x.locked || x.reach === 'out of reach') problems.push(`${r.id}: ${b} guns didn't lock on to a raider in reach`);
     }
   }
-  const { sinking, gathered, detail, fight, captain } = flown;
+  const { sinking, gathered, detail, fight, captain, wave6, wave12, wave15, struck, away } = flown;
   console.log(`raider shot down: ${sinking.why}, counted ${sinking.counted}, spilled ${sinking.spilled} shards, ${sinking.gone ? 'gone below the clouds' : 'STILL THERE'}; gathered ◆ ${gathered} of 100 flown through`);
   console.log(`detail far ${detail.far}, near ${detail.near}; raiders fighting a Captain doing nothing for a minute (${fight.raiders || 'none left'}): hurt ${fight.hurt.join('+') || 'NOTHING'}; wave 5 captain: ${captain || 'NONE'}`);
   if (sinking.why !== 'hull' || sinking.counted !== 1 || !sinking.gone || !sinking.spilled) problems.push(`a raider shot down didn't go down properly: ${JSON.stringify(sinking)}`);
@@ -170,6 +188,13 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   if (detail.far !== 'far' || detail.near !== 'middle') problems.push(`raider detail levels wrong: ${JSON.stringify(detail)}`);
   if (!fight.hurt.length) problems.push('the raiders never hurt the Captain in a minute');
   if (!captain.startsWith('brig')) problems.push(`wave 5 should be led by a Brig captain: ${captain}`);
+  console.log(`wave 6: ${wave6}; wave 12: ${wave12}; wave 15: ${wave15}`);
+  console.log(`a treasure ship shot in her sails: ${struck.why ? `strikes her colours after ${struck.t} s` : 'DID NOT STRIKE'}; one running far: ${away.escaped ? 'got away' : 'STILL THERE'}`);
+  if (!wave6.includes('galleon (treasure)')) problems.push(`wave 6 should bring a treasure ship: ${wave6}`);
+  if (!wave12.includes('manowar')) problems.push(`wave 12 should bring a Man-o'-war: ${wave12}`);
+  if (!wave15.includes('manowar') || wave15.includes('manowar (captain)') || !wave15.includes('(captain)')) problems.push(`wave 15 should have a Man-o'-war and a captain who isn't it: ${wave15}`);
+  if (struck.why !== 'struck') problems.push(`a treasure ship shot in her sails didn't strike: ${JSON.stringify(struck)}`);
+  if (!away.gone || !away.escaped) problems.push(`a treasure ship running far didn't get away: ${JSON.stringify(away)}`);
 
   // a whole voyage, played: set sail from port, beat wave 1, sail on, then sink and get home with half
   const voyage = await page.evaluate(async () => {

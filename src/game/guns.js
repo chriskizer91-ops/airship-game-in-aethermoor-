@@ -5,7 +5,7 @@ import * as THREE from 'three';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 // Bigger ships carry bigger guns: each shot's weight is scaled by the ship's class
-export const GUN_WEIGHT = { skiff: 0.8, cutter: 0.9, brig: 1, frigate: 1.1 };
+export const GUN_WEIGHT = { skiff: 0.8, cutter: 0.9, brig: 1, frigate: 1.1, galleon: 1.15, manowar: 1.25 };
 // Long-focus chasers are fast, light and accurate; short-focus broadsides are heavy, slower and spread a little
 export const KINDS = {
   chaser: { speed: 430, damage: 28, reload: 1.1, yaw: 0.62, pitch: 0.26, spread: 0.002, life: 3.2, size: 1 },
@@ -21,8 +21,8 @@ export function gunsOf(ship) {
     const z = g.port ? hull.zs + 0.3 - g.len - 0.15 : g.z - g.len - 0.15;
     B.stern.push({ p: V(g.x, g.y, z), d: V(0, 0, -1), kind: 'chaser' });
   }
-  if (R.ports) for (const side of [1, -1]) for (const z of R.ports.z) {
-    const t = hull.tAt(z, R.ports.y), p = hull.at(z, t, side), n = hull.normal(z, t, side);
+  if (R.ports) for (const side of [1, -1]) for (const y of [].concat(R.ports.y)) for (const z of R.ports.z) {
+    const t = hull.tAt(z, y), p = hull.at(z, t, side), n = hull.normal(z, t, side);
     // the guns sit level in their ports, pointing straight out from the side (the hull itself curves away below)
     (side > 0 ? B.port : B.starboard).push({ p: V(...p).addScaledVector(n, 0.75 * R.ports.h), d: n.clone().setY(0).normalize(), kind: 'broadside' });
   }

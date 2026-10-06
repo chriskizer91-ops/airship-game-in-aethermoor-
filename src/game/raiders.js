@@ -1,15 +1,18 @@
-// raiders.js: the raiders, the Captain's enemies for now. They fly the same four classes as the Captain (Skiff,
-// Cutter, Brig, Frigate), built by the same code at the middle and far settings of the detail dial, and they fly by
-// the same rules (flight.js), a little slower. Raiders are easy to tell apart: rust-red sails, darker planks and
-// crimson pennants with a black hoist.
-//   Skiffs and Cutters chase: they come at the Captain bow-first, fire their bow guns, and break away when close.
-//   Brigs and Frigates fight broadside: they come alongside at a few hundred metres and fire whole sides.
+// raiders.js: the raiders, the Captain's enemies for now. They fly the Captain's four classes (Skiff, Cutter, Brig,
+// Frigate) and the two only raiders sail (Galleon, Man-o'-war), built by the same code at the middle and far settings
+// of the detail dial, and they fly by the same rules (flight.js), a little slower. Raiders are easy to tell apart:
+// rust-red sails, darker planks and crimson pennants with a black hoist.
+//   Skiffs and Cutters chase: attack runs, bow-first, peeling away side-on when close.
+//   Brigs, Frigates and the Man-o'-war fight broadside: they come alongside a few hundred metres off and fire whole
+//   sides. The Man-o'-war is a fortress: two decks of twelve guns a side, slow to turn and slower to climb.
+//   The Galleon is a treasure ship: she sails by, runs once she's chased, covering her escape with her stern guns, and
+//   strikes her colours when her sails are gone or her hull is down to a quarter. Left too far behind, she gets away.
 // They come in waves, smallest first, and every fifth wave is led by a raider captain: tougher, harder-hitting and
 // quicker to reload, with black sails and a gold pennant, and worth four times the shards. How sharp the raiders are
 // depends on the skies the Captain chose (progress.js).
 import * as THREE from 'three';
 import { buildShip, shipMotion } from '../ship/build.js';
-import { SHIPS, STATS } from '../ships/index.js';
+import { FLEET, STATS } from '../ships/index.js';
 import { makeFlyer } from './flight.js';
 import { makeGunnery, intercept } from './guns.js';
 import { hitZones, firstHit } from './damage.js';
@@ -19,20 +22,28 @@ import { CLOUD_Y } from './world.js';
 // little off (by this much for every metre to the target)
 export const RAIDER = { slow: 1.5, aim: 0.02 };
 export const CAPTAIN = { toughness: 2, damage: 1.2, reload: 0.9, bounty: 4 };
+// the big ships' heavy guns take their crews longer to reload
+const HEAVY = { galleon: 1.15, manowar: 1.3 };
 // Crystal Shards for bringing one down (before the skies' and the wave's bonus)
-export const BOUNTY = { skiff: 15, cutter: 30, brig: 60, frigate: 100 };
-const ROLE = { skiff: 'chaser', cutter: 'chaser', brig: 'broadside', frigate: 'broadside' };
-export const WAVES = [['skiff'], ['skiff', 'skiff'], ['cutter'], ['cutter', 'skiff'], ['brig'], ['brig', 'cutter'], ['frigate'],
-  ['frigate', 'cutter', 'cutter'], ['brig', 'brig', 'skiff', 'skiff'], ['frigate', 'brig', 'cutter', 'cutter', 'skiff']];
-// wave n (from 0): which ships, the biggest first, and whether it's led by a captain; Maelstrom skies add `extra`
-// Skiffs or Cutters from the third wave on
-const SIZE = { skiff: 0, cutter: 1, brig: 2, frigate: 3 };
+export const BOUNTY = { skiff: 15, cutter: 30, brig: 60, frigate: 100, galleon: 300, manowar: 400 };
+const ROLE = { skiff: 'chaser', cutter: 'chaser', brig: 'broadside', frigate: 'broadside', galleon: 'prize', manowar: 'broadside' };
+export const WAVES = [['skiff'], ['skiff', 'skiff'], ['cutter'], ['cutter', 'skiff'], ['brig'], ['galleon', 'cutter'], ['frigate'],
+  ['frigate', 'cutter', 'cutter'], ['brig', 'brig', 'skiff', 'skiff'], ['frigate', 'brig', 'cutter', 'cutter', 'skiff'],
+  ['galleon', 'frigate', 'cutter'], ['manowar', 'cutter', 'cutter'], ['frigate', 'frigate', 'brig'], ['galleon', 'galleon', 'frigate', 'cutter'],
+  ['manowar', 'frigate', 'brig', 'cutter']];
+// wave n (from 0): which ships, the biggest first, and whether it's led by a captain (every fifth wave: the biggest
+// ship but a Man-o'-war, which needs no captain); Maelstrom skies add `extra` Skiffs or Cutters from the third wave on
+const SIZE = { skiff: 0, cutter: 1, brig: 2, frigate: 3, galleon: 4, manowar: 5 };
 export function waveAt(n, extra = 0) {
-  const pool = ['skiff', 'skiff', 'cutter', 'cutter', 'cutter', 'brig', 'brig', 'frigate'];
-  const ids = n < WAVES.length ? [...WAVES[n]] : Array.from({ length: Math.min(6, 3 + ((n - WAVES.length) >> 1)) }, () => pool[Math.floor(Math.random() * pool.length)]);
+  const pool = ['skiff', 'skiff', 'cutter', 'cutter', 'cutter', 'brig', 'brig', 'frigate', 'frigate', 'galleon', 'manowar'];
+  let ids = [...(WAVES[n] ?? [])];
+  if (!ids.length) {
+    ids = Array.from({ length: Math.min(6, 3 + ((n - WAVES.length) >> 1)) }, () => pool[Math.floor(Math.random() * pool.length)]);
+    ids = ids.filter((id, i) => id !== 'manowar' || ids.indexOf('manowar') === i); // one Man-o'-war at a time
+  }
   if (n >= 2) for (let i = 0; i < extra && ids.length < 6; i++) ids.push(n % 2 ? 'cutter' : 'skiff');
   ids.sort((a, b) => SIZE[b] - SIZE[a]);
-  return { ids, captain: (n + 1) % 5 === 0 };
+  return { ids, captain: (n + 1) % 5 === 0 ? ids.findIndex((id) => id !== 'manowar') : -1 };
 }
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -89,14 +100,14 @@ export function makeRaiders(scene, art, bolts, skies) {
   function template(id, captain) {
     const key = id + (captain ? ':captain' : '');
     if (!T[key]) {
-      const R = SHIPS.find((s) => s.id === id), mid = buildShip(R, 'middle', arts[captain ? 'captain' : 'crew']), far = buildShip(R, 'far', arts[captain ? 'captain' : 'crew']);
+      const R = FLEET.find((s) => s.id === id), mid = buildShip(R, 'middle', arts[captain ? 'captain' : 'crew']), far = buildShip(R, 'far', arts[captain ? 'captain' : 'crew']);
       recolourPennants(mid, captain); recolourPennants(far, captain);
       T[key] = { R, mid, far, zones: hitZones(mid) };
     }
     return T[key];
   }
-  for (const R of SHIPS) template(R.id, false);
-  const list = [];
+  for (const R of FLEET) template(R.id, false);
+  const list = [], escaped = [];
   let ai = true;
 
   function spawn(id, pos, heading, frozen = false, captain = false) {
@@ -104,26 +115,36 @@ export function makeRaiders(scene, art, bolts, skies) {
     const ship = raiderShip(Tm), st = STATS[id];
     const stats = { ...st, hull: Math.round(st.hull * tough), sails: Math.round(st.sails * tough), crystals: Math.round(st.crystals * tough) };
     const f = makeFlyer(ship, stats, { pos, heading }, { speed: S.pace });
-    f.sail = 0.85; f.speed = f.H.vmax * 0.6; f.aimY = Tm.zones.aim.y;
+    const role = ROLE[id];
+    f.sail = 0.85; f.speed = f.H.vmax * 0.6;
+    // where the Captain's guns aim at her: her hull's middle, or a treasure ship's fore sails (shoot them to catch her)
+    f.aimY = Tm.zones.aim.y;
+    const sails = Tm.zones.sails.filter((b) => !b.isEmpty());
+    if (role === 'prize' && sails.length) {
+      const c = sails[0].getCenter(new THREE.Vector3()), at = new THREE.Vector3();
+      f.aimAt = () => at.copy(c).applyMatrix4(ship.body.matrixWorld).clone();
+    }
+    f.strikes = role === 'prize';
     ship.root.position.copy(pos); ship.root.rotation.y = heading;
     scene.add(ship.root);
-    const role = ROLE[id];
-    const gun = makeGunnery(ship, { reload: RAIDER.slow * S.reload * (captain ? CAPTAIN.reload : 1), damage: S.damage * (captain ? CAPTAIN.damage : 1) });
+    const gun = makeGunnery(ship, { reload: RAIDER.slow * S.reload * (HEAVY[id] ?? 1) * (captain ? CAPTAIN.reload : 1), damage: S.damage * (captain ? CAPTAIN.damage : 1) });
     const r = { id, R: Tm.R, name: `Raider ${captain ? 'captain\'s ' + Tm.R.cls : Tm.R.cls}`, captain, ship, f, gun, zones: Tm.zones, role, frozen,
       bounty: BOUNTY[id] * (captain ? CAPTAIN.bounty : 1), aim: RAIDER.aim * S.aim,
-      mode: 'attack', timer: 0, side: 1, alt: (Math.random() - 0.5) * (role === 'chaser' ? 50 : 20), counted: false, gone: false };
+      mode: 'attack', timer: 0, side: 1, alt: (Math.random() - 0.5) * (role === 'chaser' ? 50 : 20), counted: false, gone: false,
+      course: heading, fleeing: false, weave: Math.random() * 6 };
     ship.update(0, {}); ship.root.updateMatrixWorld(true);
     list.push(r);
     return r;
   }
 
-  // a wave of raiders, 1.5 to 1.9 km ahead of the Captain, more or less, coming in; the first is the captain, if any
+  // a wave of raiders, 1.5 to 1.9 km ahead of the Captain, more or less, coming in, its captain (if any) leading; a
+  // treasure ship is closer, about 1.2 km, sailing across the Captain's path
   function spawnWave(wave, foe) {
     const base = foe.heading + (Math.random() - 0.5) * 1.4, ids = wave.ids;
     ids.forEach((id, i) => {
-      const a = base + (i - (ids.length - 1) / 2) * 0.24, d = 1500 + Math.random() * 400;
+      const prize = ROLE[id] === 'prize', a = base + (i - (ids.length - 1) / 2) * 0.24, d = prize ? 1100 + Math.random() * 250 : 1500 + Math.random() * 400;
       const pos = new THREE.Vector3(foe.pos.x + Math.sin(a) * d, clamp(foe.pos.y + (Math.random() - 0.5) * 160, 200, 2000), foe.pos.z + Math.cos(a) * d);
-      spawn(id, pos, a + Math.PI, false, wave.captain && i === 0);
+      spawn(id, pos, prize ? a + (Math.random() < 0.5 ? 1 : -1) * Math.PI / 2 : a + Math.PI, false, i === wave.captain);
     });
     return base;
   }
@@ -134,7 +155,13 @@ export function makeRaiders(scene, art, bolts, skies) {
     const bearing = Math.atan2(dx, dz), rel = wrap(bearing - me.heading);
     r.timer -= dt;
     let want, sailTo = 1;
-    if (r.mode === 'break') {
+    if (r.role === 'prize') {
+      // a treasure ship sails her course until she's chased or hit, then runs, weaving, under every sail she has
+      if (!r.fleeing && (d < 1000 || me.frac('hull') < 1 || me.frac('sails') < 1)) r.fleeing = true;
+      r.weave += dt * 0.3;
+      want = r.fleeing ? bearing + Math.PI + Math.sin(r.weave) * 0.45 : r.course;
+      sailTo = r.fleeing ? 1 : 0.7;
+    } else if (r.mode === 'break') {
       want = r.breakH;
       if (r.timer <= 0) r.mode = 'attack';
     } else if (r.role === 'chaser' || d > 1500) {
@@ -183,6 +210,7 @@ export function makeRaiders(scene, art, bolts, skies) {
   // every frame: steer, fly, fire, pick the detail level; returns the raiders that went down this frame
   function update(dt, foe, camera) {
     const downed = [];
+    escaped.length = 0;
     const toScreen = 1 / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
     for (const r of list) {
       const live = !r.f.down;
@@ -192,6 +220,8 @@ export function makeRaiders(scene, art, bolts, skies) {
       r.gun.update(dt);
       if (live && ai && !r.frozen && !foe.down) shoot(r, foe);
       if (r.f.down && !r.counted) { r.counted = true; downed.push(r); }
+      // a treasure ship that gets far enough away has escaped
+      if (r.role === 'prize' && r.fleeing && !r.f.down && r.f.pos.distanceTo(foe.pos) > 3600) { r.gone = true; r.escaped = true; escaped.push(r); }
       if (r.f.down && (r.f.pos.y < CLOUD_Y - 140 || r.f.down.t > 16)) r.gone = true;
       const size = (r.R.length / Math.max(1, camera.position.distanceTo(r.f.pos))) * toScreen;
       r.ship.detail(size < 0.06 ? 'far' : 'middle', camera.userData.pixelScale ?? 500);
@@ -212,5 +242,5 @@ export function makeRaiders(scene, art, bolts, skies) {
   }
 
   function clear() { for (const r of list) scene.remove(r.ship.root); list.length = 0; }
-  return { list, spawn, spawnWave, update, hitBy, clear, templates: T, setAI: (on) => { ai = on; } };
+  return { list, escaped, spawn, spawnWave, update, hitBy, clear, templates: T, setAI: (on) => { ai = on; } };
 }

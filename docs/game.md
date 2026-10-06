@@ -14,7 +14,9 @@ What's built, by stage (all October 6):
 - **Stage 2: raiders.** Enemy ships in waves, and damage to the hull, sails and crystals.
 - **Stage 3: the port** (Chris: "a racing game's garage"). A title screen with three skies, Crystal Shards, buying ships and upgrades, and crystal power. To make fights more than wave after wave, it adds shards to gather, a raider captain every fifth wave, the wind, the Surge, and the choice after each wave.
 
-Boarding waits (Chris, October 6: fill out the ship-to-ship fighting first). The Galleon and the Man-o'-war wait until the four smaller ships are fully playable.
+- **The Galleon and the Man-o'-war join the raiders** (October 6, from Chris's art packs): the Galleon as a treasure ship that runs, the Man-o'-war as a fortress.
+
+Boarding waits (Chris, October 6: fill out the ship-to-ship fighting first).
 
 ## The skies
 
@@ -54,7 +56,9 @@ Steps cost ◆ 60, 140 and 280 on the Skiff, and more on bigger ships: 1.6 times
 - **Going down.** If your ship goes down, the crew get her home with half this voyage's shards. Pausing and going back to port in the middle of a fight also keeps half; between waves it keeps all.
 - **The wind** changes with every wave. It's shown next to the compass: the arrow points the way it blows (up is the way you're heading), and the number is how much it adds to or takes from your top speed, up to 14%. Raiders feel it too.
 - **The Surge.** **R**, or the Surge button on a phone: the crystals pour into the sails for 3 seconds, 60% more top speed, then 15 seconds to build up again (the bar in the top-left panel). For running from a broadside, catching a fleeing raider, or reaching shards before they fall.
-- **Raider captains** lead every fifth wave: wave 5 is a captain's Brig. A captain's ship has black sails and a gold pennant, and a gold tag. It's twice as sturdy, hits 20% harder and reloads 10% faster, and it's worth four times the shards.
+- **Raider captains** lead every fifth wave: wave 5 is a captain's Brig. A captain's ship has black sails and a gold pennant, and a gold tag. It's twice as sturdy, hits 20% harder and reloads 10% faster, and it's worth four times the shards. (A Man-o'-war needs no captain: in a wave with one, the captain sails the next biggest ship.)
+- **Treasure ships.** A Galleon is a rich prize, worth ◆ 300 before the bonuses. She sails across your path until you come within a kilometre or hit her, then runs, weaving, covering her escape with her stern guns. Your guns lock on to her sails rather than her hull: **shoot her sails away (or her hull down to a quarter) and she strikes her colours**, gives up and settles away below the clouds, spilling her shards. Let her get 3.6 km away and she escapes with her treasure. Don't pull alongside her: two decks of eight guns a side.
+- **The Man-o'-war** is a fortress: hull 7,000, two decks of twelve guns a side, four in the bow. Her broadside can wreck a Frigate in a few volleys, but she turns slowly and barely climbs, so stay off her beam: above or below her, or off her bow or stern. From above, her five crystal columns are open to your guns; sink her crystals and she's out of the fight.
 
 ## Controls
 
@@ -102,7 +106,7 @@ On a phone the game draws a little less sharply so it stays smooth, and pauses b
 | **Chasers** (bow and stern, and the Skiff's swivels) | 430 m/s | 1.1 s | about 1.4 km | 35° / 15° | 28 |
 | **Broadsides** (the guns along the sides) | 320 m/s | 2.6 s, all together | about 830 m | 43° / 9° | 55, spreading a little |
 
-**Bigger ships carry bigger guns**: a shot's weight is scaled by the ship's class: 0.8 on a Skiff, 0.9 on a Cutter, 1 on a Brig and 1.1 on a Frigate (and then by crystal power and, for raiders, the skies). Each hit takes its weight off whatever it hits: the hull, the sails or the crystals.
+**Bigger ships carry bigger guns**: a shot's weight is scaled by the ship's class: 0.8 on a Skiff, 0.9 on a Cutter, 1 on a Brig, 1.1 on a Frigate, 1.15 on a Galleon and 1.25 on a Man-o'-war (and then by crystal power and, for raiders, the skies). The Galleon's and Man-o'-war's heavy guns take their crews 15% and 30% longer to reload. Each hit takes its weight off whatever it hits: the hull, the sails or the crystals.
 
 ## How each ship flies
 
@@ -138,7 +142,8 @@ Each shot hits whatever it meets first: the sails (one zone per mast), the cryst
 The raiders fly the same four classes as the Captain, by the same rules. They're easy to tell apart: **rust-red sails, darker planks and crimson pennants with a black hoist**. Each has a tag over it with its class, its distance and its three health bars; off screen, the tag waits at the edge with an arrow pointing to it.
 
 - **Skiffs and Cutters make attack runs.** They come at you bow-first, firing their bow guns, then after 10 to 15 seconds, or when they get close, peel away side-on and come round again. That's when they're open to your broadside.
-- **Brigs and Frigates fight broadside.** They come alongside a few hundred metres off, on whichever side you're on, and fire whole sides.
+- **Brigs, Frigates and the Man-o'-war fight broadside.** They come alongside a few hundred metres off, on whichever side you're on, and fire whole sides.
+- **The Galleon runs** (see Treasure ships, above).
 - On Crosswinds they're a little weaker than the Captain: they sail at 92% of their class's top speed, reload half as slowly again, aim a little off (up to 2 m for every 100 m to you), and hold their fire until you're within about two-thirds of their reach.
 - They're drawn at the middle or far setting of the detail dial (`docs/ships.md`), whichever suits how big they look on screen.
 
@@ -151,18 +156,25 @@ The raiders fly the same four classes as the Captain, by the same rules. They're
 | 3 | a Cutter |
 | 4 | a Cutter and a Skiff |
 | 5 | **a raider captain's Brig** |
-| 6 | a Brig and a Cutter |
+| 6 | **a treasure ship** (a Galleon) and a Cutter |
 | 7 | a Frigate |
 | 8 | a Frigate and two Cutters |
 | 9 | two Brigs and two Skiffs |
 | 10 | **a raider captain's Frigate**, a Brig, two Cutters and a Skiff |
-| after that | three to six, mixed, with a captain every fifth wave |
+| 11 | a treasure ship, a Frigate and a Cutter |
+| 12 | **a Man-o'-war** and two Cutters |
+| 13 | two Frigates and a Brig |
+| 14 | two treasure ships, a Frigate and a Cutter |
+| 15 | **a Man-o'-war**, **a raider captain's Frigate**, a Brig and a Cutter |
+| after that | three to six, mixed (at most one Man-o'-war), with a captain every fifth wave |
 
 **How hard it is.** `node tools/sim-fight.mjs skiff 5 cross` sends out a simulated Captain. It simply points at the nearest raider and fires, keeps a raider abeam in a ship with broadsides, and waits for repairs between waves. It never climbs out of a broadside, never surges and never dodges. On Crosswinds it:
 
 - gets the Skiff through four waves, with about ◆ 420 in the hold (enough for the Cutter), and then the wave-5 captain sinks it
 - gets the Brig through seven or eight waves
 - gets the Frigate through five to eight waves on Maelstrom
+- beats the treasure ship's wave (wave 6) in a Cutter, catching her in about three minutes; in a Brig it goes for her escort first, and she gets away
+- in a Frigate, beats wave 12's Man-o'-war about half the time: it fights her side to side, where she's strongest
 
 On Fair Winds the Skiff gets through all five. A real Captain who uses height, the Surge and the wind does better.
 
@@ -189,6 +201,6 @@ On Fair Winds the Skiff gets through all five. A real Captain who uses height, t
 - It opens on the title screen, goes to port, and checks a ship can't be bought without the shards. With shards, it buys the Cutter and armour, sets the crystal power, and checks the stats change.
 - It flies each ship and fires every battery at a raider of the same class 260 m off, checking the guns lock on and hit.
 - It shoots a raider down, watches it fall away spilling shards, and flies through shards to gather them.
-- It checks raiders far off use the far model, sends a Cutter at a Captain who does nothing and checks it does harm, and checks a captain leads wave 5.
+- It checks raiders far off use the far model, sends a Cutter at a Captain who does nothing and checks it does harm, and checks a captain leads wave 5, a treasure ship comes in wave 6 and a Man-o'-war in waves 12 and 15. It shoots a treasure ship's sails until she strikes her colours, and lets another run until she gets away.
 - It plays a whole voyage from the port: beats wave 1, sails on, sinks, and checks half the shards come home. It checks the save survives a reload.
 - It tries the keys, the mouse and the touch controls, and saves pictures of the title, the port and a battle into `shots/`.

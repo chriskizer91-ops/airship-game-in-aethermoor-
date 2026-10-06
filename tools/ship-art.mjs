@@ -1,5 +1,7 @@
-// ship-art.mjs: cuts the painted pieces every ship is dressed in out of Chris's Brig pictures (art/ships/brig-*.png).
+// ship-art.mjs: cuts the painted pieces every ship is dressed in out of Chris's Brig pictures (art/ships/brig-*.png),
+// and the Man-o'-war's armour plating out of its own (art/ships/man-o-war-hull.png).
 //   assets/ships/planks.webp   hull planks, seamless both ways, for tiling along every hull
+//   assets/ships/plates.webp   the Man-o'-war's dark iron plates, seamless both ways
 //   assets/ships/deck.webp     deck boards, seamless both ways
 //   assets/ships/band.webp     the brass band with its rivets, seamless side to side
 //   assets/ships/parts.webp    sail canvas, furnace, lantern, rudder, fin, crystal, windows, hatch: one sheet, background cut away
@@ -17,6 +19,7 @@ const TILES = {
   planks: { src: 'brig-hull.png', box: [548, 440, 858, 497] },
   deck: { src: 'brig-hull.png', box: [690, 655, 870, 705] },
   band: { src: 'brig-hull.png', box: [545, 321, 860, 354] },
+  plates: { src: 'man-o-war-hull.png', box: [530, 451, 740, 497] },
 };
 const PARTS = {
   sail: { src: 'brig-parts.png', box: [20, 15, 578, 380], cut: true },
@@ -75,6 +78,9 @@ await save(planks, 'planks.webp');
 let deck = await crop(TILES.deck.src, TILES.deck.box);
 deck = seamless(seamless(deck, 0.2, 'x'), 0.22, 'y');
 await save(deck, 'deck.webp');
+let plates = await crop(TILES.plates.src, TILES.plates.box);
+plates = seamless(seamless(plates, 0.16, 'x'), 0.2, 'y');
+await save(plates, 'plates.webp');
 let band = await crop(TILES.band.src, TILES.band.box);
 band = seamless(band, 0.15, 'x');
 await save(band, 'band.webp');

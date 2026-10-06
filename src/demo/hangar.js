@@ -1,10 +1,11 @@
-// hangar.js: the demo page. The Captain's four ships, one at a time or all together, above a sea of cloud at
-// sunset with peaks breaking through, the way Chris's painting of the Brig shows it. Drag to turn round a ship,
+// hangar.js: the demo page. All six ships (the Captain's four, and the Galleon and Man-o'-war that raiders sail), one
+// at a time or all together, above a sea of cloud at sunset with peaks breaking through, the way Chris's painting of
+// the Brig shows it. Drag to turn round a ship,
 // pinch to zoom; switch ships, views and the detail dial at the bottom.
 import * as THREE from 'three';
 import { loadShipArt } from '../ship/materials.js';
 import { buildShip } from '../ship/build.js';
-import { SHIPS, STATS } from '../ships/index.js';
+import { FLEET as SHIPS, STATS } from '../ships/index.js';
 
 const $ = (id) => document.getElementById(id);
 const SUN = new THREE.Vector3(-0.62, 0.16, -0.77).normalize();
@@ -177,7 +178,7 @@ async function main() {
     state.target.copy(f.c);
     // far enough back that the whole ship fits across the screen, which matters on a tall phone
     const hfov = 2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * camera.aspect);
-    state.dist = Math.max(f.r * (state.all ? 1.15 : 1.25), (f.r * (state.all ? 0.5 : 0.56)) / Math.tan(hfov / 2));
+    state.dist = Math.max(f.r * (state.all ? 1.35 : 1.25), (f.r * (state.all ? 0.66 : 0.56)) / Math.tan(hfov / 2));
     state.minDist = (state.all ? f.r * 0.25 : f.r * 0.35); state.maxDist = f.r * 3;
     // the sun's shadow covers what is shown
     const r = f.r * 0.75;
@@ -227,7 +228,7 @@ async function main() {
     shipsEl.append(b);
   }
   const allB = document.createElement('button');
-  allB.type = 'button'; allB.dataset.ship = 'all'; allB.innerHTML = '<b>All four</b><small>Together</small>';
+  allB.type = 'button'; allB.dataset.ship = 'all'; allB.innerHTML = '<b>All six</b><small>Together</small>';
   allB.addEventListener('click', () => { state.all = true; mark(); show(); });
   shipsEl.append(allB);
   function mark() { for (const b of shipsEl.children) b.setAttribute('aria-pressed', String(state.all ? b.dataset.ship === 'all' : b.dataset.ship === state.ship)); }
@@ -244,8 +245,8 @@ async function main() {
   function updateCard() {
     const R = SHIPS.find((s) => s.id === state.ship), St = STATS[R.id];
     if (state.all) {
-      $('card-name').textContent = 'The fleet'; $('card-cls').textContent = 'Skiff · Cutter · Brig · Frigate';
-      $('card-blurb').textContent = 'The four ships the Captain moves up through, at the same scale.';
+      $('card-name').textContent = 'The fleet'; $('card-cls').textContent = SHIPS.map((S) => S.cls).join(' · ');
+      $('card-blurb').textContent = 'The four ships the Captain moves up through, and the two only raiders sail, at the same scale.';
       $('card-stats').innerHTML = SHIPS.map((S) => `<dt>${S.name}</dt><dd>${S.cls}, ${S.length} m</dd>`).join('');
       return;
     }
@@ -261,7 +262,7 @@ async function main() {
   function updateTri() {
     const tri = shown.reduce((n, s) => n + s.stats.triangles, 0), dc = shown.reduce((n, s) => n + s.stats.drawCalls, 0);
     const name = { full: 'Full detail', middle: 'Middle detail', far: 'Far detail' }[state.level];
-    $('tri').textContent = `${name}: ${tri.toLocaleString()} triangles${state.all ? ' for all four' : ''} · ${dc} draw calls`;
+    $('tri').textContent = `${name}: ${tri.toLocaleString()} triangles${state.all ? ' for all six' : ''} · ${dc} draw calls`;
   }
 
   function resize() {

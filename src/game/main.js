@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { loadShipArt } from '../ship/materials.js';
 import { buildShip } from '../ship/build.js';
-import { SHIPS, STATS } from '../ships/index.js';
+import { SHIPS, FLEET } from '../ships/index.js';
 import { makeWorld, regionAt, SUN, HAZE, MAP, THINNING } from './world.js';
 import { makeInput } from './input.js';
 import { makeFlyer, WIND, windHelp } from './flight.js';
@@ -96,6 +96,7 @@ async function main() {
     paused = false; $('paused').hidden = true; $('calm').hidden = true;
     port.mode = 'voyage'; $('title').hidden = true; $('port').hidden = true;
     enter('voyage');
+    region = regionAt(at.pos.x, at.pos.z); // the region's name shows when you cross into the next one
     banner(`The ${R.name} sets sail`, `${skies().name} · ${windWords()}`);
   }
   // back to port: keep this share of the voyage's shards
@@ -179,7 +180,8 @@ async function main() {
   function describe(ids) {
     const count = {};
     for (const id of ids) count[id] = (count[id] ?? 0) + 1;
-    const parts = Object.entries(count).map(([id, n]) => { const c = SHIPS.find((s) => s.id === id).cls; return `${NUMBER[n]} ${c}${n > 1 ? 's' : ''}`; });
+    const plural = (c) => (c === 'Man-o\'-war' ? 'Men-o\'-war' : `${c}s`);
+    const parts = Object.entries(count).map(([id, n]) => { const c = FLEET.find((s) => s.id === id).cls; return `${NUMBER[n]} ${n > 1 ? plural(c) : c}`; });
     return parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}` : parts[0];
   }
   const fmt = (n) => Math.round(n).toLocaleString('en');
@@ -188,8 +190,9 @@ async function main() {
       V.downed++;
       bolts.burst(r.f.pos, 0xff8a3a, 60, 2.2); bolts.burst(r.f.pos.clone().add({ x: 0, y: 3, z: 0 }), 0xffe08a, 30, 1.6);
       pickups.spill(r.f.pos.clone().add({ x: 0, y: 2, z: 0 }), r.f.velocity, r.bounty * skies().shards * (1 + 0.1 * W.n));
-      toast(`${r.name} ${r.f.down.why === 'hull' ? 'going down' : 'sinking, crystals dead'}: fly through the shards`);
+      toast(`${r.name} ${r.f.down.why === 'hull' ? 'going down' : r.f.down.why === 'struck' ? 'strikes her colours' : 'sinking, crystals dead'}: fly through the shards`);
     }
+    for (const r of raiders.escaped) toast(`The ${r.R.cls} got away with her treasure`);
     if (W.sunk) return;
     if (W.lost > 0) {
       if ((W.lost -= dt) <= 0) {
@@ -207,7 +210,8 @@ async function main() {
       if ((W.timer -= dt) <= 0) {
         const wave = W.next ?? waveAt(W.n, skies().extra), a = raiders.spawnWave(wave, player);
         W.next = null;
-        banner(wave.captain ? `Wave ${W.n + 1}: a raider captain` : `Raiders, wave ${W.n + 1}`, `${describe(wave.ids)}, to the ${COMPASS[Math.round(compassDeg(a) / 45) % 8]} · ${windWords()}`);
+        const title = wave.ids.includes('galleon') ? `Wave ${W.n + 1}: a treasure ship` : wave.captain >= 0 ? `Wave ${W.n + 1}: a raider captain` : wave.ids.includes('manowar') ? `Wave ${W.n + 1}: a Man-o'-war` : `Raiders, wave ${W.n + 1}`;
+        banner(title, `${describe(wave.ids)}, to the ${COMPASS[Math.round(compassDeg(a) / 45) % 8]} · ${windWords()}${wave.ids.includes('galleon') ? ' · shoot her sails to catch her' : ''}`);
         W.state = 'fight';
       }
     } else if (W.state === 'fight') {
@@ -219,7 +223,7 @@ async function main() {
         $('calm-title').textContent = `Wave ${W.n} beaten`;
         const next = waveAt(W.n, skies().extra);
         W.next = next;
-        $('calm-line').textContent = `◆ ${fmt(bonus)} for the wave · ◆ ${fmt(V.shards)} this voyage. Next: ${next.captain ? 'a raider captain, with ' : ''}${describe(next.ids)}. Sail on for more, or go back to port to keep them.`;
+        $('calm-line').textContent = `◆ ${fmt(bonus)} for the wave · ◆ ${fmt(V.shards)} this voyage. Next: ${next.captain >= 0 ? 'a raider captain, with ' : ''}${describe(next.ids)}. Sail on for more, or go back to port to keep them.`;
         $('calm').hidden = false;
       }
     } else if (W.state === 'choose') {
@@ -283,8 +287,8 @@ async function main() {
     for (const r of raiders.list) {
       let el = r.tag;
       if (!el) {
-        el = r.tag = document.createElement('div'); el.className = r.captain ? 'tag captain' : 'tag';
-        el.innerHTML = `<span class="arrow">▲</span><b>${r.captain ? 'Captain · ' : ''}${r.R.cls}</b> <span class="d"></span>${PARTS.map((k) => `<span class="meter ${k}"><i></i></span>`).join('')}`;
+        el = r.tag = document.createElement('div'); el.className = r.captain ? 'tag captain' : r.role === 'prize' ? 'tag captain prize' : 'tag';
+        el.innerHTML = `<span class="arrow">▲</span><b>${r.captain ? 'Captain · ' : r.role === 'prize' ? 'Treasure · ' : ''}${r.R.cls}</b> <span class="d"></span>${PARTS.map((k) => `<span class="meter ${k}"><i></i></span>`).join('')}`;
         $('tags').append(el);
       }
       if (r.f.down) { el.remove(); continue; }

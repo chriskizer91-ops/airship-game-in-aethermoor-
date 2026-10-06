@@ -4,11 +4,12 @@
 
 ## How the ships are built
 
-**The Captain's four ships are built** (October 6): the Skiff, the Cutter, the Brig and the Frigate. See them at https://claude.ai/artifact/4uQ6NogD2FyGGijwq1ew4K, or open `dist/hangar.html`, which works with no internet. The Galleon and the Man-o'-war come next, once they have pictures.
+**All six ships are built** (October 6): the Captain's Skiff, Cutter, Brig and Frigate, and the Galleon and the Man-o'-war, built from Chris's art packs for them. See them at https://claude.ai/artifact/4uQ6NogD2FyGGijwq1ew4K, or open `dist/hangar.html`, which works with no internet.
 
 They're built the Magpie's way (`reference/the-magpie-over-aethermoor.html`), but in much more detail:
 
-- **The hull is shaped from two outlines**: a side view, for the deck edge and the keel, and a straight-down top view, for the width. The Brig's outlines are measured off Chris's pictures of it (`art/ships/brig-*.png`). The Skiff, Cutter and Frigate take their shapes from his fleet lineup (`art/ships/lineup.png`) until they have pictures of their own.
+- **The hull is shaped from two outlines**: a side view, for the deck edge and the keel, and a straight-down top view, for the width. The Brig's, Galleon's and Man-o'-war's outlines are measured off Chris's pictures of them (`art/ships/brig-*.png`, `galleon-*.png`, `man-o-war-*.png`). The Skiff, Cutter and Frigate take their shapes from his fleet lineup (`art/ships/lineup.png`) until they have pictures of their own.
+- **The big two add to the recipe:** two decks of gun ports, a forecastle at the bow as well as the castle at the stern, castles two storeys high with rows of windows and stairs up their sides, and (on the Man-o'-war) four guns straight out of the bow. The Man-o'-war's hull wears dark iron plates cut out of its own pictures instead of planks.
 - **Every ship wears the Brig's paint.** Its painted planks, deck boards and riveted brass band are cut out of the pictures and repeated along each hull (`tools/ship-art.mjs`). The sail canvas, sunstone crystals, furnace windows, lanterns, rudder, fins, windows and hatch gratings come from the Brig's parts sheet. Where the paint shows brass it shines, and where it shows lamplight it glows.
 - **Everything else is real 3D, not paint.** That covers:
   - brass bands, straps and rivets standing off the hull
@@ -35,7 +36,7 @@ What every ship has, like the Magpie:
 
 ## The raiders' colours
 
-Raiders fly the same four ships as the Captain (the Galleon and the Man-o'-war will join them once they're built), so they're told apart by colour: rust-red sails, darker planks, and crimson pennants with a black hoist, against the Captain's cream sails and plum and gold. In the game each raider also has a tag over it with its class, its distance and its three health bars.
+Raiders fly the same four ships as the Captain, and the Galleon and the Man-o'-war too, so they're told apart by colour: rust-red sails, darker planks, and crimson pennants with a black hoist, against the Captain's cream sails and plum and gold. In the game each raider also has a tag over it with its class, its distance and its three health bars.
 
 ## What the stats mean
 
@@ -115,8 +116,8 @@ What the models show:
 | Cutter | 1, three crystals | 2 masts, one pair each, swept back | 1 row of 3 |
 | Brig | 2, five crystals each | 2 masts, an upper and a lower pair each, as in Chris's pictures | 1 row of 6 |
 | Frigate | 3, five crystals each | 3 masts, an upper and a lower pair each | 1 row of 10 |
-| Galleon | 4 | 2 short pairs (not built yet) | 2 rows of 8 |
-| Man-o'-war | 5, large | 3 short, heavy pairs (not built yet) | 2 rows of 12 |
+| Galleon | 4 | 2 masts, an upper and a lower pair each, as in Chris's pictures | 2 rows of 8 |
+| Man-o'-war | 5, large | 3 masts, an upper and a lower pair each, short and heavy | 2 rows of 12 |
 
 ## Detail budgets
 
@@ -134,6 +135,8 @@ Ships only use full detail up close. **There's one model per class, with a detai
 | Cutter | 100,800 | 14,800 | 2,200 |
 | Brig | 102,200 | 22,900 | 3,500 |
 | Frigate | 104,400 | 29,700 | 4,700 |
+| Galleon | 100,500 | 35,700 | 4,900 |
+| Man-o'-war | 100,700 | 46,900 | 6,100 |
 
 - **Full** is for your own ship, and any ship right alongside, such as when boarding.
 - **Middle** is for ships in the fight but not close. It looks almost the same as Full from a few ship-lengths away.
@@ -152,9 +155,9 @@ The prompts are in `docs/art-requests/01-ships.md`. Each ship gets four pictures
 
 There's also **one lineup of all six ships at the same scale.**
 
-**Received** (October 6): the lineup and the Brig's four pictures. The Brig is built from them, and its paint dresses all four ships.
+**Received** (October 6): the lineup, the Brig's four pictures, and the Galleon's and the Man-o'-war's four pictures each. The Brig, Galleon and Man-o'-war are built from their own pictures, and the Brig's paint dresses every ship (the Man-o'-war's iron plates come from its own).
 
-**Still useful:** the Skiff's, Cutter's and Frigate's pictures would let their shapes match Chris's art exactly; for now they come from the lineup. The Galleon's and Man-o'-war's are needed before those two can be built.
+**Still useful:** the Skiff's, Cutter's and Frigate's pictures would let their shapes match Chris's art exactly; for now they come from the lineup.
 
 ## Open questions for Chris
 
