@@ -205,15 +205,15 @@ The raiders fly the same four classes as the Captain, by the same rules. They're
 | 15 | **a Man-o'-war**, **a raider captain's Frigate**, a Brig and a Cutter |
 | after that | three to six, mixed (at most one Man-o'-war), with a captain every fifth wave |
 
-**How hard it is.** `node tools/sim-fight.mjs skiff 5 cross` sends out a simulated Captain. It simply points at the nearest raider and fires, keeps a raider abeam in a ship with broadsides, and waits for repairs between waves. It never climbs out of a broadside, never surges and never dodges, and pays no heed to a raider's gun ports glowing. On Crosswinds it (measured again on October 6, after the rippling broadsides and the raiders' warning glow):
+**How hard it is.** `node tools/sim-fight.mjs skiff 5 cross` sends out a simulated Captain. It simply points at the nearest raider and fires, keeps a raider abeam in a ship with broadsides, and waits for repairs between waves. It never climbs out of a broadside, never surges and never dodges, and pays no heed to a raider's gun ports glowing. On Crosswinds it (measured again on October 6, after the wrecks, debris and slow motion came in, about a dozen runs of each):
 
-- usually gets the Skiff through four waves (now and then only three), with about ◆ 400 in the hold (enough for the Cutter), and then the wave-5 captain sinks it
-- gets the Brig through six or seven waves
-- gets the Frigate through five to eight waves on Maelstrom, usually seven
-- beats the treasure ship's wave (wave 6) in a Cutter, catching her in about three minutes; in a Brig it goes for her escort first, and she gets away
+- usually gets the Skiff through four waves (about one time in three only three), with about ◆ 400 in the hold (enough for the Cutter), and then the wave-5 captain sinks it
+- usually gets the Brig through seven waves, and about one time in three all eight
+- gets the Frigate through seven waves on Maelstrom most times, sometimes six (once in a while fewer)
+- beats the treasure ship's wave (wave 6) in a Cutter, catching her in two to three minutes (now and then she gets away); in a Brig it sinks her escort first, then shoots her sails away until she strikes her colours, all in under a minute
 - in a Frigate, beats wave 12's Man-o'-war about half the time: it fights her side to side, where she's strongest
 
-On Fair Winds the Skiff gets through all five. A real Captain who uses height, the Surge and the wind does better.
+On Fair Winds it always gets the Skiff through four waves, and gets past the wave-5 captain about one time in three. A real Captain who uses height, the Surge and the wind does better.
 
 ## The code
 
