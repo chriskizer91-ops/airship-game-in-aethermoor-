@@ -124,7 +124,7 @@ async function main() {
     $('ship-name').textContent = R.name; $('ship-cls').textContent = `${R.cls} · ${R.length} m`;
     resetVoyage();
     newWind();
-    paused = false; $('paused').hidden = true; $('calm').hidden = true;
+    setPaused(false); $('paused').hidden = true; $('calm').hidden = true;
     port.mode = 'voyage'; $('title').hidden = true; $('port').hidden = true;
     enter('voyage');
     region = regionAt(at.pos.x, at.pos.z); // the region's name shows when you cross into the next one
@@ -137,8 +137,9 @@ async function main() {
     progress.bank(got, W.n);
     raiders.clear(); bolts.clear(); pickups.clear(); gunnery.cancel(); wrecks.clear(); surge.clear(); hideBounties(); W.next = null;
     scene.remove(player.ship.root); // the port shows her (or the ship you were looking at) in its own scene
+    setPaused(false); // (leaving from the pause menu ends the pause, and that's told before the voyage's end)
     const E = payload('voyage:end'); E.kept = got; E.sunk = W.sunk; E.waves = W.n; emit('voyage:end');
-    paused = false; $('paused').hidden = true; $('calm').hidden = true;
+    $('paused').hidden = true; $('calm').hidden = true;
     port.setMode('port');
     if (got) note(`◆ ${got.toLocaleString('en')} banked from the voyage`);
     return got;
@@ -220,7 +221,7 @@ async function main() {
     if (!h) { nearMiss(b, a, c); return false; }
     const before = player.frac(h.part);
     player.hit(h.part, b.damage);
-    HIT.owner = 'raider'; HIT.target = 'player'; HIT.part = h.part; HIT.at.copy(h.at); HIT.damage = b.damage; HIT.raider = null;
+    HIT.owner = 'raider'; HIT.target = 'player'; HIT.part = h.part; HIT.at.copy(h.at); HIT.damage = b.damage; HIT.raider = b.from;
     HIT.dir.copy(b.v).normalize(); HIT.vel.copy(player.velocity); emit('hit');
     if (before >= 0.3 && player.frac(h.part) < 0.3) { LOW.part = h.part; emit('player:low'); }
     hurt = Math.min(1, hurt + 0.45);
@@ -255,7 +256,7 @@ async function main() {
   function waves(dt, gone) {
     for (const r of gone) {
       V.downed++;
-      DOWN.raider = r; DOWN.why = r.f.down.why; DOWN.at.copy(r.f.pos); emit('raider:down'); // (her blast: fx.js)
+      DOWN.raider = r; DOWN.why = r.f.down.why; DOWN.at.copy(r.f.pos); emit('raider:down'); // (her end in the sky: wrecks.js)
       SPILL.at.copy(r.f.pos).setY(r.f.pos.y + 2); SPILL.total = r.bounty * skies().shards * (1 + 0.1 * W.n);
       pickups.spill(SPILL.at, r.f.velocity, SPILL.total); emit('shards:spill');
       bounty(r, SPILL.total, SPILL.at);
@@ -323,10 +324,11 @@ async function main() {
   }
   $('btn-sail-on').addEventListener('click', sailOn);
   $('btn-go-port').addEventListener('click', () => { if (W.state === 'choose') endVoyage(1); });
+  // paused or going again, told whenever it changes (pause() below, and leaving a paused voyage for port)
+  function setPaused(on) { if (paused === on) return; paused = on; payload('pause').on = on; emit('pause'); }
   function pause(on) {
     if (mode !== 'voyage' || W.sunk) return;
-    if (paused !== on) { payload('pause').on = on; emit('pause'); }
-    paused = on; input.active = !on;
+    setPaused(on); input.active = !on;
     if (!on) { input.look.x = input.look.y = 0; input.zoom = 0; input.pressed.clear(); } // nothing moved while paused carries over
     if (on) {
       if (document.pointerLockElement) document.exitPointerLock();

@@ -9,7 +9,7 @@
 //                        buzz the phone
 //   a near miss          a flash of white sparks where it passed, and a twitch of the view
 //   a blast              (a raider blowing up: wrecks.js) shakes the view when it's close
-//   a raider going down  a longer buzz
+//   a raider going down  a longer buzz (but not a treasure ship striking her colours: she gives up quietly)
 //   shards spilled       a gold flash and a spray of gold sparks; each shard gathered, a little gold glint at the hold
 //   a Surge              a jolt (how it looks: surge.js)
 //   the Captain's ship going down: the game slows to half speed for a moment
@@ -185,7 +185,7 @@ export function makeFx({ scene, camera, touch = false }) {
     for (let i = 0; i < 3; i++) spark(e.at, sv.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(14), 0.3, 2.4, 0xffffff);
     trauma(0.05);
   });
-  on('raider:down', () => buzz(60)); // (her end in the sky: wrecks.js)
+  on('raider:down', (e) => { if (e.why !== 'struck') buzz(60); }); // (her end in the sky: wrecks.js; a treasure ship giving up gets none)
   on('blast', (e) => { if (focus) { const d = focus.distanceTo(e.at); if (d < 250) trauma(0.25 * (1 - d / 250) * (e.big ? 1.4 : 1)); } });
   on('surge', () => trauma(0.2));
   // shards spilling out of a wreck: a gold flash and a spray of gold; each one gathered: a little glint at the hold

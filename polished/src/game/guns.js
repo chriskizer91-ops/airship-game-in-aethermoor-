@@ -81,6 +81,7 @@ export function upload(attr, n) {
 // (grown out of the muzzle as it flies, so it never pokes back through the ship that fired it). A bolt that flies its
 // full time without hitting anything burns out in a little wisp of sparks.
 // The bolts are a handful of objects used over and over (`bolts` is the ones in flight), so firing makes nothing new.
+// Each remembers who fired it (`from`: the raider, set by her gunnery; null for the Captain's), for whoever it hits.
 export const BOLT_COLORS = { player: 0xffb347, raider: 0xff4636 };
 export const TAIL = 36; // the longest tail, in metres (times the shot's size: a broadside's is heavier)
 export function makeBolts(scene, fx, max = 400) {
@@ -98,7 +99,7 @@ export function makeBolts(scene, fx, max = 400) {
 
   const bolts = [], free = [];
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), FWD = V(0, 0, 1), mid = new THREE.Vector3(), size3 = new THREE.Vector3(), sv = new THREE.Vector3();
-  const made = () => ({ p: new THREE.Vector3(), prev: new THREE.Vector3(), v: new THREE.Vector3(), life: 0, K: null, owner: 'player', damage: 0, flown: 0, flare: 0, whiz: false });
+  const made = () => ({ p: new THREE.Vector3(), prev: new THREE.Vector3(), v: new THREE.Vector3(), life: 0, K: null, owner: 'player', from: null, damage: 0, flown: 0, flare: 0, whiz: false });
   // a bolt from `from` along `dir` (both read, not kept), carrying the firing ship's velocity `inherit`
   function fire(from, dir, kind, owner, inherit, weight = 1) {
     if (bolts.length >= max) return null;
@@ -106,11 +107,12 @@ export function makeBolts(scene, fx, max = 400) {
     b.p.copy(from); b.prev.copy(from);
     b.v.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(K.spread * 2).add(dir).normalize().multiplyScalar(K.speed);
     if (inherit) b.v.add(inherit);
-    b.life = K.life; b.K = K; b.owner = COL[owner] ? owner : 'player'; b.damage = K.damage * weight; b.flown = 0; b.flare = 0; b.whiz = false;
+    b.life = K.life; b.K = K; b.owner = COL[owner] ? owner : 'player'; b.from = null; b.damage = K.damage * weight; b.flown = 0; b.flare = 0; b.whiz = false;
     bolts.push(b);
     return b;
   }
-  const drop = (i) => { free.push(bolts[i]); bolts[i] = bolts[bolts.length - 1]; bolts.pop(); };
+  // (a spent bolt lets go of who fired it, so a raider long gone isn't kept)
+  const drop = (i) => { bolts[i].from = null; free.push(bolts[i]); bolts[i] = bolts[bolts.length - 1]; bolts.pop(); };
   // move everything; `hit(bolt, a, b)` is asked for each bolt's path this frame and returns true when it hit something
   function update(dt, hit) {
     for (let i = bolts.length - 1; i >= 0; i--) {
@@ -134,17 +136,18 @@ export function makeBolts(scene, fx, max = 400) {
     }
     mesh.count = bolts.length; upload(mesh.instanceMatrix, bolts.length); upload(mesh.instanceColor, bolts.length);
   }
-  const clear = () => { for (const b of bolts) free.push(b); bolts.length = 0; mesh.count = 0; };
+  const clear = () => { for (const b of bolts) { b.from = null; free.push(b); } bolts.length = 0; mesh.count = 0; };
   return { fire, update, bolts, clear, mesh };
 }
 
 // A ship's gunnery: reload clocks per battery, and firing the battery that faces the aim point.
 // `reload` stretches or shortens the reload, `damage` makes each shot heavier or lighter (upgrades, crystal power, and
-// the raiders' slower crews). `flyer` (flight.js), if given, heels as her broadsides go off.
+// the raiders' slower crews). `flyer` (flight.js), if given, heels as her broadsides go off. `from` (set by raiders.js:
+// the raider) is given to each bolt she fires.
 // A battery's guns go off one after another, bow first: a broadside one port every 55 ms (both decks together), the
 // whole side in at most 0.55 s; a pair of chasers 80 ms apart. Its first gun fires at once, and its reload starts then.
 export const RIPPLE = { step: 0.055, span: 0.55, pair: 0.08 };
-const PENDING = 32; // guns waiting their turn, at most, per ship
+const PENDING = 32; // room for guns waiting their turn, at least, per ship (more if she has more guns: a Man-o'-war)
 export function makeGunnery(ship, { reload: slow = 1, damage = 1 } = {}, flyer = null) {
   const B = gunsOf(ship), R = ship.recipe, ready = { bow: 0, stern: 0, port: 0, starboard: 0 }, weight = damage * (GUN_WEIGHT[R.id] ?? 1);
   const world = new THREE.Vector3(), dirW = new THREE.Vector3(), nm = new THREE.Matrix3(), want = new THREE.Vector3(), arc = new THREE.Vector3();
@@ -165,8 +168,10 @@ export function makeGunnery(ship, { reload: slow = 1, damage = 1 } = {}, flyer =
   // where that gun is), with an aiming error added, who fired, and the ship's velocity (read as each gun fires)
   const V0 = new THREE.Vector3(), ctx = {};
   for (const b in B) ctx[b] = { aim: null, off: new THREE.Vector3(), owner: '', inherit: null, bolts: null, n: 0 };
-  // the guns waiting their turn: which, how long still, which battery, their place in the volley
-  const pg = new Array(PENDING).fill(null), pt = new Float64Array(PENDING), pb = new Array(PENDING).fill(''), pi = new Int16Array(PENDING);
+  // the guns waiting their turn: which, how long still, which battery, their place in the volley. There's room for every
+  // gun she has, so all four batteries rippling at once still ripple (a Man-o'-war's two broadsides are 48 guns)
+  const cap = Math.max(PENDING, B.bow.length + B.stern.length + B.port.length + B.starboard.length);
+  const pg = new Array(cap).fill(null), pt = new Float64Array(cap), pb = new Array(cap).fill(''), pi = new Int16Array(cap);
   let np = 0;
   const FIRE = payload('fire'), VOLLEY = payload('volley');
   function shot(g, b, i) {
@@ -175,15 +180,16 @@ export function makeGunnery(ship, { reload: slow = 1, damage = 1 } = {}, flyer =
     dirW.copy(g.d).applyMatrix3(nm).normalize();
     if (typeof c.aim === 'function') c.aim(world, K, want); else want.copy(c.aim);
     want.add(c.off).sub(world).normalize();
-    c.bolts.fire(world, clampToArc(want, dirW, K.yaw, K.pitch, arc), g.kind, c.owner, c.inherit, weight);
+    const bolt = c.bolts.fire(world, clampToArc(want, dirW, K.yaw, K.pitch, arc), g.kind, c.owner, c.inherit, weight);
+    if (bolt) bolt.from = gunnery.from;
     FIRE.owner = c.owner; FIRE.kind = g.kind; FIRE.battery = b; FIRE.p.copy(world); FIRE.dir.copy(dirW); FIRE.weight = weight; FIRE.ship = R.id;
     FIRE.vel.copy(c.inherit ?? V0); FIRE.i = i; FIRE.n = c.n;
     emit('fire', FIRE);
     // the recoil heels her away from the side that fired (a bigger ship, less)
     if (flyer && g.kind === 'broadside') flyer.heelV += Math.sign(g.d.x) * 0.012 * weight * (25 / R.length);
   }
-  return {
-    B, ready, reload,
+  const gunnery = {
+    B, ready, reload, from: null, cap,
     count: (b) => B[b].length,
     get pending() { return np; },
     // the reload clocks, and the guns whose turn has come (from where the ship is now)
@@ -231,10 +237,11 @@ export function makeGunnery(ship, { reload: slow = 1, damage = 1 } = {}, flyer =
       emit('volley', VOLLEY);
       for (let i = 0; i < list.length; i++) {
         const g = list[i];
-        if (g.delay > 0 && np < PENDING) { pg[np] = g; pt[np] = g.delay; pb[np] = b; pi[np++] = i; } else shot(g, b, i);
+        if (g.delay > 0 && np < cap) { pg[np] = g; pt[np] = g.delay; pb[np] = b; pi[np++] = i; } else shot(g, b, i);
       }
       ready[b] = reload(b);
       return list.length;
     },
   };
+  return gunnery;
 }

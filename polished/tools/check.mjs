@@ -12,10 +12,12 @@
 //                     port and a battle
 //                     how a fight feels: every piece of news told (events.js); a broadside rippling bow to stern with
 //                     its gunsmoke, the ship heeling and the view kicking back (less for reduced motion); hits marked
-//                     on the crosshair in the part's colour and a kill's ring; a hit on you shaking the view and its
-//                     red arc pointing at the shooter; a near miss told once; a raider's ports glowing before her
-//                     broadside; comet tails; a busy fight's sparks fitting their budget, and a step's cost; on the
-//                     phone, smaller budgets and a buzz for a hit
+//                     on the crosshair in the part's colour and a kill's ring; a hit on you shaking the view, its
+//                     red arc pointing at the shooter and naming her; a near miss told once; a raider's ports glowing
+//                     before her broadside; a raider shot down mid-broadside firing no more; a Man-o'-war's four
+//                     batteries all rippling at once; comet tails; a busy fight with two raiders downed in it fitting
+//                     its sparks' and smoke's budgets, and a step's cost; back to port from the pause menu ending the
+//                     pause; on the phone, smaller budgets, a buzz for a hit and a kill, and none for a ship that gives up
 //                     wrecks worth watching: debris matching the part hit and staying within its batches; a raider
 //                     blown apart in a chain of blasts, her crystals going dark, through the cloud deck; her bounty
 //                     rising; a treasure ship striking without a blast; the shard count counting up; masts falling
@@ -463,9 +465,9 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
     // before her first shot; when it lands, the red arc on the screen points at her
     P = voyage('brig'); P.pos.set(0, 900, 0); P.heading = 0; still(P); P.full.hull = P.health.hull = 1e6; g.cam.yaw = 0; g.cam.pitch = 0.2;
     const rf = g.raiders.spawn('frigate', P.pos.clone().add({ x: 300, y: 0, z: 0 }), Math.PI, false); g.raiders.setAI(true);
-    let t = 0, chargedAt = -1, boltAt = -1, shooter = null;
-    // (where she is on the screen, as each of her shots lands: the arc is drawn in the same moment)
-    const offH = E.on('hit', (e) => { if (e.target === 'player') { const c = rf.f.pos.clone().applyMatrix4(g.camera.matrixWorldInverse); shooter = Math.atan2(c.x, c.y); } });
+    let t = 0, chargedAt = -1, boltAt = -1, shooter = null, named = null;
+    // (where she is on the screen, as each of her shots lands: the arc is drawn in the same moment; and the hit names her)
+    const offH = E.on('hit', (e) => { if (e.target === 'player') { const c = rf.f.pos.clone().applyMatrix4(g.camera.matrixWorldInverse); shooter = Math.atan2(c.x, c.y); named = e.raider === rf; } });
     while (t < 40 && !(shooter !== null && boltAt >= 0)) {
       g.step(0.05, {}); t += 0.05;
       if (chargedAt < 0 && rf.charge.b) chargedAt = t;
@@ -475,15 +477,42 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
     offH(); g.raiders.setAI(false);
     const playing = document.getAnimations().some((x) => x.effect?.target?.parentElement?.id === 'incoming');
     out.warn = { chargedAt: +chargedAt.toFixed(2), boltAt: +boltAt.toFixed(2) };
-    if (arc) { const d = Math.abs(Math.atan2(Math.sin(arc.arc - arc.shooter), Math.cos(arc.arc - arc.shooter))); out.arc = { off: Math.round(d * 180 / Math.PI), playing }; }
-    // a busy fight: a Frigate against a raider Frigate, Brig and Cutter for 15 s, firing all the while. The sparks never
-    // need more room than they have, and a step of the game stays quick (the middle of 15 one-second timings)
+    if (arc) { const d = Math.abs(Math.atan2(Math.sin(arc.arc - arc.shooter), Math.cos(arc.arc - arc.shooter))); out.arc = { off: Math.round(d * 180 / Math.PI), playing, named }; }
+    // a raider brought down in the middle of her broadside fires no more: a raider Frigate fires both sides, and is
+    // brought down 0 to 5 frames later (one of her waiting guns comes due in one of them); not one more goes off
+    let fromWreck = 0, waited = 0;
+    for (let extra = 0; extra <= 5; extra++) {
+      g.raiders.clear(); g.bolts.clear();
+      const r = g.raiders.spawn('frigate', P.pos.clone().add({ x: 300, y: 0, z: 0 }), Math.PI, false); g.step(1 / 60, {});
+      let down = false; const offD = E.on('fire', (e) => { if (e.owner === 'raider' && down) fromWreck++; });
+      r.gun.fire('port', P.pos, g.bolts, 'raider', r.f.velocity); r.gun.fire('starboard', P.pos, g.bolts, 'raider', r.f.velocity);
+      for (let k = 0; k < extra; k++) g.step(1 / 60, {});
+      waited = Math.max(waited, r.gun.pending); r.f.hit('hull', 1e9); down = true;
+      g.step(1, {}); offD();
+    }
+    out.stopped = { fromWreck, waited };
+    // a Man-o'-war firing all four batteries at once (two decks of twelve a side, and her chasers): every gun still waits
+    // its turn, so only a few go off together, and every one of them fires
+    g.raiders.clear(); g.bolts.clear();
+    const mw = g.raiders.spawn('manowar', P.pos.clone().add({ x: 0, y: 0, z: 500 }), Math.PI / 2, false); g.step(1 / 60, {});
+    let frame = 0; const per = new Map(), offM = E.on('fire', (e) => { if (e.owner === 'raider') per.set(frame, (per.get(frame) ?? 0) + 1); });
+    for (const b of ['port', 'starboard', 'bow', 'stern']) mw.gun.fire(b, P.pos, g.bolts, 'raider', mw.f.velocity);
+    const waiting = mw.gun.pending;
+    for (; frame < 60; ) { frame++; g.step(1 / 60, {}); }
+    offM();
+    out.big = { guns: Object.values(mw.gun.B).reduce((n, l) => n + l.length, 0), waiting, together: Math.max(...per.values()), fired: [...per.values()].reduce((a, b) => a + b, 0) };
+    g.raiders.clear(); g.bolts.clear();
+    // a busy fight: a Frigate against a raider Frigate, Brig and Cutter for 15 s, firing all the while, the Cutter blown
+    // apart 5 s in and the Brig 10 s in (their wrecks' blasts, fire and smoke in the thick of it). The sparks and smoke
+    // never need more room than they have, and a step of the game stays quick (the middle of 15 one-second timings)
     P = voyage('frigate'); P.pos.set(0, 900, 0); P.heading = 0; P.full.hull = P.health.hull = 1e6; P.full.crystals = P.health.crystals = 1e6;
     const f = P.forward();
-    ['frigate', 'brig', 'cutter'].forEach((id, i) => g.raiders.spawn(id, P.pos.clone().addScaledVector(f, 260 + i * 90).add({ x: (i - 1) * 140, y: 10, z: 0 }), P.heading + (i ? 2.4 : -1.2), false));
+    const foes = ['frigate', 'brig', 'cutter'].map((id, i) => g.raiders.spawn(id, P.pos.clone().addScaledVector(f, 260 + i * 90).add({ x: (i - 1) * 140, y: 10, z: 0 }), P.heading + (i ? 2.4 : -1.2), false));
     g.raiders.setAI(true); FX.clear(); FX.resetStats();
     const times = []; let most = 0;
     for (let s = 0; s < 15; s++) {
+      if (s === 5) foes[2].f.hit('hull', 1e9);
+      if (s === 10) foes[1].f.hit('hull', 1e9);
       const t0 = performance.now();
       for (let k = 0; k < 4; k++) {
         const live = g.raiders.list.filter((r) => !r.f.down).sort((a, b) => a.f.pos.distanceTo(P.pos) - b.f.pos.distanceTo(P.pos));
@@ -537,10 +566,14 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
     mf.f.hit('hull', 1e9); g.step(2.5, {});
     out.masts = { level: mf.ship.level, falling: g.wrecks.falling(), canvas: mf.ship.parts.meshes.canvas.geometry.index?.count ?? -1 };
     g.step(7.5, {}); out.masts.left = g.wrecks.falling().length;
-    g.raiders.clear(); g.endVoyage(0);
+    // paused, then back to port from the pause menu: the pause is told as ended, before the voyage's end
+    g.raiders.clear();
+    const told = [], offP = [E.on('pause', (e) => told.push(`pause ${e.on}`)), E.on('voyage:end', () => told.push('voyage:end'))];
+    g.pause(true); document.getElementById('btn-abandon').click(); offP.forEach((x) => x());
+    out.leave = { told: told.join(', '), paused: g.paused, mode: g.mode };
     return out;
   });
-  const { ripple, shake, near, warn, arc, fight: busy, barrage, surge, masts } = feel;
+  const { ripple, shake, near, warn, arc, stopped, big, fight: busy, barrage, surge, masts, leave } = feel;
   console.log(`a Frigate's broadside: ${ripple.first} shot at once, ${ripple.all} by 0.7 s, ${ripple.bowFirst ? 'bow first' : 'NOT BOW FIRST'}, ${ripple.puffs} puffs of gunsmoke, tails ${ripple.tail} m; the view kicked back ${ripple.back} m (${ripple.settled} m after 1 s), the ship heeled ${ripple.heel}`);
   if (ripple.first > 2 || ripple.all !== 10 || !ripple.bowFirst) problems.push(`a broadside should ripple bow to stern, one shot at once and all ten by 0.7 s: ${JSON.stringify(ripple)}`);
   if (ripple.puffs < 8) problems.push(`a broadside should puff gunsmoke from each port: ${ripple.puffs} puffs`);
@@ -551,10 +584,15 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   if (shake.trauma <= 0.3) problems.push(`a raider's shot in the hull should shake the view (trauma over 0.3): ${shake.trauma}`);
   if (shake.low !== 'hull') problems.push('the hull dropping below 30% isn\'t told (player:low)');
   if (near.told !== 1 || near.harmed) problems.push(`a raider's shot passing 10 m off should be one near miss and do no harm: ${JSON.stringify(near)}`);
-  console.log(`a raider Frigate's ports glow from ${warn.chargedAt} s, her first shot at ${warn.boltAt} s; her hit's red arc points ${arc ? `${arc.off}° off her` : 'NOWHERE'}`);
+  console.log(`a raider Frigate's ports glow from ${warn.chargedAt} s, her first shot at ${warn.boltAt} s; her hit's red arc points ${arc ? `${arc.off}° off her, and the hit ${arc.named ? 'names her' : 'DOESN\'T NAME HER'}` : 'NOWHERE'}`);
   if (warn.chargedAt < 0 || warn.boltAt < 0 || warn.boltAt - warn.chargedAt < 0.45) problems.push(`a raider's ports should glow at least 0.45 s before her broadside: ${JSON.stringify(warn)}`);
   if (!arc || arc.off > 30 || !arc.playing) problems.push(`a hit on the Captain should show a red arc pointing to the shooter: ${JSON.stringify(arc)}`);
+  if (arc && !arc.named) problems.push('a raider\'s hit on the Captain should name the raider that fired it (hit.raider)');
+  console.log(`a raider Frigate downed mid-broadside (${stopped.waited} guns waiting): ${stopped.fromWreck} more fired; a Man-o'-war's four batteries at once: ${big.waiting} of ${big.guns} guns wait their turn, at most ${big.together} go off together, ${big.fired} fire`);
+  if (stopped.fromWreck || !stopped.waited) problems.push(`a raider brought down mid-broadside shouldn't fire another gun: ${JSON.stringify(stopped)}`);
+  if (big.fired !== big.guns || big.together > 6 || big.waiting < big.guns - 6) problems.push(`a Man-o'-war's four batteries fired at once should all ripple, a few guns at a time: ${JSON.stringify(big)}`);
   console.log(`a busy fight (3 raiders, 15 s): at most ${busy.most} sparks of ${busy.cap} (${busy.dropped} cut short), ${busy.puffs} puffs (${busy.puffsDropped} cut short), ${busy.ms} ms a step, ${busy.downed} downed; a raider's blast: ${busy.blast} sparks`);
+  if (busy.downed < 2) problems.push(`two raiders should go down in the busy fight (their wrecks count against the budgets): ${busy.downed} did`);
   if (busy.dropped || busy.most > busy.cap || busy.puffsDropped) problems.push(`a busy fight's sparks or smoke ran out of room: ${JSON.stringify(busy)}`);
   if (busy.ms >= 1) problems.push(`a step of a busy fight takes ${busy.ms} ms (should be under 1)`);
   if (busy.blast < 90) problems.push(`a raider's blast should throw at least 90 sparks: ${busy.blast}`);
@@ -565,6 +603,8 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   if (surge.after || surge.back > 0.5 || surge.flareAfter > 1.05) problems.push(`after a Surge the streaks should go and the view and crystals come back: ${JSON.stringify(surge)}`);
   console.log(`a raider Frigate blown apart 150 m off (${masts.level}): 2.5 s later ${masts.falling.length} masts falling (tops come down ${masts.falling.map((m) => m.fell + ' m').join(', ')}), her canvas left on her: ${masts.canvas}; 10 s later ${masts.left} left`);
   if (masts.falling.length !== 3 || masts.falling.some((m) => !(m.fell > 0)) || masts.canvas !== 0 || masts.left) problems.push(`a raider Frigate blown apart should topple her three masts with all their canvas, gone 10 s later: ${JSON.stringify(masts)}`);
+  console.log(`paused, then back to port from the pause menu: told "${leave.told}"`);
+  if (leave.told !== 'pause true, pause false, voyage:end' || leave.paused || leave.mode !== 'port') problems.push(`going back to port from the pause menu should tell the pause ended before the voyage's end: ${JSON.stringify(leave)}`);
   // less motion: a player whose device asks for it gets at most 0.35 of the kick
   await page.evaluate(() => { const g = window.__game; g.fly('frigate'); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false); });
   const full = await volley();
@@ -794,12 +834,23 @@ if (!quick) {
     let hit = false; const off = g.events.on('hit', (e) => { if (e.target === 'player') hit = true; });
     P.repair(1); const at = P.aimAt().clone(), from = at.clone().add({ x: 40, y: 0, z: 0 });
     g.bolts.fire(from, at.clone().sub(from).normalize(), 'chaser', 'raider', null, 1); g.step(0.4, {}); off();
-    return { q: g.fx.q, sparks: g.fx.stats().sparkCap, puffs: g.fx.stats().puffCap, can, hit, buzzed: calls.includes(30) };
+    const buzzed = calls.includes(30);
+    // a raider blown apart gives a longer buzz; a treasure ship striking her colours gives up quietly, with none
+    g.raiders.setAI(false);
+    const blown = g.raiders.spawn('cutter', P.pos.clone().add({ x: 0, y: 0, z: 300 }), Math.PI / 2, true), prize = g.raiders.spawn('galleon', P.pos.clone().add({ x: 150, y: 0, z: 450 }), Math.PI / 2, true);
+    g.step(0.1, {}); calls.length = 0; blown.f.hit('hull', 1e9); g.step(0.3, {});
+    const kill = calls.includes(60);
+    calls.length = 0; prize.f.hit('sails', 1e9); g.step(0.3, {});
+    const gaveUp = { why: prize.f.down?.why, buzzes: calls.length };
+    g.raiders.clear();
+    return { q: g.fx.q, sparks: g.fx.stats().sparkCap, puffs: g.fx.stats().puffCap, can, hit, buzzed, kill, gaveUp };
   });
-  console.log(`phone: effects at ${phoneFx.q} of a laptop's (${phoneFx.sparks} sparks, ${phoneFx.puffs} puffs); a hit ${phoneFx.can ? (phoneFx.buzzed ? 'buzzes the phone' : 'DOES NOT BUZZ') : 'can\'t buzz this browser'}`);
+  console.log(`phone: effects at ${phoneFx.q} of a laptop's (${phoneFx.sparks} sparks, ${phoneFx.puffs} puffs); ${phoneFx.can ? `a hit ${phoneFx.buzzed ? 'buzzes the phone' : 'DOES NOT BUZZ'}, a raider blown apart ${phoneFx.kill ? 'buzzes longer' : 'DOES NOT BUZZ'}, a treasure ship striking ${phoneFx.gaveUp.buzzes ? 'BUZZES' : 'doesn\'t buzz'}` : 'can\'t buzz this browser'}`);
   if (phoneFx.q !== 0.6 || phoneFx.sparks !== 700 || phoneFx.puffs !== 600) problems.push(`phone: the effects' budgets should be smaller: ${JSON.stringify(phoneFx)}`);
   if (!phoneFx.hit) problems.push('phone: a raider\'s shot fired straight at the Skiff from 40 m missed her');
   if (phoneFx.can && phoneFx.hit && !phoneFx.buzzed) problems.push('phone: a hit on the ship doesn\'t buzz the phone');
+  if (phoneFx.can && !phoneFx.kill) problems.push('phone: a raider blown apart doesn\'t buzz the phone');
+  if (phoneFx.gaveUp.why !== 'struck' || (phoneFx.can && phoneFx.gaveUp.buzzes)) problems.push(`phone: a treasure ship striking her colours shouldn't buzz the phone: ${JSON.stringify(phoneFx.gaveUp)}`);
   // the worst case for a phone: a Man-o'-war blown apart beside two other wrecks (a Frigate and a Brig), in a fight.
   // The sparks and smoke never run out of room, the debris stays within its batches, and a step of the game stays quick
   const worst = await page.evaluate(async () => {

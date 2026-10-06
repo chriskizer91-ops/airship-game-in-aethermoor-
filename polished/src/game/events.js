@@ -8,7 +8,8 @@
 // copies anything it wants to keep; it never holds on to the payload or its vectors.
 //
 //   mode            { mode }                     'title', 'port' or 'voyage': the screen changed
-//   pause           { on }                       the voyage paused (true) or resumed (false)
+//   pause           { on }                       the voyage paused (true) or resumed (false); leaving a paused voyage
+//                                                for port tells it ended (false) just before voyage:end
 //   voyage:start    { ship, skies }              set sail: the ship's id ('brig'...), the skies' id ('cross'...)
 //   voyage:end      { kept, sunk, waves }        back in port: shards banked, whether she went down, waves beaten
 //   fire            { owner, kind, battery, p, dir, weight, ship, vel, i, n }
@@ -21,9 +22,10 @@
 //                                                p is its middle gun
 //   hit             { owner, target, part, at, damage, raider, dir, vel }
 //                                                a shot landing: who fired it, 'player' or 'raider' hit, 'hull',
-//                                                'sails' or 'crystals', where (world), how hard, the raider hit or
-//                                                firing (or null), which way the shot was flying (a unit vector), and
-//                                                the velocity of the ship it hit
+//                                                'sails' or 'crystals', where (world), how hard, the raider: the one
+//                                                hit, or the one that fired at the Captain (she may be going down by
+//                                                then; null for a shot no raider's guns fired), which way the shot was
+//                                                flying (a unit vector), and the velocity of the ship it hit
 //   nearMiss        { pan, close, at }           a raider's shot just missing the Captain's ship: pan -1 (left of the
 //                                                view) to 1 (right), close 0 (barely) to 1 (a hair's breadth)
 //   raider:down     { raider, why, at }          'hull', 'crystals' or 'struck' (a treasure ship giving up)

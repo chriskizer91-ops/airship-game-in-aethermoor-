@@ -195,6 +195,7 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
     // where a gun at `from` aims: where the foe will be when its shot gets there (each gun of a rippling broadside
     // works it out again as its turn comes, so the last guns still lead her)
     r.lead = (from, K, out) => intercept(from, f.velocity, foeNow.aimAt(), foeNow.velocity, K.speed, out);
+    gun.from = r; // (each of her bolts remembers her, so a hit on the Captain can tell who fired it)
     ship.update(0, {}); ship.root.updateMatrixWorld(true);
     list.push(r);
     return r;
@@ -311,10 +312,11 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
       if (r.frozen && live) r.ship.update(dt, CALM);
       else r.f.update(dt, live && ai && !foe.down ? steer(r, foe, dt) : drift);
       r.ship.root.updateMatrixWorld(true);
+      // a ship going down fires no more (not even the guns still waiting their turn: they're stood down before her
+      // guns are asked whose turn has come, as the shot that downed her may have landed after she last fired)
+      if (r.f.down && !r.counted) { r.counted = true; r.gun.cancel(); downed.push(r); }
       r.gun.update(dt);
       if (live && ai && !r.frozen && !foe.down) { shoot(r, foe, dt); if (r.charge.b) glowPorts(r); } else r.charge.b = null;
-      // a ship going down fires no more (not even the guns still waiting their turn)
-      if (r.f.down && !r.counted) { r.counted = true; r.gun.cancel(); downed.push(r); }
       // a treasure ship that gets far enough away has escaped
       if (r.role === 'prize' && r.fleeing && !r.f.down && r.f.pos.distanceTo(foe.pos) > 3600) { r.gone = true; r.escaped = true; escaped.push(r); }
       // a wreck falls away below the clouds before it's taken away, or at least 150 m if she went down low
