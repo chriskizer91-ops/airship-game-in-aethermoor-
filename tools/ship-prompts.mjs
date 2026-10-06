@@ -3,7 +3,7 @@ import { writeFileSync } from 'node:fs';
 
 const STYLE = `Stylized hand-painted 3D game art of a fantasy airship, like a detailed collectible model, made as reference for a 3D modeler. Clean readable shapes, strong silhouette, soft painterly textures with crisp edges. Storybook JRPG fantasy: not photoreal, not pixel art. The ship flies through the sky and has no gas balloon. Warm honey-brown wooden planks, polished brass bands, rivets and rails, riveted copper furnace columns, glowing amber sunstone crystals, and cream canvas sails with no emblem. No name, letters or numbers anywhere on the ship, and no people on board. Even flat studio lighting, no cast shadows, plain light grey background (#D9D9D9), no sky, no clouds, no water, no scenery.`;
 
-const FLEET = `Like every ship in this fleet, it has a wooden hull with brass bands and a brass-capped prow. Clusters of amber sunstone crystals lift it: each cluster is a tall central crystal ringed by smaller ones on curved brass arms, rising from a riveted copper furnace column with a glowing grated window. Triangular cream wing sails on wooden booms reach out and up from the sides of the deck like wings. It has a pair of small fins under the belly, a tall rudder at the stern, brass lanterns with warm glowing glass, and a ship's wheel near the stern. Its guns are crystal cannons: brass barrels with an amber crystal glowing at the breech. Bow and stern guns are long and slender, on swivel mounts. Broadside guns are short and heavy, and look out of square gun ports with hinged wooden lids.`;
+const FLEET = `Like every ship in this fleet, it has a wooden hull with brass bands and a brass-capped prow. Clusters of amber sunstone crystals lift it: each cluster is a tall central crystal ringed by smaller ones on curved brass arms, rising from a riveted copper furnace column with a glowing grated window. Triangular cream wing sails on wooden booms reach out and up like wings. The booms are mounted high on the sides, well above the gun ports, so the broadside guns fire underneath the sails. It has a pair of small fins under the belly, a tall rudder at the stern, brass lanterns with warm glowing glass, and a ship's wheel near the stern. Its guns are crystal cannons: brass barrels with an amber crystal glowing at the breech. Bow and stern guns are long and slender, on swivel mounts. Broadside guns are short and heavy, and look out of square gun ports with hinged wooden lids.`;
 
 const ships = [
   {
@@ -13,7 +13,7 @@ const ships = [
   },
   {
     id: 'skiff', front: 'the bow gun', back: 'the rudder and the wheel', broadside: 'a broadside gun on its swivel mount from the side', name: 'Skiff', length: 8,
-    look: `The Skiff, a small, nimble open boat about 8 m long and 2.6 m across, the size of a big rowing boat: a rounded open hull with a low rail all round and no cabin. One crystal cluster of three crystals on a short furnace column in the middle. One pair of wing sails. The wheel at the stern. One long bow gun on a swivel at the prow, and one short broadside gun on a swivel on the rail on each side, with no gun ports.`,
+    look: `The Skiff, a small, nimble open boat about 8 m long and 2.6 m across, the size of a big rowing boat: a rounded open hull with a low rail all round and no cabin. One crystal cluster of three crystals on a short furnace column in the middle. One pair of wing sails, on booms that rise from short posts above the swivel guns. The wheel at the stern. One long bow gun on a swivel at the prow, and one short broadside gun on a swivel on the rail on each side, with no gun ports.`,
     extras: 'the swivel mount on the rail from the side',
   },
   {
@@ -49,7 +49,7 @@ const prompts = s => [
   },
   {
     title: 'Hull views', file: `${s.id}-hull.png`, attach: `the ${s.name}'s concept view`,
-    text: `${STYLE}\n\n${keep(s.name)} ${short(s)}.\n\nTwo orthographic views at exactly the same scale, one above the other, filling the width of the picture. On top, the side view with the bow pointing right. Below it, the top view looking straight down, with the bow pointing right and the bow and stern lined up under the side view's. Leave out the wing sails and their booms. Show everything else fixed to the hull: the rails, the crystal clusters on their furnace columns, every gun${s.id === 'skiff' ? '' : ' with its gun port lid open'}, the lanterns, hatches, wheel, rudder and belly fins. No perspective.`,
+    text: `${STYLE}\n\n${keep(s.name)} ${short(s)}.\n\nTwo orthographic views at exactly the same scale, one above the other, filling the width of the picture. On top, the side view with the bow pointing right. Below it, the top view looking straight down, with the bow pointing right and the bow and stern lined up under the side view's. Leave out the wing sails and their booms, but show the mounts where the booms attach, above the ${s.id === 'skiff' ? 'swivel guns' : 'gun ports'}. Show everything else fixed to the hull: the rails, the crystal clusters on their furnace columns, every gun${s.id === 'skiff' ? '' : ' with its gun port lid open'}, the lanterns, hatches, wheel, rudder and belly fins. No perspective.`,
   },
   {
     title: 'Front and back', file: `${s.id}-front-back.png`, attach: `the ${s.name}'s concept view`,

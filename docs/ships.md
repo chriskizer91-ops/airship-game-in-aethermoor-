@@ -1,6 +1,6 @@
 # The ships
 
-**Settled October 6, 2026.** Chris approved the six classes, their lengths, gun counts and stats. The battle steps can still tune the numbers. The ship pictures are generated to match these: every gun, sail and crystal in a picture is one the stats count.
+**Settled October 6, 2026.** Chris approved the six classes, their lengths, gun counts and stats. A later review that day raised the Skiff's speed, added the crew rule and set which ships the player flies. The battle steps can still tune the numbers. The ship pictures are generated to match these: every gun, sail and crystal in a picture is one the stats count.
 
 ## One recipe, six ships
 
@@ -16,7 +16,7 @@ What every ship has, like the Magpie:
 - a wooden hull with brass bands
 - no gas bag
 - **sunstone crystals** on a furnace column, which give the lift
-- **wing sails** on booms out to each side, which catch the Aether
+- **wing sails** on booms out to each side, which catch the Aether. The booms are mounted high, above the gun ports, so the broadside guns fire underneath the sails.
 - fins under the belly, a rudder at the stern, lanterns, and a wheel at the stern
 
 ## What the stats mean
@@ -48,13 +48,17 @@ Then its guns and crew:
 
 Guns only tilt a little up or down, so flying above or below a ship keeps you out of its broadside.
 
-**Size doesn't decide speed.** Speed comes from how much sail a ship carries for its weight. Turning and climbing come from size and lift. So a small ship isn't always fast: the Frigate is faster than the Skiff, and only the Cutter beats it.
+**Crew falls with the hull.** A ship that has lost half its hull has lost about half its crew. That's what makes boarding a bigger ship possible: a Cutter's 12 can't take a Brig's 30, but once the Brig's hull is down by 60% her crew is down to 12 too, an even fight. So to take a ship, you shoot her sails to catch her and her hull to thin her crew. Shoot too much, though, and she goes down with her cargo.
+
+**Size doesn't decide speed.** Speed comes from how much sail a ship carries for its weight. Turning and climbing come from size and lift. So a small ship isn't always fast: the Frigate is as fast as the Skiff and faster than the Brig, and only the Cutter beats them.
 
 ## The six ships
 
+**The player moves up through the first four:** Skiff, then Cutter, Brig and Frigate. The Galleon and the Man-o'-war are only ever enemies: a rich prize and a fortress.
+
 | Ship | Length | Hull | Sails | Crystals | Speed | Turning | Climbing | Bow guns | Stern guns | Guns a side | Crew |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Skiff | 8 m | 300 | 150 | 150 | 6 | 10 | 10 | 1 | 0 | 1 | 4 |
+| Skiff | 8 m | 300 | 150 | 150 | 8 | 10 | 10 | 1 | 0 | 1 | 4 |
 | Cutter | 15 m | 600 | 300 | 250 | **10** | 8 | 7 | 1 | 1 | 3 | 12 |
 | Brig | 25 m | 1,200 | 600 | 500 | 7 | 6 | 6 | 2 | 1 | 6 | 30 |
 | Frigate | 40 m | 2,200 | 1,000 | 900 | 8 | 5 | 5 | 2 | 2 | 10 | 60 |
@@ -63,7 +67,7 @@ Guns only tilt a little up or down, so flying above or below a ship keeps you ou
 
 What each one looks like, so its pictures match its stats:
 
-- **Skiff (8 m).** About the Magpie's size: the Magpie is about 6 m long, three or four people from bow to stern. Open deck, one small crystal cluster of three crystals, and one pair of wing sails. One bow gun on a swivel at the prow, and one small gun on the rail on each side. It out-turns and out-climbs everything.
+- **Skiff (8 m).** About the Magpie's size: the Magpie is about 6 m long, three or four people from bow to stern. Open deck, one small crystal cluster of three crystals, and one pair of wing sails. One bow gun on a swivel at the prow, and one small gun on the rail on each side. It out-turns and out-climbs everything, and it's quick enough to run from a fight it can't win. It's the player's first ship.
 - **Cutter (15 m).** Long, low and narrow, with a sharp prow. Two pairs of wing sails swept back like a swallow's. A small crystal cluster. One row of three gun ports a side, plus one gun at the bow and one at the stern. The fastest ship, but thin-skinned.
 - **Brig (25 m).** Two crystal clusters, one fore and one aft, and two pairs of wing sails. A raised deck at the stern. One row of six gun ports a side, two bow guns and one stern gun. The all-rounder.
 - **Frigate (40 m).** Long and sleek. Three crystal clusters and three pairs of wing sails: a lot of sail for its size, which is why it's fast. One long row of ten gun ports a side, and two guns at each end. The hunter.
@@ -83,15 +87,15 @@ What the pictures must show:
 
 ## Detail budgets
 
-**Every ship, whatever its size, gets about 100,000 triangles at full detail** (Chris, October 6). That way any of them can be the player's ship.
+**Every ship, whatever its size, gets about 100,000 triangles at full detail** (Chris, October 6).
 
 The size of the ship doesn't change the budget, because the camera sits farther back from a big ship than a small one. Whichever ship you fly fills about the same part of the screen, so the same number of triangles looks equally sharp on all of them. A small ship spends its triangles on fine detail: rope, rivets and carved trim. A big ship spends them on more of everything: more guns, decks and windows.
 
 For comparison, the Magpie has about 70,000 triangles in 559 separate pieces. A new ship's pieces are joined into a few dozen parts, so the phone can draw them quickly. Repeated parts are copies of one part, which cost very little to draw: the Man-o'-war's 48 broadside guns are one gun drawn 48 times.
 
-Ships only use full detail up close. Each ship also gets two lighter versions, and the game picks one by how big the ship looks on screen:
+Ships only use full detail up close. **There's one model per class, with a detail dial.** The ships are built by code, so the same code can build any ship with more or fewer pieces: fewer rail posts, rivets and ropes, and curves made of fewer, larger facets. The game turns the dial by how big the ship looks on screen:
 
-| Version | Triangles | When |
+| Detail | Triangles | When |
 |---|---|---|
 | Full | about 100,000 | Your own ship, and any ship right alongside, such as when boarding |
 | Middle | about 20,000 to 25,000 | Ships in the fight but not close |
@@ -112,5 +116,4 @@ There's also **one lineup of all six ships at the same scale.** It comes first, 
 
 ## Open questions for Chris
 
-1. **Which ship does the player fly?** Is it one class all game, or do they move up through the classes? Every ship gets the full-detail version either way.
-2. **What is the player's ship called?**
+1. **What is the player's ship called?**

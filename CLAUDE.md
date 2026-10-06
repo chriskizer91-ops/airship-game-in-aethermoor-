@@ -16,7 +16,7 @@
 - Design notes:
   - ships and stats: `docs/ships.md`
   - map, scale and camera: `docs/map.md`
-- The map is nine tiles in `art/map/tiles/`, painted straight down.
+- The map is nine tiles in `art/map/tiles/`, painted almost straight down, at 5 m per pixel (23 km across). The camera stays high, above a cloud floor.
 - When new art is needed, write the picture prompts as markdown files in `docs/art-requests/` for Chris to generate.
 - `docs/art-requests/01-ships.md` is built by `tools/ship-prompts.mjs`. To change a ship's prompts, edit the script and run `node tools/ship-prompts.mjs`; don't edit the markdown by hand.
 - Chris tries things on his phone. Every step should end with something he can open there. Write anything Chris reads in plain words.
