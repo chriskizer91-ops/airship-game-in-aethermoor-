@@ -117,4 +117,40 @@ for (const s of ships) {
   }
 }
 writeFileSync(new URL("../docs/art-requests/01-ships.md", import.meta.url), md);
+
+// The next two to build, on their own: their concept views are made with the built Brig's picture attached too,
+// so they match the four ships already in the game
+const next = ships.filter((s) => s.id === 'galleon' || s.id === 'man-o-war');
+const brigNote = 'Also match the style and parts of the attached Brig picture: the same hull planks, brass bands, crystal clusters on their furnace columns, masts with wing sails, lanterns and guns, so it belongs to the same fleet.';
+let md2 = `# Art Request 02: The Galleon and the Man-o'-war
+
+The Captain's four ships are built (Skiff, Cutter, Brig and Frigate). These two are the enemies still to build: the Galleon (60 m, the rich prize) and the Man-o'-war (90 m, the fortress). Their stats are in \`docs/ships.md\`.
+
+## How to make them
+
+- Every prompt is ready to paste. Make each picture **landscape, 1536 × 1024**.
+- Generate each one two to four times and keep the one that follows the prompt best. **Count the gun ports:** two rows of 8 a side on the Galleon, two rows of 12 on the Man-o'-war.
+- Send them back with the file names below. I'll save them in \`art/ships/\`.
+
+| # | Picture | Attach | Save as |
+|---|---|---|---|
+`;
+let k = 1;
+for (const s of next) for (const p of prompts(s)) {
+  const attach = p.title === 'Concept view' ? 'The lineup and \`brig-concept.png\`' : p.attach[0].toUpperCase() + p.attach.slice(1);
+  md2 += `| ${k++} | ${s.name}: ${p.title.toLowerCase()} | ${attach} | \`${p.file}\` |\n`;
+}
+md2 += `
+\`lineup.png\` and \`brig-concept.png\` are the pictures you made before (they're in \`art/ships/\` too).
+`;
+let sec2 = 1;
+for (const s of next) {
+  md2 += `\n## ${sec2++}. ${s.name} (${s.length} m)\n`;
+  for (const p of prompts(s)) {
+    const concept = p.title === 'Concept view';
+    const text = concept ? p.text.replace('Keep the design of the ' + s.name + ' in the attached lineup.', 'Keep the design of the ' + s.name + ' in the attached lineup. ' + brigNote) : p.text;
+    md2 += `\n### ${p.title}\n\nAttach ${concept ? 'the lineup and the Brig\'s concept view (\`brig-concept.png\`)' : p.attach}. Save as \`${p.file}\`.\n\n${fence(text)}\n`;
+  }
+}
+writeFileSync(new URL("../docs/art-requests/02-galleon-and-man-o-war.md", import.meta.url), md2);
 console.log('prompts:', 1 + ships.length * 4, 'bytes:', md.length);

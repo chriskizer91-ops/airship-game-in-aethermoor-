@@ -147,7 +147,7 @@ function longGun(batch, m, len, q, S, glows, { post = 0.42, swivel = true } = {}
 }
 
 // A gun port in the hull: a brass frame, a dark opening, the gun's muzzle poking out, its lid propped open above
-function gunPort(batch, m, w, h, q, S, glows, { gun = true, lid = true } = {}) {
+function gunPort(batch, m, w, h, q, S, glows, { gun = true, lid = true, barrelM = null } = {}) {
   const b = Math.min(w, h) * 0.1, d = 0.11, seg = q.latheSeg;
   const add = (key, g, mat) => batch.add(key, g, new THREE.Matrix4().multiplyMatrices(m, mat));
   add('dark', new THREE.PlaneGeometry(w, h), place([0, 0, 0.018]));
@@ -157,10 +157,12 @@ function gunPort(batch, m, w, h, q, S, glows, { gun = true, lid = true } = {}) {
   if (gun) {
     const r = Math.min(w, h) * 0.17, L = 0.7 * h;
     const along = (g) => g.rotateX(Math.PI / 2);
+    // the gun sits level in its port, even where the hull leans away below
+    const add = (key, g, mat) => batch.add(key, g, new THREE.Matrix4().multiplyMatrices(barrelM ?? m, mat));
     add('bronze', along(lathe([[r * 1.25, 0], [r * 1.25, 0.12 * L], [r * 1.05, 0.15 * L], [r * 1.0, 0.75 * L], [r * 1.2, 0.8 * L], [r * 1.2, 0.95 * L], [r * 0.9, L]], seg)), place([0, -0.02 * h, -0.2]));
     add('brass', along(S.ring(r * 1.0, r * 0.18)), place([0, -0.02 * h, -0.2 + 0.45 * L]));
     add('crystal', along(lathe([[r * 0.85, 0], [r * 0.85, 0.08 * h], [r * 0.5, 0.12 * h], [0.001, 0.13 * h]], 8)), place([0, -0.02 * h, -0.2 + L]));
-    glows.push({ p: V(0, -0.02 * h, -0.2 + L + 0.08 * h).applyMatrix4(m), size: 0.75 * h, color: 0xff9a30 });
+    glows.push({ p: V(0, -0.02 * h, -0.2 + L + 0.08 * h).applyMatrix4(barrelM ?? m), size: 0.75 * h, color: 0xff9a30 });
   }
   if (lid) {
     const lh = h * 0.62, t = 0.05, open = -2.25;
@@ -179,7 +181,8 @@ export function guns(hull, batch, R, q, S, glows) {
     const up = UP.clone().sub(n.clone().multiplyScalar(n.y)).normalize(), right = new THREE.Vector3().crossVectors(up, n);
     const m = frame(V(...p), right, up, n);
     if (q.level === 'far') { batch.add('dark', new THREE.PlaneGeometry(R.ports.w * 1.1, R.ports.h * 1.1), new THREE.Matrix4().multiplyMatrices(m, place([0, 0, 0.03]))); continue; }
-    gunPort(batch, m, R.ports.w, R.ports.h, q, S, glows, { gun: q.portGuns, lid: q.portLids });
+    const level = n.clone().setY(0).normalize(), lright = new THREE.Vector3().crossVectors(UP, level);
+    gunPort(batch, m, R.ports.w, R.ports.h, q, S, glows, { gun: q.portGuns, lid: q.portLids, barrelM: frame(V(...p), lright, UP.clone(), level) });
   }
   for (const g of R.bowGuns) longGun(batch, place([g.x, g.y, g.z]), g.len, q, S, glows, { post: Math.max(0.3, g.y - hull.deckY(g.z) + (g.swivel ? 0 : 0.02)) });
   for (const g of R.swivels ?? []) {

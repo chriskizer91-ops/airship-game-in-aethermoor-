@@ -11,6 +11,7 @@
   },
   "scripts": {
     "art": "node tools/ship-art.mjs",
+    "map": "node tools/map-art.mjs",
     "build": "node tools/build.mjs",
     "check": "node tools/build.mjs && node tools/check.mjs"
   }

@@ -17,7 +17,10 @@
 - Design notes:
   - ships and stats: `docs/ships.md`
   - map, scale and camera: `docs/map.md`
+  - the game, its controls and how ships fly and fire: `docs/game.md`
 - The map is nine tiles in `art/map/tiles/`, painted almost straight down, at 5 m per pixel (23 km across). It's just the flat ground under where you fly: keep it simple (Chris, October 6). The camera stays high, above a cloud floor.
+- Get the Captain's four ships fully playable before modelling the Galleon and the Man-o'-war (Chris, October 6).
+- The game works on a laptop at full detail (WASD and keys, mouse aiming) and on a phone (touch stick, aiming drag, buttons). Keep both working.
 - When new art is needed, write the picture prompts as markdown files in `docs/art-requests/` for Chris to generate, and send him the file in the chat.
 - `docs/art-requests/01-ships.md` is built by `tools/ship-prompts.mjs`. To change a ship's prompts, edit the script and run `node tools/ship-prompts.mjs`; don't edit the markdown by hand.
 - Chris tries things on his phone. Every step should end with something he can open there. Write anything Chris reads in plain words.
@@ -27,9 +30,10 @@
 ```
 npm install
 npm run art     # when art/ships/ changes
-npm run check   # builds dist/hangar.html (and dist/hangar.artifact.html), must end with "all good"
+npm run map     # when art/map/tiles/ changes
+npm run check   # builds dist/game.html and dist/hangar.html (and their .artifact.html copies), plays the game; must end with "all good"
 node tools/closeups.mjs brig   # close pictures of one ship's details, into shots/
 ```
 
-- The ships demo is published at https://claude.ai/artifact/4uQ6NogD2FyGGijwq1ew4K. After a change, build and then publish `dist/hangar.artifact.html` to that link (pass its url), so Chris's link keeps working.
+- The game is published at https://claude.ai/artifact/8uZvk4JeowYMt7n5xBvoa7, and the ships demo at https://claude.ai/artifact/4uQ6NogD2FyGGijwq1ew4K. After a change, build and then publish `dist/game.artifact.html` and `dist/hangar.artifact.html` to those links (pass the url), so Chris's links keep working.
 - Each ship stays near 100,000 triangles at full detail; `FINE` in `src/ship/build.js` tunes that per ship.

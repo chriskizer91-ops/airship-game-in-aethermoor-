@@ -57,10 +57,11 @@ The game is one file with everything inside, like the Magpie page, and its budge
 | WebP | 3.2 MB | 4.2 MB | 26% |
 | AVIF, same quality as the WebP | 2.0 MB | 2.7 MB | 17% |
 
-So the game uses the map as AVIF, which every current browser shows.
+So the game uses the map as AVIF, which every current browser shows. `npm run map` (`tools/map-art.mjs`) packs the nine tiles into `assets/map/` at 2.6 MB, plus a small copy of the whole map for the corner map.
 
 ## The camera
 
 - The camera sits **behind the ship** and follows it, high above the cloud floor. The Thinning, the thin air at the top of the sky, is the ceiling.
-- **Drag to swing it around the ship.** Where the camera looks decides which guns fire: looking forward fires the bow guns, looking to a side fires that side's broadside, and looking back fires the stern guns.
-- The **Map** button pulls back to the whole map, seen from straight above.
+- **Swing it around the ship** with the mouse, or a drag on a phone. Where the camera looks decides which guns fire: looking forward fires the bow guns, looking to a side fires that side's broadside, and looking back fires the stern guns.
+- The **corner map** shows the whole map with the ship on it; **M** (or a tap on it) makes it big.
+- The controls for a laptop and a phone are in `docs/game.md`.

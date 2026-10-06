@@ -147,7 +147,7 @@ export function buildShip(R, level, art) {
     t += dt;
     const sway = opts.calm ? 0.4 : 1;
     body.position.y = (Math.sin(t * 0.9) * 0.12 + Math.sin(t * 0.47) * 0.08) * sway * R.railScale;
-    body.rotation.z = (Math.sin(t * 0.6) * 0.012 + (opts.turn ?? 0) * -0.18) * sway;
+    body.rotation.z = Math.sin(t * 0.6) * 0.012 * sway + (opts.turn ?? 0) * 0.16; // a right turn (turn > 0) leans the ship to starboard
     body.rotation.x = Math.sin(t * 0.73) * 0.008 * sway - (opts.climb ?? 0) * 0.06;
     rudderTurn.rotation.y = opts.turn != null ? -opts.turn * 0.5 : Math.sin(t * 0.35) * 0.25;
     glow.material.uniforms.uTime.value = t;
