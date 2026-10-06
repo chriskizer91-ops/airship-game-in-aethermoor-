@@ -38,12 +38,14 @@ At 5 m per pixel the mountains, rivers and city come out at believable sizes, wi
 
 For comparison, the Magpie page's map was under 300 m across, or 44 Magpie-lengths. Compared with the ship, the new map is about 86 times bigger.
 
-## Sharpness
+## Keep it simple
 
-At this scale even the Man-o'-war is only 18 pixels long on the map. So the painting is a backdrop seen from high up, and close to the ground it would look soft. Two things fix that:
+**The map is just the ground under where you fly** (Chris, October 6). It lies flat below the flying area, and the game doesn't put more work into it for now.
 
-1. **Stay high, above a cloud floor.** The cloud floor hides the soft ground and the painted sides of towers and peaks. Tall cloud banks give cover in a fight.
-2. **Blend in ground detail when the ship gets close.** Small repeating pictures of grass, forest, rock, sand, snow and water fade in over the painting, each chosen by the colour of the map underneath. Chris's Ranch game already does this. Unlike upscaling, it adds almost nothing to the file size. The Ranch's code isn't in a repo this session can read; adding it would let this game reuse its version.
+If the ground ever needs to look sharper close up, there are two ways, kept here for later:
+
+- **Blend in ground detail.** Chris's Art Farm (`farm-project`, `art-farm/src/world.js`) already does this. It mixes repeating painted grass and gravel, at two sizes so the repeat never shows, into the painting from above, tinted with the painting's own colours. Here the repeating pictures would be forest, rock, sand, snow and water, painted straight down.
+- **Pick the map's size and sharpen it in the game.** Chris's *Magpie Map Resolution* page did this for the old night map. A map at two-thirds size, sharpened by the game as the camera comes close, kept 85% of the detail at under a third of the file size.
 
 ## File size
 
@@ -52,9 +54,10 @@ The game is one file with everything inside, like the Magpie page, and its budge
 | Whole map as | File | Inside the game | Share of 16 MB |
 |---|---|---|---|
 | JPEG | 4.9 MB | 6.5 MB | 40% |
-| WebP, same quality | 3.2 MB | 4.2 MB | 26% |
+| WebP | 3.2 MB | 4.2 MB | 26% |
+| AVIF, same quality as the WebP | 2.0 MB | 2.7 MB | 17% |
 
-So the game uses the map as WebP.
+So the game uses the map as AVIF, which every current browser shows.
 
 ## The camera
 

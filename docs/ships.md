@@ -54,7 +54,20 @@ Guns only tilt a little up or down, so flying above or below a ship keeps you ou
 
 ## The six ships
 
-**The player moves up through the first four:** Skiff, then Cutter, Brig and Frigate. The Galleon and the Man-o'-war are only ever enemies: a rich prize and a fortress.
+**The player is the Captain** (Chris, October 6). The Captain moves up through the first four ships: Skiff, then Cutter, Brig and Frigate. The Galleon and the Man-o'-war are only ever enemies: a rich prize and a fortress.
+
+**Every ship has a name** (Chris, October 6). These are proposals for Chris to keep or change. They're all winds and weather, growing with the ship, and none of them comes from the Magpie page or other games' lore:
+
+| Ship | Name | Why |
+|---|---|---|
+| Skiff | **Zephyr** | A light breeze: small and nimble |
+| Cutter | **Gale** | A fast, hard wind: the raider |
+| Brig | **Tradewind** | The steady wind sailors trust: the all-rounder |
+| Frigate | **Tempest** | The hunter |
+| Galleon | **Doldrums** | The windless calm that traps ships: slow, and full of treasure |
+| Man-o'-war | **Thunderhead** | The towering storm cloud: a flying fortress |
+
+The names stay off the ships themselves, so the models can be reused in other games.
 
 | Ship | Length | Hull | Sails | Crystals | Speed | Turning | Climbing | Bow guns | Stern guns | Guns a side | Crew |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -116,4 +129,4 @@ There's also **one lineup of all six ships at the same scale.** It comes first, 
 
 ## Open questions for Chris
 
-1. **What is the player's ship called?**
+1. **Are the six names right?** Keep them or change any.
