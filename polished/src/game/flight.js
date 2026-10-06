@@ -9,6 +9,7 @@
 //   at zero hull it goes down
 // Upgrades bought in port (mods.js) scale the speed, speeding up, turning and climbing. The wind helps a ship sailing
 // with it and holds back one sailing into it, and a Surge pours the crystals into the sails for a few seconds.
+// A broadside's recoil heels the ship (guns.js pushes `heelV`); she rights herself on a soft spring.
 import * as THREE from 'three';
 import { THINNING } from './world.js';
 
@@ -36,7 +37,11 @@ export function makeFlyer(ship, stats, start, tune = {}) {
     down: null, // how it's going down, once it is: 'hull' or 'crystals', and for how long
     aimY: 0, // how far below its deck to aim at it (the middle of its hull)
     surge: { on: 0, charge: 1 }, // seconds of Surge left, and how built up the next one is (1 = ready)
+    heel: 0, heelV: 0, // the roll from her own broadsides (radians, + to starboard), and how fast it's changing
   };
+  const look = { turn: 0, climb: 0, heel: 0 }; // what the model is told each frame (kept, not made each time)
+  // the heel's spring: a broadside's kick rolls her over for a second or so, then she rights herself
+  const settle = (dt) => { s.heelV += (-6 * s.heel - 1.6 * s.heelV) * dt; s.heel += s.heelV * dt; };
   s.startSurge = () => { if (s.down || s.surge.charge < 1) return false; s.surge.on = SURGE.time; s.surge.charge = 0; return true; };
   const aim = new THREE.Vector3();
   s.aimAt = () => aim.copy(s.pos).setY(s.pos.y + s.aimY); // (the same vector each time: use it before asking again)
@@ -79,7 +84,9 @@ export function makeFlyer(ship, stats, start, tune = {}) {
     s.vy += (want - s.vy) * (1 - Math.exp(-dt * 2.2));
     move(dt);
     s.pos.y = clamp(s.pos.y, 60, THINNING);
-    ship.update(dt, { turn: s.turn * Math.min(1, s.speed / (H.vmax * 0.4) + 0.2), climb: s.vy / H.climb });
+    settle(dt);
+    look.turn = s.turn * Math.min(1, s.speed / (H.vmax * 0.4) + 0.2); look.climb = s.vy / H.climb; look.heel = s.heel;
+    ship.update(dt, look);
   };
 
   // going down: a holed hull rolls over and falls; dead crystals let the ship sink, still upright; a ship that has
@@ -93,7 +100,9 @@ export function makeFlyer(ship, stats, start, tune = {}) {
     const k = Math.min(1, d.t / 6);
     ship.root.rotation.x = (d.why === 'hull' ? 0.55 : d.why === 'struck' ? 0.04 : 0.12) * k * k;
     ship.root.rotation.z = d.roll * (d.why === 'hull' ? 0.9 : d.why === 'struck' ? 0.12 : 0.25) * k;
-    ship.update(dt, { turn: 0, climb: 0 });
+    settle(dt);
+    look.turn = 0; look.climb = 0; look.heel = s.heel;
+    ship.update(dt, look);
   }
   function move(dt) {
     s.velocity.set(Math.sin(s.heading) * s.speed, s.vy, Math.cos(s.heading) * s.speed);
@@ -104,7 +113,7 @@ export function makeFlyer(ship, stats, start, tune = {}) {
   // back to new, for a fresh start
   s.reset = (pos, heading) => {
     Object.assign(s.health, full); s.down = null; s.pos.copy(pos); s.heading = heading; s.vy = 0; s.turn = 0; s.climb = 0;
-    s.speed = H.vmax * 0.45 * pace; s.sail = 0.5; s.surge.on = 0; s.surge.charge = 1; ship.root.rotation.set(0, heading, 0);
+    s.speed = H.vmax * 0.45 * pace; s.sail = 0.5; s.surge.on = 0; s.surge.charge = 1; s.heel = s.heelV = 0; ship.root.rotation.set(0, heading, 0);
   };
   return s;
 }

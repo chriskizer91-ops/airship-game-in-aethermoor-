@@ -122,8 +122,10 @@
   #readout { display: grid; grid-template-columns: auto auto; gap: 0 10px; margin-top: 4px; font-size: 13px; font-variant-numeric: tabular-nums; }
   #readout dt { color: var(--dim); }
   #readout dd { margin: 0; color: var(--cream); text-align: right; }
-  .meter { display: block; width: 100%; height: 5px; margin-top: 2px; border-radius: 3px; background: rgba(236, 220, 184, 0.15); overflow: hidden; }
-  .meter i { display: block; height: 100%; width: 50%; background: var(--gold); }
+  .meter { position: relative; display: block; width: 100%; height: 5px; margin-top: 2px; border-radius: 3px; background: rgba(236, 220, 184, 0.15); overflow: hidden; }
+  .meter i { position: relative; display: block; height: 100%; width: 50%; background: var(--gold); }
+  /* the chip: what was just knocked off shows pale for a moment, then drains away after the bar */
+  .meter b { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; background: rgba(255, 255, 255, 0.7); transition: width 0.45s 0.25s; }
   /* what's left of the ship: hull, sails, crystals */
   #health { display: grid; grid-template-columns: auto 1fr auto; gap: 1px 8px; align-items: center; margin: 6px 0 0; font-size: 12px; font-variant-numeric: tabular-nums; }
   #health .row { display: contents; }
@@ -154,7 +156,13 @@
   #aim { position: fixed; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; pointer-events: none; }
   #aim svg { width: 100%; height: 100%; overflow: visible; transition: transform 0.15s; }
   #aim.locked svg { transform: rotate(45deg) scale(1.15); }
-  #aim.locked circle, #aim.locked path { stroke: #ff7a5a; }
+  #aim.locked .cross { stroke: #ff7a5a; }
+  /* a hit: ticks between the crosshair's arms in the colour of what was hit; a kill: red, and a ring growing out */
+  #hitmark, #killring { opacity: 0; }
+  /* hits on you: a red arc round the middle pointing where the shot came from */
+  #incoming { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+  #incoming i { position: absolute; left: 50%; top: 50%; width: 68vmin; height: 68vmin; margin: -34vmin 0 0 -34vmin; border-radius: 50%; border-top: 5px solid rgba(255, 70, 50, 0.9);
+    -webkit-mask: conic-gradient(from -35deg, #000 70deg, transparent 0); mask: conic-gradient(from -35deg, #000 70deg, transparent 0); opacity: 0; filter: drop-shadow(0 0 6px rgba(255, 40, 20, 0.8)); }
   #aim.far { opacity: 0.4; }
   #battery { position: fixed; left: 50%; top: calc(var(--top) + 40px); translate: -50% 0; text-align: center; font-size: 13px; pointer-events: none; white-space: nowrap; }
   #battery b { color: var(--gold); font-weight: 400; }
@@ -186,7 +194,9 @@
   #banner-line { margin: 6px 0 0; font-size: clamp(14px, 2.4vw, 18px); color: var(--cream); text-shadow: 0 1px 0 #000, 0 0 12px rgba(0, 0, 0, 0.9); }
   #toast { position: fixed; left: 50%; top: calc(var(--top) + 84px); translate: -50% 0; margin: 0; padding: 4px 12px; font-size: 14px; color: #ffb4a0; pointer-events: none; opacity: 0; white-space: nowrap; }
   #toast.on { animation: region 3s ease-in-out forwards; }
-  #hurt { position: fixed; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at center, rgba(170, 20, 10, 0) 50%, rgba(170, 20, 10, 0.6) 100%); }
+  /* the red at the screen's edge when you're hit, leaning to the side the shot came from (--hx, --hy: -1 to 1) */
+  #hurt { position: fixed; inset: 0; pointer-events: none; opacity: 0;
+    background: radial-gradient(ellipse at calc(50% + var(--hx, 0) * 25%) calc(50% + var(--hy, 0) * 25%), rgba(170, 20, 10, 0) 50%, rgba(170, 20, 10, 0.6) 100%); }
 
   #dock { position: fixed; left: var(--gutter); right: var(--gutter); bottom: var(--bottom); display: flex; gap: 8px; align-items: flex-end; justify-content: space-between; pointer-events: none; }
   #dock > * { pointer-events: auto; }
@@ -304,9 +314,9 @@
   </dl>
   <span class="meter" aria-hidden="true"><i id="sail-bar"></i></span>
   <dl id="health">
-    <div class="row" id="row-hull"><dt>Hull</dt><span class="meter hull"><i id="h-hull"></i></span><dd id="n-hull">0</dd></div>
-    <div class="row" id="row-sails"><dt>Sails</dt><span class="meter sails"><i id="h-sails"></i></span><dd id="n-sails">0</dd></div>
-    <div class="row" id="row-crystals"><dt>Crystals</dt><span class="meter crystals"><i id="h-crystals"></i></span><dd id="n-crystals">0</dd></div>
+    <div class="row" id="row-hull"><dt>Hull</dt><span class="meter hull"><b></b><i id="h-hull"></i></span><dd id="n-hull">0</dd></div>
+    <div class="row" id="row-sails"><dt>Sails</dt><span class="meter sails"><b></b><i id="h-sails"></i></span><dd id="n-sails">0</dd></div>
+    <div class="row" id="row-crystals"><dt>Crystals</dt><span class="meter crystals"><b></b><i id="h-crystals"></i></span><dd id="n-crystals">0</dd></div>
     <div class="row" id="row-surge"><dt>Surge</dt><span class="meter surge"><i id="h-surge"></i></span><dd class="mouse-only">R</dd></div>
   </dl>
 </section>
@@ -316,12 +326,16 @@
 <div id="score" class="panel"><span class="wide">Raiders downed</span><span class="narrow">Downed</span>: <b id="score-n">0</b> · Wave <b id="wave-n">1</b> · <span class="shards">◆ <b id="voyage-n">0</b></span></div>
 <div id="tags" aria-hidden="true"></div>
 <div id="hurt" aria-hidden="true"></div>
+<div id="incoming" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
 <div id="banner" aria-live="polite"><p id="banner-title"></p><p id="banner-line"></p></div>
 <p id="toast" class="panel" aria-live="polite"></p>
 <p id="region" aria-live="polite"></p>
 <div id="aim" aria-hidden="true"><svg viewBox="-23 -23 46 46">
-  <circle r="14" fill="none" stroke="#ecdcb8" stroke-width="2" opacity="0.85"/><circle r="2.2" fill="#e2bd67"/>
-  <path d="M-22 0h6M16 0h6M0 -22v6M0 16v6" stroke="#ecdcb8" stroke-width="2" opacity="0.85"/></svg></div>
+  <circle class="cross" r="14" fill="none" stroke="#ecdcb8" stroke-width="2" opacity="0.85"/><circle r="2.2" fill="#e2bd67"/>
+  <path class="cross" d="M-22 0h6M16 0h6M0 -22v6M0 16v6" stroke="#ecdcb8" stroke-width="2" opacity="0.85"/>
+  <g id="hitmark" stroke="#e2bd67" stroke-width="2.6" stroke-linecap="round" fill="none"><path d="M8.5 8.5L13.4 13.4M-8.5 8.5L-13.4 13.4M8.5 -8.5L13.4 -13.4M-8.5 -8.5L-13.4 -13.4"/>
+    <path id="hitgem" d="M0 -5L3.4 0L0 5L-3.4 0Z" fill="#ffd27a" stroke-width="1.2" visibility="hidden"/></g>
+  <circle id="killring" r="16" fill="none" stroke="#ff4636" stroke-width="2.4"/></svg></div>
 <div id="battery" class="shadow"><b id="battery-name">Bow guns</b> · <span id="battery-count">2</span><span class="meter"><i id="reload-bar"></i></span></div>
 <p id="warn" class="panel" hidden></p>
 <div id="stick" hidden><i></i></div>

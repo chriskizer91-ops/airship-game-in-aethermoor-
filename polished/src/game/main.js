@@ -4,6 +4,10 @@
 // (docs/ships.md). Downed raiders spill Crystal Shards to fly through and gather; after each wave, sail on or go back
 // to port to keep them. Lose the ship and the crew get her home with half.
 // Works on a laptop (keyboard and mouse, full detail) and on a phone (touch stick, aiming drag, buttons).
+// Whatever happens is told to events.js (a gun firing, a hit, a raider down, a wave starting...), and the effects
+// (fx.js) answer it; the HUD here answers the hits itself: marks on the crosshair in the colour of the part hit, a red
+// X when a shot brings a raider down, bars that show the chunk knocked off, and for hits on you, a red arc pointing
+// where the shot came from.
 import * as THREE from 'three';
 import { loadShipArt } from '../ship/materials.js';
 import { buildShip } from '../ship/build.js';
@@ -12,13 +16,15 @@ import { makeWorld, regionAt, SUN, HAZE, MAP, THINNING } from './world.js';
 import { makeInput } from './input.js';
 import { makeFlyer, WIND, windHelp } from './flight.js';
 import { makeBolts, makeGunnery, batteryFor, BATTERY_NAMES, intercept } from './guns.js';
+import { makeFx } from './fx.js';
+import * as events from './events.js';
 import { makeRaiders, waveAt } from './raiders.js';
 import { makeProgress, SKIES } from './progress.js';
 import { loadout } from './mods.js';
 import { makePickups } from './pickups.js';
 import { makePort } from './port.js';
 import { hitZones, firstHit } from './damage.js';
-import { makeSmoke, smokeFrom } from './effects.js';
+import { smokeFrom } from './effects.js';
 import minimapUrl from '../../assets/map/minimap.webp';
 
 const $ = (id) => document.getElementById(id);
@@ -28,6 +34,7 @@ const COMPASS = ['north', 'north-east', 'east', 'south-east', 'south', 'south-we
 const compassDeg = (heading) => ((180 - THREE.MathUtils.radToDeg(heading)) % 360 + 360) % 360; // north is up the map (-z)
 const NUMBER = ['', 'a', 'two', 'three', 'four', 'five', 'six'];
 const SUN_OFF = 400; // how far from the ship the sun's shadow camera sits, along the light
+const { emit, payload } = events;
 
 async function main() {
   if (touch) document.body.classList.add('touch');
@@ -58,8 +65,8 @@ async function main() {
   scene.add(hemi, sun, sun.target);
 
   const progress = makeProgress(), skies = () => SKIES[progress.data.skies];
-  const bolts = makeBolts(scene), smoke = makeSmoke(scene), pickups = makePickups(scene);
-  const raiders = makeRaiders(scene, art, bolts, skies);
+  const fx = makeFx({ scene, camera, touch }), bolts = makeBolts(scene, fx), pickups = makePickups(scene);
+  const raiders = makeRaiders(scene, art, bolts, skies, fx);
 
   // ---------- the ship you fly, and a voyage ----------
   const built = new Map(), zones = new Map();
@@ -74,8 +81,10 @@ async function main() {
   const V = { shards: 0, downed: 0, hits: 0 }; // this voyage
   // the waves: which (n, from 0), what's happening between them, and the next wave once it's known (shown on the card)
   const W = { n: 0, state: 'calm', timer: 5, lost: 0, choose: 0, sunk: false, next: null };
+  let told = null; // the screen the events were last told of
   function enter(m) {
     mode = m; document.body.dataset.mode = m;
+    if (told !== m) { told = m; payload('mode').mode = m; emit('mode'); }
     input.active = m === 'voyage' && !paused;
     if (m !== 'voyage' && document.pointerLockElement) document.exitPointerLock();
   }
@@ -84,8 +93,8 @@ async function main() {
   function resetVoyage() {
     Object.assign(W, { n: 0, state: 'calm', timer: 5, lost: 0, choose: 0, sunk: false, next: null });
     Object.assign(V, { shards: 0, downed: 0, hits: 0 });
-    raiders.clear(); bolts.clear(); pickups.clear(); smoke.puffs.length = 0;
-    hurt = 0; Object.assign(cam, { yaw: 0, pitch: 0.2, zoom: 1, shake: 0 });
+    raiders.clear(); bolts.clear(); pickups.clear(); fx.clear();
+    hurt = 0; Object.assign(cam, { yaw: 0, pitch: 0.2, zoom: 1 });
   }
   // set sail: a fresh voyage in this ship, built as it stands in port (`force` sails a ship not owned, for tests)
   function sail(id, force = false) {
@@ -98,7 +107,8 @@ async function main() {
     player = makeFlyer(ship, L.stats, at, L.tune);
     if (!zones.has(id)) zones.set(id, hitZones(ship));
     player.aimY = zones.get(id).aim.y;
-    gunnery = makeGunnery(ship, L.guns);
+    gunnery = makeGunnery(ship, L.guns, player);
+    fx.follow(player.pos);
     scene.add(ship.root);
     // the sun's shadows: a box round the ship, sized to her, so her masts and sails shade her deck. The sun sits
     // 400 m off along its light, so the box reaches from just short of the ship to just past her
@@ -114,13 +124,15 @@ async function main() {
     enter('voyage');
     region = regionAt(at.pos.x, at.pos.z); // the region's name shows when you cross into the next one
     banner(`The ${R.name} sets sail`, `${skies().name} · ${windWords()}`);
+    const E = payload('voyage:start'); E.ship = id; E.skies = d.skies; emit('voyage:start');
   }
   // back to port: keep this share of the voyage's shards
   function endVoyage(keep) {
     const d = progress.data, got = Math.round(V.shards * keep);
     d.shards += got; d.best[d.skies] = Math.max(d.best[d.skies], W.n); progress.save();
-    raiders.clear(); bolts.clear(); pickups.clear(); W.next = null;
+    raiders.clear(); bolts.clear(); pickups.clear(); gunnery.cancel(); W.next = null;
     scene.remove(player.ship.root); // the port shows her (or the ship you were looking at) in its own scene
+    const E = payload('voyage:end'); E.kept = got; E.sunk = W.sunk; E.waves = W.n; emit('voyage:end');
     paused = false; $('paused').hidden = true; $('calm').hidden = true;
     port.setMode('port');
     if (got) note(`◆ ${got.toLocaleString('en')} banked from the voyage`);
@@ -132,7 +144,8 @@ async function main() {
   progress.onLoad(() => note('Your progress from your other device is here'));
 
   // ---------- the camera: behind the ship, swung round it by the mouse or a drag ----------
-  const cam = { yaw: 0, pitch: 0.2, dist: 40, zoom: 1, look: new THREE.Vector3(), shake: 0 };
+  const cam = { yaw: 0, pitch: 0.2, dist: 40, zoom: 1, look: new THREE.Vector3() };
+  let viewFov = 55; // the view's width (degrees) before the guns' punch: wider in a Surge and on a phone held upright
   const camDistFor = (R) => R.length * 1.35 + 16;
   const aimPoint = new THREE.Vector3(), target = new THREE.Vector3(), toR = new THREE.Vector3(); // (kept, not made each frame)
   let locked = null, reach = true;
@@ -152,7 +165,8 @@ async function main() {
     target.copy(player.pos); target.y += R.length * 0.42 + 2;
     camera.position.copy(target).addScaledVector(cam.look, -cam.dist * cam.zoom);
     camera.lookAt(target);
-    if (cam.shake > 0) { cam.shake = Math.max(0, cam.shake - dt); const s = cam.shake * 0.012; camera.rotation.x += (Math.random() - 0.5) * s; camera.rotation.y += (Math.random() - 0.5) * s; }
+    fx.applyCamera(camera, cam.look); // the guns' kick, and the shake from hits and blasts
+    camera.updateMatrixWorld(); // (read straight away to place things on screen, even when nothing is drawn)
     // the guns lock on to the raider nearest the crosshair, and lead it
     locked = null;
     let bestA = Infinity;
@@ -176,22 +190,44 @@ async function main() {
   }
 
   // ---------- shots landing ----------
-  const BURST = { hull: [0xffa040, 22, 1], sails: [0xf5e6c8, 14, 0.7], crystals: [0xffe08a, 34, 1.4] };
+  // a shot's path this frame, from a to c: did it hit a raider (the Captain's) or the Captain's ship (a raider's)?
+  // Each hit is told to the events (the sparks, shake and buzz answer it, fx.js), and marked on the HUD. A raider's
+  // shot that only just misses flares and is told as a near miss
+  const HIT = payload('hit'), NEAR = payload('nearMiss'), LOW = payload('player:low');
   function hitTest(b, a, c) {
     if (b.owner === 'player') {
       const h = raiders.hitBy(a, c);
       if (!h) return false;
-      h.r.f.hit(h.h.part, b.damage); V.hits++;
-      bolts.burst(h.h.at, ...BURST[h.h.part]);
+      const r = h.r, part = h.h.part, was = !!r.f.down;
+      r.f.hit(part, b.damage); V.hits++;
+      HIT.owner = 'player'; HIT.target = 'raider'; HIT.part = part; HIT.at.copy(h.h.at); HIT.damage = b.damage; HIT.raider = r; emit('hit');
+      hitMark(part, !was && !!r.f.down); tagFlash(r, part);
       return true;
     }
     if (player.down) return false;
     const h = firstHit(zones.get(player.ship.recipe.id), player.ship.body, a, c);
-    if (!h) return false;
+    if (!h) { nearMiss(b, a, c); return false; }
+    const before = player.frac(h.part);
     player.hit(h.part, b.damage);
-    bolts.burst(h.at, ...BURST[h.part]);
-    hurt = Math.min(1, hurt + 0.45); cam.shake = 0.3;
+    HIT.owner = 'raider'; HIT.target = 'player'; HIT.part = h.part; HIT.at.copy(h.at); HIT.damage = b.damage; HIT.raider = null; emit('hit');
+    if (before >= 0.3 && player.frac(h.part) < 0.3) { LOW.part = h.part; emit('player:low'); }
+    hurt = Math.min(1, hurt + 0.45);
+    incoming(b, h.part);
     return true;
+  }
+  // a raider's shot passing close: once it's past its nearest point to the ship (not while it's still coming on, as
+  // it might yet hit), within her length and a bit
+  const seg = new THREE.Line3(), near = new THREE.Vector3(), nv = new THREE.Vector3();
+  function nearMiss(b, a, c) {
+    if (b.whiz) return;
+    const t = seg.set(a, c).closestPointToPointParameter(player.pos, true);
+    if (t >= 1) return;
+    const limit = player.ship.recipe.length * 0.6 + 14, d = seg.at(t, near).distanceTo(player.pos);
+    if (d > limit) return;
+    b.whiz = true; b.flare = 0.12;
+    nv.copy(near).applyMatrix4(camera.matrixWorldInverse);
+    NEAR.pan = THREE.MathUtils.clamp(nv.x / 15, -1, 1); NEAR.close = 1 - d / limit; NEAR.at.copy(near);
+    emit('nearMiss');
   }
 
   // ---------- the raiders come in waves; between them, sail on or go home ----------
@@ -203,14 +239,16 @@ async function main() {
     return parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}` : parts[0];
   }
   const fmt = (n) => Math.round(n).toLocaleString('en');
+  const DOWN = payload('raider:down'), SPILL = payload('shards:spill');
   function waves(dt, gone) {
     for (const r of gone) {
       V.downed++;
-      bolts.burst(r.f.pos, 0xff8a3a, 60, 2.2); bolts.burst(r.f.pos.clone().add({ x: 0, y: 3, z: 0 }), 0xffe08a, 30, 1.6);
-      pickups.spill(r.f.pos.clone().add({ x: 0, y: 2, z: 0 }), r.f.velocity, r.bounty * skies().shards * (1 + 0.1 * W.n));
+      DOWN.raider = r; DOWN.why = r.f.down.why; DOWN.at.copy(r.f.pos); emit('raider:down'); // (her blast: fx.js)
+      SPILL.at.copy(r.f.pos).setY(r.f.pos.y + 2); SPILL.total = r.bounty * skies().shards * (1 + 0.1 * W.n);
+      pickups.spill(SPILL.at, r.f.velocity, SPILL.total); emit('shards:spill');
       toast(`${r.name} ${r.f.down.why === 'hull' ? 'going down' : r.f.down.why === 'struck' ? 'strikes her colours' : 'sinking, crystals dead'}: fly through the shards`);
     }
-    for (const r of raiders.escaped) toast(`The ${r.R.cls} got away with her treasure`);
+    for (const r of raiders.escaped) { toast(`The ${r.R.cls} got away with her treasure`); payload('raider:escaped').raider = r; emit('raider:escaped'); }
     if (W.sunk) return;
     if (W.lost > 0) {
       if ((W.lost -= dt) <= 0) {
@@ -222,7 +260,11 @@ async function main() {
       }
       return;
     }
-    if (player.down) { W.lost = 4; $('calm').hidden = true; banner(`The ${player.ship.recipe.name} is going down`, 'All hands to the boats'); return; }
+    if (player.down) {
+      W.lost = 4; $('calm').hidden = true; banner(`The ${player.ship.recipe.name} is going down`, 'All hands to the boats');
+      gunnery.cancel(); payload('player:down').why = player.down.why; emit('player:down');
+      return;
+    }
     if (W.state !== 'fight') player.repair(dt * 0.12); // between fights the crew patch her up
     if (W.state === 'calm') {
       if ((W.timer -= dt) <= 0) {
@@ -231,12 +273,16 @@ async function main() {
         const title = wave.ids.includes('galleon') ? `Wave ${W.n + 1}: a treasure ship` : wave.captain >= 0 ? `Wave ${W.n + 1}: a raider captain` : wave.ids.includes('manowar') ? `Wave ${W.n + 1}: a Man-o'-war` : `Raiders, wave ${W.n + 1}`;
         banner(title, `${describe(wave.ids)}, to the ${COMPASS[Math.round(compassDeg(a) / 45) % 8]} · ${windWords()}${wave.ids.includes('galleon') ? ' · shoot her sails to catch her' : ''}`);
         W.state = 'fight';
+        const E = payload('wave:start');
+        Object.assign(E, { n: W.n + 1, title, captain: wave.captain >= 0, prize: wave.ids.includes('galleon'), fortress: wave.ids.includes('manowar'), count: wave.ids.length });
+        emit('wave:start');
       }
     } else if (W.state === 'fight') {
       if (!raiders.list.some((r) => !r.f.down)) {
         W.n++;
         const bonus = Math.round(20 * W.n * skies().shards);
         V.shards += bonus;
+        const E = payload('wave:cleared'); E.n = W.n; E.bonus = bonus; emit('wave:cleared');
         W.state = 'choose'; W.choose = 25;
         $('calm-title').textContent = `Wave ${W.n} beaten`;
         const next = waveAt(W.n, skies().extra);
@@ -260,6 +306,7 @@ async function main() {
   $('btn-go-port').addEventListener('click', () => { if (W.state === 'choose') endVoyage(1); });
   function pause(on) {
     if (mode !== 'voyage' || W.sunk) return;
+    if (paused !== on) { payload('pause').on = on; emit('pause'); }
     paused = on; input.active = !on;
     if (!on) { input.look.x = input.look.y = 0; input.zoom = 0; input.pressed.clear(); } // nothing moved while paused carries over
     if (on) {
@@ -292,7 +339,7 @@ async function main() {
   function resize() {
     const w = innerWidth, h = innerHeight;
     renderer.setSize(w, h, false);
-    camera.aspect = w / h; camera.fov = w < h ? 68 : 55; camera.updateProjectionMatrix();
+    camera.aspect = w / h; camera.fov = viewFov = w < h ? 68 : 55; camera.updateProjectionMatrix();
     camera.userData.pixelScale = renderer.domElement.height / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
     for (const s of built.values()) s.glow.material.uniforms.uScale.value = camera.userData.pixelScale;
     port.resize();
@@ -310,10 +357,49 @@ async function main() {
   function toast(text) { const t = $('toast'); t.textContent = text; flash(t); }
   const setText = (el, v) => { if (el._v !== v) { el._v = v; el.textContent = v; } };
   const setStyle = (el, k, v) => { if (el['_' + k] !== v) { el['_' + k] = v; el.style[k] = v; } };
-  const setWidth = (el, f) => { const p = Math.round(f * 100); if (el._w !== p) { el._w = p; el.style.width = p + '%'; } }; // f: 0 to 1
+  // a bar's width (f: 0 to 1). A health bar has a pale chip behind it that follows a moment later, so the piece just
+  // knocked off shows white before it drains away (the lag is the chip's CSS transition)
+  const setWidth = (el, f) => { const p = Math.round(f * 100); if (el._w !== p) { el._w = p; el.style.width = p + '%'; if (el._chip) el._chip.style.width = p + '%'; } };
+  const chip = (el) => { el._chip = el.previousElementSibling?.tagName === 'B' ? el.previousElementSibling : null; return el; };
   const H = {}; // the HUD's elements, looked up once
   for (const id of ['hurt', 'battery-name', 'battery-count', 'reload-bar', 'aim', 'tags', 'r-speed', 'r-height', 'r-sail', 'sail-bar', 'score-n', 'wave-n', 'voyage-n',
-    'heading', 'wind-arrow', 'wind-n', 'h-surge', 'row-surge', 'btn-surge', 'warn', 'score', ...PARTS.flatMap((k) => [`h-${k}`, `n-${k}`, `row-${k}`])]) H[id] = $(id);
+    'heading', 'wind-arrow', 'wind-n', 'h-surge', 'row-surge', 'btn-surge', 'warn', 'score', 'hitmark', 'hitgem', 'killring', ...PARTS.flatMap((k) => [`h-${k}`, `n-${k}`, `row-${k}`])]) H[id] = $(id);
+  for (const k of PARTS) { chip(H[`h-${k}`]); H[`row-${k}`]._dt = H[`row-${k}`].querySelector('dt'); H[`row-${k}`]._bar = H[`row-${k}`].querySelector('.meter'); }
+
+  // ---------- hits, on the HUD ----------
+  // your shot landing: four ticks round the crosshair in the colour of what it hit (gold hull, cream sails, orange
+  // crystals, with a sparkle), restarted at most every 50 ms so a rippling broadside reads as a chain of flickers; a
+  // shot that brings her down: a red X and a ring growing out. (Animated by the browser, on transform and opacity.)
+  const HIT_COLOUR = { hull: '#e2bd67', sails: '#ecdcb8', crystals: '#ff9f45', kill: '#ff4636' };
+  let markAt = -1, markAnim = null, ringAnim = null;
+  function hitMark(part, killed) {
+    if (!killed && time - markAt < 0.05) return;
+    markAt = time;
+    const g = H.hitmark, k = killed ? 'kill' : part;
+    g.setAttribute('stroke', HIT_COLOUR[k]); g.dataset.part = k;
+    H.hitgem.setAttribute('visibility', k === 'crystals' ? 'visible' : 'hidden');
+    markAnim?.cancel();
+    markAnim = g.animate([{ opacity: 1, transform: 'scale(1.35)' }, { opacity: 0, transform: 'scale(1)' }], { duration: killed ? 420 : part === 'crystals' ? 260 : 180, easing: 'ease-out' });
+    if (killed) { ringAnim?.cancel(); ringAnim = H.killring.animate([{ opacity: 1, transform: 'scale(0.6)' }, { opacity: 0, transform: 'scale(2.2)' }], { duration: 420, easing: 'ease-out' }); }
+  }
+  // the bar for the part hit flashes on the raider's tag
+  const FLASH = [{ filter: 'brightness(2.6)' }, { filter: 'brightness(1)' }];
+  function tagFlash(r, part) { const m = r.tag?._m[PARTS.indexOf(part)]; if (m) m.parentElement.animate(FLASH, 150); }
+  // a hit on you: a red arc on a ring round the middle of the screen pointing where the shot came from (the oldest of
+  // four reused), the red at the screen's edge leaning that way, and the row for what was hit flashing in your panel
+  const arcs = [...document.querySelectorAll('#incoming i')], from = new THREE.Vector3(), FADE = { duration: 1200, easing: 'ease-in' };
+  const ROW = [{ color: '#ff6a50', offset: 0 }, { color: '#ff6a50', offset: 0.5 }], BAR = [{ boxShadow: '0 0 0 2px #ff4636' }, { boxShadow: '0 0 0 2px rgba(255, 70, 54, 0)' }];
+  let arcN = 0, lastArc = null;
+  function incoming(b, part) {
+    from.copy(b.v).normalize().multiplyScalar(-300).add(player.pos).applyMatrix4(camera.matrixWorldInverse);
+    const th = Math.atan2(from.x, from.y), el = arcs[arcN];
+    arcN = (arcN + 1) % arcs.length; lastArc = th;
+    el.style.transform = `rotate(${th.toFixed(3)}rad)`;
+    el._a?.cancel(); el._a = el.animate([{ opacity: 1 }, { opacity: 0 }], FADE);
+    H.hurt.style.setProperty('--hx', (-Math.sin(th)).toFixed(2)); H.hurt.style.setProperty('--hy', Math.cos(th).toFixed(2));
+    const row = H[`row-${part}`];
+    row._dt.animate(ROW, 300); row._bar.animate(BAR, 300);
+  }
   const proj = new THREE.Vector3(), placed = [], byY = (a, b) => a._y - b._y;
   // each raider's tag: over it, or at the edge of the screen pointing to it; its distance and health ten times a second
   function tags(slow) {
@@ -323,8 +409,8 @@ async function main() {
       let el = r.tag;
       if (!el) {
         el = r.tag = document.createElement('div'); el.className = r.captain ? 'tag captain' : r.role === 'prize' ? 'tag captain prize' : 'tag';
-        el.innerHTML = `<span class="arrow">▲</span><b>${r.captain ? 'Captain · ' : r.role === 'prize' ? 'Treasure · ' : ''}${r.R.cls}</b> <span class="d"></span>${PARTS.map((k) => `<span class="meter ${k}"><i></i></span>`).join('')}`;
-        el._d = el.querySelector('.d'); el._m = [...el.querySelectorAll('.meter i')]; el._arrow = el.querySelector('.arrow'); el._fresh = true;
+        el.innerHTML = `<span class="arrow">▲</span><b>${r.captain ? 'Captain · ' : r.role === 'prize' ? 'Treasure · ' : ''}${r.R.cls}</b> <span class="d"></span>${PARTS.map((k) => `<span class="meter ${k}"><b></b><i></i></span>`).join('')}`;
+        el._d = el.querySelector('.d'); el._m = [...el.querySelectorAll('.meter i')].map(chip); el._arrow = el.querySelector('.arrow'); el._fresh = true;
         H.tags.append(el); // (raiders.js takes it away with its raider)
       }
       if (r.f.down) { el.remove(); continue; }
@@ -419,8 +505,9 @@ async function main() {
     }
   }
 
-  let last = performance.now(), time = 0, held = null, lastPop = -1;
+  let last = performance.now(), time = 0, held = null, lastPop = -1, lastShard = -9, run = 0;
   const hold = new THREE.Vector3(); // where the ship's hold is, that the shards fly to
+  const GATHER = payload('shards:gather');
   // one step of the game: controls, flying, the raiders, the camera, the guns, the shots, the HUD
   function tick(dt) {
     time += dt;
@@ -430,7 +517,7 @@ async function main() {
       else if (k === 'm') bigMap();
       else if (k === 'h') toggleHelp();
       else if (k === 'p') pause(true);
-      else if (k === 'r') { if (player.startSurge()) toast('Surge!'); }
+      else if (k === 'r') { if (player.startSurge()) { toast('Surge!'); emit('surge'); } }
       else if (k === 'Enter') sailOn();
     }
     player.update(dt, inp);
@@ -441,17 +528,22 @@ async function main() {
     aimFor(battery);
     gunnery.update(dt);
     if (inp.fire && !player.down) gunnery.fire(battery, aimPoint, bolts, 'player', player.velocity);
-    bolts.update(dt, hitTest, camera);
-    smokeFrom(player, smoke, bolts.spark, dt);
-    for (const r of raiders.list) smokeFrom(r.f, smoke, bolts.spark, dt);
-    smoke.update(dt, camera);
+    bolts.update(dt, hitTest);
+    smokeFrom(player, fx, dt);
+    for (let i = 0; i < raiders.list.length; i++) smokeFrom(raiders.list[i].f, fx, dt);
     const got = pickups.update(dt, player.ship.body.localToWorld(hold.set(0, 0.5, 0)), player.ship.recipe.length * 0.6 + 8, camera);
-    // gathering shards makes the counter pop (once in a while, as they stream in)
-    if (got && !player.down) { V.shards += got; if (time - lastPop > 0.25) { lastPop = time; flash(H.score); } }
+    // gathering shards makes the counter pop (once in a while, as they stream in), and each shard is told of, with how
+    // many have come in close together
+    if (got && !player.down) {
+      V.shards += got; if (time - lastPop > 0.25) { lastPop = time; flash(H.score); }
+      for (let i = 0; i < pickups.taken; i++) { run = time - lastShard < 1.5 ? run + 1 : 1; lastShard = time; GATHER.value = pickups.worth[i]; GATHER.run = run; emit('shards:gather'); }
+    }
     waves(dt, gone);
-    // a Surge widens the view a little
+    fx.update(dt); // (after everything that makes sparks, smoke or glows this frame)
+    // a Surge widens the view a little, and each of your guns punches it wider for a moment
     const fov = (innerWidth < innerHeight ? 68 : 55) + (player.surge.on > 0 ? 7 : 0);
-    if (Math.abs(camera.fov - fov) > 0.05) { camera.fov += (fov - camera.fov) * (1 - Math.exp(-dt * 5)); camera.updateProjectionMatrix(); }
+    viewFov += (fov - viewFov) * (1 - Math.exp(-dt * 5));
+    if (Math.abs(camera.fov - viewFov - fx.cam.fov) > 0.01) { camera.fov = viewFov + fx.cam.fov; camera.updateProjectionMatrix(); }
     world.time.value = time;
     world.puffs.follow(player.pos);
     sun.target.position.copy(player.pos); sun.position.copy(player.pos).addScaledVector(SUN, SUN_OFF);
@@ -462,7 +554,7 @@ async function main() {
   }
   function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
-    if (mode === 'voyage') { if (!paused && !W.sunk) tick(dt); renderer.render(scene, camera); }
+    if (mode === 'voyage') { if (!paused && !W.sunk) tick(dt * fx.timeScale(dt)); renderer.render(scene, camera); }
     else { input.read(); port.update(dt); port.render(); }
     requestAnimationFrame(frame);
   }
@@ -472,6 +564,7 @@ async function main() {
   // for tools/check.mjs
   window.__game = {
     ready: true, get player() { return player; }, get gunnery() { return gunnery; }, cam, input, raiders, bolts, pickups, renderer, camera, scene, world, sun, waves: W, voyage: V,
+    fx, events, get lastArc() { return lastArc; }, get time() { return time; },
     progress, port, sail, endVoyage, pause, sailOn, wind: WIND, get mode() { return mode; }, get paused() { return paused; },
     fly: (id) => sail(id, true), // a voyage in any ship, owned or not (for tests)
     get hits() { return V.hits; }, get downed() { return V.downed; }, get locked() { return locked; },

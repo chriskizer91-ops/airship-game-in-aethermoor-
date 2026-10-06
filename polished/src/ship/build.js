@@ -97,14 +97,15 @@ function glowPoints(glows) {
   return pts;
 }
 
-// How a ship rides the air: a slow sway, leaning into turns, nose up in a climb, and the rudder swinging
+// How a ship rides the air: a slow sway, leaning into turns, nose up in a climb, heeling from her own broadsides
+// (opts.heel, radians), and the rudder swinging
 export function shipMotion(R, body, rudders) {
   let t = Math.random() * 10;
   return (dt, opts = {}) => {
     t += dt;
     const sway = opts.calm ? 0.4 : 1;
     body.position.y = (Math.sin(t * 0.9) * 0.12 + Math.sin(t * 0.47) * 0.08) * sway * R.railScale;
-    body.rotation.z = Math.sin(t * 0.6) * 0.012 * sway + (opts.turn ?? 0) * 0.16; // a right turn (turn > 0) leans the ship to starboard
+    body.rotation.z = Math.sin(t * 0.6) * 0.012 * sway + (opts.turn ?? 0) * 0.16 + (opts.heel ?? 0); // a right turn (turn > 0) leans the ship to starboard
     body.rotation.x = Math.sin(t * 0.73) * 0.008 * sway - (opts.climb ?? 0) * 0.06;
     for (const r of rudders) r.rotation.y = opts.turn != null ? -opts.turn * 0.5 : Math.sin(t * 0.35) * 0.25;
     return t;
@@ -160,7 +161,7 @@ export function buildShip(R, level, art) {
     const t = move(dt, opts);
     glow.material.uniforms.uTime.value = t;
     if (sparks) { sparks.material.uniforms.uTime.value = t; sparks.material.uniforms.uScale.value = glow.material.uniforms.uScale.value; }
-    for (const [i, pl] of lamps.entries()) pl.intensity = (0.88 + Math.sin(t * 2.4 + i) * 0.12) * lights[i].power * 6;
+    for (let i = 0; i < lamps.length; i++) lamps[i].intensity = (0.88 + Math.sin(t * 2.4 + i) * 0.12) * lights[i].power * 6;
   }
   return { root, body, update, stats, bounds, glow, length: R.length, recipe: R, level, hull };
 }

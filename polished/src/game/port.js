@@ -8,8 +8,10 @@ import { handling } from './flight.js';
 import { KINDS, GUN_WEIGHT } from './guns.js';
 import { SKIES, PRICES } from './progress.js';
 import { MODS, STEPS, POWER, modCost, loadout } from './mods.js';
+import { emit, payload } from './events.js';
 
 const $ = (id) => document.getElementById(id);
+const CALM = { calm: true };
 const fmt = (n) => Math.round(n).toLocaleString('en');
 
 function makeVoid() {
@@ -103,7 +105,10 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
     const b = document.createElement('button');
     b.type = 'button'; b.dataset.skies = id; b.setAttribute('role', 'radio');
     b.innerHTML = `<b>${S.name}</b><span>${S.line}</span><small></small>`;
-    b.addEventListener('click', () => { progress.data.skies = id; progress.save(); refresh(); });
+    b.addEventListener('click', () => {
+      if (progress.data.skies !== id) { payload('port:skies').skies = id; emit('port:skies'); }
+      progress.data.skies = id; progress.save(); refresh();
+    });
     skiesEl.append(b);
   }
   $('btn-to-port').addEventListener('click', () => setMode('port'));
@@ -126,8 +131,13 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
     const d = progress.data, price = PRICES[viewing];
     if (d.ships[viewing].owned || d.shards < price) return;
     d.shards -= price; d.ships[viewing].owned = true; d.flying = viewing; progress.save(); refresh();
+    payload('port:buy').ship = viewing; emit('port:buy');
   });
-  $('pp-power').addEventListener('input', (e) => { progress.data.ships[viewing].power = +e.target.value; refresh(); });
+  $('pp-power').addEventListener('input', (e) => {
+    const cfg = progress.data.ships[viewing], p = +e.target.value;
+    if (cfg.power !== p) { const E = payload('port:power'); E.ship = viewing; E.power = p; emit('port:power'); }
+    cfg.power = p; refresh();
+  });
   $('pp-power').addEventListener('change', () => progress.save());
   const modsEl = $('pp-mods');
   for (const M of MODS) {
@@ -138,6 +148,7 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
       const d = progress.data, cfg = d.ships[viewing], step = cfg.mods[M.id], cost = modCost(viewing, step);
       if (!cfg.owned || step >= STEPS || d.shards < cost) return;
       d.shards -= cost; cfg.mods[M.id] = step + 1; progress.save(); refresh();
+      const E = payload('port:upgrade'); E.ship = viewing; E.mod = M.id; E.step = step + 1; emit('port:upgrade');
     });
     modsEl.append(row);
   }
@@ -223,7 +234,7 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
     if (!drag) { spin += dt * 0.18 + spinV; spinV *= Math.exp(-dt * 3); }
     ship.root.rotation.set(0, spin, 0);
     ship.root.position.y = Math.sin(performance.now() / 1300) * ship.recipe.length * 0.012;
-    ship.update(dt, { calm: true });
+    ship.update(dt, CALM);
     ship.glow.material.uniforms.uScale.value = renderer.domElement.height / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
   }
   function render() { place(); renderer.render(scene, camera); camera.clearViewOffset(); }

@@ -10,6 +10,8 @@
 // They come in waves, smallest first, and every fifth wave is led by a raider captain: tougher, harder-hitting and
 // quicker to reload, with black sails and a gold pennant, and worth four times the shards. How sharp the raiders are
 // depends on the skies the Captain chose (progress.js).
+// Before a raider's broadside goes off, her gun ports glow red for half a second (a little longer on the two big ships),
+// brightening to gold: time to climb, dive or turn away. Then her side ripples off, bow to stern (guns.js).
 import * as THREE from 'three';
 import { buildShip, shipMotion } from '../ship/build.js';
 import { FLEET, STATS } from '../ships/index.js';
@@ -21,6 +23,9 @@ import { CLOUD_Y } from './world.js';
 // How the raiders compare with the Captain, before the skies' own settings: reload half as slowly again, and aim a
 // little off (by this much for every metre to the target)
 export const RAIDER = { slow: 1.5, aim: 0.02 };
+// how long her gun ports glow before a broadside (seconds), and the glow's colours, from first to firing. The glow's
+// time comes out of her next reload, so she fires her broadsides as often as she would without it
+export const WARN = { time: 0.5, big: 0.65 }, WARN_FROM = new THREE.Color(0xff4636), WARN_TO = new THREE.Color(0xffc070);
 export const CAPTAIN = { toughness: 2, damage: 1.2, reload: 0.9, bounty: 4 };
 // the big ships' heavy guns take their crews longer to reload
 const HEAVY = { galleon: 1.15, manowar: 1.3 };
@@ -93,8 +98,8 @@ function raiderShip(T) {
   };
 }
 
-// `skies()` gives the current skies' settings (progress.js)
-export function makeRaiders(scene, art, bolts, skies) {
+// `skies()` gives the current skies' settings (progress.js); `fx` draws the gun ports' glow (fx.js)
+export function makeRaiders(scene, art, bolts, skies, fx) {
   const arts = { crew: raiderArt(art, false), captain: raiderArt(art, true) }, T = {};
   // one middle and one far model per class (and per colours: the captains' are built when first needed)
   function template(id, captain) {
@@ -108,7 +113,7 @@ export function makeRaiders(scene, art, bolts, skies) {
   }
   for (const R of FLEET) template(R.id, false);
   const list = [], escaped = [];
-  let ai = true;
+  let ai = true, foeNow = null; // (the ship they're fighting this frame, for working out each gun's aim)
 
   function spawn(id, pos, heading, frozen = false, captain = false) {
     const S = skies(), Tm = template(id, captain), tough = S.toughness * (captain ? CAPTAIN.toughness : 1);
@@ -127,11 +132,17 @@ export function makeRaiders(scene, art, bolts, skies) {
     f.strikes = role === 'prize';
     ship.root.position.copy(pos); ship.root.rotation.y = heading;
     scene.add(ship.root);
-    const gun = makeGunnery(ship, { reload: RAIDER.slow * S.reload * (HEAVY[id] ?? 1) * (captain ? CAPTAIN.reload : 1), damage: S.damage * (captain ? CAPTAIN.damage : 1) });
+    const gun = makeGunnery(ship, { reload: RAIDER.slow * S.reload * (HEAVY[id] ?? 1) * (captain ? CAPTAIN.reload : 1), damage: S.damage * (captain ? CAPTAIN.damage : 1) }, f);
     const r = { id, R: Tm.R, name: `Raider ${captain ? 'captain\'s ' + Tm.R.cls : Tm.R.cls}`, captain, ship, f, gun, zones: Tm.zones, role, frozen,
       bounty: BOUNTY[id] * (captain ? CAPTAIN.bounty : 1), aim: RAIDER.aim * S.aim,
       mode: 'attack', timer: 0, side: 1, alt: (Math.random() - 0.5) * (role === 'chaser' ? 50 : 20), counted: false, gone: false,
-      course: heading, fleeing: false, weave: Math.random() * 6 };
+      course: heading, fleeing: false, weave: Math.random() * 6,
+      // a broadside being readied: which battery (null when none), seconds left of how many, the volley's aiming error,
+      // and when next to ask if the foe is still in reach
+      charge: { b: null, t: 0, T: 0, off: new THREE.Vector3(), ask: 0 } };
+    // where a gun at `from` aims: where the foe will be when its shot gets there (each gun of a rippling broadside
+    // works it out again as its turn comes, so the last guns still lead her)
+    r.lead = (from, K, out) => intercept(from, f.velocity, foeNow.aimAt(), foeNow.velocity, K.speed, out);
     ship.update(0, {}); ship.root.updateMatrixWorld(true);
     list.push(r);
     return r;
@@ -195,34 +206,63 @@ export function makeRaiders(scene, art, bolts, skies) {
     return wish;
   }
 
-  // fire every battery that can reach where the foe will be, a little off
-  const off = new THREE.Vector3(), aim = new THREE.Vector3(), SIDES = ['bow', 'port', 'starboard', 'stern'], drift = { turn: 0, climb: 0, sailTo: 0.6 };
-  function shoot(r, foe) {
-    for (const b of SIDES) {
-      if (r.gun.ready[b] > 0 || !r.gun.count(b)) continue;
-      const m = r.gun.muzzle(b);
-      intercept(m.p, r.f.velocity, foe.aimAt(), foe.velocity, m.K.speed, aim);
-      const dist = aim.distanceTo(m.p);
-      if (dist > m.K.speed * m.K.life * 0.7 || !r.gun.reaches(b, aim, m)) continue; // they hold fire till it's worth it
-      const e = dist * r.aim + 1.5;
-      aim.add(off.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(2 * e));
-      r.gun.fire(b, aim, bolts, 'raider', r.f.velocity);
+  // fire every battery that can reach where the foe will be, a little off. A broadside of three guns or more is readied
+  // first, her ports glowing, and fires when the glow is full (or stands down if the foe slips out of its reach)
+  const off = new THREE.Vector3(), aim = new THREE.Vector3(), SIDES = ['bow', 'port', 'starboard', 'stern'], drift = { turn: 0, climb: 0, sailTo: 0.6 }, CALM = { calm: true };
+  const canReach = (r, b, foe) => {
+    const m = r.gun.muzzle(b);
+    intercept(m.p, r.f.velocity, foe.aimAt(), foe.velocity, m.K.speed, aim);
+    const dist = aim.distanceTo(m.p);
+    return dist <= m.K.speed * m.K.life * 0.7 && r.gun.reaches(b, aim, m) ? dist : -1; // they hold fire till it's worth it
+  };
+  function shoot(r, foe, dt) {
+    const ch = r.charge;
+    if (ch.b) {
+      // (whether the foe is still in reach is asked six times a second, and as she fires)
+      const ask = (ch.ask -= dt) <= 0 || ch.t - dt <= 0;
+      if (ask) ch.ask = 1 / 6;
+      if (ask && canReach(r, ch.b, foe) < 0) ch.b = null;
+      else if ((ch.t -= dt) <= 0) {
+        r.gun.fire(ch.b, r.lead, bolts, 'raider', r.f.velocity, ch.off);
+        r.gun.ready[ch.b] = Math.max(0, r.gun.ready[ch.b] - ch.T); ch.b = null;
+      }
     }
+    for (const b of SIDES) {
+      if (b === ch.b || r.gun.ready[b] > 0 || !r.gun.count(b)) continue;
+      const dist = canReach(r, b, foe);
+      if (dist < 0) continue;
+      const e = dist * r.aim + 1.5;
+      off.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(2 * e);
+      if (r.gun.B[b][0].kind === 'broadside' && r.gun.count(b) >= 3) {
+        if (!ch.b) { ch.b = b; ch.t = ch.T = r.R.length >= 50 ? WARN.big : WARN.time; ch.off.copy(off); ch.ask = 1 / 6; }
+        continue;
+      }
+      r.gun.fire(b, r.lead, bolts, 'raider', r.f.velocity, off);
+    }
+  }
+  // her gun ports glowing as a broadside is readied: red and small at first, swelling to hot gold as it's about to fire
+  const port = new THREE.Vector3();
+  function glowPorts(r) {
+    const ch = r.charge, k = 1 - Math.max(0, ch.t) / ch.T, M = r.ship.body.matrixWorld, size = 2 + 6 * k;
+    const cr = WARN_FROM.r + (WARN_TO.r - WARN_FROM.r) * k, cg = WARN_FROM.g + (WARN_TO.g - WARN_FROM.g) * k, cb = WARN_FROM.b + (WARN_TO.b - WARN_FROM.b) * k;
+    const guns = r.gun.B[ch.b];
+    for (let i = 0; i < guns.length; i++) fx.glowAt(port.copy(guns[i].p).applyMatrix4(M), cr, cg, cb, size);
   }
 
   // every frame: steer, fly, fire, pick the detail level; returns the raiders that went down this frame
   const downed = []; // (kept, and read straight away by main.js)
   function update(dt, foe, camera) {
-    downed.length = 0; escaped.length = 0;
+    downed.length = 0; escaped.length = 0; foeNow = foe;
     const toScreen = 1 / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
     for (const r of list) {
       const live = !r.f.down;
-      if (r.frozen && live) r.ship.update(dt, { calm: true });
+      if (r.frozen && live) r.ship.update(dt, CALM);
       else r.f.update(dt, live && ai && !foe.down ? steer(r, foe, dt) : drift);
       r.ship.root.updateMatrixWorld(true);
       r.gun.update(dt);
-      if (live && ai && !r.frozen && !foe.down) shoot(r, foe);
-      if (r.f.down && !r.counted) { r.counted = true; downed.push(r); }
+      if (live && ai && !r.frozen && !foe.down) { shoot(r, foe, dt); if (r.charge.b) glowPorts(r); } else r.charge.b = null;
+      // a ship going down fires no more (not even the guns still waiting their turn)
+      if (r.f.down && !r.counted) { r.counted = true; r.gun.cancel(); downed.push(r); }
       // a treasure ship that gets far enough away has escaped
       if (r.role === 'prize' && r.fleeing && !r.f.down && r.f.pos.distanceTo(foe.pos) > 3600) { r.gone = true; r.escaped = true; escaped.push(r); }
       // a wreck falls away below the clouds before it's taken away, or at least 150 m if she went down low

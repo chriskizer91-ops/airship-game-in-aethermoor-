@@ -15,6 +15,7 @@ What's built, by stage (all October 6):
 - **Stage 3: the port** (Chris: "a racing game's garage"). A title screen with three skies, Crystal Shards, buying ships and upgrades, and crystal power. To make fights more than wave after wave, it adds shards to gather, a raider captain every fifth wave, the wind, the Surge, and the choice after each wave.
 
 - **The Galleon and the Man-o'-war join the raiders** (October 6, from Chris's art packs): the Galleon as a treasure ship that runs, the Man-o'-war as a fortress.
+- **How a fight feels** (October 6): broadsides that ripple down the side with flame and gunsmoke, shots like crystal comets, the view kicking back with your guns and shaking when you're hit, marks on the crosshair for every hit, a red arc pointing to whoever hit you, and raiders' gun ports glowing just before their broadsides (see [How a fight feels](#how-a-fight-feels)).
 
 Boarding waits (Chris, October 6: fill out the ship-to-ship fighting first).
 
@@ -93,7 +94,7 @@ On a laptop the ships are drawn at full sharpness.
 - **Sail − / Sail +**: hold to take in or let out sail.
 - **❚❚** under the compass pauses. Tap the corner map to make it big.
 
-On a phone the game draws a little less sharply so it stays smooth, and pauses by itself if you leave the page. If the phone clears the game's pictures while you're away (phones do, after a long while), the game draws them again when you come back.
+On a phone the game draws a little less sharply so it stays smooth (and with fewer sparks and puffs of smoke), and pauses by itself if you leave the page. If the phone clears the game's pictures while you're away (phones do, after a long while), the game draws them again when you come back.
 
 The cloud deck's pattern is worked out once, when the game starts, and kept as a picture; the deck and the cloud shadows on the ground read it from there. That saves a phone most of the work of drawing the sky, and looks the same.
 
@@ -102,16 +103,28 @@ The cloud deck's pattern is worked out once, when the game starts, and kept as a
 **Where you look decides which guns fire.** Look ahead and the bow guns fire, look to the left (port) or right (starboard) and that side's broadside fires, look back and the stern guns fire. The name of the guns that will fire is shown under the compass (on a phone, above the Fire button), with a bar that fills as they reload.
 
 - Every gun fires from where it really sits on the model, so a broadside comes out of the gun ports along the side.
+- **A broadside ripples down the side**, bow to stern: a gun every 55 thousandths of a second, the whole side in about half a second (on the Galleon and the Man-o'-war, both decks fire together at each port). Bow and stern guns fire in pairs, a moment apart. The first gun fires the moment you press, and the reload starts then.
 - Guns only swing a little, and tilt even less, so you have to put the ship where its guns can reach. Flying well above or below a ship keeps it out of your broadside, and keeps you out of its.
-- The shots are glowing crystal bolts that take time to fly: the Captain's burn gold, the raiders' red.
+- The shots are like crystal comets that take time to fly: a hot head and a long tail fading out behind, heavier for a broadside than a chaser, gold for the Captain's and red for the raiders'. A shot that hits nothing burns out in a little wisp of sparks.
 - **Point the crosshair at a raider and the guns lock on.** The crosshair turns red and the raider's tag glows. Locked on, your gunners aim ahead of the raider, where it will be when the shot gets there, and at the middle of its hull. If the guns facing it can't reach it (too far, or too far above or below), the crosshair fades and the gun label says "out of reach".
 
 | Guns | Speed of the shot | Reload | Reach | Swing / tilt | Shot |
 |---|---|---|---|---|---|
 | **Chasers** (bow and stern, and the Skiff's swivels) | 430 m/s | 1.1 s | about 1.4 km | 35° / 15° | 28 |
-| **Broadsides** (the guns along the sides) | 320 m/s | 2.6 s, all together | about 830 m | 43° / 9° | 55, spreading a little |
+| **Broadsides** (the guns along the sides) | 320 m/s | 2.6 s (the side ripples off in about half a second) | about 830 m | 43° / 9° | 55, spreading a little |
 
 **Bigger ships carry bigger guns**: a shot's weight is scaled by the ship's class: 0.8 on a Skiff, 0.9 on a Cutter, 1 on a Brig, 1.1 on a Frigate, 1.15 on a Galleon and 1.25 on a Man-o'-war (and then by crystal power and, for raiders, the skies). The Galleon's and Man-o'-war's heavy guns take their crews 15% and 30% longer to reload. Each hit takes its weight off whatever it hits: the hull, the sails or the crystals.
+
+## How a fight feels
+
+- **Your guns.** Each port spits a tongue of flame and a puff of white gunsmoke that billows out and drifts back into a bank of smoke along her side, and the ship heels away from the side that fired. Each gun that fires shoves the view back a little and widens it for a moment, so a broadside rolls like thunder under your feet. On an Android phone your volleys buzz the phone too, a pulse a gun.
+- **Your hits.** When your shot lands, four little ticks flash round the crosshair in the colour of what it hit: gold for the hull, cream for the sails, orange with a sparkle for the crystals (the same colours as the raider's bars). A rippling broadside's hits read as a chain of flickers. A shot that brings a raider down flashes a red X and a ring. On the raider's tag, the bar for the part you hit flashes, and the piece you knocked off shows white for a moment before it drains away. Each hit throws sparks the colour of what it hit, and a raider going down blows up in a great burst of them.
+- **Hits on you.** The view jolts, hardest for a hit on the hull, a rattle for the crystals and a little for the sails, and it lurches towards the side that was hit. A red arc glows on a ring round the middle of the screen, pointing to where the shot came from, and the red at the edge of the screen is strongest on that side. The row for what was hit (Hull, Sails or Crystals) flashes in your panel, and its bar shows the chunk knocked off. On an Android phone each hit buzzes the phone, and bringing a raider down gives a longer buzz (an iPhone can't buzz from a web page).
+- **Near misses.** A raider's shot that only just misses flares bright as it streaks past, with a flash of sparks and a twitch of the view.
+- **Blasts and the Surge.** A raider blowing up within 250 m shakes the view, and so does starting a Surge.
+- **A raider's broadside** is coming when her gun ports glow red along her side: for half a second (a little longer on the Galleon and the Man-o'-war) they glow, brightening to hot gold, then her side ripples off. That's your moment to climb, dive or turn away.
+- **Less motion.** If your phone or laptop is set to reduce motion, the shake and kick are cut to a third, and the phone doesn't buzz.
+- **On a phone** the game uses fewer sparks and puffs of smoke (six in ten), and draws them no bigger than a phone can fill quickly, so a big fight stays smooth.
 
 ## How each ship flies
 
@@ -147,9 +160,9 @@ Each shot hits whatever it meets first: the sails (one zone per mast), the cryst
 The raiders fly the same four classes as the Captain, by the same rules. They're easy to tell apart: **rust-red sails, darker planks and crimson pennants with a black hoist**. Each has a tag over it with its class, its distance and its three health bars; off screen, the tag waits at the edge with an arrow pointing to it.
 
 - **Skiffs and Cutters make attack runs.** They come at you bow-first, firing their bow guns, then after 10 to 15 seconds, or when they get close, peel away side-on and come round again. That's when they're open to your broadside.
-- **Brigs, Frigates and the Man-o'-war fight broadside.** They come alongside a few hundred metres off, on whichever side you're on, and fire whole sides.
+- **Brigs, Frigates and the Man-o'-war fight broadside.** They come alongside a few hundred metres off, on whichever side you're on, and fire whole sides. **Her gun ports glow red just before a broadside**, so you can see it coming.
 - **The Galleon runs** (see Treasure ships, above).
-- On Crosswinds they're a little weaker than the Captain: they sail at 92% of their class's top speed, reload half as slowly again, aim a little off (up to 2 m for every 100 m to you), and hold their fire until you're within about two-thirds of their reach.
+- On Crosswinds they're a little weaker than the Captain: they sail at 92% of their class's top speed, reload half as slowly again, aim a little off (up to 2 m for every 100 m to you), and hold their fire until you're within about two-thirds of their reach. Before each broadside their gun ports glow for half a second (see [How a fight feels](#how-a-fight-feels)); that time comes out of their next reload, so they fire as often as they would without it.
 - They're drawn at the middle or far setting of the detail dial (`docs/ships.md`), whichever suits how big they look on screen.
 
 **The waves:**
@@ -173,11 +186,11 @@ The raiders fly the same four classes as the Captain, by the same rules. They're
 | 15 | **a Man-o'-war**, **a raider captain's Frigate**, a Brig and a Cutter |
 | after that | three to six, mixed (at most one Man-o'-war), with a captain every fifth wave |
 
-**How hard it is.** `node tools/sim-fight.mjs skiff 5 cross` sends out a simulated Captain. It simply points at the nearest raider and fires, keeps a raider abeam in a ship with broadsides, and waits for repairs between waves. It never climbs out of a broadside, never surges and never dodges. On Crosswinds it:
+**How hard it is.** `node tools/sim-fight.mjs skiff 5 cross` sends out a simulated Captain. It simply points at the nearest raider and fires, keeps a raider abeam in a ship with broadsides, and waits for repairs between waves. It never climbs out of a broadside, never surges and never dodges, and pays no heed to a raider's gun ports glowing. On Crosswinds it (measured again on October 6, after the rippling broadsides and the raiders' warning glow):
 
-- usually gets the Skiff through four waves (now and then only three), with about ◆ 390 in the hold (enough for the Cutter), and then the wave-5 captain sinks it
-- gets the Brig through seven or eight waves
-- gets the Frigate through five to eight waves on Maelstrom
+- usually gets the Skiff through four waves (now and then only three), with about ◆ 400 in the hold (enough for the Cutter), and then the wave-5 captain sinks it
+- gets the Brig through six or seven waves
+- gets the Frigate through five to eight waves on Maelstrom, usually seven
 - beats the treasure ship's wave (wave 6) in a Cutter, catching her in about three minutes; in a Brig it goes for her escort first, and she gets away
 - in a Frigate, beats wave 12's Man-o'-war about half the time: it fights her side to side, where she's strongest
 
@@ -194,8 +207,10 @@ On Fair Winds the Skiff gets through all five. A real Captain who uses height, t
 - `src/game/raiders.js`: the raiders: their colours, their tactics, captains, bounties and the waves
 - `src/game/pickups.js`: the Crystal Shards a downed raider spills
 - `src/game/damage.js`: what a shot hits, worked out from each ship's own model
-- `src/game/effects.js`: smoke and fire from damaged ships
-- `src/game/guns.js`: where each gun sits, which battery faces where, aiming ahead of a moving ship, gun weights, and the bolts
+- `src/game/events.js`: the game's news (a gun firing, a hit, a raider down, a wave starting, a ship bought...), told in one place for the effects, and later the sound and music, to answer; the list of every event is at its top
+- `src/game/fx.js`: the effects: sparks, flashes and glows, the gunsmoke, the view's kick and shake, buzzing a phone, and a dial to slow the game's clock for a moment
+- `src/game/effects.js`: the smoke: gunsmoke, and smoke and fire from damaged ships
+- `src/game/guns.js`: where each gun sits, which battery faces where, aiming ahead of a moving ship, gun weights, the rippling volleys, and the bolts
 - `src/game/input.js`: the keyboard, mouse and touch controls
 - `demos/game.html`: the title screen, port and HUD, and the help
 - `tools/map-art.mjs`: packs the nine map tiles into `assets/map/` (run it if the tiles change)
@@ -211,5 +226,6 @@ On Fair Winds the Skiff gets through all five. A real Captain who uses height, t
 - It goes back to port from the card after wave 4 (checking the next wave's captain was made ready), buys the Cutter it had been looking at, and sets sail: wave 1 must be one Skiff, and only the Cutter is in the sky.
 - It plays a whole voyage from the port: beats wave 1 (one Skiff), sails on, sinks, and checks half the shards come home. It checks the save survives a reload.
 - It tries the keys, the mouse, the wheel (a trackpad's flick and a mouse's notch) and the touch controls (on a phone: aiming, a thumb resting still, a drag while paused, and sliding off Fire to aim while firing). It drops the drawing context and checks the sky's light and the cloud pattern come back. It saves pictures of the title, the port and a battle into `shots/`.
+- How a fight feels: it checks every kind of news in `events.js` is told somewhere as it plays. It fires a Frigate's broadside into empty sky: one shot at once, all ten within 0.7 s, bow first, a puff of gunsmoke from each port, tails over 20 m long, the ship heeling to starboard, and the view kicking back more than half a metre and settling within a second (and to at most a third of that with reduced motion). It checks every battery's hits are marked on the crosshair in the part's colour, a kill rings red, and shots on a raider's crystals are marked in the crystals' colour. A raider's shot into the hull shakes the view, and one that takes the hull below 30% is told; a shot passing 10 m off is one near miss and does no harm. A raider Frigate's ports glow at least 0.45 s before her first shot, and when it lands the red arc points at her. In a busy fight (a Frigate against three raiders for 15 seconds) the sparks and smoke never run out of room and a step of the game stays under a thousandth of a second; a raider's blast throws at least 90 sparks. On a phone it checks the smaller budgets, and that a hit buzzes the phone.
 
 `node tools/check.mjs --quick` plays only the game page at laptop size, for checking during work; it ends with "all good (quick)". The full check is the one that counts.

@@ -9,6 +9,12 @@
 //                     again; a whole voyage played to the end; the save surviving a reload; the keyboard, mouse, wheel
 //                     and touch controls answering; the drawing context lost and got back; pictures of the title, the
 //                     port and a battle
+//                     how a fight feels: every piece of news told (events.js); a broadside rippling bow to stern with
+//                     its gunsmoke, the ship heeling and the view kicking back (less for reduced motion); hits marked
+//                     on the crosshair in the part's colour and a kill's ring; a hit on you shaking the view and its
+//                     red arc pointing at the shooter; a near miss told once; a raider's ports glowing before her
+//                     broadside; comet tails; a busy fight's sparks fitting their budget, and a step's cost; on the
+//                     phone, smaller budgets and a buzz for a hit
 // Run: node tools/build.mjs && node tools/check.mjs [--quick] [folder]
 //   --quick: only the game page at laptop size (for checking during work; the full run is the one that counts)
 import { chromium } from 'playwright';
@@ -130,6 +136,14 @@ function battle(ids = ['frigate', 'cutter']) {
 const mode = (page) => page.evaluate(() => window.__game.mode);
 {
   const page = await open('game', 'laptop', gameReady);
+  // every piece of the game's news must be told somewhere as these checks play: count them (the page reloads once, so
+  // they're counted before it and again after)
+  const told = new Set(), countEvents = () => page.evaluate(() => {
+    window.__told = {};
+    for (const k in window.__game.events.PAYLOAD) window.__game.events.on(k, () => { window.__told[k] = (window.__told[k] ?? 0) + 1; });
+  });
+  const collect = async () => { for (const k of await page.evaluate(() => Object.keys(window.__told))) told.add(k); };
+  await countEvents();
   // the title screen, then the port: choose skies, buy a ship and an upgrade, set the crystal power
   await page.evaluate(() => window.__game.progress.reset());
   if (await mode(page) !== 'title') problems.push('the game does not open on the title screen');
@@ -175,6 +189,11 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   // sitting 260 m off on its side.
   const flown = await page.evaluate((ships) => {
     const g = window.__game, res = [], PARTS = ['hull', 'sails', 'crystals'];
+    // the marks on the crosshair: what each hit was, and the mark's colour for it
+    const HIT_COLOUR = { hull: '#e2bd67', sails: '#ecdcb8', crystals: '#ff9f45', kill: '#ff4636' }, hits = [];
+    const mark = document.getElementById('hitmark'), playing = (id) => document.getAnimations().some((a) => a.effect?.target?.id === id);
+    g.events.on('hit', (e) => { if (e.target === 'raider') hits.push(e.part); });
+    const marked = () => ({ playing: playing('hitmark'), part: mark.dataset.part, right: mark.getAttribute('stroke') === HIT_COLOUR[mark.dataset.part] && hits.includes(mark.dataset.part) });
     g.progress.reset();
     const voyage = (id) => { g.fly(id); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false); return g.player; };
     const aimAt = (P, tp) => {
@@ -196,8 +215,9 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
         aimAt(P, tp); g.step(0.05, { fire: false });
         const label = document.getElementById('battery-name').textContent, reach = document.getElementById('battery-count').textContent;
         const locked = g.locked === foe;
+        hits.length = 0;
         aimAt(P, tp); g.step(6, { fire: true }); // three broadside volleys: a single one can spread wide
-        r.guns[b] = { n, label, locked, reach, parts: PARTS.filter((k) => foe.f.health[k] < foe.f.full[k]) };
+        r.guns[b] = { n, label, locked, reach, parts: PARTS.filter((k) => foe.f.health[k] < foe.f.full[k]), mark: marked() };
       }
       res.push(r);
     }
@@ -205,8 +225,18 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
     let P = voyage('brig'); P.pos.set(0, 900, 0); P.heading = 0; still(P);
     const foe = g.raiders.spawn('cutter', P.pos.clone().add({ x: 0, y: 4, z: 240 }), 2, true); foe.f.health.hull = 10;
     const d0 = g.downed; aimAt(P, foe.f.pos); g.step(2, { fire: true });
-    const why = foe.f.down?.why, spilled = g.pickups.list.length; g.step(18, {});
+    const why = foe.f.down?.why, spilled = g.pickups.list.length, killMark = { ring: playing('killring'), x: mark.dataset.part };
+    g.step(18, {});
     const sinking = { why, counted: g.downed - d0, gone: !g.raiders.list.includes(foe), spilled };
+    // shots on a raider Brig's crystals (60 m below and 260 m ahead, the guns aimed at the middle of her crystals) are
+    // marked in the crystals' colour
+    P.pos.set(0, 900, 0); P.heading = 0; still(P); g.raiders.clear();
+    const gems = g.raiders.spawn('brig', P.pos.clone().add({ x: 0, y: -60, z: 260 }), 1.0, true), box = gems.zones.crystals[1] ?? gems.zones.crystals[0];
+    const gc = box.getCenter(gems.f.pos.clone()), gat = gc.clone(); gems.f.aimAt = () => gat.copy(gc).applyMatrix4(gems.ship.body.matrixWorld);
+    for (const k in g.gunnery.ready) g.gunnery.ready[k] = 0;
+    hits.length = 0; aimAt(P, gems.f.aimAt()); g.step(3, { fire: true });
+    const crystalMark = { ...marked(), hits: hits.join(' ') };
+    g.raiders.clear();
     // the shards: fly through them and they're gathered
     g.pickups.spill(P.pos.clone().add({ x: 0, y: 0, z: 60 }), P.velocity, 100); const s0 = g.voyage.shards;
     g.step(4, { sail: 0.3 });
@@ -254,7 +284,7 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
     g.raiders.setAI(false); g.raiders.clear();
     const tagsLeft = document.getElementById('tags').children.length; // a raider's tag goes with her
     g.endVoyage(0);
-    return { res, sinking, gathered, popped, lowFall, shadowed, tagsLeft, detail, fight, captain, wave6, wave12, wave15, struck, away };
+    return { res, sinking, gathered, popped, lowFall, shadowed, tagsLeft, detail, fight, captain, wave6, wave12, wave15, struck, away, killMark, crystalMark };
   }, ships);
   const NAMES = { bow: 'Bow guns', port: 'Port broadside', starboard: 'Starboard broadside', stern: 'Stern guns' };
   for (const r of flown.res) {
@@ -263,11 +293,15 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
     if (r.kmh < 60 || r.turned < 90 || r.climbed < 100) problems.push(`${r.id}: flies badly (${r.kmh} km/h, ${r.turned}°, ${r.climbed} m)`);
     for (const [b, x] of Object.entries(r.guns)) {
       if (!x.parts.length) problems.push(`${r.id}: ${b} guns missed a raider 260 m away`);
+      if (!x.mark.playing || !x.mark.right) problems.push(`${r.id}: ${b} guns' hits aren't marked on the crosshair in the part's colour: ${JSON.stringify(x.mark)}`);
       if (x.label !== NAMES[b]) problems.push(`${r.id}: looking ${b} picked "${x.label}"`);
       if (!x.locked || x.reach === 'out of reach') problems.push(`${r.id}: ${b} guns didn't lock on to a raider in reach`);
     }
   }
-  const { sinking, gathered, popped, lowFall, shadowed, tagsLeft, detail, fight, captain, wave6, wave12, wave15, struck, away } = flown;
+  const { sinking, gathered, popped, lowFall, shadowed, tagsLeft, detail, fight, captain, wave6, wave12, wave15, struck, away, killMark, crystalMark } = flown;
+  console.log(`hit marks: every battery's hits marked in the part's colour; a kill ${killMark.ring && killMark.x === 'kill' ? 'rings red' : 'DOES NOT RING'}; shots on a raider's crystals marked "${crystalMark.part}" (hits: ${crystalMark.hits})`);
+  if (!killMark.ring || killMark.x !== 'kill') problems.push(`the shot that brings a raider down isn't marked with the red kill ring: ${JSON.stringify(killMark)}`);
+  if (!crystalMark.playing || crystalMark.part !== 'crystals' || !crystalMark.right) problems.push(`shots on a raider's crystals aren't marked in the crystals' colour: ${JSON.stringify(crystalMark)}`);
   console.log(`a raider downed low: ${lowFall.seen ? `fell ${lowFall.fell} m in ${lowFall.t} s` : 'VANISHED AT ONCE'}; the shard counter ${popped ? 'pops' : 'DOES NOT POP'}; sun shadows ${shadowed ? 'reach' : 'MISS'} the ship`);
   if (!lowFall.seen || lowFall.fell < 140) problems.push(`a raider brought down low should fall before she goes: ${JSON.stringify(lowFall)}`);
   if (!popped) problems.push('gathering shards doesn\'t make the shard counter pop');
@@ -287,6 +321,133 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   if (!wave15.includes('manowar') || wave15.includes('manowar (captain)') || !wave15.includes('(captain)')) problems.push(`wave 15 should have a Man-o'-war and a captain who isn't it: ${wave15}`);
   if (struck.why !== 'struck') problems.push(`a treasure ship shot in her sails didn't strike: ${JSON.stringify(struck)}`);
   if (!away.gone || !away.escaped) problems.push(`a treasure ship running far didn't get away: ${JSON.stringify(away)}`);
+
+  // ---------- how a fight feels (fx.js, events.js) ----------
+  // a broadside fired once into empty sky by the Frigate (port side): how far the view kicks back, at its most
+  const volley = () => page.evaluate(() => {
+    const g = window.__game, P = g.player, FX = g.fx;
+    P.pos.set(0, 900, 0); P.heading = 0; P.speed = 3; P.sail = 0.05; P.vy = 0; P.turn = 0; P.climb = 0; P.heel = P.heelV = 0;
+    g.step(0.1, {}); g.bolts.clear(); FX.clear();
+    for (const k in g.gunnery.ready) g.gunnery.ready[k] = 0;
+    g.cam.yaw = Math.PI / 2; g.cam.pitch = 0.05;
+    let peak = 0;
+    g.step(1 / 60, { fire: true });
+    for (let t = 0; t < 0.6; t += 1 / 60) { g.step(1 / 60, {}); peak = Math.max(peak, FX.cam.back); }
+    return peak;
+  });
+  const feel = await page.evaluate(() => {
+    const g = window.__game, out = {}, E = g.events, FX = g.fx;
+    g.progress.reset();
+    const voyage = (id) => { g.fly(id); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false); return g.player; };
+    const still = (P) => { P.speed = 3; P.sail = 0.05; P.vy = 0; P.turn = 0; P.climb = 0; };
+    // a rippling broadside: the Frigate's port side once into empty sky. One shot at once, all ten by 0.7 s, bow first,
+    // a puff of gunsmoke from each port, the view kicked back and settled within a second, the ship heeled to starboard
+    let P = voyage('frigate'); P.pos.set(0, 900, 0); P.heading = 0; still(P); g.step(0.1, {});
+    g.bolts.clear(); FX.clear(); for (const k in g.gunnery.ready) g.gunnery.ready[k] = 0;
+    g.cam.yaw = Math.PI / 2; g.cam.pitch = 0.05;
+    const fired = [], off = E.on('fire', (e) => { if (e.owner === 'player') fired.push(e.p.clone().sub(P.pos).dot(P.forward())); });
+    const puffs0 = FX.stats().puffs;
+    g.step(1 / 60, { fire: true });
+    const first = g.bolts.bolts.length;
+    let back = 0, heel = 0;
+    for (let t = 0; t < 0.3; t += 1 / 60) { g.step(1 / 60, {}); back = Math.max(back, FX.cam.back); heel = Math.max(heel, P.heel); }
+    for (let t = 0; t < 0.4; t += 1 / 60) { g.step(1 / 60, {}); heel = Math.max(heel, P.heel); }
+    const a = g.bolts.mesh.instanceMatrix.array;
+    out.ripple = { first, all: g.bolts.bolts.length, bowFirst: fired.length === 10 && fired[0] > fired[9] + 15, puffs: FX.stats().puffs - puffs0, back: +back.toFixed(2), heel: +heel.toFixed(3),
+      tail: +Math.hypot(a[8], a[9], a[10]).toFixed(1) };
+    g.step(0.3, {}); out.ripple.settled = +FX.cam.back.toFixed(3);
+    off();
+    // a raider's shot into the Captain's hull shakes the view; one that takes the hull below 30% is told
+    let shook = -1, low = '';
+    const offs = [E.on('hit', (e) => { if (e.target === 'player') shook = FX.cam.trauma; }), E.on('player:low', (e) => { low = e.part; })];
+    const shoot = (dx, weight = 1) => { const at = P.aimAt().clone(), from = at.clone().add({ x: dx, y: 0, z: 0 }); g.bolts.fire(from, at.clone().sub(from).normalize(), 'broadside', 'raider', null, weight); };
+    P.repair(1); FX.clear(); g.cam.yaw = 0; g.cam.pitch = 0.2; g.step(0.05, {});
+    shoot(120); g.step(0.6, {});
+    out.shake = { trauma: +shook.toFixed(2) };
+    // (a heavy shot from close by: between waves the crew patch her up as the shot flies)
+    P.health.hull = P.full.hull * 0.33; shoot(30, 4); g.step(0.3, {});
+    out.shake.low = low;
+    offs.forEach((f) => f());
+    // a raider's shot passing 10 m beside her: one near miss, no harm done
+    P.repair(1); let nears = 0; const offN = E.on('nearMiss', () => nears++); const h0 = JSON.stringify(P.health);
+    const from = P.aimAt().clone().add({ x: 10, y: 0, z: 300 }); g.bolts.fire(from, P.forward().negate(), 'chaser', 'raider', null, 1);
+    g.step(2, {}); offN();
+    out.near = { told: nears, harmed: JSON.stringify(P.health) !== h0 };
+    // a raider Frigate 300 m off the side of a still Captain readies her broadside, her ports glowing, at least 0.45 s
+    // before her first shot; when it lands, the red arc on the screen points at her
+    P = voyage('brig'); P.pos.set(0, 900, 0); P.heading = 0; still(P); P.full.hull = P.health.hull = 1e6; g.cam.yaw = 0; g.cam.pitch = 0.2;
+    const rf = g.raiders.spawn('frigate', P.pos.clone().add({ x: 300, y: 0, z: 0 }), Math.PI, false); g.raiders.setAI(true);
+    let t = 0, chargedAt = -1, boltAt = -1, shooter = null;
+    // (where she is on the screen, as each of her shots lands: the arc is drawn in the same moment)
+    const offH = E.on('hit', (e) => { if (e.target === 'player') { const c = rf.f.pos.clone().applyMatrix4(g.camera.matrixWorldInverse); shooter = Math.atan2(c.x, c.y); } });
+    while (t < 40 && !(shooter !== null && boltAt >= 0)) {
+      g.step(0.05, {}); t += 0.05;
+      if (chargedAt < 0 && rf.charge.b) chargedAt = t;
+      if (boltAt < 0 && g.bolts.bolts.some((b) => b.owner === 'raider')) boltAt = t;
+    }
+    const arc = shooter === null ? null : { shooter, arc: g.lastArc };
+    offH(); g.raiders.setAI(false);
+    const playing = document.getAnimations().some((x) => x.effect?.target?.parentElement?.id === 'incoming');
+    out.warn = { chargedAt: +chargedAt.toFixed(2), boltAt: +boltAt.toFixed(2) };
+    if (arc) { const d = Math.abs(Math.atan2(Math.sin(arc.arc - arc.shooter), Math.cos(arc.arc - arc.shooter))); out.arc = { off: Math.round(d * 180 / Math.PI), playing }; }
+    // a busy fight: a Frigate against a raider Frigate, Brig and Cutter for 15 s, firing all the while. The sparks never
+    // need more room than they have, and a step of the game stays quick (the middle of 15 one-second timings)
+    P = voyage('frigate'); P.pos.set(0, 900, 0); P.heading = 0; P.full.hull = P.health.hull = 1e6; P.full.crystals = P.health.crystals = 1e6;
+    const f = P.forward();
+    ['frigate', 'brig', 'cutter'].forEach((id, i) => g.raiders.spawn(id, P.pos.clone().addScaledVector(f, 260 + i * 90).add({ x: (i - 1) * 140, y: 10, z: 0 }), P.heading + (i ? 2.4 : -1.2), false));
+    g.raiders.setAI(true); FX.clear(); FX.resetStats();
+    const times = []; let most = 0;
+    for (let s = 0; s < 15; s++) {
+      const t0 = performance.now();
+      for (let k = 0; k < 4; k++) {
+        const live = g.raiders.list.filter((r) => !r.f.down).sort((a, b) => a.f.pos.distanceTo(P.pos) - b.f.pos.distanceTo(P.pos));
+        if (live[0]) {
+          const T = P.pos.clone(); T.y += P.ship.recipe.length * 0.42 + 2;
+          const look = live[0].f.pos.clone().sub(T).normalize(), a2 = Math.atan2(look.x, look.z) - P.heading;
+          g.cam.pitch = Math.max(-0.3, -Math.asin(look.y) + 0.08); g.cam.yaw = Math.atan2(Math.sin(a2), Math.cos(a2));
+        }
+        g.step(0.25, { fire: true, sail: 0 });
+        most = Math.max(most, FX.stats().sparks);
+      }
+      times.push((performance.now() - t0) / 60);
+    }
+    times.sort((x, y) => x - y);
+    const st = FX.stats();
+    out.fight = { peak: st.peak, most, cap: st.sparkCap, dropped: st.dropped, puffs: st.puffs, puffsDropped: st.puffsDropped, ms: +times[7].toFixed(2), downed: g.downed };
+    // a raider brought down: her blast throws at least 90 sparks at once
+    g.raiders.setAI(false); g.raiders.clear(); FX.clear();
+    const k1 = g.raiders.spawn('cutter', P.pos.clone().add({ x: 0, y: 0, z: 300 }), 0, true); k1.f.hit('hull', 1e9); g.step(1 / 60, {});
+    out.fight.blast = FX.stats().sparks;
+    g.raiders.clear(); g.endVoyage(0);
+    return out;
+  });
+  const { ripple, shake, near, warn, arc, fight: busy } = feel;
+  console.log(`a Frigate's broadside: ${ripple.first} shot at once, ${ripple.all} by 0.7 s, ${ripple.bowFirst ? 'bow first' : 'NOT BOW FIRST'}, ${ripple.puffs} puffs of gunsmoke, tails ${ripple.tail} m; the view kicked back ${ripple.back} m (${ripple.settled} m after 1 s), the ship heeled ${ripple.heel}`);
+  if (ripple.first > 2 || ripple.all !== 10 || !ripple.bowFirst) problems.push(`a broadside should ripple bow to stern, one shot at once and all ten by 0.7 s: ${JSON.stringify(ripple)}`);
+  if (ripple.puffs < 8) problems.push(`a broadside should puff gunsmoke from each port: ${ripple.puffs} puffs`);
+  if (ripple.tail < 20) problems.push(`a broadside bolt's tail should be at least 20 m long: ${ripple.tail}`);
+  if (ripple.back <= 0.5 || ripple.settled >= 0.02) problems.push(`the view should kick back over half a metre with a broadside and settle within a second: ${ripple.back} m, then ${ripple.settled} m`);
+  if (ripple.heel <= 0.005) problems.push(`a port broadside should heel the ship to starboard: ${ripple.heel}`);
+  console.log(`a raider's shot in the hull shakes the view (trauma ${shake.trauma}); the hull dropping below 30% is told (${shake.low || 'NOT TOLD'}); a shot passing 10 m off: ${near.told} near miss, ${near.harmed ? 'HARMED' : 'no harm'}`);
+  if (shake.trauma <= 0.3) problems.push(`a raider's shot in the hull should shake the view (trauma over 0.3): ${shake.trauma}`);
+  if (shake.low !== 'hull') problems.push('the hull dropping below 30% isn\'t told (player:low)');
+  if (near.told !== 1 || near.harmed) problems.push(`a raider's shot passing 10 m off should be one near miss and do no harm: ${JSON.stringify(near)}`);
+  console.log(`a raider Frigate's ports glow from ${warn.chargedAt} s, her first shot at ${warn.boltAt} s; her hit's red arc points ${arc ? `${arc.off}° off her` : 'NOWHERE'}`);
+  if (warn.chargedAt < 0 || warn.boltAt < 0 || warn.boltAt - warn.chargedAt < 0.45) problems.push(`a raider's ports should glow at least 0.45 s before her broadside: ${JSON.stringify(warn)}`);
+  if (!arc || arc.off > 30 || !arc.playing) problems.push(`a hit on the Captain should show a red arc pointing to the shooter: ${JSON.stringify(arc)}`);
+  console.log(`a busy fight (3 raiders, 15 s): at most ${busy.most} sparks of ${busy.cap} (${busy.dropped} cut short), ${busy.puffs} puffs (${busy.puffsDropped} cut short), ${busy.ms} ms a step, ${busy.downed} downed; a raider's blast: ${busy.blast} sparks`);
+  if (busy.dropped || busy.most > busy.cap || busy.puffsDropped) problems.push(`a busy fight's sparks or smoke ran out of room: ${JSON.stringify(busy)}`);
+  if (busy.ms >= 1) problems.push(`a step of a busy fight takes ${busy.ms} ms (should be under 1)`);
+  if (busy.blast < 90) problems.push(`a raider's blast should throw at least 90 sparks: ${busy.blast}`);
+  // less motion: a player whose device asks for it gets at most 0.35 of the kick
+  await page.evaluate(() => { const g = window.__game; g.fly('frigate'); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false); });
+  const full = await volley();
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const calm = await volley();
+  await page.emulateMedia({ reducedMotion: null });
+  await page.evaluate(() => window.__game.endVoyage(0));
+  console.log(`reduced motion: the view kicks back ${calm.toFixed(2)} m instead of ${full.toFixed(2)} m`);
+  if (!(full > 0.5) || calm > full * 0.35) problems.push(`with reduced motion the kick should be at most 0.35 of the full one: ${calm} of ${full}`);
 
   // between waves, back to port and out again, the way a player moves up: look at the Cutter in port (too dear), sail
   // the Skiff, beat wave 4 (the card shows a raider captain's Brig coming next, built while the card is up), bank the
@@ -352,9 +513,11 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   if (voyage.raiders !== 'skiff') problems.push(`a voyage's wave 1 should be one Skiff, got: ${voyage.raiders}`);
   if (!voyage.sailed || !voyage.choose || !voyage.shards || !voyage.wave2 || !voyage.sunk || !voyage.home || Math.abs(voyage.banked - voyage.half) > 1) problems.push(`a voyage went wrong: ${JSON.stringify(voyage)}`);
   // the save survives a reload
+  await collect();
   await page.evaluate(() => { const d = window.__game.progress.data; d.shards = 1234; window.__game.progress.save(); });
   await page.reload();
   await page.waitForFunction(gameReady, null, { timeout: 180000 });
+  await countEvents();
   const kept = await page.evaluate(() => window.__game.progress.data.shards);
   if (kept !== 1234) problems.push(`the save didn't survive a reload (${kept})`);
 
@@ -418,6 +581,10 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   const cloudyAfter = await clouds();
   console.log(`drawing context lost: ${lost.paused ? 'paused' : 'NOT PAUSED'}; given back: sky light ${lost.sky ? 'back' : 'GONE'}, clouds ${lost.clouds ? 'back' : 'GONE'} (the cloud pattern's mean ${cloudy} → ${cloudyAfter})`);
   if (!lost.paused || !lost.sky || !lost.clouds || Math.abs(cloudy - cloudyAfter) > 0.002 || cloudy < 0.47 || cloudy > 0.5) problems.push(`losing the drawing context went wrong: ${JSON.stringify({ ...lost, cloudy, cloudyAfter })}`);
+  await collect();
+  const untold = (await page.evaluate(() => Object.keys(window.__game.events.PAYLOAD))).filter((k) => !told.has(k));
+  console.log(`the game's news: ${told.size} kinds told${untold.length ? `, NEVER: ${untold.join(', ')}` : ', every kind'}`);
+  if (untold.length) problems.push(`these events were never told while the game was played: ${untold.join(', ')}`);
   await page.close();
 }
 if (!quick) {
@@ -475,6 +642,21 @@ if (!quick) {
   console.log(`phone: a resting thumb keeps the view (${rested.toFixed(2)} of 1); a drag while paused moves it ${jumped.toFixed(2)}; sliding off Fire aims ${slid.toFixed(2)} while firing`);
   await touch('touchStart', await box('#btn-surge')); await touch('touchEnd');
   await wait(page, () => window.__game.player.surge.on > 0, null, 'Surge surges');
+  // on a phone the effects have smaller budgets, and a raider's shot landing buzzes the phone (where it can: an
+  // Android phone; an iPhone has no way to)
+  const phoneFx = await page.evaluate(() => {
+    const g = window.__game, P = g.player, calls = [], can = typeof Navigator.prototype.vibrate === 'function';
+    navigator.vibrate = (p) => { calls.push(p); return true; };
+    // (a true shot from close by: the Skiff is small)
+    let hit = false; const off = g.events.on('hit', (e) => { if (e.target === 'player') hit = true; });
+    P.repair(1); const at = P.aimAt().clone(), from = at.clone().add({ x: 40, y: 0, z: 0 });
+    g.bolts.fire(from, at.clone().sub(from).normalize(), 'chaser', 'raider', null, 1); g.step(0.4, {}); off();
+    return { q: g.fx.q, sparks: g.fx.stats().sparkCap, puffs: g.fx.stats().puffCap, can, hit, buzzed: calls.includes(30) };
+  });
+  console.log(`phone: effects at ${phoneFx.q} of a laptop's (${phoneFx.sparks} sparks, ${phoneFx.puffs} puffs); a hit ${phoneFx.can ? (phoneFx.buzzed ? 'buzzes the phone' : 'DOES NOT BUZZ') : 'can\'t buzz this browser'}`);
+  if (phoneFx.q !== 0.6 || phoneFx.sparks !== 700 || phoneFx.puffs !== 600) problems.push(`phone: the effects' budgets should be smaller: ${JSON.stringify(phoneFx)}`);
+  if (!phoneFx.hit) problems.push('phone: a raider\'s shot fired straight at the Skiff from 40 m missed her');
+  if (phoneFx.can && phoneFx.hit && !phoneFx.buzzed) problems.push('phone: a hit on the ship doesn\'t buzz the phone');
   await page.evaluate(battle, ['cutter', 'skiff']);
   await page.waitForTimeout(2500);
   await shot(page, 'phone-battle');

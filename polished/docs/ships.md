@@ -62,7 +62,7 @@ Then its guns and crew:
 |---|---|
 | **Bow guns** | Chasers at the front: long-range, lighter and accurate. |
 | **Stern guns** | Chasers at the back. Same as the bow guns. |
-| **Guns a side** | Broadside guns: heavy, but only good up close. They fire together as one volley. |
+| **Guns a side** | Broadside guns: heavy, but only good up close. They fire as one volley that ripples down the side, bow to stern. |
 | **Crew** | How strong the ship is when boarding, or being boarded. |
 
 Guns only tilt a little up or down, so flying above or below a ship keeps you out of its broadside.

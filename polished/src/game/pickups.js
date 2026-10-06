@@ -21,6 +21,7 @@ export function makePickups(scene) {
   const glows = new THREE.Points(ggeo, gmat); glows.frustumCulled = false; glows.renderOrder = 3; scene.add(glows);
 
   const list = [], m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), one = new THREE.Vector3(1, 1, 1), to = new THREE.Vector3();
+  const taken = new Float32Array(MAX); // what each shard gathered this frame was worth (the first `api.taken` of them)
   let time = 0;
   // `total` shards, spilled from p as a handful of pieces
   function spill(p, vel, total) {
@@ -30,16 +31,17 @@ export function makePickups(scene) {
       list.push({ p: p.clone(), v, value: total / n, life: LIFE, spin: Math.random() * 6, pulled: false });
     }
   }
-  // move them; returns the shards the ship picked up this frame
+  // move them; returns the shards the ship picked up this frame (and api.taken says how many pieces, worth api.worth[i])
   function update(dt, ship, reach, camera) {
     time += dt;
     let got = 0;
+    api.taken = 0;
     for (let i = list.length - 1; i >= 0; i--) {
       const s = list[i];
       s.life -= dt; s.spin += dt * 2.5;
       to.copy(ship).sub(s.p);
       const d = to.length();
-      if (d < reach) { got += s.value; list.splice(i, 1); continue; }
+      if (d < reach) { got += s.value; taken[api.taken++] = s.value; list.splice(i, 1); continue; }
       if (d < PULL || s.pulled) {
         s.pulled = true;
         s.v.lerp(to.multiplyScalar(PULL_SPEED / Math.max(d, 1)), 1 - Math.exp(-dt * 4));
@@ -61,5 +63,6 @@ export function makePickups(scene) {
     return got;
   }
   const clear = () => { list.length = 0; update(0, new THREE.Vector3(), 0); };
-  return { spill, update, clear, list };
+  const api = { spill, update, clear, list, taken: 0, worth: taken };
+  return api;
 }
