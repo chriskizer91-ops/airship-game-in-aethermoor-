@@ -22,9 +22,7 @@
     --body: 'Pixelify Sans', 'Trebuchet MS', system-ui, sans-serif;
     --gutter: max(16px, env(safe-area-inset-left, 0px));
   }
-  :root:not([data-theme="light"]) { color-scheme: dark; }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --night: #0d0a1a; } }
-  :root[data-theme="dark"] { --night: #0d0a1a; }
+  /* one deliberate look: the night-and-sunset world of the game, the same in either theme */
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
   html, body { height: 100%; margin: 0; background: var(--night); color: var(--ink); overflow: hidden; }

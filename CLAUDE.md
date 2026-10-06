@@ -21,3 +21,15 @@
 - When new art is needed, write the picture prompts as markdown files in `docs/art-requests/` for Chris to generate, and send him the file in the chat.
 - `docs/art-requests/01-ships.md` is built by `tools/ship-prompts.mjs`. To change a ship's prompts, edit the script and run `node tools/ship-prompts.mjs`; don't edit the markdown by hand.
 - Chris tries things on his phone. Every step should end with something he can open there. Write anything Chris reads in plain words.
+
+## Checking a change
+
+```
+npm install
+npm run art     # when art/ships/ changes
+npm run check   # builds dist/hangar.html (and dist/hangar.artifact.html), must end with "all good"
+node tools/closeups.mjs brig   # close pictures of one ship's details, into shots/
+```
+
+- The ships demo is published at https://claude.ai/artifact/4uQ6NogD2FyGGijwq1ew4K. After a change, build and then publish `dist/hangar.artifact.html` to that link (pass its url), so Chris's link keeps working.
+- Each ship stays near 100,000 triangles at full detail; `FINE` in `src/ship/build.js` tunes that per ship.

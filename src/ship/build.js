@@ -84,7 +84,7 @@ function glowPoints(glows) {
         float ph = position.x * 3.1 + position.z * 1.7;
         float k = kind > 1.5 ? 0.88 + 0.08 * sin(uTime * 13.0 + ph) + 0.05 * sin(uTime * 7.3 + ph) : kind > 0.5 ? 0.86 + 0.14 * sin(uTime * 2.4 + ph) : 1.0;
         vCol = color; vA = k;
-        gl_PointSize = size * k * uScale / -mv.z;
+        gl_PointSize = min(size * k * uScale / -mv.z, 360.0);
         gl_Position = projectionMatrix * mv;
       }`,
     fragmentShader: `varying vec3 vCol; varying float vA;

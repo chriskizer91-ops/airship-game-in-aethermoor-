@@ -279,11 +279,12 @@ async function main() {
 
   if (innerWidth < 640) { $('card').hidden = true; $('btn-card').textContent = 'Stats'; $('btn-card').setAttribute('aria-expanded', 'false'); }
   resize(); mark(); show();
+  const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let last = performance.now(), time = 0;
   function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now; time += dt;
     state.idle += dt;
-    if (state.view === 'turn' && state.idle > 2.5 && pointers.size === 0) state.yaw += dt * 0.12;
+    if (state.view === 'turn' && state.idle > 2.5 && pointers.size === 0 && !calm) state.yaw += dt * 0.12;
     if (state.aim) {
       const k = 1 - Math.exp(-dt * 4);
       let dy = state.aim.yaw - state.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));

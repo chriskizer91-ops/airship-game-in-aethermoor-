@@ -2,22 +2,36 @@
 
 **Settled October 6, 2026.** Chris approved the six classes, their lengths, gun counts and stats. A later review that day raised the Skiff's speed, added the crew rule and set which ships the player flies. The battle steps can still tune the numbers. The ship pictures are generated to match these: every gun, sail and crystal in a picture is one the stats count.
 
-## One recipe, six ships
+## How the ships are built
 
-All six ships are built the way the Magpie is built in `reference/the-magpie-over-aethermoor.html`:
+**The Captain's four ships are built** (October 6): the Skiff, the Cutter, the Brig and the Frigate. See them at https://claude.ai/artifact/4uQ6NogD2FyGGijwq1ew4K, or open `dist/hangar.html`, which works with no internet. The Galleon and the Man-o'-war come next, once they have pictures.
 
-- The hull is shaped from two outlines traced off the art: a side view and a straight-down top view.
-- The sails, crystals, furnace, fins, rudder and lanterns are cut out of a sheet of separate parts and placed on the hull.
+They're built the Magpie's way (`reference/the-magpie-over-aethermoor.html`), but in much more detail:
 
-So every ship needs the same set of pictures (see [the pictures each ship needs](#the-pictures-each-ship-needs)). None of them is the Magpie: the player's ship is a new ship with its own name, and nobody from the Magpie page is at its helm. That keeps the ships free to reuse in other games.
+- **The hull is shaped from two outlines**: a side view, for the deck edge and the keel, and a straight-down top view, for the width. The Brig's outlines are measured off Chris's pictures of it (`art/ships/brig-*.png`). The Skiff, Cutter and Frigate take their shapes from his fleet lineup (`art/ships/lineup.png`) until they have pictures of their own.
+- **Every ship wears the Brig's paint.** Its painted planks, deck boards and riveted brass band are cut out of the pictures and repeated along each hull (`tools/ship-art.mjs`). The sail canvas, sunstone crystals, furnace windows, lanterns, rudder, fins, windows and hatch gratings come from the Brig's parts sheet. Where the paint shows brass it shines, and where it shows lamplight it glows.
+- **Everything else is real 3D, not paint.** That covers:
+  - brass bands, straps and rivets standing off the hull
+  - gun ports with frames, glowing muzzles and lids
+  - long guns on swivels
+  - rails on turned balusters
+  - furnace columns with brass arms holding the crystals
+  - masts, yards and wing sails that ripple in the wind
+  - shrouds with ratlines, stays and sheets
+  - pennants, fins, the rudder, the ram or bowsprit
+  - lanterns, the wheel, stairs, a capstan, barrels, crates and coils of rope
+- The code is in `src/ship/`, and each ship's measurements are in `src/ships/`.
+
+None of them is the Magpie: the player's ship is a new ship with its own name, and nobody from the Magpie page is at its helm. That keeps the ships free to reuse in other games.
 
 What every ship has, like the Magpie:
 
 - a wooden hull with brass bands
 - no gas bag
 - **sunstone crystals** on a furnace column, which give the lift
-- **wing sails** on booms out to each side, which catch the Aether. The booms are mounted high, above the gun ports, so the broadside guns fire underneath the sails.
+- **wing sails** on yards out to each side, which catch the Aether. The yards are mounted high, above the gun ports, so the broadside guns fire underneath the sails.
 - fins under the belly, a rudder at the stern, lanterns, and a wheel at the stern
+- a **pennant** at every mast top, in plum with a gold hoist. These are the Captain's colours (a first pick; easy to change).
 
 ## What the stats mean
 
@@ -87,16 +101,16 @@ What each one looks like, so its pictures match its stats:
 - **Galleon (60 m).** Tall and wide, with a high stern castle full of windows and big cargo hatches. Four crystal clusters but little sail for its weight. Two rows of eight gun ports a side, one bow gun, and two stern guns for covering its escape. Slow, and a rich prize.
 - **Man-o'-war (90 m).** Huge and armour-plated, with five crystal clusters, three pairs of short, heavy wing sails, and two rows of twelve gun ports a side. Four bow guns and two stern guns. A flying fortress that barely climbs.
 
-What the pictures must show:
+What the models show:
 
-| Ship | Crystal clusters | Wing sail pairs | Gun ports a side |
+| Ship | Crystal clusters | Masts and wing sails | Gun ports a side |
 |---|---|---|---|
-| Skiff | 1, three crystals | 1 | None: one gun on a swivel on each rail |
-| Cutter | 1, three crystals | 2, swept back | 1 row of 3 |
-| Brig | 2, five crystals each | 2 | 1 row of 6 |
-| Frigate | 3, five crystals each | 3, large | 1 row of 10 |
-| Galleon | 4 | 2, short | 2 rows of 8 |
-| Man-o'-war | 5, large | 3, short and heavy | 2 rows of 12 |
+| Skiff | 1, three crystals | 1 mast, one pair | None: one gun on a swivel on each rail |
+| Cutter | 1, three crystals | 2 masts, one pair each, swept back | 1 row of 3 |
+| Brig | 2, five crystals each | 2 masts, an upper and a lower pair each, as in Chris's pictures | 1 row of 6 |
+| Frigate | 3, five crystals each | 3 masts, an upper and a lower pair each | 1 row of 10 |
+| Galleon | 4 | 2 short pairs (not built yet) | 2 rows of 8 |
+| Man-o'-war | 5, large | 3 short, heavy pairs (not built yet) | 2 rows of 12 |
 
 ## Detail budgets
 
@@ -106,27 +120,37 @@ The size of the ship doesn't change the budget, because the camera sits farther 
 
 For comparison, the Magpie has about 70,000 triangles in 559 separate pieces. A new ship's pieces are joined into a few dozen parts, so the phone can draw them quickly. Repeated parts are copies of one part, which cost very little to draw: the Man-o'-war's 48 broadside guns are one gun drawn 48 times.
 
-Ships only use full detail up close. **There's one model per class, with a detail dial.** The ships are built by code, so the same code can build any ship with more or fewer pieces: fewer rail posts, rivets and ropes, and curves made of fewer, larger facets. The game turns the dial by how big the ship looks on screen:
+Ships only use full detail up close. **There's one model per class, with a detail dial.** The ships are built by code, so the same code can build any ship with more or fewer pieces: fewer rail posts, rivets and ropes, and curves made of fewer, larger facets. The game turns the dial by how big the ship looks on screen. These are the real counts (`tools/check.mjs` prints them):
 
-| Detail | Triangles | When |
-|---|---|---|
-| Full | about 100,000 | Your own ship, and any ship right alongside, such as when boarding |
-| Middle | about 20,000 to 25,000 | Ships in the fight but not close |
-| Far | about 2,000 to 3,000 | Ships small on screen |
+| Ship | Full | Middle | Far |
+|---|---|---|---|
+| Skiff | 98,700 | 11,300 | 1,700 |
+| Cutter | 100,800 | 14,800 | 2,200 |
+| Brig | 102,200 | 22,900 | 3,500 |
+| Frigate | 104,400 | 29,700 | 4,700 |
 
-With three to six enemies in view, the whole scene comes to about 200,000 to 350,000 triangles. A phone handles that easily.
+- **Full** is for your own ship, and any ship right alongside, such as when boarding.
+- **Middle** is for ships in the fight but not close. It looks almost the same as Full from a few ship-lengths away.
+- **Far** is for ships small on screen. It keeps the shape, the sails, the crystals and the gun ports.
+
+Each ship is 13 to 18 draw calls at any level, because each material's pieces are joined into one mesh. With three to six enemies in view, the whole scene comes to about 200,000 to 350,000 triangles, which a phone handles easily.
 
 ## The pictures each ship needs
 
-The prompts are in `docs/art-requests/01-ships.md`. Each ship gets four pictures, so the same build code works for all six:
+The prompts are in `docs/art-requests/01-ships.md`. Each ship gets four pictures:
 
 1. **Concept view.** The whole ship flying, seen three-quarters from the front.
 2. **Hull views.** The side view with the top view below it, both with the bow pointing right and at the same scale, without the wing sails. The hull is built from these two outlines.
 3. **Front and back.** Straight on, with the wing sails spread.
 4. **Parts sheet.** Each part shown separately and flat.
 
-There's also **one lineup of all six ships at the same scale.** It comes first, and every ship's concept view is made with the lineup attached, so the fleet matches.
+There's also **one lineup of all six ships at the same scale.**
+
+**Received** (October 6): the lineup and the Brig's four pictures. The Brig is built from them, and its paint dresses all four ships.
+
+**Still useful:** the Skiff's, Cutter's and Frigate's pictures would let their shapes match Chris's art exactly; for now they come from the lineup. The Galleon's and Man-o'-war's are needed before those two can be built.
 
 ## Open questions for Chris
 
 1. **Are the six names right?** Keep them or change any.
+2. **Are plum and gold right for the Captain's pennants?**

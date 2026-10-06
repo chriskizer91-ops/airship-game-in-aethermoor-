@@ -17,4 +17,8 @@ let html = readFileSync(root + 'demos/hangar.html', 'utf8')
 html = html.replace('<!--SCRIPT-->', () => `<script>${js}</script>`);
 mkdirSync(root + 'dist', { recursive: true });
 writeFileSync(root + 'dist/hangar.html', html);
-console.log(`dist/hangar.html: ${(html.length / 1048576).toFixed(2)} MB`);
+// the same page for publishing as a claude.ai artifact, which supplies the document around it
+const page = html.replace(/<!doctype html>\s*<html[^>]*>\s*<head>\s*/i, '').replace(/<meta charset="utf-8">\s*<meta name="viewport"[^>]*>\s*/i, '')
+  .replace(/<\/head>\s*<body>\s*/i, '').replace(/<\/body>\s*<\/html>\s*$/i, '\n');
+writeFileSync(root + 'dist/hangar.artifact.html', page);
+console.log(`dist/hangar.html: ${(html.length / 1048576).toFixed(2)} MB (and dist/hangar.artifact.html for publishing)`);

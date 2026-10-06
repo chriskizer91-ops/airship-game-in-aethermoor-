@@ -84,14 +84,14 @@ export function buildHull(hull, batch, q) {
 
 // A band of brass standing a little off the hull between two heights, along a run of the hull, with walls
 // along its edges so it has thickness. top/bottom: functions of z giving heights.
-export function hullBand(hull, batch, { z0, z1, top, bottom, side, off = 0.03, tile, I = 40, J = 2, key = 'band' }) {
+export function hullBand(hull, batch, { z0, z1, top, bottom, side, off = 0.03, tile, I = 40, J = 2, key = 'band', edges = true }) {
   const { at, normal, tAt } = hull;
   const ptAt = (z, f, o) => {
     const t = lerp(tAt(z, top(z)), tAt(z, bottom(z)), f), p = at(z, t, side), n = normal(z, t, side);
     return [p[0] + n.x * o, p[1] + n.y * o, p[2]];
   };
   batch.add(key, sheet(I, J, (i, j) => ptAt(lerp(z0, z1, i), j, off), (i, j, pp) => [pp[2] / tile[0], j], side < 0));
-  for (const f of [0, 1]) batch.add('brass', sheet(I, 1, (i, j) => ptAt(lerp(z0, z1, i), f, j * off), (i, j) => [i, f], (side < 0) !== (f === 1)));
+  if (edges) for (const f of [0, 1]) batch.add('brass', sheet(I, 1, (i, j) => ptAt(lerp(z0, z1, i), f, j * off), (i, j) => [i, f], (side < 0) !== (f === 1)));
 }
 
 // A strap of brass down the hull from the deck edge (t = from) to the keel (t = to) at one station, on one side

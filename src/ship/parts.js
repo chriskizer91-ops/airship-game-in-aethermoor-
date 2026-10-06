@@ -26,7 +26,10 @@ export function brasswork(hull, batch, R, q, S) {
   // where a band at height y fits on the hull (the keel rises above it near the ends)
   const span = (y) => { let a = zb, b = zs; for (let z = zs; z <= zb; z += 0.05) if (keel(z) < y - 0.08 && rim(z) > y + 0.05) { a = Math.min(a, z); b = Math.max(b, z); } return [a + 0.03, b - 0.03]; };
   const I = Math.max(8, Math.round(q.stations * 0.8));
-  if (q.level === 'far') return;
+  if (q.level === 'far') {
+    for (const side of [1, -1]) { const [y0, y1] = B.sheer, [a, b] = span(y1); hullBand(hull, batch, { z0: a, z1: b, top: () => y0, bottom: () => y1, side, tile: T.band, I: 10, J: 1, edges: false }); }
+    return;
+  }
   for (const side of [1, -1]) {
     const [y0, y1] = B.sheer, [a, b] = span(y1);
     hullBand(hull, batch, { z0: a, z1: b, top: () => y0, bottom: () => y1, side, tile: T.band, I });
@@ -36,6 +39,7 @@ export function brasswork(hull, batch, R, q, S) {
       hullBand(hull, batch, { z0: zs + 0.03, z1: qf, top: (z) => rim(z) - 0.03, bottom: (z) => rim(z) - 0.3, side, tile: T.band, I: Math.max(4, Math.round(I * 0.2)) });
     }
     for (const [z, w] of B.straps) hullStrap(hull, batch, { z, width: w, side, J: Math.max(4, Math.round(q.rings * 0.9)) });
+    if (B.lower) { const [l0, l1] = B.lower, [a, b] = span(l1); hullBand(hull, batch, { z0: a, z1: b, top: () => l0, bottom: () => l1, side, tile: T.band, I }); }
     // the keel: a brass strip along the bottom, both sides meeting under it
     hullBand(hull, batch, { z0: zs + 0.02, z1: zb - 0.02, top: (z) => keel(z) + 0.22 * (R.length / 25 + 0.4), bottom: (z) => keel(z), side, tile: T.band, I, J: 1 });
   }
@@ -170,10 +174,12 @@ function gunPort(batch, m, w, h, q, S, glows, { gun = true, lid = true } = {}) {
 export function guns(hull, batch, R, q, S, glows) {
   const { at, normal, tAt } = hull;
   // broadside ports down each side
-  if (R.ports && q.level !== 'far') for (const side of [1, -1]) for (const z of R.ports.z) {
+  if (R.ports) for (const side of [1, -1]) for (const z of R.ports.z) {
     const t = tAt(z, R.ports.y), p = at(z, t, side), n = normal(z, t, side);
     const up = UP.clone().sub(n.clone().multiplyScalar(n.y)).normalize(), right = new THREE.Vector3().crossVectors(up, n);
-    gunPort(batch, frame(V(...p), right, up, n), R.ports.w, R.ports.h, q, S, glows, { gun: q.portGuns, lid: q.portLids });
+    const m = frame(V(...p), right, up, n);
+    if (q.level === 'far') { batch.add('dark', new THREE.PlaneGeometry(R.ports.w * 1.1, R.ports.h * 1.1), new THREE.Matrix4().multiplyMatrices(m, place([0, 0, 0.03]))); continue; }
+    gunPort(batch, m, R.ports.w, R.ports.h, q, S, glows, { gun: q.portGuns, lid: q.portLids });
   }
   for (const g of R.bowGuns) longGun(batch, place([g.x, g.y, g.z]), g.len, q, S, glows, { post: Math.max(0.3, g.y - hull.deckY(g.z) + (g.swivel ? 0 : 0.02)) });
   for (const g of R.swivels ?? []) {
@@ -270,6 +276,18 @@ export function masts(hull, batch, R, q, S, glows) {
     batch.add('brass', lathe([[r1 * 1.3, 0], [r1 * 1.45, 0.1], [r1 * 0.9, 0.22], [r1 * 1.15, 0.36], [r1 * 0.5, 0.5], [0.001, 0.82]], seg), place([0, y0 + H, M.z]));
     pennant(batch, V(0, y0 + H - 0.05, M.z), H * 0.42, H * 0.045, q.level === 'full' ? 20 : q.level === 'middle' ? 6 : 2);
     const top = V(0, y0 + H * 0.97, M.z);
+    if (q.level === 'full') {
+      const fr = r0 * 4.2, fh = 0.62 * R.railScale + 0.1, corners = [[1, 1], [1, -1], [-1, -1], [-1, 1]];
+      for (const [cx, cz] of corners) batch.add('wood', box(0.1 * R.railScale, fh, 0.1 * R.railScale, 2), place([cx * fr, y0 + fh / 2, M.z + cz * fr]));
+      for (let i = 0; i < 4; i++) {
+        const [ax, az] = corners[i], [bx, bz] = corners[(i + 1) % 4], len = Math.hypot((bx - ax) * fr, (bz - az) * fr);
+        batch.add('wood', box(len, 0.07 * R.railScale, 0.16 * R.railScale, 2), place([(ax + bx) / 2 * fr, y0 + fh, M.z + (az + bz) / 2 * fr], { euler: [0, ax === bx ? Math.PI / 2 : 0, 0] }));
+        for (let k = 1; k < 5; k++) {
+          const t = k / 5, x = lerp(ax, bx, t) * fr, z = M.z + lerp(az, bz, t) * fr;
+          batch.add('brass', lathe([[0.022, -0.12], [0.03, 0.02], [0.018, 0.06], [0.03, 0.16], [0.001, 0.2]].map(([a, b]) => [a * R.railScale, b * R.railScale]), 5), place([x, y0 + fh, z]));
+        }
+      }
+    }
     M.tiers.forEach((Ti, ti) => {
       const yr = y0 + Ti.at * H;
       batch.add('brass', lathe([[mx(yr) * 1.25, -0.12], [mx(yr) * 1.4, -0.06], [mx(yr) * 1.4, 0.06], [mx(yr) * 1.25, 0.12]], seg), place([0, yr, M.z]));
