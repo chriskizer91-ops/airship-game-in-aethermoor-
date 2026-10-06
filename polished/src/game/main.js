@@ -447,6 +447,7 @@ async function main() {
     row._dt.animate(ROW, 300); row._bar.animate(BAR, 300);
   }
   const proj = new THREE.Vector3(), placed = [], byY = (a, b) => a._y - b._y;
+  const TAG_H = 40, TAG_WARN_H = 58; // a tag's height in pixels, and with its "Broadside!" line (and a pixel to spare)
   // each raider's tag: over it, or at the edge of the screen pointing to it (flashing red as she readies a broadside);
   // its distance and health ten times a second
   function tags(slow) {
@@ -484,28 +485,29 @@ async function main() {
         for (let i = 0; i < 3; i++) setWidth(el._m[i], r.f.frac(PARTS[i]));
       }
     }
-    // tags that would land on top of each other are stacked instead
+    // tags that would land on top of each other are stacked instead: each sits on its bottom edge, so one is pushed
+    // down by its own height (a tag saying "Broadside!" is taller), and the warning is always drawn on top (game.html)
     placed.sort(byY);
     for (let i = 0; i < placed.length; i++) {
-      const a = placed[i];
-      for (let j = 0; j < i; j++) { const b = placed[j]; if (Math.abs(a._x - b._x) < 84 && a._y - b._y < 40) a._y = b._y + 40; }
+      const a = placed[i], h = a._warn ? TAG_WARN_H : TAG_H;
+      for (let j = 0; j < i; j++) { const b = placed[j]; if (Math.abs(a._x - b._x) < 84 && a._y - b._y < h) a._y = b._y + h; }
       const x = Math.round(a._x * 2) / 2, y = Math.round(a._y * 2) / 2;
       if (a._px !== x || a._py !== y) { a._px = x; a._py = y; a.style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`; }
     }
   }
   // ---------- bounties ----------
   // where a raider goes down, her bounty rises out of the wreck in gold and fades: "◆ 75", "Captain's bounty ◆ 600",
-  // "Treasure ◆ 400". Six labels, reused. One that would rise over a banner showing then (a wave's, say) rises just
-  // under it instead (dy, in pixels), so both can be read
-  const BOUNTY_LIFE = 2.2, BOUNTIES = [...document.querySelectorAll('#bounties .bounty')].map((el) => ({ el, at: new THREE.Vector3(), t: BOUNTY_LIFE, dy: 0, label: el.querySelector('small'), num: el.querySelector('b span') }));
+  // "Treasure ◆ 400". Six labels, reused. One that would rise over a banner showing then (a wave's, say), or rise into
+  // it (it rises 40 px), shows just under it instead (dy, in pixels) and doesn't rise, so both can be read
+  const BOUNTY_LIFE = 2.2, BOUNTIES = [...document.querySelectorAll('#bounties .bounty')].map((el) => ({ el, at: new THREE.Vector3(), t: BOUNTY_LIFE, dy: 0, rise: 40, label: el.querySelector('small'), num: el.querySelector('b span') }));
   let bountyN = 0;
   function bounty(r, total, at) {
     const b = BOUNTIES[bountyN]; bountyN = (bountyN + 1) % BOUNTIES.length;
-    b.at.copy(at).setY(at.y + r.R.length * 0.3); b.t = 0; b.dy = 0;
+    b.at.copy(at).setY(at.y + r.R.length * 0.3); b.t = 0; b.dy = 0; b.rise = 40;
     if (performance.now() < bannerAt.until) {
       proj.copy(b.at).project(camera);
       const x = (proj.x + 1) * innerWidth / 2, y = (1 - proj.y) * innerHeight / 2;
-      if (proj.z < 1 && x > bannerAt.left - 90 && x < bannerAt.right + 90 && y > bannerAt.top - 70 && y < bannerAt.bottom + 40) b.dy = bannerAt.bottom + 44 - y;
+      if (proj.z < 1 && x > bannerAt.left - 90 && x < bannerAt.right + 90 && y > bannerAt.top - 70 && y < bannerAt.bottom + 64) { b.dy = bannerAt.bottom + 44 - y; b.rise = 0; }
     }
     b.label.textContent = r.captain ? 'Captain\'s bounty' : r.role === 'prize' ? 'Treasure' : '';
     b.num.textContent = fmt(total);
@@ -518,7 +520,7 @@ async function main() {
       const k = b.t / BOUNTY_LIFE;
       proj.copy(b.at).project(camera);
       if (proj.z > 1) { b.el.style.opacity = '0'; continue; }
-      const x = (proj.x + 1) * innerWidth / 2, y = (1 - proj.y) * innerHeight / 2 - 40 * k + b.dy;
+      const x = (proj.x + 1) * innerWidth / 2, y = (1 - proj.y) * innerHeight / 2 - b.rise * k + b.dy;
       b.el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) translate(-50%, -50%) scale(${(1 + 0.3 * (1 - k)).toFixed(3)})`;
       b.el.style.opacity = (k < 0.08 ? k / 0.08 : k > 0.7 ? (1 - k) / 0.3 : 1).toFixed(2);
     }
@@ -667,6 +669,9 @@ async function main() {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
     if (mode === 'voyage') { if (!paused && !W.sunk) tick(dt * fx.timeScale(dt)); renderer.render(scene, camera); }
     else { input.read(); port.update(dt); port.render(); }
+    // while the game stands still (paused, or your ship gone down), a tag's "Broadside!" stops flashing (game.html)
+    const still = mode === 'voyage' && (paused || W.sunk);
+    if (H.tags._held !== still) { H.tags._held = still; H.tags.classList.toggle('held', still); }
     sound.update(dt, mode === 'voyage' ? player : null); // (real time: the music, and the sky's sound)
     requestAnimationFrame(frame);
   }

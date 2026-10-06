@@ -15,14 +15,16 @@
 //                     ship heeling and the view kicking back (less for reduced motion); hits marked on the crosshair
 //                     in the part's colour and a kill's ring; a hit on you shaking the view, its red arc pointing at
 //                     the shooter and naming her; a near miss told once; a raider's ports glowing before her
-//                     broadside, and her tag flashing "Broadside!" while she's off screen (on the phone too); a raider
+//                     broadside, and her tag flashing "Broadside!" while she's off screen (on the phone too, stacked
+//                     clear of another raider's tag at that edge, and holding still while the game is paused); a raider
 //                     shot down mid-broadside firing no more; a Man-o'-war's four batteries all rippling at once;
 //                     comet tails; a busy fight with two raiders downed in it fitting its sparks' and smoke's budgets,
 //                     and a step's cost; back to port from the pause menu ending the pause; on the phone, smaller
 //                     budgets, a buzz for a hit and a kill, and none for a ship that gives up
-//                     wrecks worth watching: debris matching the part hit, with room for a 60-shot barrage; a raider
-//                     blown apart in a chain of blasts, her crystals going dark, through the cloud deck; her bounty
-//                     rising (clear of a banner); a treasure ship striking without a blast, and sinking through the
+//                     wrecks worth watching: debris matching the part hit, with room for a 60-shot barrage, and canvas
+//                     scraps keeping their own flapping beat; a raider blown apart in a chain of blasts, her crystals
+//                     going dark, through the cloud deck; her bounty rising (a captain's, clear of a banner all the
+//                     while it can be read); a treasure ship striking without a blast, and sinking through the
 //                     clouds (and a raider whose crystals die); the holes in the clouds closed for the next voyage;
 //                     the shard count counting up; masts falling on a laptop (gone from her far model too), and going
 //                     only under the clouds; slow motion for a wave's last raider and the card waiting for it before
@@ -806,27 +808,64 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   if (masts.left || masts.went.length !== 3 || masts.went.some((m) => !(m.top < masts.deck || m.s < 0.5))) problems.push(`a falling mast should go only once it's under the cloud deck (or shrink away), never vanish in the open sky: ${JSON.stringify(masts)}`);
   console.log(`paused, then back to port from the pause menu: told "${leave.told}"`);
   if (leave.told !== 'pause true, pause false, voyage:end' || leave.paused || leave.mode !== 'port') problems.push(`going back to port from the pause menu should tell the pause ended before the voyage's end: ${JSON.stringify(leave)}`);
-  // a raider brought down as a banner shows, where her bounty would rise right over the banner: it rises just under it
-  // instead, clear of its words, and is drawn over it
+  // a raider captain brought down as a banner shows, where her bounty (tall: "Captain's bounty" over a big number)
+  // would rise right over the banner, or rise into it from just under it: it shows just under the banner instead, clear
+  // of its words all the while it can be read (looked at every 0.1 s while it's over half opaque), and is drawn over it
   const overBanner = await page.evaluate(() => {
-    const g = window.__game, $ = (id) => document.getElementById(id);
-    g.progress.reset(); g.fly('brig'); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false); // (setting sail shows a banner)
-    const P = g.player; P.speed = 3; P.sail = 0.05; g.step(0.05, {});
-    const bn = $('banner').getBoundingClientRect(), V = P.pos.constructor;
-    const at = new V(0, 1 - ((bn.top + bn.bottom) / innerHeight), 0.5).unproject(g.camera).sub(g.camera.position).normalize().multiplyScalar(260).add(g.camera.position);
-    const r = g.raiders.spawn('cutter', at, Math.PI / 2, true);
-    r.f.pos.y -= 2 + r.R.length * 0.3; r.ship.root.position.copy(r.f.pos); g.step(0.05, {});
-    r.f.hit('hull', 1e9); g.step(0.5, {});
-    const b = [...document.querySelectorAll('#bounties .bounty')].find((x) => !x.hidden), br = b?.getBoundingClientRect();
-    const words = [$('banner-title').getBoundingClientRect(), $('banner-line').getBoundingClientRect()];
-    const over = (a, c) => a.left < c.right && a.right > c.left && a.top < c.bottom && a.bottom > c.top;
-    const out = { shown: !!b, clear: !!br && !words.some((w) => over(br, w)), under: br ? Math.round(br.top - bn.bottom) : null,
-      drawnOver: !!($('banner').compareDocumentPosition($('bounties')) & Node.DOCUMENT_POSITION_FOLLOWING) };
+    const g = window.__game, $ = (id) => document.getElementById(id), out = { drawnOver: !!($('banner').compareDocumentPosition($('bounties')) & Node.DOCUMENT_POSITION_FOLLOWING), runs: [] };
+    g.raiders.prepare('cutter', true); // (built first, so the banner is still showing when she goes down)
+    for (const below of [null, 50]) {
+      g.progress.reset(); g.fly('brig'); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false); // (setting sail shows a banner)
+      const P = g.player; P.speed = 3; P.sail = 0.05; g.step(0.05, {});
+      const bn = $('banner').getBoundingClientRect(), V = P.pos.constructor, y = below === null ? (bn.top + bn.bottom) / 2 : bn.bottom + below;
+      const at = new V(0, 1 - 2 * y / innerHeight, 0.5).unproject(g.camera).sub(g.camera.position).normalize().multiplyScalar(260).add(g.camera.position);
+      const r = g.raiders.spawn('cutter', at, Math.PI / 2, true, true);
+      r.f.pos.y -= 2 + r.R.length * 0.3; r.ship.root.position.copy(r.f.pos); g.step(0.05, {});
+      r.f.hit('hull', 1e9);
+      const words = [$('banner-title').getBoundingClientRect(), $('banner-line').getBoundingClientRect()];
+      const over = (a, c) => a.left < c.right && a.right > c.left && a.top < c.bottom && a.bottom > c.top;
+      const run = { where: below === null ? 'over the banner' : `${below} px under it`, seen: 0, over: [], label: '' };
+      for (let t = 0.1; t < 2.2; t += 0.1) {
+        g.step(0.1, {});
+        const b = [...document.querySelectorAll('#bounties .bounty')].find((x) => !x.hidden);
+        if (!b || +b.style.opacity <= 0.5) continue;
+        const br = b.getBoundingClientRect(); run.seen++; run.label = b.querySelector('small').textContent;
+        if (words.some((w) => over(br, w))) run.over.push(+t.toFixed(1));
+      }
+      out.runs.push(run);
+      g.endVoyage(0);
+    }
+    return out;
+  });
+  console.log(`a captain's bounty where a banner shows: ${overBanner.runs.map((r) => `rising ${r.where}, ${!r.seen ? 'NOT SHOWN' : r.over.length ? `OVER ITS WORDS at ${r.over.join(', ')} s` : `clear of its words (looked at ${r.seen} times)`}`).join('; ')}; ${overBanner.drawnOver ? 'drawn over it' : 'DRAWN UNDER IT'}`);
+  if (overBanner.runs.some((r) => r.seen < 8 || r.label !== 'Captain\'s bounty' || r.over.length) || !overBanner.drawnOver) problems.push(`a bounty rising where a banner shows should keep clear of its words all the while it can be read, and be drawn over it: ${JSON.stringify(overBanner)}`);
+  // scraps of canvas flap each to its own beat: two handfuls thrown a second apart; when the first burns out and the
+  // second's are moved into its places in the batch, each scrap keeps its beat (it goes to the screen with the scrap,
+  // and the canvas's shader uses it), so its flapping never jumps
+  const scraps = await page.evaluate(() => {
+    const g = window.__game, FX = g.fx, D = FX.debris;
+    g.progress.reset(); g.fly('brig'); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false);
+    const P = g.player, V = P.pos.constructor, from = P.aimAt().clone().addScaledVector(P.forward(), 40), up = new V(0, 1, 0), none = new V();
+    FX.clear(); g.step(1 / 60, {});
+    D.toss('canvas', from, up, 1, none, 6); g.step(1, {});
+    const first = D.stats().canvas; D.toss('canvas', from, up, 1, none, 6); g.step(1 / 60, {});
+    const mesh = g.scene.getObjectByName('debris-canvas'), seed = mesh.geometry.getAttribute('aSeed'), m = mesh.instanceMatrix.array;
+    // a piece is known by its size (each its own, and steady until it fades in its last half second)
+    const key = (i) => [0, 4, 8].map((c) => Math.hypot(m[i * 16 + c], m[i * 16 + c + 1], m[i * 16 + c + 2]).toFixed(4)).join();
+    g.renderer.render(g.scene, g.camera);
+    const used = g.renderer.info.programs.some((p) => p.getAttributes().aSeed !== undefined);
+    g.step(1.9, {});
+    const before = new Map(), slotOf = new Map();
+    for (let i = first; i < mesh.count; i++) { before.set(key(i), seed.array[i]); slotOf.set(key(i), i); }
+    const v0 = seed.version; g.step(0.2, {});
+    let moved = 0, kept = 0, n = mesh.count;
+    for (let i = 0; i < n; i++) { const k = key(i); if (slotOf.get(k) !== i) moved++; if (before.get(k) === seed.array[i]) kept++; }
+    const out = { first, second: before.size, left: n, moved, kept, uploaded: seed.version > v0, used };
     g.endVoyage(0);
     return out;
   });
-  console.log(`a bounty where a banner shows: ${overBanner.shown ? `${overBanner.clear ? 'clear of its words' : 'OVER ITS WORDS'}, ${overBanner.under} px under it` : 'NOT SHOWN'}, ${overBanner.drawnOver ? 'drawn over it' : 'DRAWN UNDER IT'}`);
-  if (!overBanner.shown || !overBanner.clear || !overBanner.drawnOver) problems.push(`a bounty rising where a banner shows should keep clear of its words, and be drawn over it: ${JSON.stringify(overBanner)}`);
+  console.log(`canvas scraps: ${scraps.moved} of ${scraps.left} moved in the batch as ${scraps.first} older ones burnt out, ${scraps.kept} kept their flapping's beat (${scraps.uploaded ? 'sent to the screen' : 'NOT SENT TO THE SCREEN'}, ${scraps.used ? 'used by the shader' : 'NOT USED BY THE SHADER'})`);
+  if (scraps.first !== 6 || scraps.left !== 6 || scraps.moved !== 6 || scraps.kept !== 6 || !scraps.uploaded || !scraps.used) problems.push(`a canvas scrap should keep its own flapping beat when it's moved in the batch: ${JSON.stringify(scraps)}`);
   // less motion: a player whose device asks for it gets at most 0.35 of the kick
   await page.evaluate(() => { const g = window.__game; g.fly('frigate'); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false); });
   const full = await volley();
@@ -1172,21 +1211,40 @@ if (!quick) {
   await touch('touchStart', await box('#btn-surge')); await touch('touchEnd');
   await wait(page, () => window.__game.player.surge.on > 0, null, 'Surge surges');
   // on a phone held upright a raider alongside is off screen, so her glowing ports can't be seen: a raider Frigate 270 m
-  // off the side readying her broadside flashes her tag at the edge red, and it says "Broadside!"
-  const phoneWarn = await page.evaluate(() => {
+  // off the side readying her broadside flashes her tag at the edge red, and it says "Broadside!". A raider Brig held
+  // just beyond her, a little higher, has her tag at the same edge: the two are stacked clear of each other (the warning
+  // is taller), so the Frigate's name and distance can be read. Paused, the warning stops flashing; resumed, it goes on
+  const phoneWarn = await page.evaluate(async () => {
     const g = window.__game, P = g.player, h = P.heading, hull0 = P.full.hull; g.raiders.clear(); g.bolts.clear(); P.full.hull = P.health.hull = 1e6;
-    const r = g.raiders.spawn('frigate', P.pos.clone().add({ x: Math.cos(h) * 270 + Math.sin(h) * 30, y: 0, z: -Math.sin(h) * 270 + Math.cos(h) * 30 }), h + Math.PI, false);
+    const side = (d, up) => P.pos.clone().add({ x: Math.cos(h) * d + Math.sin(h) * 30, y: up, z: -Math.sin(h) * d + Math.cos(h) * 30 });
+    const r = g.raiders.spawn('frigate', side(270, 0), h + Math.PI, false), other = g.raiders.spawn('brig', side(330, 25), h + Math.PI, true);
     g.raiders.setAI(true);
     let t = 0, seen = null;
     while (t < 30 && !seen) {
       g.cam.yaw = 0; g.cam.pitch = 0.2; g.step(0.05, {}); t += 0.05;
-      if (r.charge.b && r.tag) { const bs = r.tag.querySelector('.bs'); seen = { edge: r.tag.classList.contains('edge'), warn: r.tag.classList.contains('warn'), says: getComputedStyle(bs).display !== 'none' ? bs.textContent : '' }; }
+      if (r.charge.b && r.tag && other.tag) {
+        const bs = r.tag.querySelector('.bs'), a = r.tag.getBoundingClientRect(), b = other.tag.getBoundingClientRect();
+        const lap = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+        seen = { edge: r.tag.classList.contains('edge'), warn: r.tag.classList.contains('warn'), says: getComputedStyle(bs).display !== 'none' ? bs.textContent : '',
+          otherEdge: other.tag.classList.contains('edge'), apart: Math.round(Math.abs((a.top + a.bottom) - (b.top + b.bottom)) / 2), overlap: Math.round(lap) };
+      }
+    }
+    if (seen) {
+      // (her broadside held back while the game is paused and resumed)
+      r.charge.t = r.charge.T = 1e9;
+      const states = () => r.tag.getAnimations({ subtree: true }).map((x) => x.playState);
+      const frames = async () => { for (let i = 0; i < 3; i++) await new Promise(requestAnimationFrame); };
+      const held = () => document.getElementById('tags').classList.contains('held');
+      g.pause(true); await frames(); seen.paused = states(); seen.held = held();
+      g.pause(false); await frames(); seen.resumed = states(); seen.heldAfter = held(); // (empty if she has stopped readying it meanwhile)
     }
     g.raiders.setAI(false); g.raiders.clear(); g.bolts.clear(); P.full.hull = P.health.hull = hull0;
     return seen;
   });
-  console.log(`phone: a raider alongside readying her broadside: her tag ${phoneWarn ? `${phoneWarn.edge ? 'at the edge' : 'ON SCREEN'}, ${phoneWarn.warn ? `flashing red, "${phoneWarn.says}"` : 'NOT FLASHING'}` : 'NEVER READIED ONE'}`);
+  console.log(`phone: a raider alongside readying her broadside: her tag ${phoneWarn ? `${phoneWarn.edge ? 'at the edge' : 'ON SCREEN'}, ${phoneWarn.warn ? `flashing red, "${phoneWarn.says}"` : 'NOT FLASHING'}; another raider's tag at that edge too ${phoneWarn.apart} px from it, ${phoneWarn.overlap ? `OVERLAPPING BY ${phoneWarn.overlap} px²` : 'clear of it'}; paused, its flashing ${phoneWarn.paused.join(', ') || 'GONE'}; resumed, ${phoneWarn.heldAfter ? 'STILL HELD' : phoneWarn.resumed.join(', ') || 'no longer readying'}` : 'NEVER READIED ONE'}`);
   if (!phoneWarn?.edge || !phoneWarn.warn || phoneWarn.says !== 'Broadside!') problems.push(`phone: a raider alongside, off screen, readying her broadside should flash her tag red and say "Broadside!": ${JSON.stringify(phoneWarn)}`);
+  if (phoneWarn && (!phoneWarn.otherEdge || phoneWarn.apart > 120 || phoneWarn.overlap)) problems.push(`phone: two raiders' tags at the same edge, one saying "Broadside!", should be stacked close but clear of each other: ${JSON.stringify(phoneWarn)}`);
+  if (phoneWarn && (!phoneWarn.held || !phoneWarn.paused.length || phoneWarn.paused.some((s) => s !== 'paused') || phoneWarn.heldAfter || phoneWarn.resumed.some((s) => s !== 'running'))) problems.push(`phone: a tag's "Broadside!" should stop flashing while the game is paused, and flash again once it's resumed: ${JSON.stringify(phoneWarn)}`);
   // on a phone the effects have smaller budgets, and a raider's shot landing buzzes the phone (where it can: an
   // Android phone; an iPhone has no way to)
   const phoneFx = await page.evaluate(() => {

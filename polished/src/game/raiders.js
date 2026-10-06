@@ -9,7 +9,8 @@
 //   strikes her colours when her sails are gone or her hull is down to a quarter. Left too far behind, she gets away.
 // They come in waves, smallest first, and every fifth wave is led by a raider captain: tougher, harder-hitting and
 // quicker to reload, with black sails and a gold pennant, and worth four times the shards. How sharp the raiders are
-// depends on the skies the Captain chose (progress.js); on Fair Winds a captain is no tougher than her crew.
+// depends on the skies the Captain chose (progress.js); on Fair Winds a captain is no tougher than her crew, hits no
+// harder and reloads no faster.
 // Before a raider's broadside goes off, her gun ports glow red for half a second (a little longer on the two big ships),
 // brightening to gold: time to climb, dive or turn away. Then her side ripples off, bow to stern (guns.js).
 import * as THREE from 'three';

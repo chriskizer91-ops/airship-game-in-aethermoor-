@@ -203,13 +203,14 @@
   .tag.captain b { color: #ffd36a; }
   /* a raider off screen readying her broadside: her tag and its arrow flash red, and say "Broadside!" (main.js) */
   .tag .bs { display: none; grid-column: 1 / -1; font-size: 12px; font-weight: 600; color: #fff; text-align: center; }
-  .tag.warn { opacity: 1; background: rgba(150, 18, 12, 0.92); border-color: #ff4636; animation: tag-warn 0.22s ease-in-out infinite alternate; }
+  .tag.warn { z-index: 1; opacity: 1; background: rgba(150, 18, 12, 0.92); border-color: #ff4636; animation: tag-warn 0.22s ease-in-out infinite alternate; }
   .tag.warn .bs { display: block; }
   .tag.warn b, .tag.warn .d { color: #ffe2d8; }
   .tag.warn .arrow { color: #ff3a28; scale: 1.5; text-shadow: 0 0 6px #ff2a10, 0 0 2px #fff; animation: arrow-warn 0.22s ease-in-out infinite alternate; }
   @keyframes tag-warn { from { background-color: rgba(190, 24, 14, 0.95); border-color: #ffd0c0; box-shadow: 0 0 16px rgba(255, 50, 30, 0.95); }
     to { background-color: rgba(80, 8, 10, 0.88); border-color: #ff4636; box-shadow: 0 0 4px rgba(255, 50, 30, 0.4); } }
   @keyframes arrow-warn { from { opacity: 1; } to { opacity: 0.5; } }
+  #tags.held .tag.warn, #tags.held .tag.warn .arrow { animation-play-state: paused; } /* (the game paused: no flashing behind the menu) */
   #banner { position: fixed; left: 50%; top: 33%; translate: -50% 0; width: max-content; max-width: 92vw; text-align: center; pointer-events: none; opacity: 0; }
   #banner.on { animation: region 4.4s ease-in-out forwards; }
   #banner-title { margin: 0; font: 400 clamp(30px, 6vw, 56px)/1 var(--display); color: var(--gold); text-shadow: 0 2px 0 #000, 0 0 24px rgba(0, 0, 0, 0.9); }

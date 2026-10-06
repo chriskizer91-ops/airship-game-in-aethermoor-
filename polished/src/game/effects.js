@@ -180,14 +180,15 @@ function scrap() {
 }
 // `glowAt(p, r, g, b, size)` lights a point for one frame (fx.js): the crystal shards' glitter
 export function makeDebris(scene, q = 1, glowAt = null) {
-  // the canvas flaps as it falls (each scrap at its own beat), shows a soft sheen on its folds, so even a black scrap
-  // reads as cloth, and lets a little sun through
+  // the canvas flaps as it falls (each scrap at its own beat: its seed, which moves with it when the batch is
+  // reshuffled, so its flapping never jumps), shows a soft sheen on its folds, so even a black scrap reads as cloth,
+  // and lets a little sun through
   const flap = { value: 0 }, canvas = new THREE.MeshLambertMaterial({ color: 0xffffff, side: THREE.DoubleSide, vertexColors: true });
   canvas.onBeforeCompile = (sh) => {
     sh.uniforms.uTime = flap;
-    sh.vertexShader = 'uniform float uTime;\n' + sh.vertexShader
+    sh.vertexShader = 'uniform float uTime;\nattribute float aSeed;\n' + sh.vertexShader
       .replace('#include <beginnormal_vertex>', `#include <beginnormal_vertex>
-        float fPh = float(gl_InstanceID) * 2.399, fA = uTime * 10.0 + fPh + position.x * 5.0, fB = uTime * 7.0 + fPh * 1.7 + position.y * 4.0;
+        float fPh = aSeed, fA = uTime * 10.0 + fPh + position.x * 5.0, fB = uTime * 7.0 + fPh * 1.7 + position.y * 4.0;
         objectNormal = normalize(objectNormal - vec3(cos(fA) * 0.6, cos(fB) * 0.32, 0.0));`)
       .replace('#include <begin_vertex>', '#include <begin_vertex>\n        transformed.z += sin(fA) * 0.12 + sin(fB) * 0.08;');
     sh.fragmentShader = sh.fragmentShader.replace('#include <opaque_fragment>', `float fSheen = 1.0 - abs(dot(geometryViewDir, normal));
@@ -209,6 +210,8 @@ export function makeDebris(scene, q = 1, glowAt = null) {
     const b = { kind, mesh, cap, n: 0, cursor: 0, dropped: 0, peak: 0, tossed: 0, fly: FLY[kind], rgb: mesh.instanceColor?.array ?? null,
       px: F(), py: F(), pz: F(), vx: F(), vy: F(), vz: F(), ax: F(), ay: F(), az: F(), ang: F(), spin: F(), life: F(), full: F(), sx: F(), sy: F(), sz: F(), seed: F() };
     b.arrays = [b.px, b.py, b.pz, b.vx, b.vy, b.vz, b.ax, b.ay, b.az, b.ang, b.spin, b.life, b.full, b.sx, b.sy, b.sz, b.seed];
+    // (a scrap's seed goes to the screen with it: its flapping's beat)
+    if (kind === 'canvas') { b.seedAttr = new THREE.InstancedBufferAttribute(b.seed, 1).setUsage(THREE.DynamicDrawUsage); mesh.geometry.setAttribute('aSeed', b.seedAttr); }
     B[kind] = b;
   }
   const KINDS = Object.values(B), sv = new THREE.Vector3(), lerp = (r, k) => r[0] + (r[1] - r[0]) * k;
@@ -257,7 +260,7 @@ export function makeDebris(scene, q = 1, glowAt = null) {
         if (crystal && glowAt) glowAt(at, 1, 0.72, 0.34, (3 + 2.5 * ((time * 11 + b.seed[i]) % 1 > 0.5 ? 1 : 0)) * fade); // its glitter
       }
       b.mesh.count = b.n; b.mesh.visible = b.n > 0;
-      upload(b.mesh.instanceMatrix, b.n); if (b.rgb) upload(b.mesh.instanceColor, b.n);
+      upload(b.mesh.instanceMatrix, b.n); if (b.rgb) upload(b.mesh.instanceColor, b.n); if (b.seedAttr) upload(b.seedAttr, b.n);
     }
   }
   function clear() { for (const b of KINDS) { b.n = 0; b.cursor = 0; b.mesh.count = 0; b.mesh.visible = false; } }
