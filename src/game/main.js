@@ -1,18 +1,26 @@
-// main.js: Skies of Aethermoor, stage one. Fly any of the Captain's four ships over Chris's map, swing the camera round
-// the ship to aim, and fire whichever guns face where you look at the practice targets floating near the start.
+// main.js: Skies of Aethermoor. Fly any of the Captain's four ships over Chris's map and fight off waves of raiders:
+// swing the camera round the ship to aim, and whichever guns face where you look fire. Shots tear the hull, the sails
+// or the crystals (docs/ships.md); a raider with no hull left goes down, and so does the Captain.
 // Works on a laptop (keyboard and mouse, full detail) and on a phone (touch stick, aiming drag, buttons).
 import * as THREE from 'three';
 import { loadShipArt } from '../ship/materials.js';
 import { buildShip } from '../ship/build.js';
 import { SHIPS, STATS } from '../ships/index.js';
-import { makeWorld, makeTargets, regionAt, SUN, HAZE, MAP, THINNING } from './world.js';
+import { makeWorld, regionAt, SUN, HAZE, MAP, THINNING } from './world.js';
 import { makeInput } from './input.js';
-import { makePlayer } from './player.js';
-import { makeBolts, makeGunnery, batteryFor, BATTERY_NAMES } from './guns.js';
+import { makeFlyer } from './flight.js';
+import { makeBolts, makeGunnery, batteryFor, BATTERY_NAMES, intercept } from './guns.js';
+import { makeRaiders, waveAt } from './raiders.js';
+import { hitZones, firstHit } from './damage.js';
+import { makeSmoke, smokeFrom } from './effects.js';
 import minimapUrl from '../../assets/map/minimap.webp';
 
 const $ = (id) => document.getElementById(id);
 const touch = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 1 && matchMedia('(hover: none)').matches;
+const PARTS = ['hull', 'sails', 'crystals'];
+const COMPASS = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'];
+const compassDeg = (heading) => ((180 - THREE.MathUtils.radToDeg(heading)) % 360 + 360) % 360; // north is up the map (-z)
+const NUMBER = ['', 'a', 'two', 'three', 'four', 'five', 'six'];
 
 async function main() {
   if (touch) document.body.classList.add('touch');
@@ -42,16 +50,25 @@ async function main() {
   sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.04;
   scene.add(hemi, sun, sun.target);
 
+  const bolts = makeBolts(scene), smoke = makeSmoke(scene);
+  const raiders = makeRaiders(scene, art, bolts);
+
   // ---------- the ship you fly ----------
-  const built = new Map();
+  const built = new Map(), zones = new Map();
   const shipFor = (R) => { if (!built.has(R.id)) built.set(R.id, buildShip(R, 'full', art)); return built.get(R.id); };
   const start = { pos: new THREE.Vector3(0, 680, 2600), heading: Math.PI };
-  let player = null, gunnery = null, lastId = null;
+  let player = null, gunnery = null;
   function fly(id) {
+    if (player?.down) return;
     const R = SHIPS.find((s) => s.id === id), ship = shipFor(R);
     const keep = player ? { pos: player.pos.clone(), heading: player.heading } : start;
+    const worn = player ? PARTS.map((k) => player.frac(k)) : null; // damage carries over to the next ship
     if (player) scene.remove(player.ship.root);
-    player = makePlayer(ship, STATS[id], keep);
+    ship.root.rotation.set(0, keep.heading, 0);
+    player = makeFlyer(ship, STATS[id], keep);
+    if (worn) PARTS.forEach((k, i) => { player.health[k] = player.full[k] * worn[i]; });
+    if (!zones.has(id)) zones.set(id, hitZones(ship));
+    player.aimY = zones.get(id).aim.y;
     gunnery = makeGunnery(ship);
     scene.add(ship.root);
     const r = R.length * 0.85;
@@ -60,13 +77,13 @@ async function main() {
     cam.dist = camDistFor(R);
     $('ship-name').textContent = R.name; $('ship-cls').textContent = `${R.cls} · ${R.length} m`;
     for (const b of $('ships').children) b.setAttribute('aria-pressed', String(b.dataset.ship === id));
-    lastId = id;
   }
 
   // ---------- the camera: behind the ship, swung round it by the mouse or a drag ----------
-  const cam = { yaw: 0, pitch: 0.2, dist: 40, zoom: 1, look: new THREE.Vector3() };
+  const cam = { yaw: 0, pitch: 0.2, dist: 40, zoom: 1, look: new THREE.Vector3(), shake: 0 };
   const camDistFor = (R) => R.length * 1.35 + 16;
   const aimPoint = new THREE.Vector3();
+  let locked = null, reach = true;
   function placeCamera(dt, inp) {
     const sens = inp.locked ? 0.0026 : touch ? 0.0042 : 0.005;
     cam.yaw -= inp.look.x * sens;
@@ -83,35 +100,85 @@ async function main() {
     const target = player.pos.clone().add(new THREE.Vector3(0, R.length * 0.42 + 2, 0));
     camera.position.copy(target).addScaledVector(cam.look, -cam.dist * cam.zoom);
     camera.lookAt(target);
-    // aim along the middle of the screen: at a target if one is under the crosshair, otherwise 800 m out
-    const ray = new THREE.Ray(camera.position, cam.look);
-    aimPoint.copy(target).addScaledVector(cam.look, 800);
-    let best = 2500;
-    for (const t of targets.list) if (t.alive) {
-      const d = ray.distanceSqToPoint(t.obj.position), along = t.obj.position.clone().sub(camera.position).dot(cam.look);
-      if (d < (t.radius * 2.5) ** 2 && along > 0 && along < best) { best = along; aimPoint.copy(t.obj.position); }
+    if (cam.shake > 0) { cam.shake = Math.max(0, cam.shake - dt); const s = cam.shake * 0.012; camera.rotation.x += (Math.random() - 0.5) * s; camera.rotation.y += (Math.random() - 0.5) * s; }
+    // the guns lock on to the raider nearest the crosshair, and lead it
+    locked = null;
+    let bestA = Infinity;
+    for (const r of raiders.list) {
+      if (r.f.down) continue;
+      const v = r.f.pos.clone().sub(camera.position), along = v.dot(cam.look);
+      if (along <= 0) continue;
+      const ang = v.angleTo(cam.look), tol = Math.max(0.05, Math.atan((r.R.length * 0.8) / along));
+      if (ang < tol && ang < bestA) { bestA = ang; locked = r; }
     }
+    aimPoint.copy(target).addScaledVector(cam.look, 800);
+  }
+  function aimFor(battery) {
+    reach = true;
+    if (!locked) return;
+    player.ship.root.updateMatrixWorld(true);
+    const m = gunnery.muzzle(battery);
+    if (!m) { reach = false; return; }
+    aimPoint.copy(intercept(m.p, player.velocity, locked.f.aimAt(), locked.f.velocity, m.K.speed));
+    reach = gunnery.reaches(battery, aimPoint);
   }
 
-  // ---------- practice targets near the start ----------
-  const targets = makeTargets(16, new THREE.Vector3(0, 0, 1200));
-  scene.add(targets.group);
-  let hits = 0;
-  const bolts = makeBolts(scene);
-  const seg = new THREE.Line3(), closest = new THREE.Vector3();
+  // ---------- shots landing ----------
+  let hits = 0, downed = 0;
+  const BURST = { hull: [0xffa040, 22, 1], sails: [0xf5e6c8, 14, 0.7], crystals: [0xffe08a, 34, 1.4] };
   function hitTest(b, a, c) {
-    if (b.owner !== 'player') return false;
-    seg.set(a, c);
-    for (const t of targets.list) {
-      if (!t.alive) continue;
-      seg.closestPointToPoint(t.obj.position, true, closest);
-      if (closest.distanceTo(t.obj.position) < t.radius) {
-        t.alive = false; t.respawn = 9; t.obj.visible = false; hits++; $('score-n').textContent = hits;
-        bolts.burst(t.obj.position, 0x9fe7ff, 46, 1.6);
-        return true;
-      }
+    if (b.owner === 'player') {
+      const h = raiders.hitBy(a, c);
+      if (!h) return false;
+      h.r.f.hit(h.h.part, b.K.damage); hits++;
+      bolts.burst(h.h.at, ...BURST[h.h.part]);
+      return true;
     }
-    return false;
+    if (player.down) return false;
+    const h = firstHit(zones.get(player.ship.recipe.id), player.ship.body, a, c);
+    if (!h) return false;
+    player.hit(h.part, b.K.damage);
+    bolts.burst(h.at, ...BURST[h.part]);
+    hurt = Math.min(1, hurt + 0.45); cam.shake = 0.3;
+    return true;
+  }
+
+  // ---------- the raiders come in waves ----------
+  const W = { n: 0, state: 'calm', timer: 6, lost: 0 };
+  function describe(ids) {
+    const count = {};
+    for (const id of ids) count[id] = (count[id] ?? 0) + 1;
+    const parts = Object.entries(count).map(([id, n]) => { const c = SHIPS.find((s) => s.id === id).cls; return `${NUMBER[n]} ${c}${n > 1 ? 's' : ''}`; });
+    return parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}` : parts[0];
+  }
+  function waves(dt, gone) {
+    for (const r of gone) {
+      downed++;
+      bolts.burst(r.f.pos, 0xff8a3a, 60, 2.2); bolts.burst(r.f.pos.clone().add({ x: 0, y: 3, z: 0 }), 0xffe08a, 30, 1.6);
+      toast(`${r.name} ${r.f.down.why === 'hull' ? 'going down' : 'sinking, crystals dead'}`);
+    }
+    if (W.lost > 0) {
+      if ((W.lost -= dt) <= 0) {
+        raiders.clear();
+        player.reset(new THREE.Vector3(player.pos.x, 700, player.pos.z), player.heading);
+        W.state = 'calm'; W.timer = 10;
+        banner('Back in the air', 'The raiders will be back');
+      }
+      return;
+    }
+    if (player.down) { W.lost = 6; banner(`The ${player.ship.recipe.name} is going down`, 'Your crew will get her back up'); return; }
+    W.timer -= dt;
+    if (W.state === 'calm') {
+      player.repair(dt * 0.12); // between fights the crew patch her up
+      if (W.timer <= 0) {
+        const ids = waveAt(W.n), a = raiders.spawnWave(ids, player);
+        banner(`Raiders, wave ${W.n + 1}`, `${describe(ids)}, to the ${COMPASS[Math.round(compassDeg(a) / 45) % 8]}`);
+        W.state = 'fight';
+      }
+    } else if (!raiders.list.some((r) => !r.f.down)) {
+      W.n++; W.state = 'calm'; W.timer = 12;
+      banner(`Wave ${W.n} beaten`, 'The crew patch her up');
+    }
   }
 
   // ---------- the ship buttons and the help ----------
@@ -141,44 +208,90 @@ async function main() {
   resize();
 
   // ---------- the HUD ----------
-  const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-  let region = '', regionTimer = 0, hudTimer = 0;
+  let region = '', regionTimer = 0, hudTimer = 0, hurt = 0;
+  const flash = (el) => { el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); };
+  function banner(title, line) { $('banner-title').textContent = title; $('banner-line').textContent = line; flash($('banner')); }
+  function toast(text) { const t = $('toast'); t.textContent = text; flash(t); }
+  const proj = new THREE.Vector3();
+  function tags() {
+    const W2 = innerWidth / 2, H2 = innerHeight / 2, placed = [];
+    for (const r of raiders.list) {
+      let el = r.tag;
+      if (!el) {
+        el = r.tag = document.createElement('div'); el.className = 'tag';
+        el.innerHTML = `<span class="arrow">▲</span><b>${r.R.cls}</b> <span class="d"></span>${PARTS.map((k) => `<span class="meter ${k}"><i></i></span>`).join('')}`;
+        $('tags').append(el);
+      }
+      if (r.f.down) { el.remove(); continue; }
+      proj.copy(r.f.pos); proj.y += r.R.length * 0.45 + 3; proj.project(camera);
+      // in pixels from the middle of the screen; off screen (or behind), pinned to the edge in its direction
+      const behind = proj.z > 1;
+      let x = proj.x * W2 * (behind ? -1 : 1), y = -proj.y * H2 * (behind ? -1 : 1);
+      const ax = W2 - 50, ay = H2 - 46, k = Math.max(Math.abs(x) / ax, Math.abs(y) / ay);
+      const edge = behind || k > 1;
+      if (edge) { x /= Math.max(k, 1e-6); y /= Math.max(k, 1e-6); }
+      el.classList.toggle('edge', edge); el.classList.toggle('locked', r === locked);
+      placed.push({ el, x: W2 + x, y: H2 + y + (edge && y > 0 ? 40 : 0) });
+      if (edge) el.querySelector('.arrow').style.transform = `rotate(${Math.atan2(x, -y)}rad)`;
+      el.querySelector('.d').textContent = `${Math.round(r.f.pos.distanceTo(player.pos))} m`;
+      PARTS.forEach((k, i) => { el.children[3 + i].firstChild.style.width = `${r.f.frac(k) * 100}%`; });
+    }
+    // tags that would land on top of each other are stacked instead
+    placed.sort((a, b) => a.y - b.y);
+    placed.forEach((a, i) => {
+      for (let j = 0; j < i; j++) { const b = placed[j]; if (Math.abs(a.x - b.x) < 84 && a.y - b.y < 40) a.y = b.y + 40; }
+      a.el.style.transform = `translate(${a.x}px, ${a.y}px) translate(-50%, -100%)`;
+    });
+    for (const el of [...$('tags').children]) if (!raiders.list.some((r) => r.tag === el)) el.remove();
+  }
   function hud(dt, battery) {
     hudTimer -= dt;
+    hurt = Math.max(0, hurt - dt * 1.2);
+    $('hurt').style.opacity = String(Math.max(hurt, player.down ? 0.6 : 0));
     const n = gunnery.count(battery), rl = gunnery.ready[battery], full = gunnery.reload(battery);
     $('battery-name').textContent = n ? BATTERY_NAMES[battery] : `No ${BATTERY_NAMES[battery].toLowerCase()}`;
-    $('battery-count').textContent = n ? `${n} gun${n > 1 ? 's' : ''}` : '–';
+    $('battery-count').textContent = !n ? '–' : locked && !reach ? 'out of reach' : `${n} gun${n > 1 ? 's' : ''}`;
     $('reload-bar').style.width = `${n ? (1 - rl / full) * 100 : 0}%`;
+    $('aim').className = locked ? (reach ? 'locked' : 'locked far') : '';
+    tags();
     if (hudTimer > 0) return;
     hudTimer = 0.1;
     $('r-speed').textContent = `${Math.round(player.speed * 3.6)} km/h`;
     $('r-height').textContent = `${Math.round(player.pos.y).toLocaleString()} m`;
     $('r-sail').textContent = `${Math.round(player.sail * 100)}%`;
     $('sail-bar').style.width = `${player.sail * 100}%`;
-    // heading: north is up the map (-z)
-    const deg = ((180 - THREE.MathUtils.radToDeg(player.heading)) % 360 + 360) % 360;
-    $('compass').textContent = `${COMPASS[Math.round(deg / 45) % 8]} ${Math.round(deg)}°`;
+    for (const k of PARTS) {
+      $(`h-${k}`).style.width = `${player.frac(k) * 100}%`;
+      $(`n-${k}`).textContent = Math.ceil(player.health[k]);
+      $(`row-${k}`).classList.toggle('low', player.frac(k) < 0.3);
+    }
+    $('score-n').textContent = downed; $('wave-n').textContent = W.n + 1;
+    const deg = compassDeg(player.heading);
+    $('compass').textContent = `${['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.round(deg / 45) % 8]} ${Math.round(deg)}°`;
     const w = $('warn');
-    if (player.pos.y > THINNING - 350) { w.hidden = false; w.textContent = 'Nearing the Thinning: the crystals can\'t lift you higher'; }
+    if (player.down) w.hidden = true;
+    else if (player.frac('crystals') < 0.5) { w.hidden = false; w.textContent = 'The crystals are cracked: she\'s sinking'; }
+    else if (player.pos.y > THINNING - 350) { w.hidden = false; w.textContent = 'Nearing the Thinning: the crystals can\'t lift you higher'; }
     else if (Math.abs(player.pos.x) > MAP.w / 2 + 1500 || Math.abs(player.pos.z) > MAP.h / 2 + 1500) { w.hidden = false; w.textContent = 'Open sea: Aethermoor is behind you'; }
     else w.hidden = true;
     const r = regionAt(player.pos.x, player.pos.z);
-    if (r !== region && (regionTimer -= 0.1) <= 0) { region = r; regionTimer = 2; const el = $('region'); el.textContent = r; el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); }
-    // the corner map, with the ship as a gold arrow
+    if (r !== region && (regionTimer -= 0.1) <= 0) { region = r; regionTimer = 2; const el = $('region'); el.textContent = r; flash(el); }
+    // the corner map, with the ship as a gold arrow and the raiders as red dots
     if (mimg.complete && mimg.naturalWidth) {
-      const W = mini.width, H = mini.height;
-      mctx.drawImage(mimg, 0, 0, W, H);
-      const x = (player.pos.x / MAP.w + 0.5) * W, y = (player.pos.z / MAP.h + 0.5) * H, s = Math.max(5, W / 40);
+      const W2 = mini.width, H2 = mini.height;
+      mctx.drawImage(mimg, 0, 0, W2, H2);
+      const x = (player.pos.x / MAP.w + 0.5) * W2, y = (player.pos.z / MAP.h + 0.5) * H2, s = Math.max(5, W2 / 40);
+      mctx.fillStyle = '#ff4636'; mctx.strokeStyle = '#3a1631'; mctx.lineWidth = Math.max(1, s / 5);
+      for (const q of raiders.list) if (!q.f.down) { mctx.beginPath(); mctx.arc((q.f.pos.x / MAP.w + 0.5) * W2, (q.f.pos.z / MAP.h + 0.5) * H2, s * 0.45, 0, Math.PI * 2); mctx.fill(); mctx.stroke(); }
       mctx.save(); mctx.translate(x, y); mctx.rotate(-player.heading + Math.PI);
-      mctx.fillStyle = '#e2bd67'; mctx.strokeStyle = '#3a1631'; mctx.lineWidth = Math.max(1.5, s / 4);
+      mctx.fillStyle = '#e2bd67'; mctx.lineWidth = Math.max(1.5, s / 4);
       mctx.beginPath(); mctx.moveTo(0, -s * 1.3); mctx.lineTo(s * 0.8, s); mctx.lineTo(0, s * 0.45); mctx.lineTo(-s * 0.8, s); mctx.closePath(); mctx.fill(); mctx.stroke();
       mctx.restore();
-      for (const t of targets.list) if (t.alive) { mctx.fillStyle = '#9fe7ff'; mctx.fillRect((t.obj.position.x / MAP.w + 0.5) * W - 1.5, (t.obj.position.z / MAP.h + 0.5) * H - 1.5, 3, 3); }
     }
   }
 
   let last = performance.now(), time = 0, held = null;
-  // one step of the game: controls, flying, the camera, the guns, the targets, the HUD
+  // one step of the game: controls, flying, the raiders, the camera, the guns, the shots, the HUD
   function tick(dt) {
     time += dt;
     const inp = held ?? input.read();
@@ -189,15 +302,18 @@ async function main() {
       else if (k === 'h') toggleHelp();
     }
     player.update(dt, inp);
+    player.ship.root.updateMatrixWorld(true);
+    const gone = raiders.update(dt, player, camera);
     placeCamera(dt, inp);
     const battery = batteryFor(cam.yaw);
+    aimFor(battery);
     gunnery.update(dt);
-    if (inp.fire) gunnery.fire(battery, aimPoint, bolts, 'player', player.velocity);
+    if (inp.fire && !player.down) gunnery.fire(battery, aimPoint, bolts, 'player', player.velocity);
     bolts.update(dt, hitTest, camera);
-    for (const t of targets.list) {
-      if (!t.alive && (t.respawn -= dt) <= 0) { t.alive = true; t.obj.visible = true; }
-      t.obj.position.y = t.home.y + Math.sin(time * 0.8 + t.phase) * 4; t.obj.rotation.y += dt * 0.6;
-    }
+    smokeFrom(player, smoke, bolts.spark, dt);
+    for (const r of raiders.list) smokeFrom(r.f, smoke, bolts.spark, dt);
+    smoke.update(dt, camera);
+    waves(dt, gone);
     world.time.value = time;
     world.puffs.follow(player.pos);
     sun.target.position.copy(player.pos); sun.position.copy(player.pos).addScaledVector(SUN, 400);
@@ -217,7 +333,8 @@ async function main() {
 
   // for tools/check.mjs
   window.__game = {
-    ready: true, get player() { return player; }, get gunnery() { return gunnery; }, cam, fly, input, targets, bolts, get hits() { return hits; }, renderer, camera,
+    ready: true, get player() { return player; }, get gunnery() { return gunnery; }, cam, fly, input, raiders, bolts, renderer, camera, scene, waves: W,
+    get hits() { return hits; }, get downed() { return downed; }, get locked() { return locked; },
     // run the game's clock without drawing, holding these controls (for tests on slow software rendering)
     step(seconds, controls = {}) {
       held = { turn: 0, climb: 0, sail: 0, fire: false, look: { x: 0, y: 0 }, zoom: 0, pressed: new Set(), lastLook: performance.now() / 1000, locked: false, ...controls };

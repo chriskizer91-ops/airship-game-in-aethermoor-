@@ -92,9 +92,10 @@ export async function makeWorld(renderer) {
     m.position.set(-MAP.w / 2 + tw * (col + 0.5), 0, -MAP.h / 2 + th * (row + 0.5));
     group.add(m);
   });
-  // the open sea past the map's edges, the same deep blue as its painted sea
-  const sea = new THREE.Mesh(new THREE.PlaneGeometry(160000, 160000).rotateX(-Math.PI / 2), shade(new THREE.MeshBasicMaterial({ color: 0x0a3b80, toneMapped: false })));
-  sea.position.y = -2; group.add(sea);
+  // the open sea past the map's edges, the same deep blue as its painted sea. It's drawn first and the map over it:
+  // laid just under the map instead, the two would flicker where the far ground is too far off to tell them apart
+  const sea = new THREE.Mesh(new THREE.PlaneGeometry(160000, 160000).rotateX(-Math.PI / 2), shade(new THREE.MeshBasicMaterial({ color: 0x0a3b80, toneMapped: false, depthWrite: false })));
+  sea.renderOrder = -5; group.add(sea);
 
   // the deck of cloud: white and gold-edged from above, grey from beneath, gaps where the ground shows through
   const deck = new THREE.Mesh(new THREE.PlaneGeometry(160000, 160000).rotateX(-Math.PI / 2), new THREE.ShaderMaterial({
@@ -170,31 +171,4 @@ function makePuffs() {
   const mesh = new THREE.Mesh(ig, mat);
   mesh.frustumCulled = false; mesh.renderOrder = 2;
   return { mesh, follow: (p) => mat.uniforms.uCenter.value.copy(p) };
-}
-
-// ---------- practice targets: brass buoys with a glowing crystal, floating near the start ----------
-export function makeTargets(count, around) {
-  const group = new THREE.Group();
-  const brass = new THREE.MeshStandardMaterial({ color: 0xd9a743, metalness: 0.9, roughness: 0.3 });
-  const glow = new THREE.MeshStandardMaterial({ color: 0x9fe7ff, emissive: 0x3fc8ff, emissiveIntensity: 1.6, roughness: 0.2, flatShading: true });
-  const ring = new THREE.TorusGeometry(8, 0.9, 10, 40);
-  const gem = new THREE.OctahedronGeometry(4, 0);
-  const halo = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-    r.addColorStop(0, 'rgba(190,240,255,1)'); r.addColorStop(0.3, 'rgba(120,210,255,0.5)'); r.addColorStop(1, 'rgba(120,210,255,0)'); g.fillStyle = r; g.fillRect(0, 0, 64, 64);
-    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
-  const haloMat = new THREE.SpriteMaterial({ map: halo, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, toneMapped: false });
-  const list = [];
-  let seed = 5; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
-  for (let i = 0; i < count; i++) {
-    const a = (i / count) * Math.PI * 2 + rnd() * 0.4, r = 700 + rnd() * 2200;
-    const g = new THREE.Group();
-    const rg = new THREE.Mesh(ring, brass); g.add(rg);
-    const rg2 = new THREE.Mesh(ring, brass); rg2.rotation.y = Math.PI / 2; g.add(rg2);
-    const c = new THREE.Mesh(gem, glow); c.scale.y = 1.5; g.add(c);
-    const h = new THREE.Sprite(haloMat); h.scale.setScalar(60); g.add(h);
-    g.position.set(around.x + Math.cos(a) * r, 560 + rnd() * 700, around.z + Math.sin(a) * r);
-    group.add(g);
-    list.push({ obj: g, home: g.position.clone(), phase: rnd() * 6, alive: true, radius: 10, respawn: 0 });
-  }
-  return { group, list };
 }

@@ -33,6 +33,10 @@ What every ship has, like the Magpie:
 - fins under the belly, a rudder at the stern, lanterns, and a wheel at the stern
 - a **pennant** at every mast top, in plum with a gold hoist. These are the Captain's colours (a first pick; easy to change).
 
+## The raiders' colours
+
+Raiders fly the same four ships as the Captain (the Galleon and the Man-o'-war will join them once they're built), so they're told apart by colour: rust-red sails, darker planks, and crimson pennants with a black hoist, against the Captain's cream sails and plum and gold. In the game each raider also has a tag over it with its class, its distance and its three health bars.
+
 ## What the stats mean
 
 There are three things to shoot at. Each has its own health bar:
@@ -61,6 +65,8 @@ Then its guns and crew:
 | **Crew** | How strong the ship is when boarding, or being boarded. |
 
 Guns only tilt a little up or down, so flying above or below a ship keeps you out of its broadside.
+
+How the game turns damage into slower sailing, worse turning and sinking is in `docs/game.md`, under "Damage".
 
 **Crew falls with the hull.** A ship that has lost half its hull has lost about half its crew. That's what makes boarding a bigger ship possible: a Cutter's 12 can't take a Brig's 30, but once the Brig's hull is down by 60% her crew is down to 12 too, an even fight. So to take a ship, you shoot her sails to catch her and her hull to thin her crew. Shoot too much, though, and she goes down with her cargo.
 
