@@ -1,6 +1,6 @@
 # The ships
 
-**This is a first draft for Chris to change.** The numbers are only starting points. They exist so the ship pictures can be generated to match them: every gun, sail and crystal in a picture should be one the stats count.
+**Settled October 6, 2026.** Chris approved the six classes, their lengths, gun counts and stats. The battle steps can still tune the numbers. The ship pictures are generated to match these: every gun, sail and crystal in a picture is one the stats count.
 
 ## One recipe, six ships
 
@@ -50,7 +50,7 @@ Guns only tilt a little up or down, so flying above or below a ship keeps you ou
 
 **Size doesn't decide speed.** Speed comes from how much sail a ship carries for its weight. Turning and climbing come from size and lift. So a small ship isn't always fast: the Frigate is faster than the Skiff, and only the Cutter beats it.
 
-## The six ships (first draft)
+## The six ships
 
 | Ship | Length | Hull | Sails | Crystals | Speed | Turning | Climbing | Bow guns | Stern guns | Guns a side | Crew |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -68,33 +68,49 @@ What each one looks like, so its pictures match its stats:
 - **Brig (25 m).** Two crystal clusters, one fore and one aft, and two pairs of wing sails. A raised deck at the stern. One row of six gun ports a side, two bow guns and one stern gun. The all-rounder.
 - **Frigate (40 m).** Long and sleek. Three crystal clusters and three pairs of wing sails: a lot of sail for its size, which is why it's fast. One long row of ten gun ports a side, and two guns at each end. The hunter.
 - **Galleon (60 m).** Tall and wide, with a high stern castle full of windows and big cargo hatches. Four crystal clusters but little sail for its weight. Two rows of eight gun ports a side, one bow gun, and two stern guns for covering its escape. Slow, and a rich prize.
-- **Man-o'-war (90 m).** Huge and armour-plated, with five crystal clusters and two rows of twelve gun ports a side. Four bow guns and two stern guns. A flying fortress that barely climbs.
+- **Man-o'-war (90 m).** Huge and armour-plated, with five crystal clusters, three pairs of short, heavy wing sails, and two rows of twelve gun ports a side. Four bow guns and two stern guns. A flying fortress that barely climbs.
+
+What the pictures must show:
+
+| Ship | Crystal clusters | Wing sail pairs | Gun ports a side |
+|---|---|---|---|
+| Skiff | 1, three crystals | 1 | None: one gun on a swivel on each rail |
+| Cutter | 1, three crystals | 2, swept back | 1 row of 3 |
+| Brig | 2, five crystals each | 2 | 1 row of 6 |
+| Frigate | 3, five crystals each | 3, large | 1 row of 10 |
+| Galleon | 4 | 2, short | 2 rows of 8 |
+| Man-o'-war | 5, large | 3, short and heavy | 2 rows of 12 |
 
 ## Detail budgets
 
-The Magpie has about 70,000 triangles in 559 separate pieces. That's fine for one ship, but six ships built that way would be too slow on a phone. So:
+**Every ship, whatever its size, gets about 100,000 triangles at full detail** (Chris, October 6). That way any of them can be the player's ship.
 
-- **The player's ship** gets the most detail: about 80,000 to 150,000 triangles. Its pieces are joined into a few dozen parts so the phone can draw it quickly.
-- **Enemy ships** (three to six in view) get about 10,000 to 25,000 triangles each, with bigger ships getting more. Each one is joined into a few parts sharing one picture sheet.
-- **Far-off ships** switch to a very simple version of about 1,000 to 3,000 triangles once they're small on screen.
+The size of the ship doesn't change the budget, because the camera sits farther back from a big ship than a small one. Whichever ship you fly fills about the same part of the screen, so the same number of triangles looks equally sharp on all of them. A small ship spends its triangles on fine detail: rope, rivets and carved trim. A big ship spends them on more of everything: more guns, decks and windows.
+
+For comparison, the Magpie has about 70,000 triangles in 559 separate pieces. A new ship's pieces are joined into a few dozen parts, so the phone can draw them quickly. Repeated parts are copies of one part, which cost very little to draw: the Man-o'-war's 48 broadside guns are one gun drawn 48 times.
+
+Ships only use full detail up close. Each ship also gets two lighter versions, and the game picks one by how big the ship looks on screen:
+
+| Version | Triangles | When |
+|---|---|---|
+| Full | about 100,000 | Your own ship, and any ship right alongside, such as when boarding |
+| Middle | about 20,000 to 25,000 | Ships in the fight but not close |
+| Far | about 2,000 to 3,000 | Ships small on screen |
+
+With three to six enemies in view, the whole scene comes to about 200,000 to 350,000 triangles. A phone handles that easily.
 
 ## The pictures each ship needs
 
-Each ship needs the same set, so the same build code works for all six:
+The prompts are in `docs/art-requests/01-ships.md`. Each ship gets four pictures, so the same build code works for all six:
 
-1. **Side view.** Flat with no perspective, the bow pointing right, and the whole ship in frame.
-2. **Top view.** Straight down, the bow pointing up.
-3. **Front view and back view.** Flat and straight on.
-4. **A parts sheet** with each part shown separately and flat: wing sail, crystal, furnace, gun (bow gun and broadside gun), rudder, belly fin, lantern and any figurehead.
+1. **Concept view.** The whole ship flying, seen three-quarters from the front.
+2. **Hull views.** The side view with the top view below it, both with the bow pointing right and at the same scale, without the wing sails. The hull is built from these two outlines.
+3. **Front and back.** Straight on, with the wing sails spread.
+4. **Parts sheet.** Each part shown separately and flat.
 
-Every picture should have a plain, flat background, even lighting and no shadows on the ground. The gun ports in the side view must match the number of guns a side.
-
-The set also needs **one lineup of all six ships side by side, drawn at the same scale.**
-
-The prompts for these pictures go in `docs/art-requests/` once the stats above are settled.
+There's also **one lineup of all six ships at the same scale.** It comes first, and every ship's concept view is made with the lineup attached, so the fleet matches.
 
 ## Open questions for Chris
 
-1. **Which ship does the player fly?** Is it one class all game, or do they move up through the classes? If players can fly any class, every class needs a high-detail version as well as an enemy version.
+1. **Which ship does the player fly?** Is it one class all game, or do they move up through the classes? Every ship gets the full-detail version either way.
 2. **What is the player's ship called?**
-3. Are the six classes, lengths and gun counts right? Change anything.

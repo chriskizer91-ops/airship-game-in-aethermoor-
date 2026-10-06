@@ -2,7 +2,7 @@
 
 ## The art
 
-Chris made the map as nine tiles in `art/map/tiles/`. Each tile is 1536 × 1024 pixels, and together they make a 4608 × 3072 map. `art/map/tiles/README.txt` gives their order, and `art/map/aethermoor-preview.jpg` is the whole map at a small size.
+Chris chose `art/map/aethermoor-approved.webp` (1500 × 1000) as the best version of the map (October 6). The nine tiles in `art/map/tiles/` are the detailed version of that same picture, and they match it closely. Each tile is 1536 × 1024 pixels, and together they make a 4608 × 3072 map. `art/map/tiles/README.txt` gives their order, and `art/map/aethermoor-preview.jpg` is the whole map at a small size.
 
 ```
 01-northwest | 02-north  | 03-northeast
