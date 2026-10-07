@@ -304,7 +304,8 @@
   .gear-text { display: inline-flex; align-items: center; gap: 6px; }
   .gear-text svg { width: 16px; height: 16px; }
   #settings, #howto { z-index: 20; background: rgba(6, 4, 12, 0.6); }
-  #settings .card, #howto .card { max-height: calc(100% - 4px); overflow-y: auto; overscroll-behavior: contain; text-align: left; background: rgba(24, 12, 30, 0.97);
+  /* (solid, so the pause card under it doesn't show through its rows) */
+  #settings .card, #howto .card { max-height: calc(100% - 4px); overflow-y: auto; overscroll-behavior: contain; text-align: left; background: rgb(24, 12, 30);
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6); }
   #settings h2, #howto h2 { text-align: center; }
   #settings .card { width: min(94vw, 470px); }
