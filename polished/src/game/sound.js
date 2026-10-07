@@ -145,6 +145,13 @@ export function makeCues(M, B, { touch = false, effect = null } = {}) {
     const s = M.voice('misc', 0.5, t + 1.2);
     if (s && !P.cull) M.play(s, 'misc', 0.5, B.fall[0], t + 1.2 + P.delay, rnd(0.9, 1.1), 0.45);
   };
+  // a Man-o'-war's crystal column blowing out: a glassy shatter, then its crystals dying in falling bells
+  C.blowout = (e) => {
+    const t = M.now(), P = M.at(e.at, 0.4);
+    if (P.cull) return;
+    const s = M.voice('blast', 1.4, t + P.delay); if (s) M.play(s, 'blast', 1.4, B.crystalsDie[0], t + P.delay, 1.15, 0.75);
+    const s2 = M.voice('hit', 1.4, t + P.delay); if (s2) M.play(s2, 'hit', 1.4, pick(B.crystal), t + P.delay, 0.8, 0.9);
+  };
   // a wreck breaking through the cloud deck, and a burning one's muffled boom under it as she's gone
   C.deck = (e) => {
     const t = M.now(), P = M.at(e.at, 0.5);
@@ -267,6 +274,8 @@ export function makeSound({ audio, touch = false, where = () => null }) {
   cue('lock', withCues((c, e) => c.lock(e)));
   cue('guns:ready', withCues((c, e) => c.ready(e)));
   cue('raider:escaped', () => fx('hex'));
+  // a Man-o'-war's crystal column blowing out: a glassy shatter and crystals dying in falling bells, where it is
+  cue('blowout', withCues((c, e) => c.blowout(e)));
   // crossing into another region (its name shown): a soft chord with a far bell
   cue('region', () => { if (!audio.mixer) return; M().here(0, 0.4); audio.effect('new-area', CHRIS['new-area'] * 0.6, 'fx'); });
   cue('surge', () => { if (!audio.mixer) return; M().here(0, 0.4); audio.effect('sails', CHRIS.sails, 'fx'); M().here(0, 0.2); audio.effect('haste', CHRIS.haste, 'fx'); });

@@ -30,13 +30,23 @@ What every ship has, like the Magpie:
 - a wooden hull with brass bands
 - no gas bag
 - **sunstone crystals** on a furnace column, which give the lift
-- **wing sails** on yards out to each side, which catch the Aether. The yards are mounted high, above the gun ports, so the broadside guns fire underneath the sails.
+- **wing sails** on yards out to each side, which catch the Aether. The yards are mounted high, above the gun ports, so the broadside guns fire underneath the sails. They fold back along the hull as the sails are taken in, like a bird folding its wings, and spread wide again as they're set.
+- **gun ports with lids** that swing open as she clears for action, her guns running out behind them and kicking back in as they fire
 - fins under the belly, a rudder at the stern, lanterns, and a wheel at the stern
 - a **pennant** at every mast top, in plum with a gold hoist. These are the Captain's colours (a first pick; easy to change).
 
 ## The raiders' colours
 
-Raiders fly the same four ships as the Captain, and the Galleon and the Man-o'-war too, so they're told apart by colour: rust-red sails, darker planks, and crimson pennants with a black hoist, against the Captain's cream sails and plum and gold. In the game each raider also has a tag over it with its class, its distance and its three health bars.
+Raiders fly the same four ships as the Captain, and the Galleon and the Man-o'-war too, so they're told apart by colour: rust-red sails, darker planks, and crimson pennants with a black hoist, against the Captain's cream sails and plum and gold. In the game each raider also has a tag over it with its class, its distance and its three health bars, and a red wake of Aether behind her (the Captain's is gold).
+
+Two raiders have colours of their own (October 7), and any ship can wear them (`src/ship/livery.js`):
+
+- **A raider captain's ship** looks the leader: black sails edged in crimson, blackened iron fittings (her brass bands stay gold, as trim), crystals and sparks that burn crimson, red lanterns, two red eyes glowing either side of her bow, gold pennants, and a great black-and-crimson swallow-tailed banner on a staff above her tallest mast. Her wake is crimson.
+- **A treasure ship** is a rich merchant laden with shards: wine-red sails edged in gold, gilded brass that glints and twinkles all over her, gold pennants with a wine-red hoist, and open chests heaped with gold on her deck in place of her cargo. Her wake glitters gold.
+
+The **Man-o'-war**, as a raider, shows her five crystal columns as the weak points they are: they glow brighter than any other ship's and beat like a heart.
+
+See them in the ships demo with the **Yours**, **Raider**, **Captain** and **Treasure** buttons.
 
 ## Battle scars
 
@@ -48,6 +58,17 @@ Every ship shows her damage on her own model (October 7; how it plays: `docs/gam
 - **Flames** lick from the worst holes of a ship badly holed.
 
 Each ship carries her own scars, even when several of one class share a model, and they're painted onto her surfaces as she's drawn, so they add no triangles and no draw calls, at full, middle and far detail alike (the flames are one draw for the whole sky). The code is `src/ship/dress.js` and `src/ship/flames.js`. In the ships demo, the **New**, **Battered** and **Wrecked** buttons show any ship after a fight, at any level of detail.
+
+## What moves
+
+Every ship moves as she's handled (October 7; how it plays: `docs/game.md`, "Ships that move like they're alive"):
+
+- **Her wings**: each wing sail, its yard, the spike at its tip and the ropes along it fold back along the hull as the sails are taken in (up to 34 degrees, their tips dipping), and spread wide again; the sheets down to the rail follow less and less towards the rail.
+- **Her gun ports**: each lid hangs shut over its port and swings up and out on its hinge, bow first down the side; each gun runs out once its lid is up, kicks back in at its own turn as the broadside ripples down the side, and runs out again once it's loaded. Her bow and stern guns kick back along their barrels.
+- **Her pennants** stream out at speed and hang limp when she's slow.
+- **Her wake**: a ribbon of glowing Aether behind her (`src/game/wakes.js`: one draw for every ship in the sky).
+
+It's all worked out on the graphics card as she's drawn, from a few numbers she keeps, so it adds no triangles at full detail. What moves is built with a note on each corner saying how it moves (its "rig"); the metal that moves (the guns, the lids' brass trims and the yards' spikes) is its own small batch, one more draw call for a ship at full or middle detail and none far off. In the middle distance her gun ports have plain lids (12 triangles each), and far off her yards lose their spikes, too small to see.
 
 ## What the stats mean
 
@@ -142,18 +163,18 @@ Ships only use full detail up close. **There's one model per class, with a detai
 
 | Ship | Full | Middle | Far |
 |---|---|---|---|
-| Skiff | 98,700 | 11,300 | 1,700 |
-| Cutter | 100,800 | 14,800 | 2,200 |
-| Brig | 102,200 | 22,900 | 3,500 |
-| Frigate | 104,400 | 29,700 | 4,700 |
-| Galleon | 100,500 | 35,700 | 4,900 |
-| Man-o'-war | 100,700 | 46,900 | 6,100 |
+| Skiff | 98,700 | 11,300 | 1,600 |
+| Cutter | 100,800 | 14,900 | 2,100 |
+| Brig | 102,200 | 23,000 | 3,200 |
+| Frigate | 104,400 | 29,900 | 4,200 |
+| Galleon | 100,500 | 36,100 | 4,600 |
+| Man-o'-war | 100,700 | 47,500 | 5,600 |
 
 - **Full** is for your own ship, and any ship right alongside, such as when boarding.
 - **Middle** is for ships in the fight but not close. It looks almost the same as Full from a few ship-lengths away.
 - **Far** is for ships small on screen. It keeps the shape, the sails, the crystals and the gun ports.
 
-Each ship is 13 to 18 draw calls at any level, because each material's pieces are joined into one mesh. Her battle scars add none (see [Battle scars](#battle-scars)). With three to six enemies in view, the whole scene comes to about 200,000 to 350,000 triangles, which a phone handles easily.
+Each ship is 14 to 18 draw calls at any level, because each material's pieces are joined into one mesh. Her battle scars add none (see [Battle scars](#battle-scars)), and what moves adds one at full and middle detail (see [What moves](#what-moves)). A raider captain's banner and a treasure ship's chests add a few hundred triangles to the ship that carries them. With three to six enemies in view, the whole scene comes to about 200,000 to 350,000 triangles, which a phone handles easily.
 
 ## The pictures each ship needs
 

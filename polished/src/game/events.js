@@ -32,6 +32,8 @@
 //                                                view) to 1 (right), close 0 (barely) to 1 (a hair's breadth)
 //   raider:down     { raider, why, at }          'hull', 'crystals' or 'struck' (a treasure ship giving up)
 //   raider:escaped  { raider }                   a treasure ship got away
+//   blowout         { raider, i, at }            one of a Man-o'-war's crystal columns giving out (which, from 0, and
+//                                                where its crystals were: looks.js)
 //   blast           { at, size, big, first }     an explosion (a raider blowing up, and each blast of the chain that
 //                                                walks along her hull after): how big in metres, whether it's a big one,
 //                                                and whether it's the first (her blowing apart) or one of the chain
@@ -74,6 +76,7 @@ export const PAYLOAD = {
   nearMiss: { pan: 0, close: 0, at: v() },
   'raider:down': { raider: null, why: '', at: v() },
   'raider:escaped': { raider: null },
+  blowout: { raider: null, i: 0, at: v() },
   blast: { at: v(), size: 0, big: false, first: false },
   'wreck:deck': { at: v(), size: 0 },
   'wreck:gone': { at: v(), size: 0, fire: false },

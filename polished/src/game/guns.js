@@ -7,6 +7,8 @@
 // gunsmoke (fx.js). A broadside's recoil heels the ship away from the side that fired.
 import * as THREE from 'three';
 import { emit, payload } from './events.js';
+import { RIPPLE } from '../ship/parts.js';
+export { RIPPLE };
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 // Bigger ships carry bigger guns: each shot's weight is scaled by the ship's class
@@ -145,11 +147,12 @@ export function makeBolts(scene, fx, max = 400) {
 // the raiders' slower crews). `flyer` (flight.js), if given, heels as her broadsides go off. `from` (set by raiders.js:
 // the raider) is given to each bolt she fires.
 // A battery's guns go off one after another, bow first: a broadside one port every 55 ms (both decks together), the
-// whole side in at most 0.55 s; a pair of chasers 80 ms apart. Its first gun fires at once, and its reload starts then.
-export const RIPPLE = { step: 0.055, span: 0.55, pair: 0.08 };
+// whole side in at most 0.55 s; a pair of chasers 80 ms apart (RIPPLE, kept with the ship's parts: each gun on the
+// model kicks back at its own turn). Its first gun fires at once, and its reload starts then. Each battery counts its
+// volleys (`volleys`), so the ship's model can tell when one went off (looks.js)
 const PENDING = 32; // room for guns waiting their turn, at least, per ship (more if she has more guns: a Man-o'-war)
 export function makeGunnery(ship, { reload: slow = 1, damage = 1 } = {}, flyer = null) {
-  const B = gunsOf(ship), R = ship.recipe, ready = { bow: 0, stern: 0, port: 0, starboard: 0 }, weight = damage * (GUN_WEIGHT[R.id] ?? 1);
+  const B = gunsOf(ship), R = ship.recipe, ready = { bow: 0, stern: 0, port: 0, starboard: 0 }, volleys = { bow: 0, stern: 0, port: 0, starboard: 0 }, weight = damage * (GUN_WEIGHT[R.id] ?? 1);
   const world = new THREE.Vector3(), dirW = new THREE.Vector3(), nm = new THREE.Matrix3(), want = new THREE.Vector3(), arc = new THREE.Vector3();
   const M = { p: new THREE.Vector3(), d: new THREE.Vector3(), K: null }; // the muzzle last asked for (kept, not made each time)
   const reload = (b) => (B[b][0] ? KINDS[B[b][0].kind].reload * slow : 1);
@@ -190,7 +193,7 @@ export function makeGunnery(ship, { reload: slow = 1, damage = 1 } = {}, flyer =
     if (flyer && g.kind === 'broadside') flyer.heelV += Math.sign(g.d.x) * 0.012 * weight * (25 / R.length);
   }
   const gunnery = {
-    B, ready, reload, from: null, cap,
+    B, ready, volleys, reload, from: null, cap,
     count: (b) => B[b].length,
     get pending() { return np; },
     // the reload clocks, and the guns whose turn has come (from where the ship is now)
@@ -240,7 +243,7 @@ export function makeGunnery(ship, { reload: slow = 1, damage = 1 } = {}, flyer =
         const g = list[i];
         if (g.delay > 0 && np < cap) { pg[np] = g; pt[np] = g.delay; pb[np] = b; pi[np++] = i; } else shot(g, b, i);
       }
-      ready[b] = reload(b);
+      ready[b] = reload(b); volleys[b]++;
       return list.length;
     },
   };

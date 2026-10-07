@@ -185,6 +185,8 @@ export function makeFx({ scene, camera, touch = false }) {
       debris.toss('canvas', e.at, back, 1.2, e.vel, 4, 1, looks.sail);
       smoke.emit(e.at, hv.copy(e.vel).multiplyScalar(0.85), 0.8, 1, 4, 0.9, 0.5, 1, 0.3);
     } else debris.toss('crystal', e.at, back, 1.2, e.vel, 8, 1);
+    // a treasure ship's hull bleeds gold where it's hit
+    if (!mine && e.part === 'hull' && e.raider?.role === 'prize') burst(e.at, 0xffd54a, 10, 0.6, 0.5);
     if (!mine) return;
     const sev = Math.min(1.5, e.damage / 55);
     trauma((e.part === 'hull' ? 0.35 : e.part === 'crystals' ? 0.3 : 0.15) * sev);
@@ -199,6 +201,11 @@ export function makeFx({ scene, camera, touch = false }) {
   on('raider:down', (e) => { if (e.why !== 'struck') buzz(60); }); // (her end in the sky: wrecks.js; a treasure ship giving up gets none)
   on('blast', (e) => { if (focus) { const d = focus.distanceTo(e.at); if (d < 250) trauma(0.25 * (1 - d / 250) * (e.big ? 1.4 : 1)); } });
   on('surge', () => trauma(0.2));
+  // one of a Man-o'-war's crystal columns blowing out: a shower of gold and violet sparks, and a jolt if it's close
+  on('blowout', (e) => {
+    burst(e.at, 0xffe08a, 50, 1.8, 1.6); burst(e.at, 0xb25cff, 30, 1.4, 0.8);
+    if (focus) { const d = focus.distanceTo(e.at); if (d < 400) trauma(0.2 * (1 - d / 400)); }
+  });
   // shards spilling out of a wreck: a gold flash and a spray of gold; each one gathered: a little glint at the hold
   on('shards:spill', (e) => {
     spark(e.at, ZERO, 0.35, 25, GOLD, 0);

@@ -10,7 +10,9 @@
 // red arc pointing where the shot came from. A raider going down shows her bounty rising from the wreck, and the shard
 // count in the corner counts up as they come in. Bringing down the last raider of a wave slows the world for a moment
 // before the card between waves rises. Every ship shows her scars where she was hit, burns when badly holed, and the
-// Captain's is patched up between waves and clean again in port (looks.js).
+// Captain's is patched up between waves and clean again in port; and every ship is alive: her wings fold and spread
+// with her sails, her lids fly open and her guns run out for a fight and kick back as they fire (looks.js), and a
+// glowing wake of Aether streams behind her (wakes.js).
 // The title screen is drawn in the world itself, at sunset (title.js); the port in its own quiet void (port.js). Going
 // from one to another (or out to sea) dips through the night for a moment, so no scene ever shows in the wrong place.
 // The sound (sound.js, through audio.js) answers the same news, and plays Chris's music; it starts with the first touch
@@ -40,6 +42,7 @@ import { makeTitle } from './title.js';
 import { hitZones, firstHit } from './damage.js';
 import { smokeFrom } from './effects.js';
 import { makeLooks } from './looks.js';
+import { makeWakes } from './wakes.js';
 import { WTIME } from '../ship/dress.js';
 import { makeAudio } from '../audio/audio.js';
 import { makeSound } from './sound.js';
@@ -98,7 +101,8 @@ async function main() {
   const fx = makeFx({ scene, camera, touch }), bolts = makeBolts(scene, fx), pickups = makePickups(scene);
   const wrecks = makeWrecks({ fx, tear: world.tear, scene }), surge = makeSurge({ scene, fx });
   const raiders = makeRaiders(scene, art, bolts, skies, fx);
-  const looks = makeLooks({ scene, touch }); // (every ship's scars, and her flames: looks.js)
+  const looks = makeLooks({ scene, touch, fx }); // (every ship's scars, her life and her flames: looks.js)
+  const wakes = makeWakes(scene, { touch }); // (every ship's wake of Aether, in one draw)
   // the Settings card's changes, at once: the sound; the picture; the camera shake; Fire on the left (a phone)
   function applyPicture() {
     const P = picture();
@@ -163,7 +167,7 @@ async function main() {
   function resetVoyage() {
     Object.assign(W, { n: 0, state: 'calm', timer: 5, lost: 0, choose: 0, sunk: false, next: null });
     Object.assign(V, { shards: 0, downed: 0, hits: 0 });
-    raiders.clear(); bolts.clear(); pickups.clear(); fx.clear(); wrecks.clear(); world.clear(); surge.clear(); looks.clear(); hideBounties(); calmUp(false); bigMap(false);
+    raiders.clear(); bolts.clear(); pickups.clear(); fx.clear(); wrecks.clear(); world.clear(); surge.clear(); looks.clear(); wakes.clear(); hideBounties(); calmUp(false); bigMap(false);
     document.body.classList.remove('sinking');
     hurt = 0; Object.assign(cam, { yaw: 0, pitch: 0.2, zoom: 1 }); Object.assign(shardCount, { shown: 0, from: 0, to: 0, t: 1, n: -1 }); surgeFov.x = surgeFov.v = 0;
   }
@@ -182,6 +186,7 @@ async function main() {
     if (!zones.has(id)) zones.set(id, hitZones(ship));
     player.aimY = zones.get(id).aim.y;
     gunnery = makeGunnery(ship, L.guns, player); loaded.port = loaded.starboard = 0; wasLocked = null;
+    player.gun = gunnery; // (her guns show on her model as they fire and reload: looks.js)
     fx.follow(player); surge.follow(player, zones.get(id));
     scene.add(ship.root);
     // the sun's shadows: a box round the ship, sized to her, so her masts and sails shade her deck. The sun sits
@@ -210,7 +215,7 @@ async function main() {
   function endVoyage(keep) {
     const got = Math.round(V.shards * keep);
     progress.bank(got, W.n);
-    raiders.clear(); bolts.clear(); pickups.clear(); gunnery.cancel(); wrecks.clear(); world.clear(); surge.clear(); hideBounties(); W.next = null;
+    raiders.clear(); bolts.clear(); pickups.clear(); gunnery.cancel(); wrecks.clear(); world.clear(); surge.clear(); wakes.clear(); hideBounties(); W.next = null;
     scene.remove(player.ship.root); // the port shows her (or the ship you were looking at) in its own scene
     looks.reset(player.ship); looks.clear(); // (spotless there, her scars patched and painted over)
     setPaused(false); // (leaving from the pause menu ends the pause, and that's told before the voyage's end)
@@ -306,7 +311,7 @@ async function main() {
       return true;
     }
     if (player.down) return false;
-    const h = firstHit(zones.get(player.ship.recipe.id), player.ship.body, a, c);
+    const h = firstHit(zones.get(player.ship.recipe.id), player.ship.body, a, c, player.ship.U.uFold.value.x);
     if (!h) { nearMiss(b, a, c); return false; }
     const before = player.frac(h.part);
     player.hit(h.part, b.damage);
@@ -396,8 +401,9 @@ async function main() {
         $('calm-title').textContent = `Wave ${W.n} beaten`;
         const next = waveAt(W.n, skies().extra);
         W.next = next;
-        // a captain's ship is built now, while the card is up, not as the wave appears (a stutter on a phone)
-        if (next.captain >= 0) raiders.prepare(next.ids[next.captain], true);
+        // a captain's ship (and a treasure ship) is built now, while the card is up, not as the wave appears (a stutter
+        // on a phone)
+        raiders.prepareWave(next);
         $('calm-line').innerHTML = `◆ <b id="calm-bonus">0</b> for the wave · ◆ ${fmt(V.shards)} aboard. Next: ${next.captain >= 0 ? 'a raider captain, with ' : ''}${describe(next.ids)}.`;
         // (shown at once, for the game; it rises into view after the slow motion, and its bonus counts up as it does)
         $('calm').classList.toggle('late', last); calmUp(true);
@@ -841,7 +847,11 @@ async function main() {
     if (inp.fire && !player.down) gunnery.fire(battery, aimPoint, bolts, 'player', player.velocity);
     loaded.port = gunnery.ready.port; loaded.starboard = gunnery.ready.starboard;
     bolts.update(dt, hitTest);
-    looks.update(dt, time, raiders.list); // (her scars and every raider's, and their flames, as they stand after this step's hits)
+    // (her scars and every raider's, and their flames, as they stand after this step's hits; and their life: her lids
+    // open for a fight, a Man-o'-war's columns marked while the guns are locked on her)
+    looks.cleared = W.state === 'fight'; looks.marked = locked;
+    looks.update(dt, time, raiders.list);
+    wakes.update(dt, time, camera, player, raiders.list);
     smokeFrom(player, fx, dt);
     for (let i = 0; i < raiders.list.length; i++) smokeFrom(raiders.list[i].f, fx, dt);
     const got = pickups.update(dt, player.ship.body.localToWorld(hold.set(0, 0.5, 0)), player.ship.recipe.length * 0.6 + 8, camera);
@@ -885,7 +895,7 @@ async function main() {
   // for tools/check.mjs
   window.__game = {
     ready: true, get player() { return player; }, get gunnery() { return gunnery; }, cam, input, raiders, bolts, pickups, renderer, camera, scene, world, sun, waves: W, voyage: V,
-    fx, events, wrecks, surge, looks, get lastArc() { return lastArc; }, get time() { return time; }, audio, sound, settings,
+    fx, events, wrecks, surge, looks, wakes, get lastArc() { return lastArc; }, get time() { return time; }, audio, sound, settings,
     progress, port, title, sail, endVoyage, pause, sailOn, wind: WIND, get mode() { return mode; }, get paused() { return paused; },
     fly: (id) => sail(id, true), // a voyage in any ship, owned or not (for tests)
     words: { side: sideWords, wind: () => windWords() }, layout, edge: EDGE, // (directions in words, and the panels the edge tags keep clear of)

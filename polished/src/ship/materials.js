@@ -88,6 +88,9 @@ export async function loadShipArt(renderer) {
     band: std({ map: T.band, normalMap: T.bandN, metalnessMap: T.bandORM, roughnessMap: T.bandORM, metalness: 1, roughness: 1, emissive: 0xffffff, emissiveMap: T.band, emissiveIntensity: 0.05 }),
     brass: std({ color: 0xd9a743, metalness: 0.92, roughness: 0.3 }),
     bronze: std({ color: 0xa06a2e, metalness: 0.82, roughness: 0.4 }),
+    // the metal that moves (the guns, their lids' trims and the yards' spikes: src/ship/dress.js): brass or bronze by each
+    // corner's colour, in the colours its userData names (a raider captain's black iron, a treasure ship's gold)
+    rigMetal: std({ vertexColors: true, metalness: 0.87, roughness: 0.35 }),
     wood: std({ map: T.deck, color: 0xc49a74, normalMap: T.deckN, roughness: 0.78, emissive: 0xffffff, emissiveMap: T.deck, emissiveIntensity: 0.05 }),
     rope: std({ color: 0x5e432a, roughness: 0.95 }),
     dark: std({ color: 0x140b06, roughness: 1 }),
@@ -100,6 +103,7 @@ export async function loadShipArt(renderer) {
     // pennants: the Captain's plum with a gold hoist, streaming from every mast top
     flag: std({ vertexColors: true, roughness: 0.85, emissive: 0x2a0a20, emissiveIntensity: 0.4 }),
   };
+  Object.assign(M.rigMetal.userData, { brass: 0xd9a743, bronze: 0xa06a2e });
   // the sails ripple a little in the wind, and the pennants stream, on the clock every ship shares (dress.js; a ship's
   // own copy of the canvas ripples there too, harder when it's torn)
   M.canvas.userData.time = WTIME;

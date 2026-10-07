@@ -4,14 +4,26 @@
 // pinch to zoom; switch ships, views and the detail dial at the bottom, and how she looks after a fight: New, Battered
 // (scorched holes in her planks, holes in her sails, a cluster of crystals dimmed and cracked) or Wrecked (holed all
 // along, burning, her sails in rags and her crystals sputtering), drawn as the game draws them (src/ship/dress.js).
+// And in whose colours (src/ship/livery.js): Yours, a Raider's, a raider Captain's or a Treasure ship's; with her
+// wings spread (Sails set) or folded back (Sails in), and her guns: Ports shut, Guns out (the lids swing open bow first
+// and the guns run out), or Fire! (both sides ripple off, bow to stern, each gun kicking back in, and run out again once
+// they're loaded), as the game moves them.
 import * as THREE from 'three';
 import { loadShipArt } from '../ship/materials.js';
 import { buildShip } from '../ship/build.js';
-import { WTIME, makeWear, wearPreset, sputter } from '../ship/dress.js';
+import { WTIME, makeWear, wearPreset, sputter, foldPoint } from '../ship/dress.js';
+import { liveryArt, liveryOpts, wearLivery } from '../ship/livery.js';
+import { RIPPLE } from '../ship/parts.js';
 import { makeFlames, shipFlames } from '../ship/flames.js';
 import { FLEET as SHIPS, STATS } from '../ships/index.js';
 
 const $ = (id) => document.getElementById(id);
+// what each of the raiders' colours means, for the card
+const LIVERY_WORDS = {
+  crew: 'A raider crew\'s colours: rust-red sails, darker planks and crimson pennants with a black hoist.',
+  captain: 'A raider captain leads every fifth wave: black sails edged in crimson, blackened iron, crimson crystals, red eyes at her bow and a great swallow-tailed banner.',
+  treasure: 'A treasure ship, laden with shards: wine-red sails edged in gold, gilded brass that glints, and chests of gold on her deck. She runs; shoot her sails to catch her.',
+};
 const SUN = new THREE.Vector3(-0.62, 0.16, -0.77).normalize();
 
 // ---------- the sky: night blue overhead, gold and rose at the horizon, the low sun, a few stars ----------
@@ -143,15 +155,18 @@ async function main() {
   const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 70000);
   const art = await loadShipArt(renderer);
 
-  // ships are built when first wanted, and kept
-  const built = new Map();
-  const getShip = (R, level) => {
-    const key = R.id + ':' + level;
-    if (!built.has(key)) built.set(key, buildShip(R, level, art));
+  // ships are built when first wanted (in each livery), and kept
+  const built = new Map(), arts = {};
+  const getShip = (R, level, livery = 'yours') => {
+    const key = R.id + ':' + level + ':' + livery;
+    if (!built.has(key)) built.set(key, wearLivery(buildShip(R, level, arts[livery] ??= liveryArt(art, livery), liveryOpts(livery)), livery));
     return built.get(key);
   };
 
-  const state = { ship: 'brig', level: 'full', view: 'turn', yaw: 0.9, pitch: 0.28, dist: 30, target: new THREE.Vector3(), aim: null, idle: 0, all: false, wear: 'new' };
+  const state = { ship: 'brig', level: 'full', view: 'turn', yaw: 0.9, pitch: 0.28, dist: 30, target: new THREE.Vector3(), aim: null, idle: 0, all: false, wear: 'new', livery: 'yours' };
+  // her sails and guns, worked by hand: how far her wings fold (0 set, 1 in), her lids (0 shut .. 2 all open and the
+  // guns run out), and a broadside waiting for the guns to be out (Fire! with the ports shut opens them first)
+  const rig = { fold: 0, open: 0, fire: false, wantFold: 0, wantOpen: 0 };
   // the flames of a Wrecked ship (one draw for all of them), and her list towards her holed side
   const flames = makeFlames(40); scene.add(flames.mesh);
   const listed = { list: 0 };
@@ -172,7 +187,7 @@ async function main() {
     let x = 0, y = 0;
     const tall = camera.aspect < 0.9;
     list.forEach((R, i) => {
-      const s = getShip(R, state.level);
+      const s = getShip(R, state.level, state.livery);
       s.root.position.set(0, 0, 0);
       if (state.all && tall) {
         // on a tall screen, one above another, smallest at the bottom
@@ -255,6 +270,19 @@ async function main() {
     for (const s of shown) scar(s);
   }
   for (const b of $('wear').children) b.addEventListener('click', () => setWear(b.dataset.wear));
+  const press = (row, b) => { for (const x of $(row).children) x.setAttribute('aria-pressed', String(x === b)); };
+  for (const b of $('livery').children) b.addEventListener('click', () => { state.livery = b.dataset.livery; press('livery', b); show(); });
+  for (const b of $('sails').children) b.addEventListener('click', () => { rig.wantFold = +b.dataset.fold; press('sails', b); });
+  for (const b of $('guns').children) b.addEventListener('click', () => {
+    const g = b.dataset.guns;
+    rig.wantOpen = g === 'shut' ? 0 : 2; if (g === 'fire') rig.fire = true;
+    press('guns', g === 'fire' ? $('guns').children[1] : b);
+  });
+  // a broadside from every battery at once (the ripple and the reload as the game's: 2.6 s for a broadside, 1.1 s for
+  // the bow and stern guns)
+  function fire(time) {
+    for (const s of shown) { s.U.uFire.value.setScalar(time); s.U.uReady.value.set(time + 2.6, time + 2.6, time + 1.1, time + 1.1); }
+  }
   $('btn-card').addEventListener('click', () => {
     const open = $('card').hidden; $('card').hidden = !open;
     $('btn-card').textContent = open ? 'Hide stats' : 'Stats'; $('btn-card').setAttribute('aria-expanded', String(open));
@@ -267,8 +295,10 @@ async function main() {
       $('card-stats').innerHTML = SHIPS.map((S) => `<dt>${S.name}</dt><dd>${S.cls}, ${S.length} m</dd>`).join('');
       return;
     }
-    $('card-name').textContent = R.name; $('card-cls').textContent = `${R.cls} · ${R.length} m long`;
-    $('card-blurb').textContent = St.blurb;
+    // (in a raider's colours she's no longer the Captain's ship, so she goes by what she is)
+    const L = state.livery, who = { crew: `Raider ${R.cls}`, captain: `Raider captain's ${R.cls}`, treasure: `Treasure ${R.cls}` }[L];
+    $('card-name').textContent = who ?? R.name; $('card-cls').textContent = `${R.cls} · ${R.length} m long`;
+    $('card-blurb').textContent = LIVERY_WORDS[L] ?? St.blurb;
     const bar = (v) => `<span class="bar" style="width:${v * 5}px"></span>${v}`;
     $('card-stats').innerHTML = [
       ['Hull', St.hull.toLocaleString()], ['Sails', St.sails.toLocaleString()], ['Crystals', St.crystals.toLocaleString()], ['Crew', St.crew],
@@ -292,16 +322,26 @@ async function main() {
     const scale = renderer.domElement.height / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
     for (const s of built.values()) s.glow.material.uniforms.uScale.value = scale;
     state.glowScale = scale;
+    room();
   }
+  // the ship framed in the sky between the title and the buttons at the bottom (three rows of them on a laptop), not
+  // behind them: the view's middle moved up to the middle of that space
+  function room() {
+    const d = $('dock').getBoundingClientRect(), t = $('title').getBoundingClientRect(), h = innerHeight;
+    const top = t.height ? t.bottom : 0, bottom = d.height ? d.top : h, off = Math.max(0, Math.round(h / 2 - (top + bottom) / 2));
+    if (off > 1) camera.setViewOffset(innerWidth, h, 0, off, innerWidth, h); else camera.clearViewOffset();
+  }
+  document.fonts?.ready.then(room);
   addEventListener('resize', () => { resize(); show(); });
 
   if (innerWidth < 640) { $('card').hidden = true; $('btn-card').textContent = 'Stats'; $('btn-card').setAttribute('aria-expanded', 'false'); }
   resize(); mark(); show();
   const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let last = performance.now(), time = 0;
+  let last = performance.now(), time = 0, roomT = 0;
   function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now; time += dt;
     state.idle += dt;
+    if ((roomT -= dt) <= 0) { roomT = 1; room(); } // (once a second: the buttons may have moved, or been hidden for pictures)
     if (state.view === 'turn' && state.idle > 2.5 && pointers.size === 0 && !calm) state.yaw += dt * 0.12;
     if (state.aim) {
       const k = 1 - Math.exp(-dt * 4);
@@ -311,8 +351,13 @@ async function main() {
     const cp = Math.cos(state.pitch);
     camera.position.set(Math.sin(state.yaw) * cp, Math.sin(state.pitch), Math.cos(state.yaw) * cp).multiplyScalar(state.dist).add(state.target);
     camera.lookAt(state.target);
+    // her sails and guns, eased to what's asked (the lids open bow first; Fire! waits for the guns to be out)
+    rig.fold += (rig.wantFold - rig.fold) * (1 - Math.exp(-dt * 2));
+    rig.open = rig.wantOpen > rig.open ? Math.min(rig.wantOpen, rig.open + dt * 1.4) : Math.max(rig.wantOpen, rig.open - dt * 0.9);
+    if (rig.fire && rig.open >= 2) { rig.fire = false; fire(time); }
     flames.begin();
     for (const s of shown) {
+      s.U.uFold.value.x = rig.fold; s.U.uGun.value.set(rig.open, rig.open, 0, 0);
       // (a Wrecked ship lists, her crystals sputter and her worst holes burn)
       listed.list = s.wear.list; s.update(dt, listed);
       if (state.glowScale) s.glow.material.uniforms.uScale.value = state.glowScale;
@@ -338,6 +383,17 @@ async function main() {
     view(v, yaw, pitch, dist) { setView(v); if (yaw != null) { state.aim = null; state.yaw = yaw; state.pitch = pitch; if (dist) state.dist = dist; } },
     // her scars: 'new', 'battered' or 'wrecked'; the ships shown; the flames burning
     wear: setWear, shown, flames,
+    // her colours ('yours', 'crew', 'captain', 'treasure'); her sails and guns at once ({ fold: 0..1, open: 0..2, fire:
+    // true fires every battery now }), and the clock they're read on
+    livery(l) { state.livery = l; for (const x of $('livery').children) x.setAttribute('aria-pressed', String(x.dataset.livery === l)); show(); },
+    rig(o) {
+      if (o.fold != null) rig.fold = rig.wantFold = o.fold;
+      if (o.open != null) rig.open = rig.wantOpen = o.open;
+      for (const s of shown) { s.U.uFold.value.x = rig.fold; s.U.uGun.value.set(rig.open, rig.open, 0, 0); }
+      if (o.fire) fire(WTIME.value);
+      press('sails', $('sails').children[rig.wantFold >= 0.5 ? 1 : 0]); press('guns', $('guns').children[rig.wantOpen > 0 ? 1 : 0]);
+    },
+    get time() { return WTIME.value; }, ripple: RIPPLE, foldPoint,
   };
 }
 

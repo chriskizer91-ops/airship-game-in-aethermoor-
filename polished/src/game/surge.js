@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { on } from './events.js';
 import { PUFF } from './effects.js';
+import { foldPoint } from '../ship/dress.js';
 
 // how many streaks (times fx's q), how long a stretch of sky they fill (metres), how bright the crystals flare, blue
 // sparks a second, seconds between vapour puffs (a laptop, a phone), and the view's low rumble (trauma, fx.js)
@@ -51,13 +52,14 @@ export function makeSurge({ scene, fx }) {
 
   let P = null, Z = null, alpha = 0, flare = 0, sparks = 0, trail = 0;
   const tips = [new THREE.Vector3(), new THREE.Vector3()], p = new THREE.Vector3(), v = new THREE.Vector3(), c = new THREE.Vector3(), s = new THREE.Vector3(), u = new THREE.Vector3();
-  // the Captain's ship (flight.js) and her hit zones (damage.js): her vapour trails pour from the widest sail's tips
+  // the Captain's ship (flight.js) and her hit zones (damage.js): her vapour trails pour from the tips of her widest
+  // wings, snapped open as they are in a Surge (src/ship/dress.js)
   function follow(flyer, zones) {
     if (P && P !== flyer) P.ship.glow.material.uniforms.uBoost.value = 1;
     P = flyer; Z = zones;
     let best = null;
-    for (const b of zones.sails) if (!b.isEmpty() && (!best || b.max.x - b.min.x > best.max.x - best.min.x)) best = b;
-    if (best) { const y = best.min.y + (best.max.y - best.min.y) * 0.3, z = (best.min.z + best.max.z) / 2; tips[0].set(best.max.x, y, z); tips[1].set(best.min.x, y, z); }
+    for (const w of flyer.ship.wings) if (w.tip && w.side > 0 && (!best || w.tip.x > best.tip.x)) best = w;
+    if (best) for (const [i, side] of [[0, 1], [1, -1]]) foldPoint(tips[i].set(side * best.tip.x, best.tip.y, best.tip.z), side, best.mz, -0.1);
   }
   const M = () => P.ship.body.matrixWorld;
   // a ring of blue sparks bursting from her stern as she leaps forward

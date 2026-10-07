@@ -1,21 +1,27 @@
 // raiders.js: the raiders, the Captain's enemies for now. They fly the Captain's four classes (Skiff, Cutter, Brig,
 // Frigate) and the two only raiders sail (Galleon, Man-o'-war), built by the same code at the middle and far settings
 // of the detail dial, and they fly by the same rules (flight.js), a little slower. Raiders are easy to tell apart:
-// rust-red sails, darker planks and crimson pennants with a black hoist.
+// rust-red sails, darker planks and crimson pennants with a black hoist (their liveries: src/ship/livery.js).
 //   Skiffs and Cutters chase: attack runs, bow-first, peeling away side-on when close.
 //   Brigs, Frigates and the Man-o'-war fight broadside: they come alongside a few hundred metres off and fire whole
-//   sides. The Man-o'-war is a fortress: two decks of twelve guns a side, slow to turn and slower to climb.
-//   The Galleon is a treasure ship: she sails by, runs once she's chased, covering her escape with her stern guns, and
-//   strikes her colours when her sails are gone or her hull is down to a quarter. Left too far behind, she gets away.
+//   sides. The Man-o'-war is a fortress: two decks of twelve guns a side, slow to turn and slower to climb. Her five
+//   crystal columns glow brighter than any other ship's, beating like a heart: her weak points (looks.js blows them out).
+//   A treasure ship sails by, runs once she's chased, covering her escape with her stern guns, and strikes her colours
+//   when her sails are gone or her hull is down to a quarter. Left too far behind, she gets away. The Galleon always
+//   sails as one; any other class can too (spawn's `treasure`), in the treasure ship's colours: wine-red sails edged in
+//   gold, gilded brass that glints, and chests of gold on her deck.
 // They come in waves, smallest first, and every fifth wave is led by a raider captain: tougher, harder-hitting and
-// quicker to reload, with black sails and a gold pennant, and worth four times the shards. How sharp the raiders are
+// quicker to reload, and worth four times the shards. Her ship looks the leader's: black sails edged in crimson,
+// blackened iron, crimson crystals, red eyes at her bow and a great swallow-tailed banner. How sharp the raiders are
 // depends on the skies the Captain chose (progress.js); on Fair Winds a captain is no tougher than her crew, hits no
 // harder and reloads no faster.
 // Before a raider's broadside goes off, her gun ports glow red for half a second (a little longer on the two big ships),
-// brightening to gold: time to climb, dive or turn away. Then her side ripples off, bow to stern (guns.js).
+// brightening to gold, and the lids on that side fly open and her guns run out (looks.js): time to climb, dive or turn
+// away. Then her side ripples off, bow to stern (guns.js).
 import * as THREE from 'three';
 import { buildShip, shipMotion } from '../ship/build.js';
 import { makeLook, dress } from '../ship/dress.js';
+import { liveryArt, liveryOpts, wearLivery, DEBRIS } from '../ship/livery.js';
 import { FLEET, STATS } from '../ships/index.js';
 import { makeFlyer } from './flight.js';
 import { makeGunnery, intercept } from './guns.js';
@@ -32,8 +38,8 @@ export const WARN = { time: 0.5, big: 0.65 }, WARN_FROM = new THREE.Color(0xff46
 // and none on Fair Winds (the skies' `captain`), and her bounty
 export const CAPTAIN = { toughness: 2, damage: 1.2, reload: 0.9, bounty: 4 };
 // the colours of what a shot knocks off her (fx.js): her planks, and her sails (rust-red for the crews, black for
-// their captains)
-export const LOOKS = { crew: { wood: 0x6e5440, sail: 0xc8735c }, captain: { wood: 0x5a4838, sail: 0x3a3034 } };
+// their captains, wine-red for a treasure ship)
+export const LOOKS = { crew: DEBRIS.crew, captain: DEBRIS.captain, treasure: DEBRIS.treasure };
 // the big ships' heavy guns take their crews longer to reload
 const HEAVY = { galleon: 1.15, manowar: 1.3 };
 // Crystal Shards for bringing one down (before the skies' and the wave's bonus)
@@ -61,34 +67,13 @@ export function waveAt(n, extra = 0) {
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
-// the raiders' colours, on copies of the ship materials: rust-red sails for the crews, black for their captains
-function raiderArt(art, captain) {
-  const M = { ...art.M };
-  M.hull = art.M.hull.clone(); M.hull.color.set(captain ? 0x7d6f72 : 0x9a8781);
-  M.canvas = art.M.canvas.clone();
-  if (captain) { M.canvas.color.set(0x3a3034); M.canvas.emissive.set(0x1c1216); } else { M.canvas.color.set(0xc8735c); M.canvas.emissive.set(0x7a3020); }
-  M.canvas.onBeforeCompile = art.M.canvas.onBeforeCompile; M.canvas.customProgramCacheKey = art.M.canvas.customProgramCacheKey;
-  return { ...art, M };
-}
-// crimson pennants with a black hoist; a captain's are gold with a black hoist
-function recolourPennants(ship, captain) {
-  ship.body.traverse((o) => {
-    if (!o.isMesh || o.name !== 'flag') return;
-    const c = o.geometry.attributes.color;
-    for (let i = 0; i < c.count; i++) {
-      if (c.getX(i) > 0.8) c.setXYZ(i, 0.09, 0.07, 0.06);
-      else if (captain) c.setXYZ(i, 0.95, 0.72, 0.28); else c.setXYZ(i, 0.72, 0.09, 0.07);
-    }
-    c.needsUpdate = true;
-  });
-}
-
 // The masts, cut out of a class's middle model once, as it's built (on a laptop: wrecks.js topples them when she's blown
 // apart). For each of her meshes of wood, brass and canvas: the triangles that stay with the hull, and for each mast,
-// the ones that fall with it (her pennants and all her rigging just go: snapped). A mast is everything a metre above
-// the deck round its foot, and everything from just under its lowest yard up, fore and aft of it as far as its sails
-// reach. The pieces share the model's own vertices, so they're only lists of numbers
-const CUT = ['wood', 'brass', 'canvas', 'flag', 'rope'], FALL = ['wood', 'brass', 'canvas'];
+// the ones that fall with it (her pennants and all her rigging just go: snapped; so do the spikes at her yards' tips,
+// while the rest of her moving metal, her guns, stays). A mast is everything a metre above the deck round its foot,
+// and everything from just under its lowest yard up, fore and aft of it as far as its sails reach. The pieces share
+// the model's own vertices, so they're only lists of numbers
+const CUT = ['wood', 'brass', 'canvas', 'flag', 'rope', 'rigMetal'], FALL = ['wood', 'brass', 'canvas'], SNAP = ['flag', 'rope'];
 function cutMasts(R, model) {
   const hull = model.hull, masts = R.masts.map((M) => {
     const y0 = hull.deckY(M.z), sweep = Math.max(...M.tiers.map((t) => t.sweep)), foot = 1 + (0.11 + 0.0045 * R.length) * 3;
@@ -115,7 +100,7 @@ function cutMasts(R, model) {
       const a = t * 9, i = which((p[a] + p[a + 3] + p[a + 6]) / 3, (p[a + 1] + p[a + 4] + p[a + 7]) / 3, (p[a + 2] + p[a + 5] + p[a + 8]) / 3);
       lists[i + 1].push(t * 3, t * 3 + 1, t * 3 + 2);
     }
-    keep[o.name] = share(o.geometry, FALL.includes(o.name) ? lists[0] : []);
+    keep[o.name] = share(o.geometry, SNAP.includes(o.name) ? [] : lists[0]);
     if (FALL.includes(o.name)) masts.forEach((m, i) => { if (lists[i + 1].length) fall[i][o.name] = share(o.geometry, lists[i + 1]); });
   }
   // (stern first, the way the blasts walk)
@@ -125,8 +110,8 @@ function cutMasts(R, model) {
 // One raider ship: copies of its class's middle and far models (sharing their shapes), swapped by how big it looks.
 // Her parts that a wreck changes (wrecks.js) are her own: her crystals' glows and embers, her sails and her pennants,
 // her middle and far models' meshes by name, and her far model's rigging (hidden when her masts fall). So are her
-// looks (her scars, src/ship/dress.js): one set for both models, read by her own copies of the materials that show
-// them (which share their shaders with every other ship's), and by her own glows and embers
+// looks (her scars and her life, src/ship/dress.js): one set for both models, read by her own copies of the materials
+// that show them (which share their shaders with every other ship's), and by her own glows and embers
 function raiderShip(T) {
   const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
   const mid = T.mid.body.clone(), far = T.far.body.clone(); far.visible = false; body.add(mid, far);
@@ -136,13 +121,13 @@ function raiderShip(T) {
   body.traverse((o) => {
     if (o.name === 'rudder') rudders.push(o); else if (o.name === 'glow') glows.push(o); else if (o.name === 'embers') embers.push(o);
     else if (o.name === 'canvas') canvas.push(o); else if (o.name === 'flag') flags.push(o);
-    if (o.name === 'glow' || o.name === 'embers') { o.material = o.material.clone(); o.material.uniforms.uCrys = U.uCrys; o.material.uniforms.uSpark = U.uSpark; }
+    if (o.name === 'glow' || o.name === 'embers') { o.material = o.material.clone(); for (const k in o.material.uniforms) if (U[k]) o.material.uniforms[k] = U[k]; }
   });
   for (const o of mid.children) if (o.isMesh) meshes[o.name] = o;
   for (const o of far.children) if (o.isMesh) { farMeshes[o.name] = o; if (CUT.includes(o.name) && o.name !== 'wood' && o.name !== 'brass') farRig.push(o); }
   const move = shipMotion(T.R, body, rudders);
   return {
-    root, body, recipe: T.R, hull: T.mid.hull, length: T.R.length, level: 'middle', masts: T.masts ?? null, U, wings: T.mid.wings,
+    root, body, recipe: T.R, hull: T.mid.hull, length: T.R.length, level: 'middle', masts: T.masts ?? null, U, wings: T.mid.wings, livery: T.look,
     parts: { glows, embers, canvas, flags, meshes, farMeshes, farRig },
     update(dt, opts) {
       const t = move(dt, opts);
@@ -248,29 +233,32 @@ function onePieceMaterial() {
 // class's masts are cut out of its model as it's built, so they can fall when she's blown apart (a phone skips that)
 export function makeRaiders(scene, art, bolts, skies, fx) {
   const falling = !fx.touch;
-  const arts = { crew: raiderArt(art, false), captain: raiderArt(art, true) }, T = {};
-  // one middle and one far model per class (and per colours: the captains' are built when first needed)
-  function template(id, captain) {
-    const key = id + (captain ? ':captain' : '');
+  const arts = { crew: liveryArt(art, 'crew'), captain: liveryArt(art, 'captain'), treasure: liveryArt(art, 'treasure') }, T = {};
+  // one middle and one far model per class (and per colours: a captain's and a treasure ship's are built when first
+  // needed, as the card before her wave shows)
+  function template(id, look = 'crew') {
+    const key = id + (look === 'crew' ? '' : ':' + look);
     if (!T[key]) {
-      const R = FLEET.find((s) => s.id === id), mid = buildShip(R, 'middle', arts[captain ? 'captain' : 'crew']), far = buildShip(R, 'far', arts[captain ? 'captain' : 'crew']);
-      recolourPennants(mid, captain); recolourPennants(far, captain);
+      const R = FLEET.find((s) => s.id === id), o = liveryOpts(look);
+      const mid = wearLivery(buildShip(R, 'middle', arts[look], o), look), far = wearLivery(buildShip(R, 'far', arts[look], o), look);
       // (her far model's masts are cut out too, only to be left out of it as her middle model's fall)
-      T[key] = { R, mid, far, zones: hitZones(mid), masts: falling ? { ...cutMasts(R, mid), farKeep: cutMasts(R, far).keep } : null };
+      T[key] = { R, mid, far, look, zones: hitZones(mid), masts: falling ? { ...cutMasts(R, mid), farKeep: cutMasts(R, far).keep } : null };
     }
     return T[key];
   }
-  for (const R of FLEET) template(R.id, false);
+  for (const R of FLEET) template(R.id);
   const list = [], escaped = [];
   let ai = true, foeNow = null; // (the ship they're fighting this frame, for working out each gun's aim)
   let detailAt = 0.06; // how big on screen (her length over the view's height) a raider is drawn with her middle model (Settings: picture)
 
-  function spawn(id, pos, heading, frozen = false, captain = false) {
-    const S = skies(), Tm = template(id, captain), edge = (k) => (captain ? 1 + (CAPTAIN[k] - 1) * S.captain : 1), tough = S.toughness * edge('toughness');
+  // a raider of class `id`: a captain's ship, or a treasure ship (the Galleon always is; any class can be)
+  function spawn(id, pos, heading, frozen = false, captain = false, treasure = ROLE[id] === 'prize') {
+    const look = captain ? 'captain' : treasure ? 'treasure' : 'crew';
+    const S = skies(), Tm = template(id, look), edge = (k) => (captain ? 1 + (CAPTAIN[k] - 1) * S.captain : 1), tough = S.toughness * edge('toughness');
     const ship = raiderShip(Tm), st = STATS[id];
     const stats = { ...st, hull: Math.round(st.hull * tough), sails: Math.round(st.sails * tough), crystals: Math.round(st.crystals * tough) };
     const f = makeFlyer(ship, stats, { pos, heading }, { speed: S.pace });
-    const role = ROLE[id];
+    const role = treasure && !captain ? 'prize' : ROLE[id];
     f.sail = 0.85; f.speed = f.H.vmax * 0.6;
     // where the Captain's guns aim at her: her hull's middle, or a treasure ship's fore sails (shoot them to catch her)
     f.aimY = Tm.zones.aim.y;
@@ -284,7 +272,7 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
     scene.add(ship.root);
     const gun = makeGunnery(ship, { reload: RAIDER.slow * S.reload * (HEAVY[id] ?? 1) * edge('reload'), damage: S.damage * edge('damage') }, f);
     const r = { id, R: Tm.R, name: `Raider ${captain ? 'captain\'s ' + Tm.R.cls : Tm.R.cls}`, captain, ship, f, gun, zones: Tm.zones, role, frozen,
-      bounty: BOUNTY[id] * (captain ? CAPTAIN.bounty : 1), aim: RAIDER.aim * S.aim, looks: LOOKS[captain ? 'captain' : 'crew'],
+      bounty: BOUNTY[id] * (captain ? CAPTAIN.bounty : 1), aim: RAIDER.aim * S.aim, looks: LOOKS[look], livery: look, weak: id === 'manowar',
       mode: 'attack', timer: 0, side: 1, alt: (Math.random() - 0.5) * (role === 'chaser' ? 50 : 20), counted: false, gone: false,
       course: heading, fleeing: false, weave: Math.random() * 6,
       // a broadside being readied: which battery (null when none), seconds left of how many, the volley's aiming error,
@@ -294,19 +282,20 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
     // works it out again as its turn comes, so the last guns still lead her)
     r.lead = (from, K, out) => intercept(from, f.velocity, foeNow.aimAt(), foeNow.velocity, K.speed, out);
     gun.from = r; // (each of her bolts remembers her, so a hit on the Captain can tell who fired it)
+    f.gun = gun; // (her guns' state shows on her model: looks.js)
     ship.update(0, {}); ship.root.updateMatrixWorld(true);
     list.push(r);
     return r;
   }
 
   // a wave of raiders, 1.5 to 1.9 km ahead of the Captain, more or less, coming in, its captain (if any) leading; a
-  // treasure ship is closer, about 1.2 km, sailing across the Captain's path
+  // treasure ship (its Galleons, or those its `treasure` names) is closer, about 1.2 km, sailing across the Captain's path
   function spawnWave(wave, foe) {
     const base = foe.heading + (Math.random() - 0.5) * 1.4, ids = wave.ids;
     ids.forEach((id, i) => {
-      const prize = ROLE[id] === 'prize', a = base + (i - (ids.length - 1) / 2) * 0.24, d = prize ? 1100 + Math.random() * 250 : 1500 + Math.random() * 400;
+      const prize = i !== wave.captain && (ROLE[id] === 'prize' || !!wave.treasure?.includes(i)), a = base + (i - (ids.length - 1) / 2) * 0.24, d = prize ? 1100 + Math.random() * 250 : 1500 + Math.random() * 400;
       const pos = new THREE.Vector3(foe.pos.x + Math.sin(a) * d, clamp(foe.pos.y + (Math.random() - 0.5) * 160, 200, 2000), foe.pos.z + Math.cos(a) * d);
-      spawn(id, pos, prize ? a + (Math.random() < 0.5 ? 1 : -1) * Math.PI / 2 : a + Math.PI, false, i === wave.captain);
+      spawn(id, pos, prize ? a + (Math.random() < 0.5 ? 1 : -1) * Math.PI / 2 : a + Math.PI, false, i === wave.captain, prize);
     });
     return base;
   }
@@ -433,7 +422,7 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
     let best = null;
     for (const r of list) {
       if (r.f.down) continue;
-      const h = firstHit(r.zones, r.ship.body, a, b);
+      const h = firstHit(r.zones, r.ship.body, a, b, r.ship.U.uFold.value.x);
       if (h && (!best || h.t < best.h.t)) best = { r, h };
     }
     return best;
@@ -444,17 +433,19 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
   function drop(r) { scene.remove(r.ship.root); r.tag?.remove(); }
   function clear() { for (const r of list) { r.gone = r.cleared = true; drop(r); } list.length = 0; }
   // build a class's models ahead of time (a captain's, before her wave), so nothing is built mid-fight
-  const prepare = (id, captain = false) => { template(id, captain); };
+  const prepare = (id, captain = false, treasure = false) => { template(id, captain ? 'captain' : treasure ? 'treasure' : 'crew'); };
+  // (a wave's: its captain's ship, and its treasure ships, `treasure` if it names them, or its Galleons)
+  const prepareWave = (wave) => wave.ids.forEach((id, i) => { if (i === wave.captain) prepare(id, true); else if (wave.treasure?.includes(i) || ROLE[id] === 'prize') prepare(id, false, true); });
   // a raider's ship and nothing more, for the title screen to fly across its sky far off: not one of the raiders, never
   // fighting. Her far model in one piece (made the first time it's wanted, and shared by every one of her class there)
   const pieces = {};
   function model(id) {
-    const Tm = template(id, false), root = new THREE.Group(), body = new THREE.Mesh(pieces[id] ??= onePiece(Tm.far.body), onePieceMaterial());
+    const Tm = template(id), root = new THREE.Group(), body = new THREE.Mesh(pieces[id] ??= onePiece(Tm.far.body), onePieceMaterial());
     body.name = 'raider far, in one piece'; root.add(body);
     const move = shipMotion(Tm.R, body, []);
     return { root, body, recipe: Tm.R, length: Tm.R.length, level: 'far', update: (dt, opts) => { move(dt, opts); } };
   }
   // (for the check: how many paintings the title's raiders were coloured from, and how many still hold their pixels)
   const read = () => ({ read: paintings.size, held: [...paintings.values()].filter((p) => p.d).length });
-  return { list, escaped, spawn, spawnWave, update, hitBy, clear, prepare, model, paintings: read, templates: T, setAI: (on) => { ai = on; }, setDetail: (k) => { detailAt = k; }, get detailAt() { return detailAt; } };
+  return { list, escaped, spawn, spawnWave, update, hitBy, clear, prepare, prepareWave, model, paintings: read, templates: T, setAI: (on) => { ai = on; }, setDetail: (k) => { detailAt = k; }, get detailAt() { return detailAt; } };
 }
