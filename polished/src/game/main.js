@@ -13,6 +13,8 @@
 // Captain's is patched up between waves and clean again in port; and every ship is alive: her wings fold and spread
 // with her sails, her lids fly open and her guns run out for a fight and kick back as they fire (looks.js), and a
 // glowing wake of Aether streams behind her (wakes.js).
+// The sky at sea is the sky director's (sky.js): each region's air, storms rolling in for some waves (the card before
+// one says so), clouds to fly through and hide in, and the raiders losing the Captain there.
 // The title screen is drawn in the world itself, at sunset (title.js); the port in its own quiet void (port.js). Going
 // from one to another (or out to sea) dips through the night for a moment, so no scene ever shows in the wrong place.
 // The sound (sound.js, through audio.js) answers the same news, and plays Chris's music; it starts with the first touch
@@ -26,6 +28,7 @@ import { loadShipArt } from '../ship/materials.js';
 import { buildShip } from '../ship/build.js';
 import { SHIPS, FLEET } from '../ships/index.js';
 import { makeWorld, regionAt, REGIONS, SUN, HAZE, MAP, THINNING, DAY } from './world.js';
+import { makeSky } from './sky.js';
 import { makeInput } from './input.js';
 import { makeFlyer, WIND, windHelp } from './flight.js';
 import { makeBolts, makeGunnery, batteryFor, BATTERY_NAMES, intercept } from './guns.js';
@@ -97,11 +100,12 @@ async function main() {
   const progress = makeProgress(), skies = () => SKIES[progress.data.skies];
   // the sound: made at the first touch, set by the Settings card (kept on this device), answering the game's news
   const audio = makeAudio({ touch, settings: () => settings.data });
-  const sound = makeSound({ audio, touch, where: () => player?.pos });
+  const sound = makeSound({ audio, touch, where: () => player?.pos, weather: () => sky?.weather });
   const fx = makeFx({ scene, camera, touch }), bolts = makeBolts(scene, fx), pickups = makePickups(scene);
   const wrecks = makeWrecks({ fx, tear: world.tear, scene }), surge = makeSurge({ scene, fx });
   const raiders = makeRaiders(scene, art, bolts, skies, fx);
   const looks = makeLooks({ scene, touch, fx }); // (every ship's scars, her life and her flames: looks.js)
+  const sky = makeSky({ world, lights, scene, renderer, touch, fx }); // (the sky at sea and its weather: sky.js)
   const wakes = makeWakes(scene, { touch }); // (every ship's wake of Aether, in one draw)
   // the Settings card's changes, at once: the sound; the picture; the camera shake; Fire on the left (a phone)
   function applyPicture() {
@@ -110,6 +114,7 @@ async function main() {
     if (sun.shadow.mapSize.x !== P.shadow) { sun.shadow.mapSize.set(P.shadow, P.shadow); sun.shadow.map?.dispose(); sun.shadow.map = null; }
     port.setShadow(P.shadow);
     world.puffs.count(P.puffs); raiders.setDetail(P.detail); fx.setQuality(P.fx[touch ? 0 : 1]);
+    world.quality(P.sky); sky.quality(P.sky); // (the sun's rays, the sea's glitter, the horizon's clouds; rain and scud)
   }
   function applyHands() {
     const left = touch && settings.data.leftFire;
@@ -154,6 +159,7 @@ async function main() {
   const veil = $('veil');
   let dip = null;
   function enter(m) {
+    if (m !== 'voyage') sky.rest(); // (no weather left in the world's sky for the title)
     if (m !== 'title') title.leave();
     if (m !== mode) { dip?.cancel(); dip = veil.animate([{ opacity: 1 }, { opacity: 0 }], { duration: lessMotion.matches ? 150 : 520, easing: 'ease-out' }); }
     mode = m; document.body.dataset.mode = m;
@@ -167,8 +173,8 @@ async function main() {
   function resetVoyage() {
     Object.assign(W, { n: 0, state: 'calm', timer: 5, lost: 0, choose: 0, sunk: false, next: null });
     Object.assign(V, { shards: 0, downed: 0, hits: 0 });
-    raiders.clear(); bolts.clear(); pickups.clear(); fx.clear(); wrecks.clear(); world.clear(); surge.clear(); looks.clear(); wakes.clear(); hideBounties(); calmUp(false); bigMap(false);
-    document.body.classList.remove('sinking');
+    raiders.clear(); bolts.clear(); pickups.clear(); fx.clear(); wrecks.clear(); world.clear(); surge.clear(); looks.clear(); wakes.clear(); sky.reset(); hideBounties(); calmUp(false); bigMap(false);
+    document.body.classList.remove('sinking'); hidNote = -99; gaveAway = -99;
     hurt = 0; Object.assign(cam, { yaw: 0, pitch: 0.2, zoom: 1 }); Object.assign(shardCount, { shown: 0, from: 0, to: 0, t: 1, n: -1 }); surgeFov.x = surgeFov.v = 0;
   }
   // set sail: a fresh voyage in this ship, built as it stands in port (`force` sails a ship not owned, for tests)
@@ -225,13 +231,20 @@ async function main() {
     if (got) note(`◆ ${got.toLocaleString('en')} banked from the voyage`);
     return got;
   }
-  function newWind() { WIND.dir = Math.random() * Math.PI * 2; WIND.strength = 0.06 + Math.random() * 0.08; }
+  function newWind() { WIND.dir = Math.random() * Math.PI * 2; WIND.strength = WIND.base = 0.06 + Math.random() * 0.08; }
   // the wind, against the way the ship is heading: where it comes from (WIND.dir is the way it blows)
   const windWords = () => {
     const from = Math.abs(THREE.MathUtils.radToDeg(wrap(WIND.dir + Math.PI - player.heading)));
     return from > 125 ? 'the wind behind you' : from < 55 ? 'a head wind' : `a wind from your ${wrap(WIND.dir + Math.PI - player.heading) < 0 ? 'right' : 'left'}`;
   };
   function note(text) { const n = $('port-note'); n.textContent = text; n.classList.remove('on'); void n.offsetWidth; n.classList.add('on'); }
+  // hiding in cloud: told once in a while as she slips into it (not every time she does), and when her guns give her away
+  let hidNote = -99, gaveAway = -99;
+  events.on('hidden', (e) => {
+    if (mode !== 'voyage' || W.state !== 'fight') return; // (only worth saying with raiders about)
+    if (e.on && time - hidNote > 25) { hidNote = time; toast('Hidden in the cloud: far-off raiders lose you'); }
+    else if (!e.on && e.why === 'guns' && time - gaveAway > 12) { gaveAway = time; toast('Your guns gave you away'); }
+  });
   // newer progress came from the store: say so when this device had its own (a new browser just shows it)
   progress.onLoad((d, had, kept) => { if (had) note(kept ? 'Your other device\'s progress is here, plus the shards you won here' : 'Your progress from your other device is here'); });
 
@@ -275,7 +288,7 @@ async function main() {
     locked = null;
     let bestA = Infinity;
     for (const r of raiders.list) {
-      if (r.f.down) continue;
+      if (r.f.down || r.lost) continue; // (one hidden in cloud far off can't be locked on to)
       const v = toR.copy(r.f.pos).sub(camera.position), along = v.dot(cam.look);
       if (along <= 0) continue;
       const ang = v.angleTo(cam.look), tol = Math.max(0.05, Math.atan((r.R.length * 0.8) / along));
@@ -377,8 +390,12 @@ async function main() {
     if (W.state !== 'fight') { player.repair(dt * 0.12); looks.repair(player.ship, dt); } // between fights the crew patch her up (and her scars)
     if (W.state === 'calm') {
       if ((W.timer -= dt) <= 0) {
-        const wave = W.next ?? waveAt(W.n, skies().extra), a = raiders.spawnWave(wave, player);
+        const wave = W.next ?? waveAt(W.n, skies().extra, skies().storms), a = raiders.spawnWave(wave, player);
         W.next = null;
+        // a storm wave: the storm rolls in (its wind blowing from it); a storm wave, and every third, comes out of a
+        // bank of cloud on the raiders' way in, 500 to 800 m ahead of them
+        if (wave.storm) sky.startStorm(); else sky.clearWeather();
+        if (wave.bank) bankFor(raiders.list, player.pos);
         const title = wave.ids.includes('galleon') ? `Wave ${W.n + 1}: a treasure ship` : wave.captain >= 0 ? `Wave ${W.n + 1}: a raider captain` : wave.ids.includes('manowar') ? `Wave ${W.n + 1}: a Man-o'-war` : `Raiders, wave ${W.n + 1}`;
         banner(title, `${describe(wave.ids)}, ${sideWords(a - player.heading)} · ${windWords()}${wave.ids.includes('galleon') ? ' · shoot her sails to catch her' : ''}`);
         W.state = 'fight';
@@ -399,12 +416,20 @@ async function main() {
         const E = payload('wave:cleared'); E.n = W.n; E.bonus = bonus; emit('wave:cleared');
         W.state = 'choose'; W.choose = 25;
         $('calm-title').textContent = `Wave ${W.n} beaten`;
-        const next = waveAt(W.n, skies().extra);
+        const next = waveAt(W.n, skies().extra, skies().storms);
         W.next = next;
+        // the weather: a storm wave next shows its storm on the horizon now (ahead of her, more or less), and says so on
+        // the card; otherwise this wave's storm (if it had one) clears. The bank of cloud the wave came out of goes
+        world.puffs.bank(null);
+        let storm = '';
+        if (next.storm) {
+          if (!sky.weather.want) sky.front(player.heading + (Math.random() - 0.5) * 1.8);
+          storm = sky.weather.want ? ' The storm isn\'t done yet.' : ` A storm is rolling in from the ${COMPASS[Math.round(compassDeg(sky.weather.from) / 45) % 8]}.`;
+        } else sky.clearWeather();
         // a captain's ship (and a treasure ship) is built now, while the card is up, not as the wave appears (a stutter
         // on a phone)
         raiders.prepareWave(next);
-        $('calm-line').innerHTML = `◆ <b id="calm-bonus">0</b> for the wave · ◆ ${fmt(V.shards)} aboard. Next: ${next.captain >= 0 ? 'a raider captain, with ' : ''}${describe(next.ids)}.`;
+        $('calm-line').innerHTML = `◆ <b id="calm-bonus">0</b> for the wave · ◆ ${fmt(V.shards)} aboard. Next: ${next.captain >= 0 ? 'a raider captain, with ' : ''}${describe(next.ids)}.${storm}`;
         // (shown at once, for the game; it rises into view after the slow motion, and its bonus counts up as it does)
         $('calm').classList.toggle('late', last); calmUp(true);
         W.bonus = bonus; W.bonusShown = -1; W.bonusAt = performance.now() / 1000 + (last ? 1.4 : 0.1);
@@ -419,6 +444,17 @@ async function main() {
     if (W.state !== 'choose') return;
     calmUp(false); W.state = 'calm'; W.timer = 4; newWind();
   }
+  // a bank of cloud across the raiders' way in, 500 to 800 m ahead of them (and never nearer her than 600 m)
+  const mid = new THREE.Vector3();
+  function bankFor(list, to) {
+    mid.set(0, 0, 0); let n = 0;
+    for (const r of list) if (!r.f.down && r.role !== 'prize') { mid.add(r.f.pos); n++; }
+    if (!n) return;
+    mid.divideScalar(n);
+    const d = mid.distanceTo(to);
+    if (d > 1300) world.puffs.bank(mid, to, Math.min(500 + Math.random() * 300, d - 600));
+  }
+  const COMPASS = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'];
   // the card between waves up or down (while it's up there's nothing to fire at: the guns' label makes way for it, and
   // a laptop's keys fold away; the panels the edge tags keep clear of are measured again, with the label or without)
   function calmUp(on) {
@@ -598,12 +634,13 @@ async function main() {
       let el = r.tag;
       if (!el) {
         el = r.tag = document.createElement('div'); el.className = r.captain ? 'tag captain' : r.role === 'prize' ? 'tag captain prize' : 'tag';
-        el.innerHTML = `<span class="arrow"></span><b>${r.captain ? 'Captain · ' : r.role === 'prize' ? 'Treasure · ' : ''}${r.R.cls}</b> <span class="d"></span>${PARTS.map((k) => `<span class="meter ${k}"><b></b><i></i></span>`).join('')}<span class="bs">Broadside!</span>`;
+        el.innerHTML = `<span class="arrow"></span><b>${r.captain ? 'Captain · ' : r.role === 'prize' ? 'Treasure · ' : ''}${r.R.cls}</b> <span class="d"></span>${PARTS.map((k) => `<span class="meter ${k}"><b></b><i></i></span>`).join('')}<span class="bs">Broadside!</span><span class="lost">Lost in the cloud</span>`;
         el._d = el.querySelector('.d'); el._m = [...el.querySelectorAll('.meter i')].map(chip); el._arrow = el.querySelector('.arrow'); el._fresh = true;
         H.tags.append(el); // (raiders.js takes it away with its raider)
       }
       if (r.f.down) { el.remove(); continue; }
-      proj.copy(r.f.pos); proj.y += r.R.length * 0.45 + 3; proj.project(camera);
+      // (one hidden in cloud far off: her tag stays where she was last seen, saying so)
+      proj.copy(r.lost ? r.seenAt : r.f.pos); proj.y += r.R.length * 0.45 + 3; proj.project(camera);
       // in pixels from the middle of the screen; off screen (or behind), pinned to the edge in its direction
       const behind = proj.z > 1;
       let x = proj.x * W2 * (behind ? -1 : 1), y = -proj.y * H2 * (behind ? -1 : 1);
@@ -625,6 +662,7 @@ async function main() {
       if (el._edge !== edge) { el._edge = edge; el.classList.toggle('edge', edge); }
       if (el._warn !== warn) { el._warn = warn; el.classList.toggle('warn', warn); if (warn && !TAG.warned && el.offsetHeight) { TAG.warned = true; TAG.warn = el.offsetHeight + 1; } }
       if (el._locked !== (r === locked)) { el._locked = r === locked; el.classList.toggle('locked', el._locked); }
+      if (el._lost !== r.lost) { el._lost = r.lost; el.classList.toggle('lost', r.lost); }
       el._x = W2 + x; el._y = H2 + y; placed.push(el);
       const turn = Math.round(Math.atan2(x, -y) * 50) / 50;
       if (edge && el._turn !== turn) { el._turn = turn; el._arrow.style.transform = `rotate(${turn}rad)`; }
@@ -777,12 +815,15 @@ async function main() {
     const warn = player.down ? '' : player.frac('crystals') < 0.5 ? 'The crystals are cracked: she\'s sinking'
       : player.pos.y > THINNING - 350 ? 'Nearing the Thinning: the crystals can\'t lift you higher'
         : Math.abs(player.pos.x) > MAP.w / 2 + 1500 || Math.abs(player.pos.z) > MAP.h / 2 + 1500 ? 'Open sea: Aethermoor is behind you' : '';
-    w.hidden = !warn; if (warn) setText(w, warn);
+    // (and in its place, calmly, while she's hidden deep in cloud)
+    const note = !warn && player.hidden && W.state === 'fight' ? 'Hidden in the cloud' : '';
+    w.hidden = !warn && !note; if (warn || note) setText(w, warn || note);
+    if (w._note !== !!note) { w._note = !!note; w.classList.toggle('note', !!note); }
     // a new region's name, at a quiet moment: not in a fight, not over a banner (they share the sky under the compass),
     // and not over the card between waves where that sits at the top (a phone held sideways)
     const r = regionAt(player.pos.x, player.pos.z);
     if (r !== region && (regionTimer -= 0.1) <= 0 && W.state !== 'fight' && !(W.state === 'choose' && view.h <= 500) && !player.down && performance.now() > bannerAt.until) {
-      region = r; regionTimer = 2; const el = $('region'); el.textContent = r; flash(el);
+      region = r; regionTimer = 2; const el = $('region'); $('region-name').textContent = r; $('region-air').textContent = sky.line(r); flash(el);
       payload('region').name = r; emit('region'); // (a soft chord: sound.js)
     }
     // the corner map, with the ship as a gold arrow and the raiders as red dots. It's sized here, as it's drawn, so it's
@@ -794,7 +835,12 @@ async function main() {
       mctx.drawImage(mimg, 0, 0, W2, H2);
       const x = (player.pos.x / MAP.w + 0.5) * W2, y = (player.pos.z / MAP.h + 0.5) * H2, s = Math.max(5, W2 / 40);
       mctx.fillStyle = '#ff4636'; mctx.strokeStyle = '#3a1631'; mctx.lineWidth = Math.max(1, s / 5);
-      for (const q of raiders.list) if (!q.f.down) { mctx.beginPath(); mctx.arc((q.f.pos.x / MAP.w + 0.5) * W2, (q.f.pos.z / MAP.h + 0.5) * H2, s * 0.45, 0, Math.PI * 2); mctx.fill(); mctx.stroke(); }
+      for (const q of raiders.list) {
+        if (q.f.down) continue;
+        const at = q.lost ? q.seenAt : q.f.pos; // (one lost in cloud: a ring where she was last seen)
+        mctx.beginPath(); mctx.arc((at.x / MAP.w + 0.5) * W2, (at.z / MAP.h + 0.5) * H2, s * 0.45, 0, Math.PI * 2);
+        if (q.lost) { mctx.strokeStyle = '#ff4636'; mctx.stroke(); mctx.strokeStyle = '#3a1631'; } else { mctx.fill(); mctx.stroke(); }
+      }
       mctx.save(); mctx.translate(x, y); mctx.rotate(-player.heading + Math.PI);
       mctx.fillStyle = '#e2bd67'; mctx.lineWidth = Math.max(1.5, s / 4);
       mctx.beginPath(); mctx.moveTo(0, -s * 1.3); mctx.lineTo(s * 0.8, s); mctx.lineTo(0, s * 0.45); mctx.lineTo(-s * 0.8, s); mctx.closePath(); mctx.fill(); mctx.stroke();
@@ -844,7 +890,7 @@ async function main() {
       const b = SIDES[i];
       if (loaded[b] > 0 && gunnery.ready[b] === 0 && gunnery.B[b][0]?.kind === 'broadside' && !player.down) { READY.battery = b; READY.firing = !!inp.fire; emit('guns:ready'); }
     }
-    if (inp.fire && !player.down) gunnery.fire(battery, aimPoint, bolts, 'player', player.velocity);
+    if (inp.fire && !player.down && gunnery.fire(battery, aimPoint, bolts, 'player', player.velocity) > 0) sky.reveal(); // (her guns give her away)
     loaded.port = gunnery.ready.port; loaded.starboard = gunnery.ready.starboard;
     bolts.update(dt, hitTest);
     // (her scars and every raider's, and their flames, as they stand after this step's hits; and their life: her lids
@@ -873,6 +919,7 @@ async function main() {
     if (Math.abs(camera.fov - fov) > 0.01) { camera.fov = fov; camera.updateProjectionMatrix(); }
     world.time.value = time;
     world.puffs.follow(player.pos);
+    sky.update(dt, { player, camera, raiders: raiders.list }); // (the region's air, the storm, the clouds round her)
     sun.target.position.copy(player.pos); sun.position.copy(player.pos).addScaledVector(SUN, SUN_OFF);
     WTIME.value = time; // (the sails' ripple, the pennants, the crystals' pulse, the embers and the flames)
     player.ship.glow.material.uniforms.uScale.value = camera.userData.pixelScale;
@@ -896,7 +943,7 @@ async function main() {
   window.__game = {
     ready: true, get player() { return player; }, get gunnery() { return gunnery; }, cam, input, raiders, bolts, pickups, renderer, camera, scene, world, sun, waves: W, voyage: V,
     fx, events, wrecks, surge, looks, wakes, get lastArc() { return lastArc; }, get time() { return time; }, audio, sound, settings,
-    progress, port, title, sail, endVoyage, pause, sailOn, wind: WIND, get mode() { return mode; }, get paused() { return paused; },
+    progress, port, title, sail, endVoyage, pause, sailOn, wind: WIND, sky, waveAt, SKIES, get mode() { return mode; }, get paused() { return paused; },
     fly: (id) => sail(id, true), // a voyage in any ship, owned or not (for tests)
     words: { side: sideWords, wind: () => windWords() }, layout, edge: EDGE, // (directions in words, and the panels the edge tags keep clear of)
     get mapNames() { return NAMES_AT.at; }, // (the big map's names as placed, in its own pixels)

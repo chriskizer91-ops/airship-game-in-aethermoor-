@@ -18,6 +18,9 @@
 // Before a raider's broadside goes off, her gun ports glow red for half a second (a little longer on the two big ships),
 // brightening to gold, and the lids on that side fly open and her guns run out (looks.js): time to climb, dive or turn
 // away. Then her side ripples off, bow to stern (guns.js).
+// Clouds (sky.js): a raider can't see the Captain hidden deep in cloud unless she's near (the skies' `sight`): she holds
+// her fire and comes looking where she last saw her, circling there. With the Captain inside a cloud, seen or not, the
+// raiders aim 2.6 times as wide.
 import * as THREE from 'three';
 import { buildShip, shipMotion } from '../ship/build.js';
 import { makeLook, dress } from '../ship/dress.js';
@@ -50,9 +53,11 @@ export const WAVES = [['skiff'], ['skiff', 'skiff'], ['cutter'], ['cutter', 'ski
   ['galleon', 'frigate', 'cutter'], ['manowar', 'cutter', 'cutter'], ['frigate', 'frigate', 'brig'], ['galleon', 'galleon', 'frigate', 'cutter'],
   ['manowar', 'frigate', 'brig', 'cutter']];
 // wave n (from 0): which ships, the biggest first, and whether it's led by a captain (every fifth wave: the biggest
-// ship but a Man-o'-war, which needs no captain); Maelstrom skies add `extra` Skiffs or Cutters from the third wave on
+// ship but a Man-o'-war, which needs no captain); Maelstrom skies add `extra` Skiffs or Cutters from the third wave on.
+// `storms` (the skies', progress.js) says whether it brings a storm; a storm wave, and every third, comes out of a bank
+// of cloud (main.js)
 const SIZE = { skiff: 0, cutter: 1, brig: 2, frigate: 3, galleon: 4, manowar: 5 };
-export function waveAt(n, extra = 0) {
+export function waveAt(n, extra = 0, storms = null) {
   const pool = ['skiff', 'skiff', 'cutter', 'cutter', 'cutter', 'brig', 'brig', 'frigate', 'frigate', 'galleon', 'manowar'];
   let ids = [...(WAVES[n] ?? [])];
   if (!ids.length) {
@@ -61,7 +66,8 @@ export function waveAt(n, extra = 0) {
   }
   if (n >= 2) for (let i = 0; i < extra && ids.length < 6; i++) ids.push(n % 2 ? 'cutter' : 'skiff');
   ids.sort((a, b) => SIZE[b] - SIZE[a]);
-  return { ids, captain: (n + 1) % 5 === 0 ? ids.findIndex((id) => id !== 'manowar') : -1 };
+  const storm = !!storms && (storms.waves.includes(n + 1) || (n >= WAVES.length && Math.random() < storms.after));
+  return { ids, captain: (n + 1) % 5 === 0 ? ids.findIndex((id) => id !== 'manowar') : -1, storm, bank: storm || (n + 1) % 3 === 0 };
 }
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -275,6 +281,9 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
       bounty: BOUNTY[id] * (captain ? CAPTAIN.bounty : 1), aim: RAIDER.aim * S.aim, looks: LOOKS[look], livery: look, weak: id === 'manowar',
       mode: 'attack', timer: 0, side: 1, alt: (Math.random() - 0.5) * (role === 'chaser' ? 50 : 20), counted: false, gone: false,
       course: heading, fleeing: false, weave: Math.random() * 6,
+      // whether she can see the Captain (not hidden in cloud far from her), where she last saw her (null: never yet),
+      // and whether she's hidden in cloud herself, lost to the Captain's sight (sky.js)
+      sees: true, seen: null, hidden: false, lost: false, seenAt: pos.clone(),
       // a broadside being readied: which battery (null when none), seconds left of how many, the volley's aiming error,
       // and when next to ask if the foe is still in reach
       charge: { b: null, t: 0, T: 0, off: new THREE.Vector3(), ask: 0 } };
@@ -295,16 +304,25 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
     ids.forEach((id, i) => {
       const prize = i !== wave.captain && (ROLE[id] === 'prize' || !!wave.treasure?.includes(i)), a = base + (i - (ids.length - 1) / 2) * 0.24, d = prize ? 1100 + Math.random() * 250 : 1500 + Math.random() * 400;
       const pos = new THREE.Vector3(foe.pos.x + Math.sin(a) * d, clamp(foe.pos.y + (Math.random() - 0.5) * 160, 200, 2000), foe.pos.z + Math.cos(a) * d);
-      spawn(id, pos, prize ? a + (Math.random() < 0.5 ? 1 : -1) * Math.PI / 2 : a + Math.PI, false, i === wave.captain, prize);
+      const r = spawn(id, pos, prize ? a + (Math.random() < 0.5 ? 1 : -1) * Math.PI / 2 : a + Math.PI, false, i === wave.captain, prize);
+      r.seen = foe.pos.clone(); // (they know where she was as they came)
     });
     return base;
   }
 
   // where to steer: chasers come at the foe bow-first and break away when close; broadside ships keep it abeam.
   // (The answer is one kept object, read straight away by flight.js)
-  const ahead = new THREE.Vector3(), wish = { turn: 0, climb: 0, sailTo: 1 };
+  const ahead = new THREE.Vector3(), wish = { turn: 0, climb: 0, sailTo: 1 }, look = new THREE.Vector3(), still = new THREE.Vector3();
   function steer(r, foe, dt) {
-    const me = r.f, L = r.R.length, P = foe.pos, dx = P.x - me.pos.x, dz = P.z - me.pos.z, d = Math.hypot(dx, dz, P.y - me.pos.y);
+    // (the Captain lost in cloud: she comes looking where she last saw her, circling 200 m round it, a little above; one
+    // that never saw her sails on as she was)
+    let P = foe.pos, V = foe.velocity;
+    if (!r.sees) {
+      r.weave += dt * 0.25; V = still;
+      if (r.seen) P = look.set(r.seen.x + Math.sin(r.weave) * 200, r.seen.y + 60, r.seen.z + Math.cos(r.weave) * 200);
+      else P = look.set(r.f.pos.x + Math.sin(r.f.heading) * 1000, r.f.pos.y, r.f.pos.z + Math.cos(r.f.heading) * 1000); // (never saw her: sails on)
+    }
+    const me = r.f, L = r.R.length, dx = P.x - me.pos.x, dz = P.z - me.pos.z, d = Math.hypot(dx, dz, P.y - me.pos.y);
     const bearing = Math.atan2(dx, dz), rel = wrap(bearing - me.heading);
     r.timer -= dt;
     let want, sailTo = 1;
@@ -319,7 +337,7 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
       if (r.timer <= 0) r.mode = 'attack';
     } else if (r.role === 'chaser' || d > 1500) {
       // an attack run: come at the foe, then peel away, side-on, when close or after 10-15 seconds of chasing
-      ahead.copy(P).addScaledVector(foe.velocity, Math.min(3, d / 250));
+      ahead.copy(P).addScaledVector(V, Math.min(3, d / 250));
       want = Math.atan2(ahead.x - me.pos.x, ahead.z - me.pos.z);
       sailTo = d < 300 ? 0.6 : 1;
       if (d < 900) r.run = (r.run ?? 0) + dt;
@@ -357,6 +375,7 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
   };
   function shoot(r, foe, dt) {
     const ch = r.charge;
+    if (!r.sees) { ch.b = null; return; } // (she can't see the Captain: she holds her fire, and stands down a broadside)
     if (ch.b) {
       // (whether the foe is still in reach is asked six times a second, and as she fires)
       const ask = (ch.ask -= dt) <= 0 || ch.t - dt <= 0;
@@ -371,7 +390,7 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
       if (b === ch.b || r.gun.ready[b] > 0 || !r.gun.count(b)) continue;
       const dist = canReach(r, b, foe);
       if (dist < 0) continue;
-      const e = dist * r.aim + 1.5;
+      const e = (dist * r.aim + 1.5) * (1 + 1.6 * foe.cloud); // (wider with the Captain inside a cloud)
       off.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(2 * e);
       if (r.gun.B[b][0].kind === 'broadside' && r.gun.count(b) >= 3) {
         if (!ch.b) { ch.b = b; ch.t = ch.T = r.R.length >= 50 ? WARN.big : WARN.time; ch.off.copy(off); ch.ask = 1 / 6; }
@@ -393,9 +412,12 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
   const downed = []; // (kept, and read straight away by main.js)
   function update(dt, foe, camera) {
     downed.length = 0; escaped.length = 0; foeNow = foe;
-    const toScreen = 1 / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
+    const toScreen = 1 / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)), sight = skies().sight ?? 250;
     for (const r of list) {
       const live = !r.f.down;
+      // she sees the Captain unless the Captain's hidden in cloud and more than `sight` off; where she last saw her
+      r.sees = !foe.hidden || r.f.pos.distanceTo(foe.pos) <= sight;
+      if (r.sees) (r.seen ??= new THREE.Vector3()).copy(foe.pos);
       if (r.frozen && live) r.ship.update(dt, CALM);
       else r.f.update(dt, live && ai && !foe.down ? steer(r, foe, dt) : drift);
       r.ship.root.updateMatrixWorld(true);

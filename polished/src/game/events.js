@@ -56,6 +56,15 @@
 //   player:down     { why }                      the Captain's ship going down ('hull' or 'crystals')
 //   player:low      { part }                     one of her parts dropping below 30%
 //   region          { name }                     the Captain's ship crossing into another region (its name shown)
+//   storm           { stage, from }              the weather (sky.js): a storm 'coming' (showing on the horizon, as
+//                                                the card before its wave is up), 'here' (rolling in as the wave comes)
+//                                                or 'passing' (clearing once it's beaten); from: the way it comes from,
+//                                                as a heading
+//   lightning       { at, far }                  lightning striking: where it struck the cloud floor, and how far from
+//                                                the Captain's ship (metres): its thunder comes after it (sound.js)
+//   gust            { strength }                 a gust of wind in a storm (its strength, a share of top speed)
+//   hidden          { on, why }                  the Captain's ship hidden deep in cloud (on), or seen again: 'guns'
+//                                                (her own guns gave her away) or 'out' (out of the cloud)
 //   port:buy        { ship }                     a ship bought
 //   port:upgrade    { ship, mod, step }          an upgrade bought (step: how many of it she has now)
 //   port:power      { ship, power }              the crystal power moved (-2 sails .. 2 guns)
@@ -91,6 +100,10 @@ export const PAYLOAD = {
   'player:down': { why: '' },
   'player:low': { part: '' },
   region: { name: '' },
+  storm: { stage: '', from: 0 },
+  lightning: { at: v(), far: 0 },
+  gust: { strength: 0 },
+  hidden: { on: false, why: '' },
   'port:buy': { ship: '' },
   'port:upgrade': { ship: '', mod: '', step: 0 },
   'port:power': { ship: '', power: 0 },

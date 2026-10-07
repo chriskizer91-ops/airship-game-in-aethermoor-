@@ -21,7 +21,11 @@
 //                      buying and upgrading in port, the skies, the menus
 //   the sky            wind rising with speed and height, gusts, the rigging whistling at full tilt or in a Surge, the
 //                      crystals humming higher as she climbs (wavering near the Thinning, sour when they're cracked),
-//                      timbers creaking (more in hard turns, or badly hurt), fire crackling when she burns
+//                      timbers creaking (more in hard turns, or badly hurt), fire crackling when she burns; the wind
+//                      muffled inside a cloud, and stronger in a storm, with rain hissing
+//   the weather        (sky.js) a storm far off rumbling as it shows on the horizon, Chris's Aether storm as it rolls
+//                      in, his thunderclap after each lightning strike (later and duller the further off it struck),
+//                      and his wind in each gust
 //   the music          (Chris's, music.js) Thareia on the title screen, Market Day in port, Sunstone Wind between
 //                      waves (Gloomfen Drift over the Gloomfen, Sunscorch Road over the Sunscorch Wastes), Break the
 //                      Grip for a wave of raiders, The Holder Wakes for a raider captain, a Man-o'-war or the ship going
@@ -213,18 +217,22 @@ export function makeSky(M) {
   // the rigging's whistle
   const r = src(0.97), rbp = filt('bandpass', 1800, 9), rg = gain(0);
   r.connect(rbp); rbp.connect(rg); rg.connect(M.amb);
+  // rain hissing in a storm (silent until then)
+  const rn = src(1.3), rhp = filt('highpass', 2600, 0.6), rlp = filt('lowpass', 9000, 0.5), rng = gain(0);
+  rn.connect(rhp); rhp.connect(rlp); rlp.connect(rng); rng.connect(M.amb);
   // the crystals' hum
   const h1 = osc('sine', 98), h2 = osc('sine', 98 * 1.0065), h3 = osc('triangle', 147), h3g = gain(0.25), hg = gain(0), trem = osc('sine', 6), tg = gain(0);
   h1.connect(hg); h2.connect(hg); h3.connect(h3g); h3g.connect(hg); hg.connect(M.amb); trem.connect(tg); tg.connect(hg.gain);
   const glide = (p, v, tau = 0.3) => p.setTargetAtTime(v, M.now(), tau);
   return {
     // v: speed (1 = 60 m/s), h: height (1 = the Thinning), climb (-1..1), surging, crystals (0..1), near the cloud
-    // deck (0..1), going down
-    set(v, h, climb, surging, crystals, cloud, down) {
+    // deck or in a cloud (0..1), going down, and how stormy (0..1)
+    set(v, h, climb, surging, crystals, cloud, down, storm = 0) {
       const k = down ? 0 : 1;
       glide(wbp.frequency, 260 + 900 * v + (surging ? 700 : 0) - 120 * cloud);
       glide(wlp.frequency, 900 + 3000 * v - 500 * cloud);
-      glide(wg.gain, k * (0.035 + 0.16 * v * v + 0.045 * h + 0.08 * cloud));
+      glide(wg.gain, k * (0.035 + 0.16 * v * v + 0.045 * h + 0.08 * cloud + 0.07 * storm));
+      glide(rng.gain, 0.05 * storm * storm, 0.8);
       glide(g1g.gain, 0.01 + 0.025 * v); glide(g2g.gain, 0.006 + 0.015 * v);
       glide(rbp.frequency, 1300 + 1400 * Math.min(1.2, v));
       glide(rg.gain, k * (Math.max(0, v - 0.55) * 0.18 + (surging ? 0.09 : 0)), 0.2);
@@ -235,14 +243,15 @@ export function makeSky(M) {
     },
     stop() {
       const t = M.now();
-      for (const g of [wg, rg, hg]) { g.gain.cancelScheduledValues(t); g.gain.setTargetAtTime(0, t, 0.1); }
+      for (const g of [wg, rg, hg, rng]) { g.gain.cancelScheduledValues(t); g.gain.setTargetAtTime(0, t, 0.1); }
       setTimeout(() => { for (const n of nodes) { try { n.stop?.(); n.disconnect(); } catch { /* gone */ } } }, 600);
     },
   };
 }
 
-// The game's sound: `audio` (audio.js), and where the Captain's ship is (for the region's music)
-export function makeSound({ audio, touch = false, where = () => null }) {
+// The game's sound: `audio` (audio.js), where the Captain's ship is (for the region's music), and the weather now
+// (sky.js: how stormy, how deep in mist)
+export function makeSound({ audio, touch = false, where = () => null, weather = () => null }) {
   const stats = audio.stats;
   let cues = null, sky = null, mode = 'title';
   // the answers, once the sound is on and its recordings made
@@ -279,6 +288,22 @@ export function makeSound({ audio, touch = false, where = () => null }) {
   // crossing into another region (its name shown): a soft chord with a far bell
   cue('region', () => { if (!audio.mixer) return; M().here(0, 0.4); audio.effect('new-area', CHRIS['new-area'] * 0.6, 'fx'); });
   cue('surge', () => { if (!audio.mixer) return; M().here(0, 0.4); audio.effect('sails', CHRIS.sails, 'fx'); M().here(0, 0.2); audio.effect('haste', CHRIS.haste, 'fx'); });
+  // the weather: a storm showing far off rumbles low, Chris's Aether storm as it rolls in; his thunderclap after each
+  // lightning strike, heard from where it struck (a moment later and duller the further off: sound is slower than
+  // light, though not as slow as true thunder, which would come 5 to 15 s late); his wind in each gust
+  cue('storm', (e) => {
+    if (!audio.mixer || e.stage === 'passing') return;
+    const m = M(); m.here(0, 0.5);
+    if (e.stage === 'coming') { m.P.lp = 700; audio.effect('thunder', CHRIS.thunder * 0.45, 'fx', 0.6); }
+    else audio.effect('aether-storm', CHRIS['aether-storm'], 'fx', 0.2);
+  });
+  cue('lightning', (e) => {
+    if (!audio.mixer) return;
+    const m = M(), P = m.at(e.at, 0.5);
+    m.here(P.pan, 0.5); m.P.lp = Math.max(900, 9000 - e.far * 1.5);
+    audio.effect('thunder', CHRIS.thunder * clamp(1.25 - e.far / 5000, 0.4, 1), 'fx', 0.3 + e.far / 1500, 0.4);
+  });
+  cue('gust', () => { if (!audio.mixer) return; M().here(rnd(-0.5, 0.5), 0.3); audio.effect('wind', CHRIS.wind * 0.7, 'fx'); });
   // one of her parts badly hurt: the alarm bell for the hull, her lift failing for the crystals, the rigging for the sails
   cue('player:low', (e) => { if (!audio.mixer) return; const id = LOW[e.part]; M().here(0, 0.2); audio.effect(id, CHRIS[id], 'fx'); });
   // the Captain's ship going down: everything dull and far away, her end, and a sad phrase as the crew take to the boats
@@ -344,8 +369,8 @@ export function makeSound({ audio, touch = false, where = () => null }) {
     R.frames++; R.ms += performance.now() - t0;
   }
   function skyFrom(p) {
-    const v = Math.min(1.4, p.speed / 60), h = clamp(p.pos.y / THINNING, 0, 1), cloud = clamp(1 - Math.abs(p.pos.y - CLOUD_Y) / 40, 0, 1);
-    sky.set(v, h, p.down ? 0 : p.climb, p.surge.on > 0, p.frac('crystals'), cloud, !!p.down);
+    const w = weather(), v = Math.min(1.4, p.speed / 60), h = clamp(p.pos.y / THINNING, 0, 1), cloud = Math.max(clamp(1 - Math.abs(p.pos.y - CLOUD_Y) / 40, 0, 1), w?.mist ?? 0);
+    sky.set(v, h, p.down ? 0 : p.climb, p.surge.on > 0, p.frac('crystals'), cloud, !!p.down, w?.storm ?? 0);
   }
   // timbers creaking now and then (more in hard turns, or badly hurt), fire crackling while she burns, and the Surge
   // charging: a hum climbing to full that ends as it's ready (Chris's recharge, started 1.7 s before), then a soft ping

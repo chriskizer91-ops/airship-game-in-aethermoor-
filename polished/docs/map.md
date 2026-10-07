@@ -59,6 +59,16 @@ The game is one file with everything inside, like the Magpie page, and its budge
 
 So the game uses the map as AVIF, which every current browser shows. `npm run map` (`tools/map-art.mjs`) packs the nine tiles into `assets/map/` at 2.6 MB, plus a small copy of the whole map for the corner map.
 
+## The sky over the map
+
+The map stays the flat painting under where you fly; the sky over it does the rest (`src/game/sky.js`, see `docs/game.md`, "Storms, clouds and the sky"):
+
+- **The cloud floor** lies at 430 m, broken, drifting slowly on the wind, with its shadows on the ground. Its pattern is worked out once as a picture, and again in the game's own code, so the game knows where it's thick enough to hide a ship (from just under its top to about 40 m under it).
+- **The big clouds** drift between 520 and 2,000 m up, kept round the ship as she flies; you can fly into them.
+- **Each region has its own air**, read off the same 12 by 8 grid that names the regions, blended in gently as you cross into it: the Sunscorch Wastes warm and dusty, the Ironspire Peaks cold with snow on the wind, the Gloomfen misty, the Gloamwood violet, the Hearthsea clear, the Verdant Wilds green, the Open Sea deep blue.
+- **Towering clouds** stand round the far horizon, past the map's edge, so the world feels bigger than the painting.
+- **The light** stays the late afternoon's, the sun low in the west-south-west; only a storm darkens it.
+
 ## The camera
 
 - The camera sits **behind the ship** and follows it, high above the cloud floor. The Thinning, the thin air at the top of the sky, is the ceiling.

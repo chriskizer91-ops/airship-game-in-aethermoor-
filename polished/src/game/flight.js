@@ -19,8 +19,9 @@ export function handling(st) {
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
-// The wind: the way it blows (a heading), and how much it helps or holds back (0.1 is 10% of top speed)
-export const WIND = { dir: 0, strength: 0 };
+// The wind: the way it blows (a heading), and how much it helps or holds back (0.1 is 10% of top speed); `base` is the
+// wave's own wind, which a storm (sky.js) blows harder than, in gusts
+export const WIND = { dir: 0, strength: 0, base: 0 };
 export const windHelp = (heading) => WIND.strength * Math.cos(heading - WIND.dir);
 // A Surge: 60% more top speed for 3 seconds, then 15 seconds to build up again
 export const SURGE = { boost: 0.6, time: 3, recharge: 15 };
@@ -43,6 +44,7 @@ export function makeFlyer(ship, stats, start, tune = {}) {
     heel: 0, heelV: 0, // the roll from her own broadsides (radians, + to starboard), and how fast it's changing
     list: 0, // how far she lists towards the side that took the most hits, badly holed (radians, + to starboard: looks.js)
     trim: 0, // how far she dips at one end (radians, + bow down: a Man-o'-war whose crystal column there blew out, looks.js)
+    cloud: 0, hidden: false, // how deep in cloud she is (0 to 1), and whether she's hidden in it (the Captain's: sky.js)
   };
   const look = { turn: 0, climb: 0, heel: 0, list: 0, trim: 0 }; // what the model is told each frame (kept, not made each time)
   // the heel's spring: a broadside's kick rolls her over for a second or so, then she rights herself

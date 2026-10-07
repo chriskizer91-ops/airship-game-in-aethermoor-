@@ -77,6 +77,21 @@
 //                     it went through; five wakes in one draw, hers gold and as long as 1.5 s of her flight, a raider's
 //                     1.4 km off still glowing; a captain's and a treasure Brig's colours with no new shaders; a
 //                     Man-o'-war's column blown out once, dark, and her dipping at that end
+//                     storms, clouds and a sky with depth: the cloud floor worked out in JavaScript agreeing with the
+//                     card's own picture (within 0.03 at 64 places); storms on waves 8 and 13 on Crosswinds, 4, 8 and 12
+//                     on the Maelstrom, none on Fair Winds, and banks of cloud on every third wave and storm waves; the
+//                     card before a storm wave saying it's coming, the storm showing on the horizon; wave 4 on the
+//                     Maelstrom storming (rain, thicker cloud, the wind 16% or more, two lightning strikes or more in
+//                     30 s, gusts, all told), drawing at most two more goes than a clear sky, and clearing within 25 s
+//                     once beaten; inside a big cloud the mist showing and the haze closing in, gone out of it; hidden
+//                     in the cloud floor no raider firing from 500 m off in 10 s, firing within 15 s once she's out of
+//                     it, her broadside giving her away for 4 s; a raider hidden in cloud far off lost to the guns, her
+//                     tag saying so; inside a cloud the raiders' shots landing under 60% as often, with the same luck;
+//                     the Sunscorch Wastes' air warmer and dusty with its line, the Ironspire Peaks' colder and snowing;
+//                     the glory following her and gone in a storm; the towering clouds making the horizon uneven; the
+//                     sun's glare looking into it and gone looking away; pictures of all of it (shots/sky-*.png); on
+//                     the phone, a storm's frames and a frame inside a cloud costing a fifth more than clear sky at the
+//                     most, and the Smooth picture drawing half the rain
 //                     the sound: Chris's two files (music.js, sounds.js) exactly as he gave them; nothing made before
 //                     the first touch, which starts it (on the phone too, and again after it was stopped, with the
 //                     silent blip as the finger lifts); going quiet when the page is left and back when it's shown;
@@ -94,9 +109,10 @@
 //                     a clear, tidy screen: the fonts (Cinzel and Fira Sans, inside the page, loading, even figures);
 //                     the port in plain words, a ship not owned bought with the big button, and on a phone its two tabs;
 //                     the Settings card's picture (Smooth: one screen pixel to the page's, 512 shadows, 55 puffs, far
-//                     models sooner, fewer sparks), aim speed (Fast 1.8 times, Slow half), up and down and camera shake
-//                     taking effect at once, and kept on the device through a reload (never in the save); the keys
-//                     folding away after a device's first two voyages; directions as left and right (the right way
+//                     models sooner, fewer sparks, half the rain, no scud, sun's rays or glitter on the sea), aim
+//                     speed (Fast 1.8 times, Slow half), up and down and camera shake taking effect at once, and kept
+//                     on the device through a reload (never in the save); the keys folding away after a device's first
+//                     two voyages; directions as left and right (the right way
 //                     round) and the wind in words; How to fly; the big map fitting the screen with its cross; the card
 //                     between waves a strip at the bottom, Enter and B working with the mouse locked; on a phone, Fire
 //                     on the left (and the words saying so); and at three laptop sizes and four phone sizes (upright
@@ -128,7 +144,7 @@
 // Run: node tools/build.mjs && node tools/check.mjs [--quick] [folder]
 //   --quick: only the game page at laptop size (for checking during work; the full run is the one that counts)
 import { chromium } from 'playwright';
-import { mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { createHash } from 'node:crypto';
 
@@ -435,7 +451,7 @@ const layoutAt = (page, HUD, PANELS, sink = false) => page.evaluate(({ HUD, PANE
     g.raiders.spawn('cutter', P.pos.clone().addScaledVector(f, a * 400).addScaledVector(s, b * 400).add({ x: 0, y: up, z: 0 }), P.heading, true);
   }
   g.cam.yaw = 0; g.cam.pitch = 0.15; g.step(0.2, {});
-  const say = { toast: 'The captain\'s Frigate is sinking! Fly through her shards', warn: 'Nearing the Thinning: the crystals can\'t lift you higher', region: 'The Sunscorch Wastes', 'banner-title': 'Wave 10: a raider captain', 'banner-line': 'a Frigate and two Cutters, behind you on your right · a wind from your right' };
+  const say = { toast: 'The captain\'s Frigate is sinking! Fly through her shards', warn: 'Nearing the Thinning: the crystals can\'t lift you higher', 'region-name': 'The Sunscorch Wastes', 'region-air': 'Cold, clear air, and snow on the wind', 'banner-title': 'Wave 10: a raider captain', 'banner-line': 'a Frigate and two Cutters, behind you on your right · a wind from your right' };
   for (const [id, t] of Object.entries(say)) $(id).textContent = t;
   $('warn').hidden = false;
   look(HUD.filter((id) => id !== 'region' && id !== 'calm'), 'a battle');
@@ -816,9 +832,9 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   console.log(`settings: ${opened ? 'opened from the port' : 'DID NOT OPEN'}; music at nothing: the music's volume ${settingsKept.gain}, playing ${settingsKept.playing ?? 'nothing'}, saved ${JSON.stringify(settingsKept.saved)}`);
   if (!opened || !settingsKept.closed || settingsKept.saved.music !== 0 || settingsKept.gain >= 0.01 || settingsKept.playing !== null) problems.push(`the Settings card should open from the port, silence and stop the music at nothing, save it and close: ${JSON.stringify({ opened, ...settingsKept })}`);
   // the Settings card's other rows, chosen on the card at sea, each taking effect at once: the picture (Smooth: one
-  // screen pixel to each of the page's, small shadows, half the cloud puffs, raiders' far models sooner, fewer sparks;
-  // Sharp, a laptop's own, back as it was), aim speed (Fast swings the view 1.8 times as far for the same drag, Slow
-  // half as far), up and down flipped, and camera shake off (the view holds still when a hit would shake it)
+  // screen pixel to each of the page's, small shadows, half the cloud puffs, raiders' far models sooner, fewer sparks,
+  // half the rain, no scud, no sun's rays and no glitter on the sea; Sharp, a laptop's own, back as it was), aim speed
+  // (Fast swings the view 1.8 times as far for the same drag, Slow half as far), up and down flipped, and camera shake off (the view holds still when a hit would shake it)
   const rows = await page.evaluate(() => {
     const g = window.__game, S = g.settings, $ = (id) => document.getElementById(id), out = {};
     const pick = (id, v) => document.querySelector(`#set-${id} [data-value="${v}"]`).click();
@@ -826,7 +842,10 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
     g.pause(true); $('btn-settings-pause').click();
     out.rows = [...document.querySelectorAll('#settings-rows .setting')].map((r) => r.dataset.setting).join(' ');
     out.default = S.data.picture;
-    const pic = () => ({ ratio: g.renderer.getPixelRatio(), shadow: g.sun.shadow.mapSize.x, puffs: g.world.puffs.mesh.geometry.instanceCount, detail: g.raiders.detailAt, q: g.fx.q, wide: g.renderer.domElement.width / innerWidth });
+    // (the big clouds drawn: all the instances but the bank's, which a wave can come out of; and the sky's: the share of
+    // rain, the scud, the sun's rays, the sea's glitter)
+    const pic = () => ({ ratio: g.renderer.getPixelRatio(), shadow: g.sun.shadow.mapSize.x, puffs: g.world.puffs.mesh.geometry.instanceCount - g.world.puffs.BANK, detail: g.raiders.detailAt, q: g.fx.q, wide: g.renderer.domElement.width / innerWidth,
+      sky: { rain: g.sky.picked.rain, scud: g.sky.picked.scud, rays: g.world.rays, glitter: g.world.mood.uGlitter.value, towers: g.world.mood.uTowers.value } });
     pick('picture', 'smooth'); out.smooth = pic(); pick('picture', 'balanced'); out.balanced = pic(); pick('picture', 'sharp'); out.sharp = pic();
     $('btn-settings-done').click(); g.pause(false);
     const swing = (aim, flip) => {
@@ -854,6 +873,8 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   const dpr2 = Math.min(2, await page.evaluate(() => devicePixelRatio));
   if (rows.smooth.ratio > 1 || rows.smooth.shadow !== 512 || rows.smooth.puffs !== 55 || rows.smooth.detail !== 0.09 || !(rows.smooth.q < rows.sharp.q) || Math.abs(rows.smooth.wide - rows.smooth.ratio) > 0.01
     || rows.balanced.shadow !== 1024 || rows.balanced.puffs !== 85 || rows.sharp.ratio !== dpr2 || rows.sharp.shadow !== 2048 || rows.sharp.puffs !== 110 || rows.sharp.q !== 1 || rows.sharp.detail !== 0.06) problems.push(`the picture setting should change the drawing at once: ${JSON.stringify(rows)}`);
+  const skyPic = (p) => `${p.rain}/${p.scud}/${p.rays}/${p.glitter}/${p.towers}`;
+  if (skyPic(rows.smooth.sky) !== '0.5/0/0/0/1' || skyPic(rows.balanced.sky) !== '1/1/1/1/1' || skyPic(rows.sharp.sky) !== '1/1/1/1/1') problems.push(`the picture setting should trim the sky on Smooth (half the rain, no scud, no sun's rays, no glitter on the sea) and leave it whole otherwise: ${JSON.stringify([rows.smooth.sky, rows.balanced.sky, rows.sharp.sky])}`);
   if (Math.abs(rows.aim.fast - 1.8) > 0.05 || Math.abs(rows.aim.slow - 0.5) > 0.05 || Math.abs(rows.aim.flipped + 1) > 0.05) problems.push(`aim speed and flipped up and down should change how far a drag swings the view: ${JSON.stringify(rows.aim)}`);
   if (!(rows.shakeOn > 0.02) || rows.shakeOff > 1e-4 || rows.shakeSaved !== false) problems.push(`with camera shake off the view should hold still: ${JSON.stringify(rows)}`);
   // the window changing size while the HUD is hidden (a phone turned in port), then setting sail: the corner map
@@ -1380,6 +1401,211 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   if (!LF.colours.inView || LF.colours.programs !== 0 || LF.colours.captain !== 'captain' || LF.colours.treasure !== 'treasure' || LF.colours.role !== 'prize' || LF.colours.wake !== 'treasure' || LF.colours.iron !== '2c2a2e') problems.push(`a raider captain's and a treasure Brig's colours should need no new shaders: ${JSON.stringify(LF.colours)}`);
   if (LF.blowout.told !== 1 || LF.blowout.crys.join() !== '1,0,1,1,1' || !(Math.sign(LF.blowout.dip) === LF.blowout.side && Math.abs(LF.blowout.dip) > 0.005)) problems.push(`a Man-o'-war's column given out should blow out once, go dark, and dip her at that end: ${JSON.stringify(LF.blowout)}`);
 
+  // ---------- storms, clouds you fly through and hide in, and a sky with depth (sky.js, weather.js, world.js) ----------
+  // The cloud floor worked out in JavaScript (where a ship can hide) agrees with the graphics card's own picture at 64
+  // places (the card reading the baked picture at its finest): on average within 0.03. Which waves storm: none on Fair
+  // Winds, waves 8 and 13 on Crosswinds, 4, 8 and 12 on the Maelstrom; a storm wave and every third come out of a bank
+  // of cloud. The card before a storm wave says it's coming (and the storm shows on the horizon); wave 4 on the
+  // Maelstrom storms: 25 s in, the storm is in, rain falling, the cloud thicker and the wind 16% or more; 30 s more
+  // brings two lightning strikes or more (each told, with its thunder); the storm draws in at most two more goes than the
+  // clear sky (the rain and the scud; the lightning's own only while it shows); beaten, the storm clears within 25 s.
+  // Inside a big cloud: the mist (its veil showing, the haze closing in under 600 m), and 2 km off and 500 m up, gone.
+  // Hiding in the cloud floor: 15 m under its top in thick cloud, a raider 500 m off who never saw her there fires not
+  // once in 10 s; out of it, 250 m over it, the raider fires within 15 s; a broadside from the cloud gives her away
+  // for 4 s (told as she hides and as she's given away). A raider hidden in cloud far off is lost: no locking on to her,
+  // her tag saying so. Inside a cloud (seen), the raiders' shots land less than 60% as often as outside it, with the
+  // same luck. The region's air: the Sunscorch Wastes warmer and dusty, with its line under the name; the Ironspire
+  // Peaks colder and snowing. The glory and her shadow on the cloud follow her; the towering clouds make the horizon
+  // uneven; the sun's glare shows looking into the sun, and goes looking away or behind a cloud
+  const sky = await page.evaluate(() => {
+    const g = window.__game, out = {}, M = g.world.mood;
+    const seeded = (seed) => { let s = seed; return () => { s = (s * 16807) % 2147483647; return s / 2147483647; }; };
+    // the cloud floor, worked out in JavaScript and by the card
+    const pts = Array.from({ length: 64 }, (_, i) => ({ x: (i % 8) * 1937 - 7000 + (i * 131) % 400, z: Math.floor(i / 8) * 1711 - 6000 + (i * 97) % 300 }));
+    const T = 123.4, card = g.world.coverOnCard(pts, T, 0), js = pts.map((p) => g.world.coverAt(p.x, p.z, T, 0));
+    const diffs = js.map((v, i) => Math.abs(v - card[i]));
+    out.cover = { mean: +(diffs.reduce((a, b) => a + b, 0) / diffs.length).toFixed(4), most: +Math.max(...diffs).toFixed(3), thick: js.filter((v) => v > 0.7).length };
+    // which waves storm, on each skies
+    const storms = (id) => Array.from({ length: 15 }, (_, n) => g.waveAt(n, 0, g.SKIES[id].storms)).map((w, n) => (w.storm ? n + 1 : 0)).filter(Boolean).join(' ');
+    out.storms = { fair: storms('fair'), cross: storms('cross'), mael: storms('mael'), banks: Array.from({ length: 9 }, (_, n) => g.waveAt(n, 0, g.SKIES.cross.storms)).map((w, n) => (w.bank ? n + 1 : 0)).filter(Boolean).join(' ') };
+    // the storm wave on the Maelstrom: the card before it, then the wave
+    g.progress.data.skies = 'mael'; g.fly('brig'); g.raiders.setAI(false); const P = g.player; P.full.hull = P.health.hull = 1e6;
+    P.pos.set(1500, 900, -800); P.heading = 0.4; g.cam.yaw = 0; g.cam.pitch = 0.15;
+    const told = {}; const offs = ['storm', 'lightning', 'gust', 'hidden'].map((k) => g.events.on(k, (e) => { told[k] = (told[k] ?? 0) + 1; if (k === 'storm') told[e.stage] = (told[e.stage] ?? 0) + 1; }));
+    try {
+      Object.assign(g.waves, { n: 2, state: 'fight', next: null }); g.raiders.clear(); g.step(0.1, {});
+      out.card = document.getElementById('calm-line').textContent; out.front = g.sky.weather.frontWant;
+      g.sailOn(); const calls = () => { g.renderer.render(g.scene, g.camera); return g.renderer.info.render.calls; };
+      Object.assign(g.waves, { n: 3, state: 'calm', timer: 0.1, next: null });
+      g.step(25, {}, 1 / 30);
+      const W = g.sky.weather;
+      out.storm = { storm: +W.storm.toFixed(2), rain: g.sky.air.mesh.visible && g.sky.air.kind === 'rain', cover: +M.uCover.value.toFixed(3), wind: +g.wind.strength.toFixed(3), wave: g.waves.n + 1, raiders: g.raiders.list.length };
+      // (the storm's own draws: the frame as it is, against the same frame with its weather hidden)
+      W.strike = 99; g.sky.bolt.clear(); g.step(0.05, {}); out.stormCalls = calls();
+      const S = g.sky, shown = [S.air.mesh, S.scud.mesh, S.bolt.mesh, S.veil.mesh, S.glare.mesh].map((m) => m.visible);
+      [S.air.mesh, S.scud.mesh, S.bolt.mesh, S.veil.mesh, S.glare.mesh].forEach((m) => { m.visible = false; }); out.clearCalls = calls();
+      [S.air.mesh, S.scud.mesh, S.bolt.mesh, S.veil.mesh, S.glare.mesh].forEach((m, i) => { m.visible = shown[i]; }); W.strike = 1;
+      const n0 = g.sky.lightningCount; g.step(30, {}, 1 / 30); out.storm.lightning = g.sky.lightningCount - n0;
+      for (const r of g.raiders.list) r.f.hit('hull', 1e9);
+      g.step(0.5, {}); out.storm.beaten = g.waves.state; g.step(25, {}, 1 / 30); out.storm.after = +W.storm.toFixed(3);
+      g.raiders.clear(); g.waves.timer = 1e9; g.waves.state = 'calm';
+      // inside a big cloud, and out of it
+      g.progress.data.skies = 'cross'; g.sky.reset();
+      const k = g.world.puffs.BANK + 30, at = () => g.world.puffs.positionOf(k, P.pos);
+      for (let i = 0; i < 5; i++) { at(); P.speed = 0; g.step(0.1, {}); }
+      out.inside = { inCloud: +g.sky.inCloud.toFixed(2), veil: g.sky.veil.mesh.visible, far: Math.round(g.scene.fog.far), mist: +M.uMist.value.toFixed(2) };
+      // ...and the raiders aiming at her there (seen: her guns just gave her away), against out in the open sky, with
+      // the same luck
+      const shots = (inCloud) => {
+        const rnd = Math.random; Math.random = seeded(7);
+        let hits = 0; const off = g.events.on('hit', (e) => { if (e.target === 'player') hits++; });
+        try {
+          g.raiders.clear(); g.sky.reset();
+          if (inCloud) at(); else P.pos.set(-9000, 1800, -6500);
+          const spot = P.pos.clone(); P.heading = 0; P.speed = 0;
+          g.raiders.setAI(true);
+          for (const [a, d] of [[1.6, 320], [-1.5, 360]]) g.raiders.spawn('frigate', spot.clone().add({ x: Math.sin(a) * d, y: 10, z: Math.cos(a) * d }), a + Math.PI / 2, false);
+          for (let t = 0; t < 60; t += 0.5) { g.sky.reveal(1); P.pos.copy(spot); P.speed = 0; P.health.hull = 1e6; g.step(0.5, { sail: -1 }, 1 / 30); }
+          return { hits, cloud: +P.cloud.toFixed(2) };
+        } finally { Math.random = rnd; off(); g.raiders.setAI(false); g.raiders.clear(); }
+      };
+      const free = { x: -9000, z: -6500 };
+      out.aim = { open: shots(false), cloud: shots(true), openInside: +Math.max(0, g.world.puffs.inside({ x: free.x, y: 1800, z: free.z })).toFixed(2) };
+      P.pos.set(free.x, 2390, free.z); g.step(1, {}); // (2 km off, and over every big cloud's top)
+      out.outside = { inCloud: +g.sky.inCloud.toFixed(3), veil: g.sky.veil.mesh.visible };
+      // hiding in the cloud floor
+      let spot = null;
+      for (let i = 0; i < 3000 && !spot; i++) { const x = (i % 50) * 120 - 3000, z = Math.floor(i / 50) * 120 - 3000; if ([[0, 0], [150, 0], [-150, 0], [0, 150], [0, -150]].every(([a, b]) => g.world.coverAt(x + a, z + b) > 0.85)) spot = { x, z }; }
+      // (the Captain held still at a height there, the clock running in short steps)
+      const pin = (y, secs, ctl = {}) => { for (let t = 0; t < secs - 1e-6; t += 0.1) { P.pos.set(spot.x, y, spot.z); P.speed = 0; g.step(0.1, ctl, 1 / 30); } };
+      out.hide = { spot: !!spot };
+      if (spot) {
+        g.sky.reset(); g.raiders.clear(); P.heading = 0; pin(415, 0.3);
+        out.hide.hidden = P.hidden; out.hide.cloud = +P.cloud.toFixed(2);
+        let fired = 0; const off = g.events.on('fire', (e) => { if (e.owner === 'raider') fired++; });
+        try {
+          g.raiders.setAI(true);
+          // (out of the cloud first, then a raider far off who never saw her, and in a fight, so the screen says she's
+          // hidden as she slips in: under the crosshair, and in a toast)
+          pin(700, 0.2);
+          const r = g.raiders.spawn('brig', new P.pos.constructor(spot.x + 500, 415, spot.z), -Math.PI / 2 + 0.3, true);
+          g.waves.state = 'fight'; pin(415, 0.3);
+          r.frozen = false; r.seen = null; fired = 0; // (and now the raider sails, never having seen her)
+          pin(415, 10);
+          out.hide.firedHidden = fired; out.hide.sees = r.sees;
+          out.hide.note = document.getElementById('warn').hidden ? '' : document.getElementById('warn').textContent; out.hide.toast = document.getElementById('toast').textContent;
+          g.waves.state = 'calm'; g.waves.timer = 1e9;
+          let at = -1;
+          for (let t = 0; t < 15 && at < 0; t += 0.25) { pin(665, 0.25); if (fired) at = t; }
+          out.hide.firedSeen = at;
+        } finally { off(); g.raiders.setAI(false); g.raiders.clear(); }
+        // a broadside from in the cloud gives her away for 4 s
+        pin(415, 5); g.gunnery.cancel();
+        const before = P.hidden; g.cam.yaw = Math.PI / 2; g.cam.pitch = 0.2;
+        for (const b of ['port', 'starboard']) g.gunnery.ready[b] = 0;
+        P.pos.set(spot.x, 415, spot.z); g.step(1 / 30, { fire: true }, 1 / 30);
+        const after = P.hidden; pin(415, 3); const at3 = P.hidden; pin(415, 1.5); const at45 = P.hidden;
+        out.hide.reveal = { before, after, at3, at45 };
+        // a raider hidden in cloud far off: lost (no locking on, her tag saying so)
+        g.raiders.setAI(false);
+        const lostR = g.raiders.spawn('cutter', P.pos.clone().add({ x: 400, y: 0, z: 0 }), 0, true);
+        P.pos.y = 700; g.cam.yaw = 0; g.step(0.2, {});
+        const look = lostR.f.pos.clone().sub(g.camera.position).normalize();
+        g.cam.pitch = -Math.asin(look.y); g.cam.yaw = Math.atan2(look.x, look.z) - P.heading; g.step(0.1, {}); g.placeTags();
+        out.hide.lost = { lost: lostR.lost, locked: g.locked === lostR, tag: lostR.tag?.classList.contains('lost') ?? false, words: lostR.tag?.querySelector('.lost')?.textContent ?? '' };
+        g.raiders.clear();
+      }
+      // the region's air
+      const cell = (ch) => { const G = ['sssswwsppppp', 'sssswwhppppp', 'swwwwhhppppp', 'swwwwhhppkks', 'sggwwhhkkkks', 'sggwwfhkkkks', 'sswfffkkkkss', 'ssssssssssss'];
+        for (let r = 0; r < 8; r++) for (let c = 0; c < 12; c++) if (G[r][c] === ch && G[r][Math.max(0, c - 1)] === ch && G[r][Math.min(11, c + 1)] === ch) return { x: ((c + 0.5) / 12 - 0.5) * 23040, z: ((r + 0.5) / 8 - 0.5) * 15360 }; };
+      const air = (ch) => {
+        const c = cell(ch); P.pos.set(c.x, 900, c.z); g.sky.reset(); g.step(8, {}, 1 / 30);
+        const f = g.scene.fog.color;
+        return { region: g.sky.weather.region, kind: g.sky.airKind, shown: g.sky.air.mesh.visible, warm: +(f.r - f.b).toFixed(3), line: g.sky.line(g.sky.weather.region) };
+      };
+      out.air = { day: (() => { const f = g.scene.fog.color; g.sky.reset(); P.pos.set(free.x, 900, free.z); g.step(0.1, {}); return +(f.r - f.b).toFixed(3); })(), wastes: air('k'), peaks: air('p') };
+      // the glory and her shadow follow her; the towering clouds; the sun's glare
+      P.pos.set(free.x, 1100, free.z); g.sky.reset(); g.step(0.2, {});
+      out.glory = { on: M.uGlory.value, ship: +M.uShip.value.distanceTo(P.pos).toFixed(3), height: M.uShipH.value.x };
+      g.sky.startStorm(); g.step(25, {}, 1 / 30); out.glory.storm = +M.uGlory.value.toFixed(3); g.sky.reset(); g.step(0.1, {});
+      // (a row of the picture just over the horizon, high over every big cloud so none is in the way, looking three ways
+      // round the sky: how much its brightness varies along the row, added up)
+      P.pos.set(free.x, 2380, free.z); P.heading = 0; g.step(0.1, {});
+      const row = (towers) => { let sum = 0; for (const yaw of [0.4, 2.5, 4.6]) sum += row1(towers, yaw); return +sum.toFixed(1); };
+      const row1 = (towers, yaw) => {
+        M.uTowers.value = towers; g.cam.pitch = -0.08; g.cam.yaw = yaw; P.pos.set(free.x, 2380, free.z); g.step(1 / 60, {}); g.renderer.render(g.scene, g.camera);
+        const gl = g.renderer.getContext(), Wd = g.renderer.domElement.width, h = new g.sun.position.constructor(0, 0, 0);
+        h.copy(g.camera.position).add(g.camera.getWorldDirection(new g.sun.position.constructor()).setY(0).normalize().multiplyScalar(40000)); h.y = g.camera.position.y + 40000 * 0.012; h.project(g.camera);
+        const y = Math.round((h.y + 1) / 2 * g.renderer.domElement.height), px = new Uint8Array(Wd * 4); gl.readPixels(0, y, Wd, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+        const l = []; for (let i = 0; i < Wd; i++) l.push(0.3 * px[i * 4] + 0.59 * px[i * 4 + 1] + 0.11 * px[i * 4 + 2]);
+        const m = l.reduce((a, b) => a + b, 0) / l.length; return Math.sqrt(l.reduce((a, b) => a + (b - m) ** 2, 0) / l.length);
+      };
+      out.towers = { on: row(1), off: row(0) }; M.uTowers.value = 1;
+      out.towers.y = Math.round(P.pos.y);
+      // (still high over every big cloud, so none stands between her and the sun)
+      const sunA = Math.atan2(g.sun.position.x - g.sun.target.position.x, g.sun.position.z - g.sun.target.position.z);
+      g.cam.yaw = sunA - P.heading; g.cam.pitch = -0.34; g.step(0.2, {}); out.glare = { at: +g.sky.glare.strength.toFixed(2) };
+      g.cam.yaw += Math.PI; g.cam.pitch = 0.2; g.step(0.2, {}); out.glare.away = g.sky.glare.on;
+    } finally { offs.forEach((f) => f()); g.raiders.setAI(false); g.raiders.clear(); g.sky.reset(); g.progress.data.skies = 'cross'; }
+    out.told = told;
+    return out;
+  });
+  console.log(`the cloud floor in JavaScript against the card's: within ${sky.cover.mean} on average (at most ${sky.cover.most}; ${sky.cover.thick} of 64 places thick); storms on Fair Winds: ${sky.storms.fair || 'none'}, Crosswinds ${sky.storms.cross}, Maelstrom ${sky.storms.mael}; banks of cloud ${sky.storms.banks}; the card before wave 4: "${sky.card}"`);
+  console.log(`a storm wave (wave ${sky.storm.wave}): 25 s in storm ${sky.storm.storm}, rain ${sky.storm.rain ? 'falling' : 'NONE'}, cloud ${sky.storm.cover}, wind ${sky.storm.wind}; ${sky.storm.lightning} lightning strikes in 30 s; drawn in ${sky.stormCalls} goes (${sky.clearCalls} clear); beaten (${sky.storm.beaten}), 25 s later ${sky.storm.after}; told ${JSON.stringify(sky.told)}`);
+  console.log(`in a cloud: ${JSON.stringify(sky.inside)}, 2 km off and 500 m up ${JSON.stringify(sky.outside)}; raiders' hits in 60 s: in the open ${sky.aim.open.hits}, inside a cloud ${sky.aim.cloud.hits} (how deep: ${sky.aim.cloud.cloud})`);
+  console.log(`hiding in the cloud floor: ${JSON.stringify(sky.hide)}`);
+  console.log(`the region's air: the afternoon's haze ${sky.air.day} warmer than blue; ${JSON.stringify(sky.air.wastes)}; ${JSON.stringify(sky.air.peaks)}; the glory ${JSON.stringify(sky.glory)}; the horizon's brightness varying ${sky.towers.on} with its towering clouds, ${sky.towers.off} without; the sun's glare ${sky.glare.at} looking at it, ${sky.glare.away ? 'STILL SHOWING' : 'gone'} looking away`);
+  if (!(sky.cover.mean < 0.03) || sky.cover.thick < 8) problems.push(`the cloud floor worked out in JavaScript should match the card's picture (within 0.03 on average): ${JSON.stringify(sky.cover)}`);
+  if (sky.storms.fair !== '' || sky.storms.cross !== '8 13' || sky.storms.mael !== '4 8 12' || sky.storms.banks !== '3 6 8 9') problems.push(`storms should come on waves 8 and 13 on Crosswinds, 4, 8 and 12 on the Maelstrom, never on Fair Winds; banks of cloud on every third wave and storm waves: ${JSON.stringify(sky.storms)}`);
+  if (!/A storm is rolling in from the (north|south|east|west)/.test(sky.card) || !sky.front) problems.push(`the card before a storm wave should say a storm is rolling in, and show it on the horizon: "${sky.card}"`);
+  if (!(sky.storm.storm > 0.9) || !sky.storm.rain || !(sky.storm.cover > 0.1) || !(sky.storm.wind >= 0.16) || sky.storm.wave !== 4) problems.push(`wave 4 on the Maelstrom should storm: ${JSON.stringify(sky.storm)}`);
+  if (!(sky.storm.lightning >= 2) || !(sky.told.lightning >= 2) || !sky.told.gust || !sky.told.coming || !sky.told.here || !sky.told.passing) problems.push(`a storm should bring lightning (told) and gusts: ${JSON.stringify({ lightning: sky.storm.lightning, told: sky.told })}`);
+  if (sky.stormCalls > sky.clearCalls + 2) problems.push(`a storm should draw in at most two more goes than a clear sky: ${sky.stormCalls} against ${sky.clearCalls}`);
+  if (sky.storm.beaten !== 'choose' || !(sky.storm.after < 0.1)) problems.push(`a storm should clear once its wave is beaten: ${JSON.stringify(sky.storm)}`);
+  if (!(sky.inside.inCloud > 0.6) || !sky.inside.veil || !(sky.inside.far < 600) || !(sky.inside.mist > 0.5)) problems.push(`inside a big cloud the mist should show and the haze close in: ${JSON.stringify(sky.inside)}`);
+  if (sky.outside.inCloud > 0.05 || sky.outside.veil) problems.push(`out of the clouds the mist should be gone: ${JSON.stringify(sky.outside)}`);
+  if (!(sky.aim.open.hits >= 8) || !(sky.aim.cloud.hits < sky.aim.open.hits * 0.6) || !(sky.aim.cloud.cloud > 0.6) || sky.aim.openInside > 0) problems.push(`inside a cloud the raiders should aim worse: ${JSON.stringify(sky.aim)}`);
+  const H = sky.hide;
+  if (!H.spot || !H.hidden || H.firedHidden !== 0 || H.sees || !(H.firedSeen >= 0) || !H.reveal?.before || H.reveal.after || H.reveal.at3 || !H.reveal.at45) problems.push(`hiding in the cloud floor should keep far raiders from firing until she's out of it, and her broadside should give her away for 4 s: ${JSON.stringify(H)}`);
+  if (H.note !== 'Hidden in the cloud' || !/^Hidden in the cloud/.test(H.toast)) problems.push(`hidden in a fight, the screen should say so: ${JSON.stringify({ note: H.note, toast: H.toast })}`);
+  if (!H.lost?.lost || H.lost.locked || !H.lost.tag || H.lost.words !== 'Lost in the cloud') problems.push(`a raider hidden in cloud far off should be lost to the guns, her tag saying so: ${JSON.stringify(H.lost)}`);
+  if (!sky.told.hidden) problems.push('hiding in the cloud should be told');
+  const A = sky.air;
+  if (A.wastes.region !== 'The Sunscorch Wastes' || A.wastes.kind !== 'dust' || !A.wastes.shown || !(A.wastes.warm > A.day + 0.05) || A.wastes.line !== 'Hot, dusty air') problems.push(`the Sunscorch Wastes' air should be warm and dusty: ${JSON.stringify(A)}`);
+  if (A.peaks.region !== 'The Ironspire Peaks' || A.peaks.kind !== 'snow' || !A.peaks.shown || !(A.peaks.warm < A.day)) problems.push(`the Ironspire Peaks' air should be cold and snowing: ${JSON.stringify(A)}`);
+  if (sky.glory.on !== 1 || sky.glory.ship > 0.01 || sky.glory.storm !== 0) problems.push(`the glory and her shadow should follow her in fair weather, and go in a storm: ${JSON.stringify(sky.glory)}`);
+  if (!(sky.towers.on > sky.towers.off + 8)) problems.push(`the towering clouds should make the horizon uneven: ${JSON.stringify(sky.towers)}`);
+  if (!(sky.glare.at > 0.5) || sky.glare.away) problems.push(`the sun's glare should show looking into the sun, and go looking away: ${JSON.stringify(sky.glare)}`);
+  // pictures for Chris: a storm front on the horizon, the storm with rain and lightning, inside a cloud and coming out,
+  // hiding in the cloud floor, the towering clouds, the glory and the Sunscorch Wastes' air
+  {
+    const pose = (fn) => page.evaluate(fn);
+    const hold = () => page.evaluate(() => { window.__held = []; window.__raf = window.requestAnimationFrame; window.requestAnimationFrame = (f) => { window.__held.push(f); return 0; }; });
+    const free = () => page.evaluate(() => { window.requestAnimationFrame = window.__raf; for (const f of window.__held) window.__raf(f); });
+    const snap = async (name) => { const png = await page.evaluate(() => { const g = window.__game; g.renderer.render(g.scene, g.camera); return g.renderer.domElement.toDataURL('image/png'); }); writeFileSync(`${out}/${name}.png`, Buffer.from(png.split(',')[1], 'base64')); };
+    await hold();
+    try {
+      await pose(() => { const g = window.__game; g.fly('brig'); const P = g.player; g.waves.timer = 1e9; g.raiders.setAI(false); P.pos.set(1500, 900, -800); P.heading = 0.4; g.cam.yaw = 0.3; g.cam.pitch = 0.08; g.sky.front(P.heading + 1.3); g.step(10, {}, 1 / 30); });
+      await snap('sky-storm-front');
+      await pose(() => { const g = window.__game, P = g.player; g.cam.pitch = 0.12; g.sky.startStorm(); g.sky.weather.strike = 99; g.step(24, {}, 1 / 30); const fw = g.camera.getWorldDirection(P.pos.clone()); const foot = P.pos.clone().addScaledVector(fw.setY(0).normalize(), 2400); foot.y = 420; g.sky.bolt.strike(foot.clone().setY(2100), foot); g.sky.weather.flashT = 0.12; g.step(1 / 60, {}); });
+      await snap('sky-storm-lightning');
+      await pose(() => { const g = window.__game, P = g.player; g.sky.reset(); const k = g.world.puffs.BANK + 30; for (let i = 0; i < 5; i++) { g.world.puffs.positionOf(k, P.pos); P.speed = 40; g.step(0.1, {}); } });
+      await snap('sky-inside-a-cloud');
+      await pose(() => { const g = window.__game, P = g.player; const k = g.world.puffs.BANK + 30, c = g.world.puffs.positionOf(k), s = g.world.puffs.sizeOf(k); P.pos.copy(c).addScaledVector(P.forward(), s * 0.78); P.speed = 0; g.step(0.25, { sail: -1 }); });
+      await snap('sky-coming-out-of-a-cloud');
+      await pose(() => { const g = window.__game, P = g.player; let spot = null; for (let i = 0; i < 3000 && !spot; i++) { const x = (i % 50) * 120 - 3000, z = Math.floor(i / 50) * 120 - 3000; if (g.world.coverAt(x, z) > 0.9) spot = { x, z }; } g.sky.reset(); P.pos.set(spot.x, 426, spot.z); g.cam.pitch = 0.3; g.cam.yaw = 0.6; g.cam.zoom = 1.8; g.step(1, {}); P.pos.set(spot.x, 426, spot.z); g.step(0.1, {}); });
+      await snap('sky-hiding-in-the-cloud-floor');
+      await pose(() => { const g = window.__game, P = g.player; g.cam.zoom = 1; g.sky.reset(); P.pos.set(-1500, 1200, 3000); P.heading = 2.6; g.cam.yaw = 0.4; g.cam.pitch = -0.12; g.step(0.5, {}); });
+      await snap('sky-towering-clouds');
+      // (the glory: looking down and away from the sun, past her, at the cloud where her shadow falls)
+      await pose(() => { const g = window.__game, P = g.player, S = g.sun.position.clone().sub(g.sun.target.position).normalize(), away = Math.atan2(-S.x, -S.z), drop = (900 - 430) / S.y;
+        let spot = null; for (let i = 0; i < 3000 && !spot; i++) { const x = (i % 50) * 150 - 4000, z = Math.floor(i / 50) * 150 - 4000; if (g.world.coverAt(x, z) > 0.92) spot = { x, z }; }
+        P.pos.set(spot.x + S.x * drop, 900, spot.z + S.z * drop); P.heading = away + 1.2; g.cam.yaw = away - P.heading + 0.35; g.cam.pitch = Math.asin(S.y); g.sky.reset(); g.step(0.3, {}); });
+      await snap('sky-the-glory');
+      await pose(() => { const g = window.__game, P = g.player; P.pos.set(7500, 900, 1500); P.heading = 0; g.cam.yaw = 0.2; g.cam.pitch = 0.15; g.sky.reset(); g.step(8, {}, 1 / 30); });
+      await snap('sky-the-sunscorch-air');
+    } finally { await free(); await page.evaluate(() => { const g = window.__game; g.sky.reset(); g.endVoyage(0); }); }
+  }
   // ---------- how a fight feels (fx.js, events.js) ----------
   // a broadside fired once into empty sky by the Frigate (port side): how far the view kicks back, at its most
   const volley = () => page.evaluate(() => {
@@ -1708,7 +1934,8 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   // light on the brass; the sky up beside her is warm and bright (the void is near black). The skies tint it: the
   // Maelstrom's darker than Fair Winds'. A new Captain is offered a big "Set sail" (and "To port" plainly beside it),
   // with Fair Winds marked as best for a first voyage; "Set sail" starts a voyage in her ship at once, with its own
-  // banner, and puts back the afternoon sky exactly (sun, rays, haze and light); back from the sea, the button names her
+  // banner, and puts back the afternoon sky (sun, rays, haze and light: exactly, but for a hair of the region's air
+  // blending in over the first few seconds); back from the sea, the button names her
   // ship and the shards waiting are shown, and "To port" opens the port in its void. Each change of screen dips
   // through the night (the veil): to the title, to sea, home to port, back to the title, and to port.
   // A drag on its sky swings the view round her; let go, and it coasts on (the same at any frame rate, and not at all
@@ -1795,7 +2022,9 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   if (!(lum(titleSky.mael.all) < lum(titleSky.fair.all) * 0.85)) problems.push(`the Maelstrom's skies should tint the title darker than Fair Winds': ${titleSky.mael.all} against ${titleSky.fair.all}`);
   if (titleSky.fresh.button !== 'Set sail' || !titleSky.fresh.toPort || !titleSky.fresh.rank || titleSky.fresh.first !== 'fair: Best for your first voyage' || titleSky.fresh.chosen !== 'fair') problems.push(`a new Captain's title should offer "Set sail", a plain "To port", and mark Fair Winds for a first voyage, chosen: ${JSON.stringify(titleSky.fresh)}`);
   if (titleSky.sailed.mode !== 'voyage' || titleSky.sailed.ship !== 'skiff' || !titleSky.sailed.banner.includes('first voyage') || titleSky.drawnAtSea !== 'world') problems.push(`"Set sail" on the title should start a voyage in her ship at once: ${JSON.stringify(titleSky.sailed)}`);
-  if (titleSky.sailed.sun > 1e-4 || titleSky.sailed.rays !== 0 || titleSky.sailed.cover !== 0 || titleSky.sailed.haze !== 4000 || titleSky.sailed.light !== 2.6 || !titleSky.sailed.env || titleSky.sailed.ships !== 'Zephyr' || titleSky.sailed.titleRaiders) problems.push(`setting sail should put the afternoon sky back exactly, and leave only her ship in the sky: ${JSON.stringify(titleSky.sailed)}`);
+  // (exactly the afternoon's, but for the region's air: a little of it blends in over a few seconds, a hair of it in the
+  // frame after setting sail)
+  if (titleSky.sailed.sun > 1e-4 || titleSky.sailed.rays !== 0 || Math.abs(titleSky.sailed.cover) > 0.002 || Math.abs(titleSky.sailed.haze - 4000) > 25 || Math.abs(titleSky.sailed.light - 2.6) > 0.01 || !titleSky.sailed.env || titleSky.sailed.ships !== 'Zephyr' || titleSky.sailed.titleRaiders) problems.push(`setting sail should put the afternoon sky back exactly, and leave only her ship in the sky: ${JSON.stringify(titleSky.sailed)}`);
   if (titleSky.back.voyages !== 1 || titleSky.back.button !== 'Set sail in the Zephyr' || !titleSky.back.rank || titleSky.back.first) problems.push(`back from the sea, the title should name her ship and show the shards: ${JSON.stringify(titleSky.back)}`);
   if (titleSky.port.mode !== 'port' || titleSky.port.drawn !== 'port void' || titleSky.port.rays !== 0) problems.push(`"To port" from the title should open the port in its void: ${JSON.stringify(titleSky.port)}`);
   const wind = titleSky.wind;
@@ -2099,7 +2328,7 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
         if ((A.stats.events.region ?? 0) === n0) await pause(150); // (a banner's place is kept for it for a few seconds)
       }
     } finally { A.loudSteps = false; }
-    const out = { told: (A.stats.events.region ?? 0) - n0, name: document.getElementById('region').textContent, chord: (A.stats.played['new-area'] ?? 0) - chord0 };
+    const out = { told: (A.stats.events.region ?? 0) - n0, name: `${document.getElementById('region-name').textContent} ("${document.getElementById('region-air').textContent}")`, chord: (A.stats.played['new-area'] ?? 0) - chord0 };
     P.pos.set(0, 900, 0);
     return out;
   });
@@ -2492,6 +2721,34 @@ if (!quick) {
   console.log(`phone: a frame of the title screen ${frameTimes.title} ms (${frameTimes.calls.title} draws), of a voyage ${frameTimes.voyage} ms (${frameTimes.calls.voyage} draws), here in software at ${frameTimes.ratio} pixels to the page's`);
   if (!(frameTimes.title <= frameTimes.voyage * 1.1)) problems.push(`phone: the title screen's frames should cost no more than a voyage's: ${JSON.stringify(frameTimes)}`);
   if (!(frameTimes.calls.title < frameTimes.calls.voyage)) problems.push(`phone: the title screen should be drawn in fewer goes than a voyage: ${frameTimes.calls.title} draws against ${frameTimes.calls.voyage}`);
+  // the weather on a phone: a storm's frames (its rain, scud and lightning, the darker sky) and a frame inside a big
+  // cloud (its mist over the whole view) each cost little more than a clear sky's (timed in turns the same way, a fifth
+  // more at the most, as the software drawing here is uneven), and the storm draws in at most two more goes. On Smooth
+  // half the rain
+  const weatherTimes = await page.evaluate(() => {
+    const g = window.__game, gl = g.renderer.getContext(), px = new Uint8Array(4), raf = window.requestAnimationFrame, held = [];
+    window.requestAnimationFrame = (f) => { held.push(f); return 0; };
+    const T = { clear: [], storm: [], cloud: [] }, calls = {};
+    const time = (into, k) => { for (let i = 0; i < 6; i++) { const t0 = performance.now(); g.step(1 / 60, {}); g.renderer.render(g.scene, g.camera); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); if (i) into.push(performance.now() - t0); } calls[k] = g.renderer.info.render.calls; };
+    try {
+      g.fly('skiff'); g.waves.timer = 1e9; g.raiders.setAI(false);
+      const P = g.player, pose = () => { P.pos.set(1500, 900, -800); P.heading = 0.4; g.cam.yaw = 0; g.cam.pitch = 0.2; };
+      for (let k = 0; k < 2; k++) {
+        pose(); g.sky.reset(); g.step(0.5, {}); time(T.clear, 'clear');
+        pose(); g.sky.startStorm(); g.step(24, {}, 1 / 20); g.sky.weather.strike = 99; g.sky.bolt.clear(); time(T.storm, 'storm');
+        g.sky.reset(); for (let i = 0; i < 4; i++) { g.world.puffs.positionOf(g.world.puffs.BANK + 30, P.pos); g.step(0.15, {}); } time(T.cloud, 'cloud');
+      }
+      // (the rain falling in a storm on Smooth, as a share of all its streaks; then back to Balanced, still raining)
+      g.settings.set('picture', 'smooth'); g.sky.reset(); g.sky.startStorm(); g.step(12, {}, 1 / 20);
+      calls.smoothRain = g.sky.air.kind === 'rain' ? g.sky.air.count / g.sky.air.N : -1;
+      g.settings.set('picture', 'balanced'); g.step(0.1, {}); calls.balancedRain = g.sky.air.count / g.sky.air.N;
+    } finally { window.requestAnimationFrame = raf; for (const f of held) raf(f); g.sky.reset(); }
+    const mid = (a) => { a.sort((x, y) => x - y); return +a[a.length >> 1].toFixed(1); };
+    return { clear: mid(T.clear), storm: mid(T.storm), cloud: mid(T.cloud), calls };
+  });
+  console.log(`phone, the weather: a frame of clear sky ${weatherTimes.clear} ms (${weatherTimes.calls.clear} draws), in a storm ${weatherTimes.storm} ms (${weatherTimes.calls.storm} draws), inside a cloud ${weatherTimes.cloud} ms (${weatherTimes.calls.cloud} draws); on Smooth ${weatherTimes.calls.smoothRain} of the rain, on Balanced ${weatherTimes.calls.balancedRain}`);
+  if (!(weatherTimes.storm <= weatherTimes.clear * 1.2) || !(weatherTimes.cloud <= weatherTimes.clear * 1.2) || weatherTimes.calls.storm > weatherTimes.calls.clear + 2) problems.push(`phone: the weather should cost little more than a clear sky: ${JSON.stringify(weatherTimes)}`);
+  if (Math.abs(weatherTimes.calls.smoothRain - 0.5) > 0.01 || weatherTimes.calls.balancedRain !== 1) problems.push(`phone: the Smooth picture should draw half the rain: ${JSON.stringify(weatherTimes.calls)}`);
   // the title on phones upright and sideways, small ones too (an iPhone SE's, with the browser's bars showing): raiders
   // in sight, her ship clear of the card, and the card fitting the screen
   const phoneTitles = [];

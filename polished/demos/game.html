@@ -219,7 +219,11 @@
      own place under the guns' label, and a warning under the crosshair (as on a phone), clear of them on any window */
   #region { position: fixed; left: 50%; top: 21%; translate: -50% 0; margin: 0; pointer-events: none; white-space: nowrap; opacity: 0;
     font: 700 clamp(24px, 3vw, 40px)/1.1 var(--display); color: var(--cream); text-shadow: 0 2px 0 #000, 0 0 24px rgba(0, 0, 0, 0.9); }
-  #region::before, #region::after { content: '—'; margin: 0 0.4em; color: var(--gold); }
+  #region { text-align: center; }
+  #region-name::before, #region-name::after { content: '—'; margin: 0 0.4em; color: var(--gold); }
+  /* (under the name, the region's air in a line: "Hot, dusty air") */
+  #region-air { display: block; margin: 3px 0 0; font: 500 max(13.5px, 0.42em)/1.3 var(--body); letter-spacing: 0.01em; }
+  #region-air:empty { display: none; }
   #region.on { animation: region 3.4s ease-in-out forwards; }
   @keyframes region { 0% { opacity: 0; } 18%, 72% { opacity: 1; } 100% { opacity: 0; } }
   #banner { position: fixed; left: 50%; top: 21%; translate: -50% 0; width: max-content; max-width: min(760px, calc(100% - 2 * (var(--gutter) + 236px))); padding: 8px 22px 10px; text-align: center; pointer-events: none; opacity: 0;
@@ -233,6 +237,7 @@
   #toast.on { animation: region 3s ease-in-out forwards; }
   #warn { position: fixed; left: 50%; top: calc(50% + 40px); translate: -50% 0; width: max-content; max-width: min(560px, calc(100% - 2 * (var(--gutter) + 236px))); margin: 0; padding: 4px 12px;
     color: var(--warn); font-size: 14.5px; text-align: center; pointer-events: none; }
+  #warn.note { color: #dcecff; } /* (not a warning: hidden in the cloud) */
 
   /* ---------- the crosshair, and hits ---------- */
   #aim { position: fixed; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; pointer-events: none; }
@@ -289,6 +294,13 @@
     to { background-color: rgba(80, 8, 10, 0.88); border-color: #ff4636; box-shadow: 0 0 4px rgba(255, 50, 30, 0.4); } }
   @keyframes arrow-warn { from { opacity: 1; } to { opacity: 0.5; } }
   #tags.held .tag.warn, #tags.held .tag.warn .arrow { animation-play-state: paused; } /* (the game paused: no flashing behind the menu) */
+  /* a raider hidden in cloud far off: her tag stays where she was last seen, faded and dashed, saying so in place of
+     her bars */
+  .tag .lost { display: none; grid-column: 1 / -1; font-size: 12px; color: #dcecff; text-align: center; }
+  .tag.lost { opacity: 0.6; border-style: dashed; }
+  .tag.lost .lost { display: block; }
+  .tag.lost .meter { display: none; }
+  .tag.lost.warn .lost { display: none; }
   /* the red at the screen's edge when you're hit, leaning to the side the shot came from (--hx, --hy: -1 to 1) */
   #hurt { position: fixed; inset: 0; pointer-events: none; opacity: 0;
     background: radial-gradient(ellipse at calc(50% + var(--hx, 0) * 25%) calc(50% + var(--hy, 0) * 25%), rgba(170, 20, 10, 0) 50%, rgba(170, 20, 10, 0.6) 100%); }
@@ -681,7 +693,7 @@
 <div id="incoming" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
 <div id="banner" aria-live="polite"><p id="banner-title"></p><p id="banner-line"></p></div>
 <p id="toast" class="panel" aria-live="polite"></p>
-<p id="region" aria-live="polite"></p>
+<p id="region" aria-live="polite"><span id="region-name"></span><small id="region-air"></small></p>
 <!-- (after the banner, so a bounty rising as a banner shows is drawn over it) -->
 <div id="bounties" aria-hidden="true"><p class="bounty" hidden><small></small><b><i>◆</i> <span></span></b></p><p class="bounty" hidden><small></small><b><i>◆</i> <span></span></b></p><p class="bounty" hidden><small></small><b><i>◆</i> <span></span></b></p><p class="bounty" hidden><small></small><b><i>◆</i> <span></span></b></p><p class="bounty" hidden><small></small><b><i>◆</i> <span></span></b></p><p class="bounty" hidden><small></small><b><i>◆</i> <span></span></b></p></div>
 <div id="aim" aria-hidden="true"><svg viewBox="-23 -23 46 46">

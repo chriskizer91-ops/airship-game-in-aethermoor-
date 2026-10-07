@@ -24,12 +24,14 @@ export const ROWS = [
 export const AIM = [0.5, 0.75, 1, 1.35, 1.8];
 // what each picture setting draws: the most screen pixels for each of the page's (devicePixelRatio), the sun's shadow
 // map, how many of the big cloud puffs, how big on screen (its length over the view's height) a raider must be to be
-// drawn with her middle model rather than her far one, and the effects' share (sparks, smoke, debris: fx.js), on a
-// phone and on a laptop
+// drawn with her middle model rather than her far one, the effects' share (sparks, smoke, debris: fx.js), on a phone
+// and on a laptop, and the sky's (sky.js, world.js): the share of rain streaks, the scraps of scud, the sun's rays, the
+// sea's glitter and the towering clouds round the horizon
+const SKY = { rain: 1, scud: true, rays: true, glitter: true, towers: true };
 export const PICTURE = {
-  smooth: { ratio: 1, shadow: 512, puffs: 55, detail: 0.09, fx: [0.45, 0.5] },
-  balanced: { ratio: 1.5, shadow: 1024, puffs: 85, detail: 0.06, fx: [0.6, 0.75] },
-  sharp: { ratio: 2, shadow: 2048, puffs: 110, detail: 0.06, fx: [0.75, 1] },
+  smooth: { ratio: 1, shadow: 512, puffs: 55, detail: 0.09, fx: [0.45, 0.5], sky: { ...SKY, rain: 0.5, scud: false, rays: false, glitter: false } },
+  balanced: { ratio: 1.5, shadow: 1024, puffs: 85, detail: 0.06, fx: [0.6, 0.75], sky: SKY },
+  sharp: { ratio: 2, shadow: 2048, puffs: 110, detail: 0.06, fx: [0.75, 1], sky: SKY },
 };
 const KEEP = { voyages: 0 };
 const $ = (id) => document.getElementById(id);

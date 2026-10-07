@@ -7,11 +7,15 @@
 // the three skies: how well the raiders aim, how quickly they reload, how hard they hit, how much they take, how fast
 // they fly, how many more of them come, what shards pay, and how much of a raider captain's edge over her crew she has
 // (raiders.js: on Fair Winds none, as she's the first big fight a new Captain meets, in a Skiff; only her bounty is
-// bigger)
+// bigger); which waves bring a storm (`storms`: their numbers, from 1, and after the fifteenth, this share of them at
+// random: sky.js), and how near a raider still sees the Captain hidden in cloud (`sight`, metres)
 export const SKIES = {
-  fair: { name: 'Fair Winds', line: 'Raiders aim poorly, hit lightly and break easily. For learning the ropes.', aim: 1.8, reload: 1.35, damage: 0.45, toughness: 0.76, pace: 0.88, extra: 0, shards: 1, captain: 0 },
-  cross: { name: 'Crosswinds', line: 'A fair fight. Shards pay a quarter more.', aim: 1, reload: 1, damage: 1, toughness: 1, pace: 0.92, extra: 0, shards: 1.25, captain: 1 },
-  mael: { name: 'Maelstrom', line: 'Raiders hunt in bigger packs, hit harder and aim truer. Shards pay over half as much again.', aim: 0.8, reload: 0.92, damage: 1.15, toughness: 1.15, pace: 0.96, extra: 1, shards: 1.6, captain: 1 },
+  fair: { name: 'Fair Winds', line: 'Raiders aim poorly, hit lightly and break easily. For learning the ropes.', aim: 1.8, reload: 1.35, damage: 0.45, toughness: 0.76, pace: 0.88, extra: 0, shards: 1, captain: 0,
+    storms: { waves: [], after: 0 }, sight: 180 },
+  cross: { name: 'Crosswinds', line: 'A fair fight. Shards pay a quarter more.', aim: 1, reload: 1, damage: 1, toughness: 1, pace: 0.92, extra: 0, shards: 1.25, captain: 1,
+    storms: { waves: [8, 13], after: 0 }, sight: 250 },
+  mael: { name: 'Maelstrom', line: 'Raiders hunt in bigger packs, hit harder and aim truer. Shards pay over half as much again.', aim: 0.8, reload: 0.92, damage: 1.15, toughness: 1.15, pace: 0.96, extra: 1, shards: 1.6, captain: 1,
+    storms: { waves: [4, 8, 12], after: 0.4 }, sight: 350 },
 };
 export const PRICES = { skiff: 0, cutter: 300, brig: 900, frigate: 2200 };
 
