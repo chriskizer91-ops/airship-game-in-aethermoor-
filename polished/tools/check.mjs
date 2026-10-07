@@ -7,7 +7,9 @@
 //                     store and one that hears it again, both devices banking a voyage at the same moment, a voyage
 //                     played with no connection); a new browser isn't told its progress came from another device; a
 //                     brand-new Captain starts on Fair Winds, and a save already made keeps the skies it chose
-//   dist/hangar.html  every ship at every level of detail, with its triangle count kept near its budget
+//   dist/hangar.html  every ship at every level of detail, with its triangle count kept near its budget; the Brig New,
+//                     Battered and Wrecked (on the laptop and the phone): Battered changing over 4% of her hull's picture,
+//                     setting her scars, with no more draws or shaders; Wrecked burning
 //   dist/game.html    the title screen and the port: a brand-new Captain finds Fair Winds chosen; a ship that can't be
 //                     afforded, then buying the Cutter and armour and setting the crystal power (the stats changing);
 //                     dragging the ship round; the window resized in port, the corner map still drawn at sea and the
@@ -50,6 +52,15 @@
 //                     vapour and flare, all back 4 s later, and its view the same at 20 frames a second as at 60 (with
 //                     less motion, up to 12 degrees and no overshoot); on the phone, a Man-o'-war going down beside two
 //                     other wrecks within every budget (debris cut short at most one piece in twenty, no masts falling)
+//                     ships that show their scars: three raider Frigates in view drawn with the shaders of one, each
+//                     with her own looks; a chaser's shot through a raider's sail holing it within half a metre of where
+//                     it went through, one into her planks scarring them within half a metre of where it struck (its
+//                     embers cool within 5 s); a hit cluster of crystals dimming and cracking alone, all of them
+//                     sputtering below a third (and the Captain's lamp dimming with its cluster); torn sails fraying; a
+//                     raider holed in her port side listing to port; below a quarter of her hull, flames from her worst
+//                     scars in one draw, out again once mended; her smoke from where she was hit; between waves the
+//                     Captain's holes patched and her embers out, and as good as new the next voyage; 16 flames at most
+//                     on a phone
 //                     the sound: Chris's two files (music.js, sounds.js) exactly as he gave them; nothing made before
 //                     the first touch, which starts it (on the phone too, and again after it was stopped, with the
 //                     silent blip as the finger lifts); going quiet when the page is left and back when it's shown;
@@ -244,6 +255,36 @@ for (const name of quick ? [] : ['laptop', 'phone']) {
     await page.waitForTimeout(1200);
     await shot(page, `${name}-${id}-${view}`);
   }
+  // her scars (src/ship/dress.js): the Brig New, Battered and Wrecked, pictured. Battered changes the picture of her
+  // hull (a share of the pixels in the box round it on the screen), sets her looks, and draws in as many goes with no
+  // new shaders; Wrecked burns
+  await page.evaluate(() => { const H = window.__hangar; H.select('brig'); H.level('full'); H.view('side', Math.PI / 2, 0.04); });
+  await page.waitForTimeout(1200);
+  const worn = await page.evaluate(() => {
+    const H = window.__hangar, r = H.renderer, c = r.domElement, k = document.createElement('canvas'), x = k.getContext('2d', { willReadFrequently: true });
+    k.width = c.width; k.height = c.height;
+    const grab = (look) => { H.wear(look); r.render(H.scene, H.camera); x.drawImage(c, 0, 0); return { px: x.getImageData(0, 0, k.width, k.height).data, calls: r.info.render.calls, programs: r.info.programs.length }; };
+    const a = grab('new'), b = grab('battered'), scar = H.shown[0].U.uScar.value[3];
+    // (her hull on the screen: the box round it)
+    const S = H.shown[0], h = S.hull, box = new (H.camera.position.constructor)(), lo = [Infinity, Infinity], hi = [-Infinity, -Infinity], bb = { min: { x: 0, y: Infinity, z: h.zs }, max: { x: 0, y: -Infinity, z: h.zb } };
+    for (let z = h.zs; z <= h.zb; z += 0.25) { bb.max.x = Math.max(bb.max.x, h.half(z)); bb.min.y = Math.min(bb.min.y, h.keel(z)); bb.max.y = Math.max(bb.max.y, h.rim(z)); }
+    bb.min.x = -bb.max.x; S.root.updateMatrixWorld(true);
+    for (let i = 0; i < 8; i++) { box.set(i & 1 ? bb.max.x : bb.min.x, i & 2 ? bb.max.y : bb.min.y, i & 4 ? bb.max.z : bb.min.z).applyMatrix4(S.body.matrixWorld).project(H.camera); lo[0] = Math.min(lo[0], box.x); lo[1] = Math.min(lo[1], box.y); hi[0] = Math.max(hi[0], box.x); hi[1] = Math.max(hi[1], box.y); }
+    const x0 = Math.max(0, Math.floor((lo[0] + 1) / 2 * k.width)), x1 = Math.min(k.width, Math.ceil((hi[0] + 1) / 2 * k.width)), y0 = Math.max(0, Math.floor((1 - hi[1]) / 2 * k.height)), y1 = Math.min(k.height, Math.ceil((1 - lo[1]) / 2 * k.height));
+    let changed = 0, n = 0;
+    for (let y = y0; y < y1; y++) for (let xx = x0; xx < x1; xx++) { const i = (y * k.width + xx) * 4; n++; if (Math.max(Math.abs(a.px[i] - b.px[i]), Math.abs(a.px[i + 1] - b.px[i + 1]), Math.abs(a.px[i + 2] - b.px[i + 2])) > 16) changed++; }
+    H.wear('new');
+    return { changed: +(changed / Math.max(1, n)).toFixed(3), scar: +scar.toFixed(2), calls: [a.calls, b.calls], programs: [a.programs, b.programs] };
+  });
+  for (const look of ['new', 'battered', 'wrecked']) {
+    await page.evaluate((look) => window.__hangar.wear(look), look);
+    await page.waitForTimeout(900);
+    await shot(page, `${name}-brig-${look}`);
+  }
+  const burning = await page.evaluate(() => window.__hangar.flames.count);
+  console.log(`${name}: the Brig Battered changes ${Math.round(worn.changed * 100)}% of the picture of her hull (her first scar ${worn.scar} m), drawn in ${worn.calls.join(' and ')} goes with ${worn.programs.join(' and ')} shaders; Wrecked burns in ${burning} places`);
+  if (!(worn.changed > 0.04) || !(worn.scar > 0) || worn.calls[0] !== worn.calls[1] || worn.programs[1] > worn.programs[0]) problems.push(`${name}: the ships demo's Battered should show her scars (over 4% of her hull changed) with no more draws or shaders: ${JSON.stringify(worn)}`);
+  if (!(burning >= 2)) problems.push(`${name}: the ships demo's Wrecked ship should burn: ${burning} flames`);
   await page.close();
 }
 
@@ -926,6 +967,129 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   console.log(`a hole torn in the clouds (open ${holes.open}) before going back to port: ${holes.next ? `STILL OPEN (${holes.next})` : 'closed'} on the next voyage`);
   if (!(holes.open > 0.5) || holes.next !== 0) problems.push(`the holes torn in the cloud deck should be closed when a new voyage starts: ${JSON.stringify(holes)}`);
   if (!away.gone || !away.escaped) problems.push(`a treasure ship running far didn't get away: ${JSON.stringify(away)}`);
+
+  // ---------- ships that show their scars (src/ship/dress.js, looks.js) ----------
+  // three raider Frigates of one class in view share one set of shaders (the second and third add none), each with her
+  // own looks; a real shot through a raider Brig's sail (from astern) makes a hole where it went through the canvas, and
+  // one into her planks (from abeam) a scar where it struck them, its embers cooling within 5 s; a Frigate's first cluster of crystals hit dims and
+  // cracks alone, and below a third of her crystals they all sputter (and the Captain's dimmed cluster's lamp with
+  // them); torn sails fray; a badly holed raider lists towards the side that took the hits; below a quarter of her hull
+  // she burns from her worst scars (in one more draw for every flame in the sky), and the fire goes out above it; a
+  // damaged ship's smoke pours from where she was hit; between waves the Captain's holes are patched and her embers go
+  // out, and the next voyage she sails as good as new
+  const scars = await page.evaluate(() => {
+    const g = window.__game, out = {}, rr = g.renderer, V = g.camera.position.constructor, L = g.looks;
+    g.progress.data.skies = 'cross';
+    g.fly('brig'); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false);
+    const P = g.player; P.pos.set(0, 900, 0); P.heading = 0; P.speed = 3; P.sail = 0.05; P.vy = 0; g.cam.yaw = 0; g.cam.pitch = 0.2; g.step(0.1, {});
+    const f = P.forward(), right = new V(-f.z, 0, f.x), at = (d, x) => P.pos.clone().addScaledVector(f, d).addScaledVector(right, x);
+    const draw = () => { rr.render(g.scene, g.camera); return { programs: rr.info.programs.length, calls: rr.info.render.calls }; };
+    const sturdy = (r) => { for (const k of ['hull', 'sails', 'crystals']) r.f.full[k] = r.f.health[k] = 1e6; return r; };
+    g.raiders.spawn('frigate', at(240, 0), P.heading, true); g.step(0.05, {});
+    const one = draw();
+    g.raiders.spawn('frigate', at(270, -80), P.heading, true); g.raiders.spawn('frigate', at(270, 80), P.heading, true); g.step(0.05, {});
+    const three = draw();
+    out.programs = { one: one.programs, three: three.programs, calls: [one.calls, three.calls], levels: g.raiders.list.map((r) => r.ship.level).join(), own: new Set(g.raiders.list.map((r) => r.ship.U)).size };
+    // (a raider far off keeps the wave going, so the Captain's crew don't patch her up meanwhile)
+    g.raiders.clear(); sturdy(g.raiders.spawn('skiff', at(-3000, 0), P.heading, true)); g.waves.state = 'fight';
+    // a shot through a raider Brig's sail (the wing facing the Captain), and one into her planks just under her ports
+    const b = sturdy(g.raiders.spawn('brig', at(0, 200), P.heading, true)); g.step(0.05, {});
+    const B = b.ship, W = L.of(B), mine = B.body.worldToLocal(P.pos.clone()), side = Math.sign(mine.x) || 1;
+    const hits = [], off = g.events.on('hit', (e) => { if (e.raider === b) hits.push({ part: e.part, size: e.size }); });
+    // (a chaser's shot, from 60 m: it flies true)
+    const fireAt = (local, out, kind = 'chaser') => {
+      const target = B.body.localToWorld(local.clone()), from = target.clone().add(B.body.localToWorld(out.clone()).sub(B.body.localToWorld(new V())).normalize().multiplyScalar(60));
+      g.bolts.fire(from, target.clone().sub(from).normalize(), kind, 'player', null, 1);
+      for (let t = 0; t < 1.2 && g.bolts.bolts.length; t += 0.05) g.step(0.05, {});
+    };
+    // (a sail is hit from astern, through its face: from abeam a shot flies along it, edge on)
+    const aft = b.R.masts.indexOf(b.R.masts.reduce((m, x) => (x.z < m.z ? x : m))), w = B.wings.find((x) => x.mast === aft && x.side === side);
+    const aim = w.A.clone().add(w.B).add(w.C).divideScalar(3).addScaledVector(w.n, w.belly);
+    fireAt(aim, new V(0.3 * side, 0.05, -1));
+    const hole = W.holes.find((h) => h.on);
+    out.sail = { part: hits[0]?.part, size: hits[0]?.size, w: +B.U.uHole.value[3].toFixed(2), off: hole ? +aim.distanceTo(new V(hole.x, hole.y, hole.z)).toFixed(2) : -1 };
+    const R = B.recipe, H = B.hull, pz = (R.ports.z[2] + R.ports.z[3]) / 2, t = H.tAt(pz, R.ports.y - R.ports.h * 0.85), q = H.at(pz, t, side), n = H.normal(pz, t, side);
+    const spot = new V(...q);
+    fireAt(spot, n.clone().setY(0.03));
+    const scar = W.scars.find((x) => x.on);
+    out.hull = { part: hits[1]?.part, r: scar ? +scar.r.toFixed(2) : 0, heat: scar ? scar.heat : 0, off: scar ? +spot.distanceTo(new V(scar.x, scar.y, scar.z)).toFixed(2) : -1, w: +B.U.uScar.value[3].toFixed(2) };
+    off();
+    g.step(5, {}); out.hull.cooled = +B.U.uHeat.value[0].toFixed(2);
+    // her sails torn to a fifth: they fray
+    b.f.health.sails = b.f.full.sails * 0.2; g.step(0.2, {}); out.fray = +B.U.uWear.value.y.toFixed(2);
+    // a Frigate's first cluster takes 60% of its share; then her crystals fall to 30%
+    const fr = g.raiders.spawn('frigate', at(150, -260), P.heading, true); g.step(0.05, {});
+    const share = fr.f.full.crystals / fr.R.clusters.length, c0 = fr.zones.crystals[0].getCenter(new V());
+    fr.f.hit('crystals', share * 0.6); L.hit(fr.ship, 'crystals', fr.ship.body.localToWorld(c0), new V(0, -1, 0), share * 0.6, 1); g.step(0.05, {});
+    const U = fr.ship.U;
+    out.crystals = { crys: Array.from(U.uCrys.value.slice(0, 3)).map((v) => +v.toFixed(2)), crack: Array.from(U.uCrack.value.slice(0, 3)).map((v) => +v.toFixed(2)), glows: fr.ship.parts.glows.every((x) => x.material.uniforms.uCrys === U.uCrys) };
+    fr.f.health.crystals = fr.f.full.crystals * 0.3;
+    const sparks = new Set();
+    for (let k = 0; k < 40; k++) { g.step(0.05, {}); sparks.add(U.uSpark.value); }
+    out.crystals.sputter = [...sparks].sort().join('/');
+    // the Captain's Brig: her first cluster takes 90% of its share, and its lamp dims with it
+    P.hit('crystals', P.full.crystals / 2 * 0.9); L.hit(P.ship, 'crystals', P.ship.body.localToWorld(g.raiders.templates.brig.zones.crystals[0].getCenter(new V())), new V(0, -1, 0), P.full.crystals / 2 * 0.9, 1); g.step(0.05, {});
+    const lamps = P.ship.lamps;
+    out.lamps = +(lamps[0].intensity / lamps[1].intensity).toFixed(2);
+    P.repair(1); g.step(0.05, {});
+    // a raider Frigate sailing on, holed three times in her port side, her hull down to a fifth: she lists to port
+    const lister = g.raiders.spawn('frigate', at(400, 300), P.heading, false); g.step(0.05, {});
+    const LH = lister.ship.hull;
+    for (const zz of [-6, 0, 6]) { const tt = LH.tAt(zz, -1.4), qq = LH.at(zz, tt, 1), nn = LH.normal(zz, tt, 1); L.hit(lister.ship, 'hull', lister.ship.body.localToWorld(new V(...qq).addScaledVector(nn, 0.2)), nn.clone().negate().transformDirection(lister.ship.body.matrixWorld), 55, 1.35); }
+    lister.f.health.hull = lister.f.full.hull * 0.2; g.step(3, {});
+    out.list = +lister.f.list.toFixed(3);
+    lister.gone = true; g.step(0.05, {}); // (taken away)
+    // the Brig holed more, down to a fifth of her hull: she burns from her two worst scars, in one draw
+    for (const zz of [-5, 4]) { const tt = H.tAt(zz, R.ports.y - R.ports.h * 0.85), qq = H.at(zz, tt, side), nn = H.normal(zz, tt, side); L.hit(B, 'hull', B.body.localToWorld(new V(...qq).addScaledVector(nn, 0.2)), nn.clone().negate().transformDirection(B.body.matrixWorld), 55, 1.35); }
+    b.f.health.hull = b.f.full.hull * 0.2; g.step(0.2, {});
+    const F = L.flames, pos = F.mesh.geometry.attributes.iPos.array, near = [];
+    for (let i = W.firstFlame; i < W.firstFlame + W.fires; i++) {
+      const p = new V(pos[i * 3], pos[i * 3 + 1], pos[i * 3 + 2]);
+      near.push(Math.min(...W.scars.filter((x) => x.on).map((x) => B.body.localToWorld(new V(x.x, x.y, x.z)).distanceTo(p))));
+    }
+    const lit = draw().calls; F.mesh.visible = false; const dark = draw().calls; F.mesh.visible = true;
+    out.fire = { flames: W.fires, near: Math.max(0, ...near).toFixed(2), draws: lit - dark };
+    b.f.health.hull = b.f.full.hull * 0.6; g.step(0.2, {}); out.fire.after = W.fires;
+    // a fresh raider Brig hit four times in one spot, her hull down to 40%: where her smoke comes from
+    const sm = sturdy(g.raiders.spawn('brig', at(120, 320), P.heading, true)); g.step(0.05, {});
+    const SH = sm.ship.hull, sq = SH.at(-1, 0.4, 1), sn = SH.normal(-1, 0.4, 1);
+    for (let k = 0; k < 4; k++) L.hit(sm.ship, 'hull', sm.ship.body.localToWorld(new V(...sq).addScaledVector(sn, 0.2)), sn.clone().negate().transformDirection(sm.ship.body.matrixWorld), 55, 1.35);
+    sm.f.health.hull = sm.f.full.hull * 0.4; g.fx.clear();
+    const puffs = [], emit = g.fx.smoke.emit;
+    g.fx.smoke.emit = (p, ...rest) => { puffs.push(p.clone()); return emit(p, ...rest); };
+    try { g.step(2, {}); } finally { g.fx.smoke.emit = emit; }
+    const mark = sm.ship.body.localToWorld(new V(...sq)), from = puffs.filter((p) => p.distanceTo(sm.f.pos) < 40);
+    out.smoke = { puffs: from.length, there: from.length ? +(from.filter((p) => p.distanceTo(mark) < 3).length / from.length).toFixed(2) : 0 };
+    // the Captain holed in her hull and sails, then the card between waves for 25 s: patched; then home, and out again
+    g.raiders.clear(); sturdy(g.raiders.spawn('skiff', at(-3000, 0), P.heading, true)); g.waves.state = 'fight';
+    const PB = P.ship.body, PW = L.of(P.ship), PH = P.ship.hull;
+    for (const zz of [-4, 2]) { const tt = PH.tAt(zz, -2.5), qq = PH.at(zz, tt, 1), nn = PH.normal(zz, tt, 1); L.hit(P.ship, 'hull', PB.localToWorld(new V(...qq).addScaledVector(nn, 0.2)), nn.clone().negate().transformDirection(PB.matrixWorld), 55, 1.35); }
+    for (const wing of P.ship.wings.slice(0, 2)) { const c = wing.A.clone().add(wing.B).add(wing.C).divideScalar(3); L.hit(P.ship, 'sails', PB.localToWorld(c.clone().addScaledVector(wing.n, 0.3)), wing.n.clone().negate().transformDirection(PB.matrixWorld), 28, 1); }
+    P.hit('hull', P.full.hull * 0.4); P.hit('sails', P.full.sails * 0.3); g.step(0.5, {});
+    const before = { holes: PW.holes.filter((h) => h.on).length, scars: PW.scars.filter((x) => x.on).length };
+    g.raiders.clear(); Object.assign(g.waves, { state: 'choose', choose: 1e9 }); g.step(25, {});
+    const ws = (u) => Array.from(u).filter((v, i) => i % 4 === 3 && v !== 0).map((v) => +v.toFixed(2));
+    out.patched = { before, holes: ws(P.ship.U.uHole.value), scars: ws(P.ship.U.uScar.value), heat: Math.max(...P.ship.U.uHeat.value) };
+    g.endVoyage(1); g.fly('brig'); g.waves.timer = 1e9; g.step(0.1, {});
+    out.patched.next = ws(P.ship.U.uScar.value).length + ws(P.ship.U.uHole.value).length;
+    g.raiders.clear();
+    return out;
+  });
+  console.log(`scars: three raider Frigates (${scars.programs.levels}) drawn with ${scars.programs.one} shaders for one, ${scars.programs.three} for three, each with her own looks (${scars.programs.own}); a shot through a sail (${scars.sail.part}, size ${scars.sail.size}) made a hole ${scars.sail.w} m across ${scars.sail.off} m from where it went through; one in the planks (${scars.hull.part}) a scar ${scars.hull.r} m ${scars.hull.off} m from where it struck, its embers ${scars.hull.heat.toFixed(2)} then ${scars.hull.cooled} 5 s later; sails torn to a fifth fray ${scars.fray}`);
+  console.log(`scars: a Frigate's first cluster hit: brightness ${scars.crystals.crys.join(' / ')}, cracks ${scars.crystals.crack.join(' / ')}, her glows reading her own; at 30% they sputter (${scars.crystals.sputter}); the Captain's dimmed cluster's lamp at ${scars.lamps} of the other's; a raider holed to port lists ${scars.list} rad; burning at a fifth of her hull: ${scars.fire.flames} flames within ${scars.fire.near} m of her scars, in ${scars.fire.draws} draw, ${scars.fire.after} once mended to 60%; her smoke: ${Math.round(scars.smoke.there * 100)}% of ${scars.smoke.puffs} puffs from where she was hit`);
+  console.log(`scars: between waves the Captain's ${scars.patched.before.holes} holes and ${scars.patched.before.scars} scars patched (sails ${scars.patched.holes.join(', ')}; planks ${scars.patched.scars.join(', ')}), embers at ${scars.patched.heat}; next voyage ${scars.patched.next} scars left`);
+  if (scars.programs.three !== scars.programs.one || scars.programs.levels !== 'middle,middle,middle' || scars.programs.own !== 3) problems.push(`three raiders of one class should share one set of shaders, each with her own looks: ${JSON.stringify(scars.programs)}`);
+  if (scars.sail.part !== 'sails' || scars.sail.size !== 1 || !(scars.sail.w > 0) || !(scars.sail.off >= 0 && scars.sail.off < 0.5)) problems.push(`a shot through a raider's sail should hole it where it went through: ${JSON.stringify(scars.sail)}`);
+  if (scars.hull.part !== 'hull' || Math.abs(scars.hull.r - 1.4) > 0.01 || !(scars.hull.heat > 0.9) || !(scars.hull.off >= 0 && scars.hull.off < 0.5) || !(scars.hull.w > 0) || !(scars.hull.cooled < 0.3)) problems.push(`a shot into a raider's planks should scar them where it struck, its embers cooling within 5 s: ${JSON.stringify(scars.hull)}`);
+  if (!(scars.fray > 0.3)) problems.push(`sails torn to a fifth should fray: ${scars.fray}`);
+  const cr = scars.crystals;
+  if (!(cr.crys[0] < 0.6) || cr.crys[1] !== 1 || cr.crys[2] !== 1 || !(cr.crack[0] > 0) || cr.crack[1] || !cr.glows || cr.sputter !== '0.25/1') problems.push(`a hit cluster of crystals should dim and crack alone, and all sputter below a third: ${JSON.stringify(cr)}`);
+  if (!(scars.lamps < 0.5)) problems.push(`the lamp of the Captain's dimmed cluster should dim with it: ${scars.lamps} of the other's`);
+  if (!(scars.list < -0.03)) problems.push(`a raider badly holed in her port side should list to port: ${scars.list} rad`);
+  if (!(scars.fire.flames >= 2) || !(+scars.fire.near <= 1.2) || scars.fire.draws !== 1 || scars.fire.after !== 0) problems.push(`a raider below a quarter of her hull should burn from her worst scars, in one draw, and not once mended: ${JSON.stringify(scars.fire)}`);
+  if (!(scars.smoke.puffs >= 5) || !(scars.smoke.there > 0.6)) problems.push(`a damaged raider's smoke should come from where she was hit: ${JSON.stringify(scars.smoke)}`);
+  const pt = scars.patched;
+  if (!pt.before.holes || !pt.before.scars || pt.holes.length !== pt.before.holes || pt.holes.some((v) => v >= 0) || pt.scars.length !== pt.before.scars || pt.scars.some((v) => v >= 0) || pt.heat !== 0 || pt.next !== 0) problems.push(`between waves the Captain's holes should be patched and her embers out, and the next voyage she should be as good as new: ${JSON.stringify(pt)}`);
 
   // ---------- how a fight feels (fx.js, events.js) ----------
   // a broadside fired once into empty sky by the Frigate (port side): how far the view kicks back, at its most
@@ -1886,10 +2050,10 @@ if (!quick) {
     calls.length = 0; prize.f.hit('sails', 1e9); g.step(0.3, {});
     const gaveUp = { why: prize.f.down?.why, buzzes: calls.length };
     g.raiders.clear();
-    return { q: g.fx.q, sparks: g.fx.stats().sparkCap, puffs: g.fx.stats().puffCap, can, hit, buzzed, kill, gaveUp };
+    return { q: g.fx.q, sparks: g.fx.stats().sparkCap, puffs: g.fx.stats().puffCap, flames: g.looks.flames.max, can, hit, buzzed, kill, gaveUp };
   });
-  console.log(`phone: effects at ${phoneFx.q} of a laptop's (${phoneFx.sparks} sparks, ${phoneFx.puffs} puffs); ${phoneFx.can ? `a hit ${phoneFx.buzzed ? 'buzzes the phone' : 'DOES NOT BUZZ'}, a raider blown apart ${phoneFx.kill ? 'buzzes longer' : 'DOES NOT BUZZ'}, a treasure ship striking ${phoneFx.gaveUp.buzzes ? 'BUZZES' : 'doesn\'t buzz'}` : 'can\'t buzz this browser'}`);
-  if (phoneFx.q !== 0.6 || phoneFx.sparks !== 700 || phoneFx.puffs !== 600) problems.push(`phone: the effects' budgets should be smaller: ${JSON.stringify(phoneFx)}`);
+  console.log(`phone: effects at ${phoneFx.q} of a laptop's (${phoneFx.sparks} sparks, ${phoneFx.puffs} puffs, ${phoneFx.flames} flames); ${phoneFx.can ? `a hit ${phoneFx.buzzed ? 'buzzes the phone' : 'DOES NOT BUZZ'}, a raider blown apart ${phoneFx.kill ? 'buzzes longer' : 'DOES NOT BUZZ'}, a treasure ship striking ${phoneFx.gaveUp.buzzes ? 'BUZZES' : 'doesn\'t buzz'}` : 'can\'t buzz this browser'}`);
+  if (phoneFx.q !== 0.6 || phoneFx.sparks !== 700 || phoneFx.puffs !== 600 || phoneFx.flames !== 16) problems.push(`phone: the effects' budgets should be smaller: ${JSON.stringify(phoneFx)}`);
   if (!phoneFx.hit) problems.push('phone: a raider\'s shot fired straight at the Skiff from 40 m missed her');
   if (phoneFx.can && phoneFx.hit && !phoneFx.buzzed) problems.push('phone: a hit on the ship doesn\'t buzz the phone');
   if (phoneFx.can && !phoneFx.kill) problems.push('phone: a raider blown apart doesn\'t buzz the phone');

@@ -38,6 +38,17 @@ What every ship has, like the Magpie:
 
 Raiders fly the same four ships as the Captain, and the Galleon and the Man-o'-war too, so they're told apart by colour: rust-red sails, darker planks, and crimson pennants with a black hoist, against the Captain's cream sails and plum and gold. In the game each raider also has a tag over it with its class, its distance and its three health bars.
 
+## Battle scars
+
+Every ship shows her damage on her own model (October 7; how it plays: `docs/game.md`, "Battle scars"):
+
+- **The hull, deck and brass bands** take scorched holes where shots strike, ringed with splintered wood and soot, glowing with embers while fresh, and grow sooty all over as the hull goes. Patched, a hole becomes a square of fresh planks.
+- **The sails** take ragged, scorched holes where shots go through, and fray from their free edges as they're torn. Patched, a hole is covered with a stitched square of new canvas.
+- **The crystals**, cluster by cluster, dim, crack and sputter, and their furnace windows, glows, sparks and lamps dim with them.
+- **Flames** lick from the worst holes of a ship badly holed.
+
+Each ship carries her own scars, even when several of one class share a model, and they're painted onto her surfaces as she's drawn, so they add no triangles and no draw calls, at full, middle and far detail alike (the flames are one draw for the whole sky). The code is `src/ship/dress.js` and `src/ship/flames.js`. In the ships demo, the **New**, **Battered** and **Wrecked** buttons show any ship after a fight, at any level of detail.
+
 ## What the stats mean
 
 There are three things to shoot at. Each has its own health bar:
@@ -142,7 +153,7 @@ Ships only use full detail up close. **There's one model per class, with a detai
 - **Middle** is for ships in the fight but not close. It looks almost the same as Full from a few ship-lengths away.
 - **Far** is for ships small on screen. It keeps the shape, the sails, the crystals and the gun ports.
 
-Each ship is 13 to 18 draw calls at any level, because each material's pieces are joined into one mesh. With three to six enemies in view, the whole scene comes to about 200,000 to 350,000 triangles, which a phone handles easily.
+Each ship is 13 to 18 draw calls at any level, because each material's pieces are joined into one mesh. Her battle scars add none (see [Battle scars](#battle-scars)). With three to six enemies in view, the whole scene comes to about 200,000 to 350,000 triangles, which a phone handles easily.
 
 ## The pictures each ship needs
 

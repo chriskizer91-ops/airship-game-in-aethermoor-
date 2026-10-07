@@ -9,7 +9,8 @@
 // the part hit, a red X when a shot brings a raider down, bars that show the chunk knocked off, and for hits on you, a
 // red arc pointing where the shot came from. A raider going down shows her bounty rising from the wreck, and the shard
 // count in the corner counts up as they come in. Bringing down the last raider of a wave slows the world for a moment
-// before the card between waves rises.
+// before the card between waves rises. Every ship shows her scars where she was hit, burns when badly holed, and the
+// Captain's is patched up between waves and clean again in port (looks.js).
 // The title screen is drawn in the world itself, at sunset (title.js); the port in its own quiet void (port.js). Going
 // from one to another (or out to sea) dips through the night for a moment, so no scene ever shows in the wrong place.
 // The sound (sound.js, through audio.js) answers the same news, and plays Chris's music; it starts with the first touch
@@ -38,6 +39,8 @@ import { makePort } from './port.js';
 import { makeTitle } from './title.js';
 import { hitZones, firstHit } from './damage.js';
 import { smokeFrom } from './effects.js';
+import { makeLooks } from './looks.js';
+import { WTIME } from '../ship/dress.js';
 import { makeAudio } from '../audio/audio.js';
 import { makeSound } from './sound.js';
 import { makeSettings, AIM, PICTURE } from './settings.js';
@@ -95,6 +98,7 @@ async function main() {
   const fx = makeFx({ scene, camera, touch }), bolts = makeBolts(scene, fx), pickups = makePickups(scene);
   const wrecks = makeWrecks({ fx, tear: world.tear, scene }), surge = makeSurge({ scene, fx });
   const raiders = makeRaiders(scene, art, bolts, skies, fx);
+  const looks = makeLooks({ scene, touch }); // (every ship's scars, and her flames: looks.js)
   // the Settings card's changes, at once: the sound; the picture; the camera shake; Fire on the left (a phone)
   function applyPicture() {
     const P = picture();
@@ -159,7 +163,7 @@ async function main() {
   function resetVoyage() {
     Object.assign(W, { n: 0, state: 'calm', timer: 5, lost: 0, choose: 0, sunk: false, next: null });
     Object.assign(V, { shards: 0, downed: 0, hits: 0 });
-    raiders.clear(); bolts.clear(); pickups.clear(); fx.clear(); wrecks.clear(); world.clear(); surge.clear(); hideBounties(); calmUp(false); bigMap(false);
+    raiders.clear(); bolts.clear(); pickups.clear(); fx.clear(); wrecks.clear(); world.clear(); surge.clear(); looks.clear(); hideBounties(); calmUp(false); bigMap(false);
     document.body.classList.remove('sinking');
     hurt = 0; Object.assign(cam, { yaw: 0, pitch: 0.2, zoom: 1 }); Object.assign(shardCount, { shown: 0, from: 0, to: 0, t: 1, n: -1 }); surgeFov.x = surgeFov.v = 0;
   }
@@ -174,6 +178,7 @@ async function main() {
     ship.root.rotation.set(0, at.heading, 0); ship.root.position.copy(at.pos);
     if (player && player.ship !== ship) scene.remove(player.ship.root); // never leave the last ship hanging in the sky
     player = makeFlyer(ship, L.stats, at, L.tune);
+    looks.follow(player); looks.reset(ship); // (she sails as good as new)
     if (!zones.has(id)) zones.set(id, hitZones(ship));
     player.aimY = zones.get(id).aim.y;
     gunnery = makeGunnery(ship, L.guns, player); loaded.port = loaded.starboard = 0; wasLocked = null;
@@ -207,6 +212,7 @@ async function main() {
     progress.bank(got, W.n);
     raiders.clear(); bolts.clear(); pickups.clear(); gunnery.cancel(); wrecks.clear(); world.clear(); surge.clear(); hideBounties(); W.next = null;
     scene.remove(player.ship.root); // the port shows her (or the ship you were looking at) in its own scene
+    looks.reset(player.ship); looks.clear(); // (spotless there, her scars patched and painted over)
     setPaused(false); // (leaving from the pause menu ends the pause, and that's told before the voyage's end)
     const E = payload('voyage:end'); E.kept = got; E.sunk = W.sunk; E.waves = W.n; emit('voyage:end');
     $('paused').hidden = true; $('howto').hidden = true; calmUp(false); bigMap(false); document.body.classList.remove('sinking');
@@ -294,7 +300,7 @@ async function main() {
       if (!h) return false;
       const r = h.r, part = h.h.part, was = !!r.f.down;
       r.f.hit(part, b.damage); V.hits++;
-      HIT.owner = 'player'; HIT.target = 'raider'; HIT.part = part; HIT.at.copy(h.h.at); HIT.damage = b.damage; HIT.raider = r;
+      HIT.owner = 'player'; HIT.target = 'raider'; HIT.part = part; HIT.at.copy(h.h.at); HIT.damage = b.damage; HIT.raider = r; HIT.size = b.K.size;
       HIT.dir.copy(b.v).normalize(); HIT.vel.copy(r.f.velocity); emit('hit');
       hitMark(part, !was && !!r.f.down); tagFlash(r, part);
       return true;
@@ -304,7 +310,7 @@ async function main() {
     if (!h) { nearMiss(b, a, c); return false; }
     const before = player.frac(h.part);
     player.hit(h.part, b.damage);
-    HIT.owner = 'raider'; HIT.target = 'player'; HIT.part = h.part; HIT.at.copy(h.at); HIT.damage = b.damage; HIT.raider = b.from;
+    HIT.owner = 'raider'; HIT.target = 'player'; HIT.part = h.part; HIT.at.copy(h.at); HIT.damage = b.damage; HIT.raider = b.from; HIT.size = b.K.size;
     HIT.dir.copy(b.v).normalize(); HIT.vel.copy(player.velocity); emit('hit');
     if (before >= 0.3 && player.frac(h.part) < 0.3) { LOW.part = h.part; emit('player:low'); }
     hurt = Math.min(1, hurt + 0.45);
@@ -363,7 +369,7 @@ async function main() {
       gunnery.cancel(); payload('player:down').why = player.down.why; emit('player:down');
       return;
     }
-    if (W.state !== 'fight') player.repair(dt * 0.12); // between fights the crew patch her up
+    if (W.state !== 'fight') { player.repair(dt * 0.12); looks.repair(player.ship, dt); } // between fights the crew patch her up (and her scars)
     if (W.state === 'calm') {
       if ((W.timer -= dt) <= 0) {
         const wave = W.next ?? waveAt(W.n, skies().extra), a = raiders.spawnWave(wave, player);
@@ -834,6 +840,7 @@ async function main() {
     if (inp.fire && !player.down) gunnery.fire(battery, aimPoint, bolts, 'player', player.velocity);
     loaded.port = gunnery.ready.port; loaded.starboard = gunnery.ready.starboard;
     bolts.update(dt, hitTest);
+    looks.update(dt, time, raiders.list); // (her scars and every raider's, and their flames, as they stand after this step's hits)
     smokeFrom(player, fx, dt);
     for (let i = 0; i < raiders.list.length; i++) smokeFrom(raiders.list[i].f, fx, dt);
     const got = pickups.update(dt, player.ship.body.localToWorld(hold.set(0, 0.5, 0)), player.ship.recipe.length * 0.6 + 8, camera);
@@ -856,8 +863,7 @@ async function main() {
     world.time.value = time;
     world.puffs.follow(player.pos);
     sun.target.position.copy(player.pos); sun.position.copy(player.pos).addScaledVector(SUN, SUN_OFF);
-    art.M.canvas.userData.time.value = time;
-    art.M.gem.emissiveIntensity = 0.55 + Math.sin(time * 2.4) * 0.09;
+    WTIME.value = time; // (the sails' ripple, the pennants, the crystals' pulse, the embers and the flames)
     player.ship.glow.material.uniforms.uScale.value = camera.userData.pixelScale;
     hud(dt, battery);
   }
@@ -878,7 +884,7 @@ async function main() {
   // for tools/check.mjs
   window.__game = {
     ready: true, get player() { return player; }, get gunnery() { return gunnery; }, cam, input, raiders, bolts, pickups, renderer, camera, scene, world, sun, waves: W, voyage: V,
-    fx, events, wrecks, surge, get lastArc() { return lastArc; }, get time() { return time; }, audio, sound, settings,
+    fx, events, wrecks, surge, looks, get lastArc() { return lastArc; }, get time() { return time; }, audio, sound, settings,
     progress, port, title, sail, endVoyage, pause, sailOn, wind: WIND, get mode() { return mode; }, get paused() { return paused; },
     fly: (id) => sail(id, true), // a voyage in any ship, owned or not (for tests)
     words: { side: sideWords, wind: () => windWords() }, layout, edge: EDGE, // (directions in words, and the panels the edge tags keep clear of)

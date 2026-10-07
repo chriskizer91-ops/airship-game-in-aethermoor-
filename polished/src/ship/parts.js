@@ -235,7 +235,9 @@ export function guns(hull, batch, R, q, S, glows) {
 // ---------- crystal clusters: a glowing furnace column with brass arms holding sunstone crystals ----------
 export function clusters(hull, batch, R, q, S, glows, lights, embers = []) {
   const C = R.cluster, rects = S.rects, seg = Math.max(q.level === 'far' ? 5 : 8, q.latheSeg);
-  for (const cl of R.clusters) {
+  R.clusters.forEach((cl, ci) => {
+    // (each cluster's furnace and crystals are tagged with its number, so each can dim and crack on its own: dress.js)
+    batch.tag = [5, ci, 0, 0];
     const k = cl.scale ?? 1, r = C.r * k, h = C.h * k, y0 = hull.deckY(cl.z), m0 = place([0, y0, cl.z]);
     const add = (key, g, mat) => batch.add(key, g, mat ? new THREE.Matrix4().multiplyMatrices(m0, mat) : m0);
     // the plinth and the column, wearing the furnace's painted windows all round
@@ -287,22 +289,25 @@ export function clusters(hull, batch, R, q, S, glows, lights, embers = []) {
         U.setXY(j, lerp(cr.u0, cr.u1, u), 1 - lerp(cr.v0, cr.v1, lerp(0.02, 0.8, v)));
       }
       add('gem', g, place([c.x, c.y + 0.02 * k, c.z], { spin: i * 0.7 + 0.3 }));
-      glows.push({ p: V(c.x, c.y + H * 0.45, c.z).applyMatrix4(m0), size: H * 1.6, color: 0xff9a2a, pulse: true });
-      embers.push({ p: V(c.x, c.y + H * 0.6, c.z).applyMatrix4(m0), r: W, h: H });
-      if (i === 0) glows.push({ p: V(c.x, c.y + H * 0.38, c.z).applyMatrix4(m0), size: H * 0.55, color: 0xb25cff, pulse: true });
+      glows.push({ p: V(c.x, c.y + H * 0.45, c.z).applyMatrix4(m0), size: H * 1.6, color: 0xff9a2a, pulse: true, group: ci + 1 });
+      embers.push({ p: V(c.x, c.y + H * 0.6, c.z).applyMatrix4(m0), r: W, h: H, group: ci + 1 });
+      if (i === 0) glows.push({ p: V(c.x, c.y + H * 0.38, c.z).applyMatrix4(m0), size: H * 0.55, color: 0xb25cff, pulse: true, group: ci + 1 });
     });
-    glows.push({ p: V(0, 0.2 * k + h * 0.45, 0).applyMatrix4(m0), size: r * 2.6, color: 0xff8a2a });
+    glows.push({ p: V(0, 0.2 * k + h * 0.45, 0).applyMatrix4(m0), size: r * 2.6, color: 0xff8a2a, group: ci + 1 });
     lights.push({ p: V(0, cupY + 0.6 * k, 0).applyMatrix4(m0), power: 2.2 * k * R.length / 25 + 1 });
-  }
+    batch.tag = null;
+  });
 }
 
 // ---------- masts, yards, wing sails and their rigging ----------
 const SAIL = { a: [493, 55], b: [72, 253], c: [495, 310] }; // the canvas's corners in the sail picture (mast top, boom tip, boom root)
-export function masts(hull, batch, R, q, S, glows) {
+// Each wing sail is also told to `wings` (A at the mast, B at the yard's tip, C at its root, the way it bellies, which
+// mast and side), so a shot through the sails can be put on the canvas itself (src/ship/dress.js)
+export function masts(hull, batch, R, q, S, glows, wings = []) {
   const rect = S.rects.sail, seg = Math.max(6, q.latheSeg);
   const sailUV = (pt) => { const [x, y] = pt; return [lerp(rect.u0, rect.u1, x / rect.w), 1 - lerp(rect.v0, rect.v1, y / rect.h)]; };
   const ropes = [];
-  for (const M of R.masts) {
+  R.masts.forEach((M, mi) => {
     const y0 = hull.deckY(M.z), H = M.height, r0 = 0.08 + 0.0045 * R.length + 0.03, r1 = r0 * 0.6;
     const mx = (y) => lerp(r0, r1, (y - y0) / H);
     batch.add('wood', lathe([[r0, 0], [lerp(r0, r1, 0.5), H * 0.5], [r1, H]], seg), place([0, y0, M.z]));
@@ -337,7 +342,8 @@ export function masts(hull, batch, R, q, S, glows) {
         const yA = ti === M.tiers.length - 1 ? y0 + H * 0.95 : y0 + M.tiers[ti + 1].at * H - 0.16;
         const A = V(side * mx(yA), yA, M.z);
         const Bp = root.clone().lerp(tip, 0.96), Cp = root.clone().lerp(tip, 0.035).add(V(0, 0.05, 0));
-        sail(batch, A, Bp, Cp, q.sailDiv, sailUV, side, 0.09 * len);
+        wings.push(sail(batch, A, Bp, Cp, q.sailDiv, sailUV, side, 0.09 * len, [1, side * (1 + ti), M.z]));
+        wings[wings.length - 1].mast = mi;
         ropes.push([A.clone(), tip.clone().add(V(0, 0.05, 0))]);
         // sheets: from the yard's tip down to the rail
         const zr = clamp(tip.z - 0.6, hull.zs + 0.3, hull.zb - 0.3);
@@ -359,7 +365,7 @@ export function masts(hull, batch, R, q, S, glows) {
         }
       }
     }
-  }
+  });
   // stays: fore mast to the bow, aft mast to the stern, and mast to mast
   const sorted = [...R.masts].sort((a, b) => b.z - a.z);
   const topOf = (M) => V(0, hull.deckY(M.z) + M.height * 0.94, M.z);
@@ -394,9 +400,11 @@ function pennant(batch, top, len, wid, n) {
   batch.add('flag', g);
 }
 
-// One wing sail: a triangle of canvas bellied out with the wind (it fills towards the bow)
-function sail(batch, A, B, C, n, uvOf, side, belly) {
-  const pos = [], uv = [], bil = [], idx = [];
+// One wing sail: a triangle of canvas bellied out with the wind (it fills towards the bow). Each corner's rig says it's
+// a wing sail, and how far it is from the free edge (A to B: 0 there, 1 at the yard's root, C), where torn canvas frays
+// first. Returns the sail's shape: its corners, which way it faces and how far it bellies
+function sail(batch, A, B, C, n, uvOf, side, belly, rig) {
+  const pos = [], uv = [], bil = [], idx = [], rg = [];
   const ua = uvOf(SAIL.a), ub = uvOf(SAIL.b), uc = uvOf(SAIL.c);
   const nrm = new THREE.Vector3().crossVectors(B.clone().sub(A), C.clone().sub(A)).normalize();
   if (nrm.z < 0) nrm.negate();
@@ -404,7 +412,7 @@ function sail(batch, A, B, C, n, uvOf, side, belly) {
   for (let i = 0; i <= n; i++) for (let j = 0; j <= i; j++) {
     const wb = n ? (i - j) / n : 0, wc = n ? j / n : 0, wa = Math.max(0, 1 - wb - wc), bw = Math.max(0, 27 * wa * wb * wc);
     const p = A.clone().multiplyScalar(wa).add(B.clone().multiplyScalar(wb)).add(C.clone().multiplyScalar(wc)).addScaledVector(nrm, belly * Math.pow(bw, 0.8));
-    pos.push(p.x, p.y, p.z); uv.push(ua[0] * wa + ub[0] * wb + uc[0] * wc, ua[1] * wa + ub[1] * wb + uc[1] * wc); bil.push(bw);
+    pos.push(p.x, p.y, p.z); uv.push(ua[0] * wa + ub[0] * wb + uc[0] * wc, ua[1] * wa + ub[1] * wb + uc[1] * wc); bil.push(bw); rg.push(rig[0], rig[1], rig[2], wc);
   }
   for (let i = 0; i < n; i++) for (let j = 0; j <= i; j++) {
     idx.push(id(i, j), id(i + 1, j), id(i + 1, j + 1));
@@ -414,9 +422,11 @@ function sail(batch, A, B, C, n, uvOf, side, belly) {
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.setAttribute('billow', new THREE.Float32BufferAttribute(bil, 1));
+  g.setAttribute('rig', new THREE.Float32BufferAttribute(rg, 4));
   g.setIndex(idx);
   g.computeVertexNormals();
   batch.add('canvas', g);
+  return { A: A.clone(), B: B.clone(), C: C.clone(), n: nrm, belly, side };
 }
 
 // ---------- fins under the belly, the rudder, the ram or bowsprit at the bow ----------

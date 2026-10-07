@@ -275,23 +275,50 @@ export function makeDebris(scene, q = 1, glowAt = null) {
   return api;
 }
 
-// Smoke (and fire) pouring off a ship as it's damaged: none above half hull, then more and darker. A raider going down
-// is a wreck, and wrecks.js pours her smoke (a treasure ship that struck her colours smokes only from her damage)
+// Smoke (and fire) pouring off a ship as it's damaged, from where she was hit (her scars: looks.js). A fresh hit
+// smoulders, a thin grey wisp or two from it for a few seconds; below half her hull she trails smoke from her scars,
+// more and darker as it goes, and from the tips of her flames once she burns (below a quarter). A raider going down is
+// a wreck, and wrecks.js pours her smoke (a treasure ship that struck her colours smokes only from her damage)
 const at = new THREE.Vector3(), drift = new THREE.Vector3(), rise = new THREE.Vector3();
 export function smokeFrom(flyer, fx, dt) {
   const down = flyer.down && flyer.down.why !== 'struck';
   if (down && flyer.wreck) return;
-  const f = flyer.frac('hull'), L = flyer.ship.recipe.length;
-  const burning = down ? 1 : Math.max(0, (0.5 - f) * 2);
-  if (burning <= 0) return;
+  const f = flyer.frac('hull'), L = flyer.ship.recipe.length, W = flyer.ship.wear;
+  const burning = down ? 1 : Math.max(0, (0.5 - f) * 2), hot = W ? (W.hot - 0.15) / 0.85 : 0;
+  if (burning <= 0 && hot <= 0.25) return;
   flyer.smokeClock = (flyer.smokeClock ?? 0) - dt;
   if (flyer.smokeClock > 0 || !fx.smoke.room()) return;
-  flyer.smokeClock = (down ? 0.03 : 0.12 - burning * 0.07) / fx.q; // (a phone gets fewer, bigger-spaced puffs)
   const body = flyer.ship.body;
-  at.set((Math.random() - 0.5) * L * 0.08, 0.6, (Math.random() - 0.4) * L * 0.5).applyMatrix4(body.matrixWorld);
+  if (burning <= 0) {
+    // smouldering: a thin pale wisp from her hottest scar, now and then
+    flyer.smokeClock = 0.3 / fx.q;
+    let best = null;
+    for (const s of W.scars) if (s.on && !s.patched && (!best || s.heat > best.heat)) best = s;
+    if (!best) return;
+    at.set(best.x + best.nx * 0.3, best.y + best.ny * 0.3, best.z + best.nz * 0.3).applyMatrix4(body.matrixWorld);
+    drift.copy(flyer.velocity).multiplyScalar(0.15); drift.y += 1.5 + Math.random();
+    fx.smoke.emit(at, drift, 1.8 + hot, 0.4 + L * 0.02, (L * 0.08 + 2) * (0.7 + 0.6 * hot), 0.55 + Math.random() * 0.15, 0.22 * hot + 0.08, PUFF.pour, 1.5);
+    return;
+  }
+  flyer.smokeClock = (down ? 0.03 : 0.12 - burning * 0.07) / fx.q; // (a phone gets fewer, bigger-spaced puffs)
+  // where from: the tip of one of her flames (most of the time, once she burns), one of her scars (the bigger, the
+  // likelier), or, with none, somewhere along her deck
+  const fires = W ? W.fires : 0, scar = W && !(fires && Math.random() < 0.7) ? pick(W.scars) : null;
+  if (fires && !scar) { const i = (Math.random() * fires) | 0; at.set(W.tips[i * 3], W.tips[i * 3 + 1], W.tips[i * 3 + 2]); }
+  else if (scar) at.set(scar.x + scar.nx * 0.3, scar.y + scar.ny * 0.3, scar.z + scar.nz * 0.3).applyMatrix4(body.matrixWorld);
+  else at.set((Math.random() - 0.5) * L * 0.08, 0.6, (Math.random() - 0.4) * L * 0.5).applyMatrix4(body.matrixWorld);
   drift.copy(flyer.velocity).multiplyScalar(0.15); drift.x += (Math.random() - 0.5) * 2; drift.y += 2 + Math.random() * 2; drift.z += (Math.random() - 0.5) * 2;
   const k = 0.75 + Math.random() * 0.5; // (each puff its own size and shade, and a burning ship's lit from below)
   fx.smoke.emit(at, drift, 2.5 + burning * 3, (L * 0.05 + 0.6) * k, (L * (0.22 + burning * 0.3) + 3) * k, Math.max(0, 0.6 - burning * 0.5 + (Math.random() - 0.5) * 0.12), 0.3 + burning * 0.35, PUFF.pour, 1.5,
     burning > 0.6 ? (burning - 0.5) * Math.random() : 0);
-  if (burning > 0.5 && Math.random() < burning) fx.spark(at, rise.copy(drift).setY(drift.y + 3), 0.6 + Math.random() * 0.5, 1.2 + L * 0.06, Math.random() < 0.5 ? 0xff7a2a : 0xffc04a);
+  if (burning > 0.5 && Math.random() < burning * (fires ? 0.5 : 1)) fx.spark(at, rise.copy(drift).setY(drift.y + 3), 0.6 + Math.random() * 0.5, 1.2 + L * 0.06, Math.random() < 0.5 ? 0xff7a2a : 0xffc04a);
+}
+// one of a ship's open scars, the bigger the likelier (none if she has none)
+function pick(scars) {
+  let sum = 0;
+  for (const s of scars) if (s.on) sum += s.r;
+  if (sum <= 0) return null;
+  let x = Math.random() * sum;
+  for (const s of scars) if (s.on && (x -= s.r) <= 0) return s;
+  return null;
 }

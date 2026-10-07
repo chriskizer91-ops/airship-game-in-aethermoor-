@@ -1,10 +1,12 @@
-// closeups.mjs: close pictures of one ship's details, for checking the model by eye.
-// Run: node tools/build.mjs && node tools/closeups.mjs brig [folder]
+// closeups.mjs: close pictures of one ship's details, for checking the model by eye; as she looks after a fight too
+// (battered or wrecked: her scars, src/ship/dress.js).
+// Run: node tools/build.mjs && node tools/closeups.mjs brig [new|battered|wrecked] [folder]
 import { chromium } from 'playwright';
 import { mkdirSync } from 'node:fs';
 
 const root = new URL('..', import.meta.url).pathname;
-const id = process.argv[2] ?? 'brig', out = process.argv[3] ?? root + 'shots';
+const LOOKS = ['new', 'battered', 'wrecked'], rest = process.argv.slice(3), look = rest.find((a) => LOOKS.includes(a)) ?? 'new';
+const id = process.argv[2] ?? 'brig', out = rest.find((a) => !LOOKS.includes(a)) ?? root + 'shots';
 mkdirSync(out, { recursive: true });
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const page = await browser.newPage({ viewport: { width: 1100, height: 760 } });
@@ -12,7 +14,7 @@ page.on('pageerror', (e) => console.log('ERR', e.message));
 await page.goto('file://' + root + 'dist/hangar.html');
 await page.waitForFunction(() => window.__hangar?.ready, null, { timeout: 180000 });
 await page.addStyleTag({ content: '#dock,#card,#btn-card,#title{display:none!important}' });
-await page.evaluate((id) => window.__hangar.select(id), id);
+await page.evaluate(([id, look]) => { window.__hangar.select(id); window.__hangar.wear(look); }, [id, look]);
 // [name, target offset as fractions of the ship's length (x, y, z), yaw, pitch, distance as a fraction of length]
 const L = await page.evaluate(() => window.__hangar.state.dist / 1.25);
 const shots = [
@@ -27,7 +29,7 @@ for (const [name, off, yaw, pitch, d] of shots) {
     s.target.set(off[0] * len, off[1] * len, off[2] * len);
   }, [off, yaw, pitch, d, L]);
   await page.waitForTimeout(900);
-  await page.screenshot({ path: `${out}/${id}-${name}.png`, timeout: 90000 });
+  await page.screenshot({ path: `${out}/${id}-${look === 'new' ? '' : look + '-'}${name}.png`, timeout: 90000 });
 }
 await browser.close();
 console.log('done');

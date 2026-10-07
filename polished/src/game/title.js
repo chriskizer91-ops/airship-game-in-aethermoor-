@@ -14,6 +14,7 @@
 import * as THREE from 'three';
 import { SHIPS } from '../ships/index.js';
 import { SUN, DAY, SUNSET, STORMY, mixLook } from './world.js';
+import { WTIME } from '../ship/dress.js';
 
 const CITY = { x: 30, z: 180 }; // the island city in the Hearthsea: the middle of her circle
 const ORBIT = { r: 520, y: 700 };
@@ -222,8 +223,7 @@ export function makeTitle({ renderer, scene, world, lights, art, raiders, shipFo
     world.mood.uDrift.value.copy(DRIFT).multiplyScalar(clouds);
     world.puffs.follow(pos);
     sun.target.position.copy(pos); sun.position.copy(pos).addScaledVector(SUN, SUN_OFF);
-    art.M.canvas.userData.time.value = t;
-    art.M.gem.emissiveIntensity = 0.55 + Math.sin(t * 2.4) * 0.09;
+    WTIME.value = t;
   }
   function render() { renderer.render(scene, camera); }
 

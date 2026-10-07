@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { Batch, clamp, triangles } from './kit.js';
 import { makeHull, buildHull } from './hull.js';
 import { commonShapes, brasswork, rails, guns, clusters, masts, fins, rudder, bow, lanterns, deckworks } from './parts.js';
+import { makeLook, dress, CLUSTERS } from './dress.js';
 
 export const LEVELS = {
   full: { stations: 150, rings: 32, deckAcross: 5, latheSeg: 16, tubeRad: 6, tubePer: 5, balusterStep: 1, railPath: 0.2, ropeRad: 4, sailDiv: 14, rivetStep: 1,
@@ -32,19 +33,23 @@ function detailFor(level, R) {
   return q;
 }
 
-// Embers: sparks of sunstone light drifting up off every crystal, as on the Magpie
-function emberPoints(embers, per) {
-  const pos = [], seed = [], spread = [];
-  embers.forEach((e, i) => { for (let k = 0; k < per; k++) { pos.push(e.p.x, e.p.y, e.p.z); seed.push(i * 13.7 + k * 1.618); spread.push(e.r, e.h); } });
+// Embers: sparks of sunstone light drifting up off every crystal, as on the Magpie. Each knows its cluster (group:
+// its number + 1), and a dimmed cluster gives off fewer (the ship's looks, U: dress.js)
+function emberPoints(embers, per, U) {
+  const pos = [], seed = [], spread = [], group = [];
+  embers.forEach((e, i) => { for (let k = 0; k < per; k++) { pos.push(e.p.x, e.p.y, e.p.z); seed.push(i * 13.7 + k * 1.618); spread.push(e.r, e.h); group.push(e.group ?? 0); } });
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   geo.setAttribute('seed', new THREE.Float32BufferAttribute(seed, 1));
   geo.setAttribute('spread', new THREE.Float32BufferAttribute(spread, 2));
+  geo.setAttribute('group', new THREE.Float32BufferAttribute(group, 1));
   const mat = new THREE.ShaderMaterial({
-    uniforms: { uTime: { value: 0 }, uScale: { value: 400 } },
-    vertexShader: `attribute float seed; attribute vec2 spread; uniform float uTime; uniform float uScale; varying float vA; varying float vHot;
+    uniforms: { uTime: { value: 0 }, uScale: { value: 400 }, uCrys: U.uCrys, uSpark: U.uSpark },
+    vertexShader: `attribute float seed; attribute vec2 spread; attribute float group; uniform float uTime; uniform float uScale; uniform float uCrys[${CLUSTERS}]; uniform float uSpark; varying float vA; varying float vHot;
       float h1(float n) { return fract(sin(n) * 43758.5453); }
       void main() {
+        float on = group > 0.5 ? uCrys[clamp(int(group + 0.5) - 1, 0, ${CLUSTERS - 1})] * uSpark : 1.0;
+        if (h1(seed * 7.7) >= on) { gl_PointSize = 0.0; gl_Position = vec4(2.0, 2.0, 2.0, 1.0); vA = 0.0; vHot = 0.0; return; }
         float life = fract(uTime * (0.22 + 0.12 * h1(seed)) + h1(seed * 1.3));
         float a = h1(seed * 2.1) * 6.2831 + uTime * (0.6 + h1(seed) * 0.8);
         vec3 p = position + vec3(cos(a) * spread.x * (0.3 + life * 0.9), life * spread.y * 1.6, sin(a) * spread.x * (0.3 + life * 0.9));
@@ -64,26 +69,30 @@ function emberPoints(embers, per) {
 }
 
 // The glows: one batch of soft points for every crystal, lantern and gun muzzle. uBoost flares the crystals' (the
-// Captain's Surge: each built ship has its own, so it never touches another ship)
-function glowPoints(glows) {
-  const pos = [], col = [], size = [], kind = [];
+// Captain's Surge: each built ship has its own, so it never touches another ship). A crystal's glow knows its cluster
+// (group), and dims and sputters with it (the ship's looks, U: dress.js)
+function glowPoints(glows, U) {
+  const pos = [], col = [], size = [], kind = [], group = [];
   const c = new THREE.Color();
   for (const g of glows) {
     pos.push(g.p.x, g.p.y, g.p.z); c.set(g.color); col.push(c.r, c.g, c.b); size.push(g.size);
-    kind.push(g.pulse ? 1 : g.flicker ? 2 : 0);
+    kind.push(g.pulse ? 1 : g.flicker ? 2 : 0); group.push(g.group ?? 0);
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   geo.setAttribute('size', new THREE.Float32BufferAttribute(size, 1));
   geo.setAttribute('kind', new THREE.Float32BufferAttribute(kind, 1));
+  geo.setAttribute('group', new THREE.Float32BufferAttribute(group, 1));
   const mat = new THREE.ShaderMaterial({
-    uniforms: { uTime: { value: 0 }, uScale: { value: 400 }, uBoost: { value: 1 } },
-    vertexShader: `attribute float size; attribute float kind; varying vec3 vCol; varying float vA; uniform float uTime; uniform float uScale; uniform float uBoost;
+    uniforms: { uTime: { value: 0 }, uScale: { value: 400 }, uBoost: { value: 1 }, uCrys: U.uCrys, uSpark: U.uSpark },
+    vertexShader: `attribute float size; attribute float kind; attribute float group; varying vec3 vCol; varying float vA; uniform float uTime; uniform float uScale; uniform float uBoost;
+      uniform float uCrys[${CLUSTERS}]; uniform float uSpark;
       void main() {
         vec4 mv = modelViewMatrix * vec4(position, 1.0);
         float ph = position.x * 3.1 + position.z * 1.7;
         float k = kind > 1.5 ? 0.88 + 0.08 * sin(uTime * 13.0 + ph) + 0.05 * sin(uTime * 7.3 + ph) : kind > 0.5 ? (0.86 + 0.14 * sin(uTime * 2.4 + ph)) * uBoost : 1.0;
+        if (group > 0.5) k *= uCrys[clamp(int(group + 0.5) - 1, 0, ${CLUSTERS - 1})] * uSpark;
         vCol = color; vA = k;
         gl_PointSize = min(size * k * uScale / -mv.z, 360.0);
         gl_Position = projectionMatrix * mv;
@@ -99,14 +108,15 @@ function glowPoints(glows) {
 }
 
 // How a ship rides the air: a slow sway, leaning into turns, nose up in a climb, heeling from her own broadsides
-// (opts.heel, radians), and the rudder swinging
+// (opts.heel, radians), listing towards the side that took the most hits as she fills with holes (opts.list, radians,
+// + to starboard: src/game/looks.js), and the rudder swinging
 export function shipMotion(R, body, rudders) {
   let t = Math.random() * 10;
   return (dt, opts = {}) => {
     t += dt;
     const sway = opts.calm ? 0.4 : 1;
     body.position.y = (Math.sin(t * 0.9) * 0.12 + Math.sin(t * 0.47) * 0.08) * sway * R.railScale;
-    body.rotation.z = Math.sin(t * 0.6) * 0.012 * sway + (opts.turn ?? 0) * 0.16 + (opts.heel ?? 0); // a right turn (turn > 0) leans the ship to starboard
+    body.rotation.z = Math.sin(t * 0.6) * 0.012 * sway + (opts.turn ?? 0) * 0.16 + (opts.heel ?? 0) + (opts.list ?? 0); // a right turn (turn > 0) leans the ship to starboard
     body.rotation.x = Math.sin(t * 0.73) * 0.008 * sway - (opts.climb ?? 0) * 0.06;
     for (const r of rudders) r.rotation.y = opts.turn != null ? -opts.turn * 0.5 : Math.sin(t * 0.35) * 0.25;
     return t;
@@ -120,18 +130,20 @@ export function buildShip(R, level, art) {
   R.railScale = clamp(R.length / 25, 0.55, 1.2);
   const S = { ...commonShapes(q), rects: art.rects };
   const hull = makeHull(R);
-  const batch = new Batch(), glows = [], lights = [], embers = [];
+  const batch = new Batch(), glows = [], lights = [], embers = [], wings = [];
   buildHull(hull, batch, q);
   brasswork(hull, batch, R, q, S);
   rails(hull, batch, R, q, S);
   guns(hull, batch, R, q, S, glows);
   clusters(hull, batch, R, q, S, glows, lights, embers);
-  masts(hull, batch, R, q, S, glows);
+  masts(hull, batch, R, q, S, glows, wings);
   fins(hull, batch, R, q, S);
   bow(hull, batch, R, q, S, glows);
   lanterns(hull, batch, R, q, S, glows);
   deckworks(hull, batch, R, q, S);
 
+  // her own looks (her scars: dress.js), read by her own copies of the materials that show them, her glows and sparks
+  const U = makeLook();
   const root = new THREE.Group(); root.name = R.name;
   const body = new THREE.Group(); root.add(body);
   const stats = { triangles: 0, parts: {}, drawCalls: 0 };
@@ -148,8 +160,9 @@ export function buildShip(R, level, art) {
   rudderPivot.matrixAutoUpdate = false; rudderPivot.matrix.copy(rud.pivot);
   const rudderTurn = new THREE.Group(); rudderTurn.name = 'rudder'; rudderPivot.add(rudderTurn); body.add(rudderPivot);
   addMeshes(rud.batch.build(), rudderTurn);
-  const glow = glowPoints(glows); glow.name = 'glow'; body.add(glow); stats.drawCalls++;
-  const sparks = level === 'far' ? null : emberPoints(embers, level === 'full' ? 14 : 5);
+  dress(body, art.M, U);
+  const glow = glowPoints(glows, U); glow.name = 'glow'; body.add(glow); stats.drawCalls++;
+  const sparks = level === 'far' ? null : emberPoints(embers, level === 'full' ? 14 : 5, U);
   if (sparks) { sparks.name = 'embers'; body.add(sparks); stats.drawCalls++; }
   const lamps = [];
   if (q.lights) for (const L of lights) {
@@ -162,7 +175,8 @@ export function buildShip(R, level, art) {
     const t = move(dt, opts);
     glow.material.uniforms.uTime.value = t;
     if (sparks) { sparks.material.uniforms.uTime.value = t; sparks.material.uniforms.uScale.value = glow.material.uniforms.uScale.value; }
-    for (let i = 0; i < lamps.length; i++) lamps[i].intensity = (0.88 + Math.sin(t * 2.4 + i) * 0.12) * lights[i].power * 6;
+    // (each cluster's lamp dims and sputters with it)
+    for (let i = 0; i < lamps.length; i++) lamps[i].intensity = (0.88 + Math.sin(t * 2.4 + i) * 0.12) * lights[i].power * 6 * U.uCrys.value[i] * U.uSpark.value;
   }
-  return { root, body, update, stats, bounds, glow, length: R.length, recipe: R, level, hull };
+  return { root, body, update, stats, bounds, glow, length: R.length, recipe: R, level, hull, U, wings, M: art.M, lamps };
 }

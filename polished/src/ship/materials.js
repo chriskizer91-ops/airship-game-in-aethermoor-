@@ -8,6 +8,7 @@ import deckUrl from '../../assets/ships/deck.webp';
 import bandUrl from '../../assets/ships/band.webp';
 import partsUrl from '../../assets/ships/parts.webp';
 import partsInfo from '../../assets/ships/parts.json';
+import { WTIME } from './dress.js';
 
 const loadImage = (url) => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = url; });
 
@@ -99,8 +100,9 @@ export async function loadShipArt(renderer) {
     // pennants: the Captain's plum with a gold hoist, streaming from every mast top
     flag: std({ vertexColors: true, roughness: 0.85, emissive: 0x2a0a20, emissiveIntensity: 0.4 }),
   };
-  // the sails ripple a little in the wind
-  M.canvas.userData.time = { value: 0 };
+  // the sails ripple a little in the wind, and the pennants stream, on the clock every ship shares (dress.js; a ship's
+  // own copy of the canvas ripples there too, harder when it's torn)
+  M.canvas.userData.time = WTIME;
   M.canvas.onBeforeCompile = (sh) => {
     sh.uniforms.uTime = M.canvas.userData.time;
     sh.vertexShader = 'attribute float billow;\nuniform float uTime;\n' + sh.vertexShader.replace('#include <begin_vertex>',

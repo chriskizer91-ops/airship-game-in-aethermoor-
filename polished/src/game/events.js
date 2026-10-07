@@ -21,12 +21,13 @@
 //   volley          { owner, battery, count, kind, ship, p }
 //                                                a battery starting to fire (its guns ripple off after it, bow first);
 //                                                p is its middle gun
-//   hit             { owner, target, part, at, damage, raider, dir, vel }
+//   hit             { owner, target, part, at, damage, raider, dir, vel, size }
 //                                                a shot landing: who fired it, 'player' or 'raider' hit, 'hull',
 //                                                'sails' or 'crystals', where (world), how hard, the raider: the one
 //                                                hit, or the one that fired at the Captain (she may be going down by
 //                                                then; null for a shot no raider's guns fired), which way the shot was
-//                                                flying (a unit vector), and the velocity of the ship it hit
+//                                                flying (a unit vector), the velocity of the ship it hit, and how big
+//                                                the shot was (1 a chaser's, 1.35 a broadside's: the scar it leaves)
 //   nearMiss        { pan, close, at }           a raider's shot just missing the Captain's ship: pan -1 (left of the
 //                                                view) to 1 (right), close 0 (barely) to 1 (a hair's breadth)
 //   raider:down     { raider, why, at }          'hull', 'crystals' or 'struck' (a treasure ship giving up)
@@ -69,7 +70,7 @@ export const PAYLOAD = {
   'voyage:end': { kept: 0, sunk: false, waves: 0 },
   fire: { owner: '', kind: '', battery: '', p: v(), dir: v(), weight: 1, ship: '', vel: v(), i: 0, n: 1, raider: null },
   volley: { owner: '', battery: '', count: 0, kind: '', ship: '', p: v() },
-  hit: { owner: '', target: '', part: '', at: v(), damage: 0, raider: null, dir: v(), vel: v() },
+  hit: { owner: '', target: '', part: '', at: v(), damage: 0, raider: null, dir: v(), vel: v(), size: 1 },
   nearMiss: { pan: 0, close: 0, at: v() },
   'raider:down': { raider: null, why: '', at: v() },
   'raider:escaped': { raider: null },

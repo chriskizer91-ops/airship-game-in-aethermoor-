@@ -41,8 +41,9 @@ export function makeFlyer(ship, stats, start, tune = {}) {
     aimY: 0, // how far below its deck to aim at it (the middle of its hull)
     surge: { on: 0, charge: 1 }, // seconds of Surge left, and how built up the next one is (1 = ready)
     heel: 0, heelV: 0, // the roll from her own broadsides (radians, + to starboard), and how fast it's changing
+    list: 0, // how far she lists towards the side that took the most hits, badly holed (radians, + to starboard: looks.js)
   };
-  const look = { turn: 0, climb: 0, heel: 0 }; // what the model is told each frame (kept, not made each time)
+  const look = { turn: 0, climb: 0, heel: 0, list: 0 }; // what the model is told each frame (kept, not made each time)
   // the heel's spring: a broadside's kick rolls her over for a second or so, then she rights herself
   const settle = (dt) => { s.heelV += (-6 * s.heel - 1.6 * s.heelV) * dt; s.heel += s.heelV * dt; };
   s.startSurge = () => { if (s.down || s.surge.charge < 1) return false; s.surge.on = SURGE.time; s.surge.charge = 0; return true; };
@@ -88,7 +89,7 @@ export function makeFlyer(ship, stats, start, tune = {}) {
     move(dt);
     s.pos.y = clamp(s.pos.y, 60, THINNING);
     settle(dt);
-    look.turn = s.turn * Math.min(1, s.speed / (H.vmax * 0.4) + 0.2); look.climb = s.vy / H.climb; look.heel = s.heel;
+    look.turn = s.turn * Math.min(1, s.speed / (H.vmax * 0.4) + 0.2); look.climb = s.vy / H.climb; look.heel = s.heel; look.list = s.list;
     ship.update(dt, look);
   };
 
@@ -111,7 +112,7 @@ export function makeFlyer(ship, stats, start, tune = {}) {
     ship.root.rotation.x = (d.why === 'hull' ? 0.75 : d.why === 'struck' ? 0.04 : 0.12) * k * k;
     ship.root.rotation.z = d.roll * (d.why === 'hull' ? 1.4 : d.why === 'struck' ? 0.12 : 0.25) * k;
     settle(dt);
-    look.turn = 0; look.climb = 0; look.heel = s.heel;
+    look.turn = 0; look.climb = 0; look.heel = s.heel; look.list = s.list;
     ship.update(dt, look);
   }
   function move(dt) {
@@ -123,7 +124,7 @@ export function makeFlyer(ship, stats, start, tune = {}) {
   // back to new, for a fresh start
   s.reset = (pos, heading) => {
     Object.assign(s.health, full); s.down = null; s.pos.copy(pos); s.heading = heading; s.vy = 0; s.turn = 0; s.climb = 0;
-    s.speed = H.vmax * 0.45 * pace; s.sail = 0.5; s.surge.on = 0; s.surge.charge = 1; s.heel = s.heelV = 0; ship.root.rotation.set(0, heading, 0);
+    s.speed = H.vmax * 0.45 * pace; s.sail = 0.5; s.surge.on = 0; s.surge.charge = 1; s.heel = s.heelV = 0; s.list = 0; ship.root.rotation.set(0, heading, 0);
   };
   return s;
 }

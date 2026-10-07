@@ -32,14 +32,26 @@ export const lerp = (a, b, t) => a + (b - a) * t;
 export const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 
 // Everything of one material ends up in one geometry. Pieces arrive with their own matrix.
+// A piece can carry a `rig`: four numbers on every corner saying what it is to the ship's looks (src/ship/dress.js):
+// [kind, a, b, c]. Kind 0 is nothing in particular; 1 a wing sail ([1, side and tier, the mast's z, how far in from
+// its free edge]); 5 a crystal cluster's piece ([5, which cluster]). Only the small batches carry it (RIG_KEYS), never
+// the brass or bronze, which hold half a ship's triangles. While `tag` is set, every piece added to one of those gets
+// it (a piece may also bring its own, as a sail does)
+export const RIG_KEYS = new Set(['wood', 'rope', 'canvas', 'crystal', 'gem', 'parts']);
+const KEEP = ['position', 'normal', 'uv', 'color', 'billow', 'rig'], SIZE = { color: 3, billow: 1, rig: 4 };
 export class Batch {
-  constructor() { this.parts = new Map(); }
+  constructor() { this.parts = new Map(); this.tag = null; }
   add(key, geometry, matrix) {
     let g = geometry.index ? geometry.toNonIndexed() : geometry.clone();
     if (matrix) g.applyMatrix4(matrix);
-    for (const name of Object.keys(g.attributes)) if (!['position', 'normal', 'uv', 'color', 'billow'].includes(name)) g.deleteAttribute(name);
+    for (const name of Object.keys(g.attributes)) if (!KEEP.includes(name) || (name === 'rig' && !RIG_KEYS.has(key))) g.deleteAttribute(name);
     if (!g.attributes.normal) g.computeVertexNormals();
     if (!g.attributes.uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
+    if (this.tag && RIG_KEYS.has(key) && !g.attributes.rig) {
+      const n = g.attributes.position.count, a = new Float32Array(n * 4);
+      for (let i = 0; i < n; i++) a.set(this.tag, i * 4);
+      g.setAttribute('rig', new THREE.Float32BufferAttribute(a, 4));
+    }
     if (!this.parts.has(key)) this.parts.set(key, []);
     this.parts.get(key).push(g);
     return g;
@@ -51,7 +63,7 @@ export class Batch {
       const names = new Set();
       for (const g of list) for (const n of Object.keys(g.attributes)) names.add(n);
       for (const g of list) for (const n of names) if (!g.attributes[n]) {
-        const size = n === 'color' ? 3 : n === 'billow' ? 1 : 2;
+        const size = SIZE[n] ?? 2;
         const fill = new Float32Array(g.attributes.position.count * size);
         if (n === 'color') fill.fill(1);
         g.setAttribute(n, new THREE.Float32BufferAttribute(fill, size));

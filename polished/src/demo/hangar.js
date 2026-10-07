@@ -1,10 +1,14 @@
 // hangar.js: the demo page. All six ships (the Captain's four, and the Galleon and Man-o'-war that raiders sail), one
 // at a time or all together, above a sea of cloud at sunset with peaks breaking through, the way Chris's painting of
 // the Brig shows it. Drag to turn round a ship,
-// pinch to zoom; switch ships, views and the detail dial at the bottom.
+// pinch to zoom; switch ships, views and the detail dial at the bottom, and how she looks after a fight: New, Battered
+// (scorched holes in her planks, holes in her sails, a cluster of crystals dimmed and cracked) or Wrecked (holed all
+// along, burning, her sails in rags and her crystals sputtering), drawn as the game draws them (src/ship/dress.js).
 import * as THREE from 'three';
 import { loadShipArt } from '../ship/materials.js';
 import { buildShip } from '../ship/build.js';
+import { WTIME, makeWear, wearPreset, sputter } from '../ship/dress.js';
+import { makeFlames, shipFlames } from '../ship/flames.js';
 import { FLEET as SHIPS, STATS } from '../ships/index.js';
 
 const $ = (id) => document.getElementById(id);
@@ -147,7 +151,12 @@ async function main() {
     return built.get(key);
   };
 
-  const state = { ship: 'brig', level: 'full', view: 'turn', yaw: 0.9, pitch: 0.28, dist: 30, target: new THREE.Vector3(), aim: null, idle: 0, all: false };
+  const state = { ship: 'brig', level: 'full', view: 'turn', yaw: 0.9, pitch: 0.28, dist: 30, target: new THREE.Vector3(), aim: null, idle: 0, all: false, wear: 'new' };
+  // the flames of a Wrecked ship (one draw for all of them), and her list towards her holed side
+  const flames = makeFlames(40); scene.add(flames.mesh);
+  const listed = { list: 0 };
+  // each ship shown in the look chosen (New, Battered or Wrecked): her scars set out the same every time
+  function scar(s) { s.wear ??= makeWear(s); s.burn = wearPreset(s.wear, state.wear); }
   const shown = [];
   const holder = new THREE.Group(); scene.add(holder);
 
@@ -174,7 +183,7 @@ async function main() {
         s.root.position.set(x, i * 2.5, -i * 7);
         x += 16 + R.length * 0.35;
       }
-      holder.add(s.root); shown.push(s);
+      holder.add(s.root); shown.push(s); scar(s);
     });
     const f = frameFor(shown);
     state.target.copy(f.c);
@@ -240,6 +249,12 @@ async function main() {
     for (const x of $('levels').children) x.setAttribute('aria-pressed', String(x === b));
     show();
   });
+  function setWear(w) {
+    state.wear = w;
+    for (const x of $('wear').children) x.setAttribute('aria-pressed', String(x.dataset.wear === w));
+    for (const s of shown) scar(s);
+  }
+  for (const b of $('wear').children) b.addEventListener('click', () => setWear(b.dataset.wear));
   $('btn-card').addEventListener('click', () => {
     const open = $('card').hidden; $('card').hidden = !open;
     $('btn-card').textContent = open ? 'Hide stats' : 'Stats'; $('btn-card').setAttribute('aria-expanded', String(open));
@@ -296,11 +311,18 @@ async function main() {
     const cp = Math.cos(state.pitch);
     camera.position.set(Math.sin(state.yaw) * cp, Math.sin(state.pitch), Math.cos(state.yaw) * cp).multiplyScalar(state.dist).add(state.target);
     camera.lookAt(state.target);
-    for (const s of shown) { s.update(dt); if (state.glowScale) s.glow.material.uniforms.uScale.value = state.glowScale; }
+    flames.begin();
+    for (const s of shown) {
+      // (a Wrecked ship lists, her crystals sputter and her worst holes burn)
+      listed.list = s.wear.list; s.update(dt, listed);
+      if (state.glowScale) s.glow.material.uniforms.uScale.value = state.glowScale;
+      s.U.uSpark.value = state.wear === 'wrecked' ? sputter(time) : 1;
+      s.root.updateMatrixWorld(true); shipFlames(flames, s.wear, s.burn);
+    }
+    flames.end();
     clouds.material.uniforms.uTime.value = time;
-    art.M.canvas.userData.time.value = time;
+    WTIME.value = time;
     art.M.crystal.emissiveIntensity = 1.05 + Math.sin(time * 2.4) * 0.15;
-    art.M.gem.emissiveIntensity = 0.55 + Math.sin(time * 2.4) * 0.09;
     renderer.render(scene, camera);
     requestAnimationFrame(frame);
   }
@@ -314,6 +336,8 @@ async function main() {
     select(id) { if (id === 'all') { state.all = true; } else { state.all = false; state.ship = id; } mark(); show(); },
     level(l) { state.level = l; for (const x of $('levels').children) x.setAttribute('aria-pressed', String(x.dataset.level === l)); show(); },
     view(v, yaw, pitch, dist) { setView(v); if (yaw != null) { state.aim = null; state.yaw = yaw; state.pitch = pitch; if (dist) state.dist = dist; } },
+    // her scars: 'new', 'battered' or 'wrecked'; the ships shown; the flames burning
+    wear: setWear, shown, flames,
   };
 }
 

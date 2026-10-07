@@ -15,6 +15,7 @@
 // brightening to gold: time to climb, dive or turn away. Then her side ripples off, bow to stern (guns.js).
 import * as THREE from 'three';
 import { buildShip, shipMotion } from '../ship/build.js';
+import { makeLook, dress } from '../ship/dress.js';
 import { FLEET, STATS } from '../ships/index.js';
 import { makeFlyer } from './flight.js';
 import { makeGunnery, intercept } from './guns.js';
@@ -123,20 +124,25 @@ function cutMasts(R, model) {
 
 // One raider ship: copies of its class's middle and far models (sharing their shapes), swapped by how big it looks.
 // Her parts that a wreck changes (wrecks.js) are her own: her crystals' glows and embers, her sails and her pennants,
-// her middle and far models' meshes by name, and her far model's rigging (hidden when her masts fall)
+// her middle and far models' meshes by name, and her far model's rigging (hidden when her masts fall). So are her
+// looks (her scars, src/ship/dress.js): one set for both models, read by her own copies of the materials that show
+// them (which share their shaders with every other ship's), and by her own glows and embers
 function raiderShip(T) {
   const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
   const mid = T.mid.body.clone(), far = T.far.body.clone(); far.visible = false; body.add(mid, far);
+  const U = makeLook();
+  dress([mid, far], T.mid.M, U);
   const rudders = [], glows = [], embers = [], canvas = [], flags = [], meshes = {}, farMeshes = {}, farRig = [];
   body.traverse((o) => {
     if (o.name === 'rudder') rudders.push(o); else if (o.name === 'glow') glows.push(o); else if (o.name === 'embers') embers.push(o);
     else if (o.name === 'canvas') canvas.push(o); else if (o.name === 'flag') flags.push(o);
+    if (o.name === 'glow' || o.name === 'embers') { o.material = o.material.clone(); o.material.uniforms.uCrys = U.uCrys; o.material.uniforms.uSpark = U.uSpark; }
   });
   for (const o of mid.children) if (o.isMesh) meshes[o.name] = o;
   for (const o of far.children) if (o.isMesh) { farMeshes[o.name] = o; if (CUT.includes(o.name) && o.name !== 'wood' && o.name !== 'brass') farRig.push(o); }
   const move = shipMotion(T.R, body, rudders);
   return {
-    root, body, recipe: T.R, hull: T.mid.hull, length: T.R.length, level: 'middle', masts: T.masts ?? null,
+    root, body, recipe: T.R, hull: T.mid.hull, length: T.R.length, level: 'middle', masts: T.masts ?? null, U, wings: T.mid.wings,
     parts: { glows, embers, canvas, flags, meshes, farMeshes, farRig },
     update(dt, opts) {
       const t = move(dt, opts);
