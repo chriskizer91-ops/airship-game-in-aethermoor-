@@ -125,16 +125,20 @@ function glowPoints(glows, U) {
 }
 
 // A treasure ship's glints: `n` points spread over her brass above the deck (her rails, her chests' gold, her castle),
-// a fixed stride through them so they're the same every time
+// a fixed stride through them so they're the same every time. One on metal that moves (a spike at a yard's tip, a
+// gun) carries its rig, so it moves with it: folding with her wing, say, never left twinkling in the air
 function glints(built, hull, n, size) {
-  const at = [];
+  const at = [], rigs = [];
   for (const key of ['brass', 'rigMetal']) {
     const g = built.get(key); if (!g) continue;
-    const P = g.attributes.position;
-    for (let i = 0; i < P.count; i += 3) { const x = P.getX(i), y = P.getY(i), z = P.getZ(i); if (z > hull.zs && z < hull.zb && y > hull.deckY(z) + 0.3) at.push(x, y, z); }
+    const P = g.attributes.position, RG = g.attributes.rig;
+    for (let i = 0; i < P.count; i += 3) {
+      const x = P.getX(i), y = P.getY(i), z = P.getZ(i);
+      if (z > hull.zs && z < hull.zb && y > hull.deckY(z) + 0.3) { at.push(x, y, z); rigs.push(RG ? [RG.getX(i), RG.getY(i), RG.getZ(i), RG.getW(i)] : null); }
+    }
   }
   const m = at.length / 3, out = [];
-  for (let k = 0; k < Math.min(n, m); k++) { const i = Math.floor(((k * 0.618034) % 1) * m); out.push({ p: new THREE.Vector3(at[i * 3], at[i * 3 + 1], at[i * 3 + 2]), size, color: 0xfff1c0, glint: true }); }
+  for (let k = 0; k < Math.min(n, m); k++) { const i = Math.floor(((k * 0.618034) % 1) * m); out.push({ p: new THREE.Vector3(at[i * 3], at[i * 3 + 1], at[i * 3 + 2]), size, color: 0xfff1c0, glint: true, rig: rigs[i] }); }
   return out;
 }
 

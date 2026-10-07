@@ -42,7 +42,7 @@ Raiders fly the same four ships as the Captain, and the Galleon and the Man-o'-w
 Two raiders have colours of their own (October 7), and any ship can wear them (`src/ship/livery.js`):
 
 - **A raider captain's ship** looks the leader: black sails edged in crimson, blackened iron fittings (her brass bands stay gold, as trim), crystals and sparks that burn crimson, red lanterns, two red eyes glowing either side of her bow, gold pennants, and a great black-and-crimson swallow-tailed banner on a staff above her tallest mast. Her wake is crimson.
-- **A treasure ship** is a rich merchant laden with shards: wine-red sails edged in gold, gilded brass that glints and twinkles all over her, gold pennants with a wine-red hoist, and open chests heaped with gold on her deck in place of her cargo. Her wake glitters gold.
+- **A treasure ship** is a rich merchant laden with shards: wine-red sails edged in gold, gilded brass that glints and twinkles all over her, gold pennants with a wine-red hoist, and open chests heaped with gold on her deck in place of her cargo; the glints on her moving metal (the spikes at her yards' tips) move with it. Her wake glitters gold. Any class can sail as one, worth three times her class's shards (a Galleon's bounty already is a treasure ship's).
 
 The **Man-o'-war**, as a raider, shows her five crystal columns as the weak points they are: they glow brighter than any other ship's and beat like a heart.
 

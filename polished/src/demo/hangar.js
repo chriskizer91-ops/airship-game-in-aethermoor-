@@ -155,13 +155,24 @@ async function main() {
   const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 70000);
   const art = await loadShipArt(renderer);
 
-  // ships are built when first wanted (in each livery), and kept
+  // ships are built when first wanted, and kept in the Captain's colours. In a raider's colours only the colours shown
+  // now are kept: picking other colours lets the ships built in the last ones go (their shapes freed from the graphics
+  // card too), so a phone never holds more than two sets of six full ships (about 100,000 triangles each)
   const built = new Map(), arts = {};
   const getShip = (R, level, livery = 'yours') => {
     const key = R.id + ':' + level + ':' + livery;
     if (!built.has(key)) built.set(key, wearLivery(buildShip(R, level, arts[livery] ??= liveryArt(art, livery), liveryOpts(livery)), livery));
     return built.get(key);
   };
+  function letGo(keep) {
+    for (const [key, s] of built) {
+      const livery = key.slice(key.lastIndexOf(':') + 1);
+      if (livery === 'yours' || livery === keep) continue;
+      s.root.removeFromParent();
+      s.root.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
+      built.delete(key);
+    }
+  }
 
   const state = { ship: 'brig', level: 'full', view: 'turn', yaw: 0.9, pitch: 0.28, dist: 30, target: new THREE.Vector3(), aim: null, idle: 0, all: false, wear: 'new', livery: 'yours' };
   // her sails and guns, worked by hand: how far her wings fold (0 set, 1 in), her lids (0 shut .. 2 all open and the
@@ -182,7 +193,7 @@ async function main() {
     return { c, size, r: Math.max(size.x, size.z, size.y) };
   }
   function show() {
-    holder.clear(); shown.length = 0;
+    holder.clear(); shown.length = 0; letGo(state.livery);
     const list = state.all ? SHIPS : SHIPS.filter((R) => R.id === state.ship);
     let x = 0, y = 0;
     const tall = camera.aspect < 0.9;

@@ -14,9 +14,11 @@ import { foldPoint } from '../ship/dress.js';
 // how wide a wake is at its head (a share of the ship's length), the thinnest it's drawn (pixels: a laptop, a phone), how
 // long a gone ship's trail takes to fade (seconds), and the vapour trails' width (metres) and brightness
 export const WAKE = { every: 0.09, points: [22, 16], trails: 24, width: 0.08, minPx: [2.5, 2], fade: 1, vapour: 0.14, mist: 0.35 };
-// the colours, and which glitter; how much wider a kind is
+// the colours, and which glitter; how much wider and brighter a kind is than a raider's: the Captain's own a little
+// narrower and half as bright (the camera looks straight down it all the time, so it's a soft shimmer behind her, not
+// a blaze), a Man-o'-war's broader
 export const WAKE_COLORS = { player: 0xffc860, raider: 0xff5a3a, captain: 0xff3070, treasure: 0xffd56a, manowar: 0xff8a2a, vapour: 0xf4f8ff };
-const WIDER = { manowar: 1.4 };
+export const WAKE_KINDS = { player: { wide: 0.8, bright: 0.5 }, manowar: { wide: 1.4, bright: 1 } };
 
 export function makeWakes(scene, { touch = false } = {}) {
   const N = WAKE.points[touch ? 1 : 0], T = WAKE.trails, V = T * N * 2;
@@ -47,11 +49,14 @@ export function makeWakes(scene, { touch = false } = {}) {
     fragmentShader: `uniform float uTime; varying vec4 vCol; varying vec2 vM; varying float vG;
       float wH(vec2 p) { vec3 q = fract(vec3(p.xyx) * 0.1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }
       void main() {
-        // (brightest just behind her, fading out along the trail and to its edges, shimmering as it goes)
-        float a = 1.4 * pow(max(0.0, 1.0 - vM.y), 1.3) * smoothstep(0.0, 0.08, vM.y) * (1.0 - vM.x * vM.x) * vCol.a * (0.75 + 0.25 * sin(vM.y * 40.0 - uTime * 9.0));
+        // (brightest just behind her, fading out along the trail and softly to nothing at its edges, shimmering as it
+        // goes; never so bright that it burns out to a flat white-gold band: it eases off towards 0.7)
+        float across = 1.0 - vM.x * vM.x;
+        float a = 1.4 * pow(max(0.0, 1.0 - vM.y), 1.3) * smoothstep(0.0, 0.08, vM.y) * across * across * vCol.a * (0.75 + 0.25 * sin(vM.y * 40.0 - uTime * 9.0));
+        a = 0.7 * (1.0 - exp(-a / 0.7));
         if (vG > 0.5) a += step(0.97, wH(vec2(floor(vM.y * 70.0), floor(uTime * 12.0) + floor(vM.x * 2.0 + 2.0) * 31.0))) * 2.0 * vCol.a * (1.0 - vM.y);
         if (a < 0.004) discard;
-        gl_FragColor = vec4(vCol.rgb * a, min(1.0, a) * 0.6);
+        gl_FragColor = vec4(vCol.rgb * a, min(1.0, a) * 0.75);
       }`,
   });
   const mesh = new THREE.Mesh(geo, mat);
@@ -60,7 +65,7 @@ export function makeWakes(scene, { touch = false } = {}) {
 
   // the trails: each a ring of points (newest first; the first follows its ship every frame), when each was left, and
   // how bright it was then
-  const made = () => ({ on: false, owner: null, seen: 0, kind: '', at: new THREE.Vector3(), w: 1, r: 1, g: 1, b: 1, glitter: 0, vapour: 0, side: 0, wing: null,
+  const made = () => ({ on: false, owner: null, seen: 0, kind: '', at: new THREE.Vector3(), w: 1, bright: 1, r: 1, g: 1, b: 1, glitter: 0, vapour: 0, side: 0, wing: null,
     pts: new Float32Array(N * 3), t: new Float32Array(N), k: new Float32Array(N), n: 0, last: 0, fade: 1, glow: 0 });
   const trails = Array.from({ length: T }, made), c = new THREE.Color(), p = new THREE.Vector3();
   let frame = 0, time = 0, used = 0;
@@ -72,8 +77,9 @@ export function makeWakes(scene, { touch = false } = {}) {
     if (!s) return null;
     const ship = f.ship, R = ship.recipe, hull = ship.hull, L = R.length;
     c.set(WAKE_COLORS[vapour ? 'vapour' : kind] ?? WAKE_COLORS.raider);
-    Object.assign(s, { on: true, owner: f, seen: frame, kind, w: vapour ? WAKE.vapour : WAKE.width * L * (WIDER[kind] ?? 1), r: c.r, g: c.g, b: c.b, glitter: kind === 'treasure' ? 1 : 0,
-      vapour, n: 0, last: -1e9, fade: 1, glow: 0, wing: null });
+    const K = WAKE_KINDS[kind];
+    Object.assign(s, { on: true, owner: f, seen: frame, kind, w: vapour ? WAKE.vapour : WAKE.width * L * (K?.wide ?? 1), bright: K?.bright ?? 1, r: c.r, g: c.g, b: c.b,
+      glitter: kind === 'treasure' ? 1 : 0, vapour, n: 0, last: -1e9, fade: 1, glow: 0, wing: null });
     if (vapour) {
       for (const w of ship.wings) if (w.tip && w.side > 0 && (!s.wing || w.tip.x > s.wing.tip.x)) s.wing = w;
     } else {
@@ -95,7 +101,7 @@ export function makeWakes(scene, { touch = false } = {}) {
   function brightness(s, dt) {
     const f = s.owner, surging = f.surge?.on > 0, sp = Math.min(1.6, f.speed / f.H.vmax);
     if (f.down) return 0;
-    if (!s.vapour) return (0.25 + 0.75 * Math.pow(sp, 1.5)) * (surging ? 1.8 : 1);
+    if (!s.vapour) return (0.25 + 0.75 * Math.pow(sp, 1.5)) * (surging ? 1.8 : 1) * s.bright;
     const want = surging || Math.abs(f.turn) > 0.6 || (sp > 0.85 && f.velocity.y < -8) ? WAKE.mist : 0;
     s.glow += (want - s.glow) * (1 - Math.exp(-dt * 3));
     return s.glow;

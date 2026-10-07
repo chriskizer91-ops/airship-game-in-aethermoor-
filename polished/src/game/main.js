@@ -36,7 +36,7 @@ import { makeFx } from './fx.js';
 import { makeWrecks } from './wrecks.js';
 import { makeSurge } from './surge.js';
 import * as events from './events.js';
-import { makeRaiders, waveAt } from './raiders.js';
+import { makeRaiders, waveAt, hasTreasure } from './raiders.js';
 import { makeProgress, SKIES } from './progress.js';
 import { loadout } from './mods.js';
 import { makePickups } from './pickups.js';
@@ -177,6 +177,17 @@ async function main() {
     document.body.classList.remove('sinking'); hidNote = -99; gaveAway = -99;
     hurt = 0; Object.assign(cam, { yaw: 0, pitch: 0.2, zoom: 1 }); Object.assign(shardCount, { shown: 0, from: 0, to: 0, t: 1, n: -1 }); surgeFov.x = surgeFov.v = 0;
   }
+  // whether a ship at p, heading in from bearing a, and the camera `d` metres behind her are clear of the big clouds
+  // (with room to spare round the camera)
+  const airP = new THREE.Vector3();
+  function clearAir(p, a, d) {
+    world.puffs.follow(p);
+    for (const [back, side, up] of [[0, 0, 0], [0.5, 0, 0.1], [1, 0, 0.2], [1.3, 0, 0.3], [1, 50, 0.2], [1, -50, 0.2], [1, 0, -0.3], [1, 0, 0.8]]) {
+      airP.set(p.x + Math.sin(a) * d * back + Math.cos(a) * side, p.y + d * up, p.z + Math.cos(a) * d * back - Math.sin(a) * side);
+      if (world.puffs.inside(airP) > 0) return false;
+    }
+    return true;
+  }
   // set sail: a fresh voyage in this ship, built as it stands in port (`force` sails a ship not owned, for tests)
   function sail(id, force = false) {
     const d = progress.data;
@@ -184,7 +195,13 @@ async function main() {
     title.leave(); // (the afternoon again, before her ship is put in the sky)
     const first = progress.newCaptain;
     const R = SHIPS.find((s) => s.id === id), ship = shipFor(R), L = loadout(id, d.ships[id]);
-    const a = Math.random() * Math.PI * 2, at = { pos: new THREE.Vector3(Math.sin(a) * 2500, 680, Math.cos(a) * 2500), heading: a + Math.PI };
+    // (she starts 2.5 km out, heading in, in clear air: tried round the circle until neither she nor the camera behind
+    // her is in one of the big clouds, so a voyage never opens blind)
+    const at = { pos: new THREE.Vector3(), heading: 0 };
+    for (let k = 0, a = Math.random() * Math.PI * 2; k < 12; k++, a += 0.52) {
+      at.pos.set(Math.sin(a) * 2500, 680, Math.cos(a) * 2500); at.heading = a + Math.PI;
+      if (clearAir(at.pos, a, camDistFor(R))) break;
+    }
     ship.root.rotation.set(0, at.heading, 0); ship.root.position.copy(at.pos);
     if (player && player.ship !== ship) scene.remove(player.ship.root); // never leave the last ship hanging in the sky
     player = makeFlyer(ship, L.stats, at, L.tune);
@@ -396,12 +413,14 @@ async function main() {
         // bank of cloud on the raiders' way in, 500 to 800 m ahead of them
         if (wave.storm) sky.startStorm(); else sky.clearWeather();
         if (wave.bank) bankFor(raiders.list, player.pos);
-        const title = wave.ids.includes('galleon') ? `Wave ${W.n + 1}: a treasure ship` : wave.captain >= 0 ? `Wave ${W.n + 1}: a raider captain` : wave.ids.includes('manowar') ? `Wave ${W.n + 1}: a Man-o'-war` : `Raiders, wave ${W.n + 1}`;
-        banner(title, `${describe(wave.ids)}, ${sideWords(a - player.heading)} · ${windWords()}${wave.ids.includes('galleon') ? ' · shoot her sails to catch her' : ''}`);
+        // (a treasure ship's wave: a Galleon's, or one with a treasure ship of another class)
+        const prize = hasTreasure(wave);
+        const title = prize ? `Wave ${W.n + 1}: a treasure ship` : wave.captain >= 0 ? `Wave ${W.n + 1}: a raider captain` : wave.ids.includes('manowar') ? `Wave ${W.n + 1}: a Man-o'-war` : `Raiders, wave ${W.n + 1}`;
+        banner(title, `${describe(wave.ids)}, ${sideWords(a - player.heading)} · ${windWords()}${prize ? ' · shoot her sails to catch her' : ''}`);
         W.state = 'fight';
         if (W.n === 0 && !$('help').hidden) toggleHelp(); // (the keys fold away as the first wave comes)
         const E = payload('wave:start');
-        Object.assign(E, { n: W.n + 1, title, captain: wave.captain >= 0, prize: wave.ids.includes('galleon'), fortress: wave.ids.includes('manowar'), count: wave.ids.length });
+        Object.assign(E, { n: W.n + 1, title, captain: wave.captain >= 0, prize, fortress: wave.ids.includes('manowar'), count: wave.ids.length });
         emit('wave:start');
       }
     } else if (W.state === 'fight') {

@@ -8,8 +8,9 @@
 //   crystal columns glow brighter than any other ship's, beating like a heart: her weak points (looks.js blows them out).
 //   A treasure ship sails by, runs once she's chased, covering her escape with her stern guns, and strikes her colours
 //   when her sails are gone or her hull is down to a quarter. Left too far behind, she gets away. The Galleon always
-//   sails as one; any other class can too (spawn's `treasure`), in the treasure ship's colours: wine-red sails edged in
-//   gold, gilded brass that glints, and chests of gold on her deck.
+//   sails as one; any other class can too (spawn's `treasure`, or the ships a wave's `treasure` names), in the treasure
+//   ship's colours: wine-red sails edged in gold, gilded brass that glints, and chests of gold on her deck, laden with
+//   three times her class's bounty.
 // They come in waves, smallest first, and every fifth wave is led by a raider captain: tougher, harder-hitting and
 // quicker to reload, and worth four times the shards. Her ship looks the leader's: black sails edged in crimson,
 // blackened iron, crimson crystals, red eyes at her bow and a great swallow-tailed banner. How sharp the raiders are
@@ -45,9 +46,15 @@ export const CAPTAIN = { toughness: 2, damage: 1.2, reload: 0.9, bounty: 4 };
 export const LOOKS = { crew: DEBRIS.crew, captain: DEBRIS.captain, treasure: DEBRIS.treasure };
 // the big ships' heavy guns take their crews longer to reload
 const HEAVY = { galleon: 1.15, manowar: 1.3 };
-// Crystal Shards for bringing one down (before the skies' and the wave's bonus)
-export const BOUNTY = { skiff: 15, cutter: 30, brig: 60, frigate: 100, galleon: 300, manowar: 400 };
+// Crystal Shards for bringing one down (before the skies' and the wave's bonus); a treasure ship of a class that isn't
+// one already is laden with three times her class's (a Galleon's bounty is a treasure ship's)
+export const BOUNTY = { skiff: 15, cutter: 30, brig: 60, frigate: 100, galleon: 300, manowar: 400 }, TREASURE = { bounty: 3 };
 const ROLE = { skiff: 'chaser', cutter: 'chaser', brig: 'broadside', frigate: 'broadside', galleon: 'prize', manowar: 'broadside' };
+// whether ship i of a wave sails as a treasure ship (she runs, and strikes her colours): every Galleon, even one that's
+// the wave's captain, and the ships the wave's `treasure` names (but not its captain, who fights); and whether a wave
+// brings one (main.js: its banner, its sound)
+export const treasureShip = (wave, i) => ROLE[wave.ids[i]] === 'prize' || (i !== wave.captain && !!wave.treasure?.includes(i));
+export const hasTreasure = (wave) => wave.ids.some((id, i) => treasureShip(wave, i));
 export const WAVES = [['skiff'], ['skiff', 'skiff'], ['cutter'], ['cutter', 'skiff'], ['brig'], ['galleon', 'cutter'], ['frigate'],
   ['frigate', 'cutter', 'cutter'], ['brig', 'brig', 'skiff', 'skiff'], ['frigate', 'brig', 'cutter', 'cutter', 'skiff'],
   ['galleon', 'frigate', 'cutter'], ['manowar', 'cutter', 'cutter'], ['frigate', 'frigate', 'brig'], ['galleon', 'galleon', 'frigate', 'cutter'],
@@ -278,7 +285,7 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
     scene.add(ship.root);
     const gun = makeGunnery(ship, { reload: RAIDER.slow * S.reload * (HEAVY[id] ?? 1) * edge('reload'), damage: S.damage * edge('damage') }, f);
     const r = { id, R: Tm.R, name: `Raider ${captain ? 'captain\'s ' + Tm.R.cls : Tm.R.cls}`, captain, ship, f, gun, zones: Tm.zones, role, frozen,
-      bounty: BOUNTY[id] * (captain ? CAPTAIN.bounty : 1), aim: RAIDER.aim * S.aim, looks: LOOKS[look], livery: look, weak: id === 'manowar',
+      bounty: BOUNTY[id] * (captain ? CAPTAIN.bounty : role === 'prize' && ROLE[id] !== 'prize' ? TREASURE.bounty : 1), aim: RAIDER.aim * S.aim, looks: LOOKS[look], livery: look, weak: id === 'manowar',
       mode: 'attack', timer: 0, side: 1, alt: (Math.random() - 0.5) * (role === 'chaser' ? 50 : 20), counted: false, gone: false,
       course: heading, fleeing: false, weave: Math.random() * 6,
       // whether she can see the Captain (not hidden in cloud far from her), where she last saw her (null: never yet),
@@ -298,13 +305,14 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
   }
 
   // a wave of raiders, 1.5 to 1.9 km ahead of the Captain, more or less, coming in, its captain (if any) leading; a
-  // treasure ship (its Galleons, or those its `treasure` names) is closer, about 1.2 km, sailing across the Captain's path
+  // treasure ship (treasureShip: one that runs, a Galleon captain too) is closer, about 1.2 km, sailing across the
+  // Captain's path. Her colours are a captain's if she leads the wave, or else a treasure ship's
   function spawnWave(wave, foe) {
     const base = foe.heading + (Math.random() - 0.5) * 1.4, ids = wave.ids;
     ids.forEach((id, i) => {
-      const prize = i !== wave.captain && (ROLE[id] === 'prize' || !!wave.treasure?.includes(i)), a = base + (i - (ids.length - 1) / 2) * 0.24, d = prize ? 1100 + Math.random() * 250 : 1500 + Math.random() * 400;
+      const runs = treasureShip(wave, i), a = base + (i - (ids.length - 1) / 2) * 0.24, d = runs ? 1100 + Math.random() * 250 : 1500 + Math.random() * 400;
       const pos = new THREE.Vector3(foe.pos.x + Math.sin(a) * d, clamp(foe.pos.y + (Math.random() - 0.5) * 160, 200, 2000), foe.pos.z + Math.cos(a) * d);
-      const r = spawn(id, pos, prize ? a + (Math.random() < 0.5 ? 1 : -1) * Math.PI / 2 : a + Math.PI, false, i === wave.captain, prize);
+      const r = spawn(id, pos, runs ? a + (Math.random() < 0.5 ? 1 : -1) * Math.PI / 2 : a + Math.PI, false, i === wave.captain, runs && i !== wave.captain);
       r.seen = foe.pos.clone(); // (they know where she was as they came)
     });
     return base;
@@ -456,8 +464,8 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
   function clear() { for (const r of list) { r.gone = r.cleared = true; drop(r); } list.length = 0; }
   // build a class's models ahead of time (a captain's, before her wave), so nothing is built mid-fight
   const prepare = (id, captain = false, treasure = false) => { template(id, captain ? 'captain' : treasure ? 'treasure' : 'crew'); };
-  // (a wave's: its captain's ship, and its treasure ships, `treasure` if it names them, or its Galleons)
-  const prepareWave = (wave) => wave.ids.forEach((id, i) => { if (i === wave.captain) prepare(id, true); else if (wave.treasure?.includes(i) || ROLE[id] === 'prize') prepare(id, false, true); });
+  // (a wave's: its captain's ship, and its treasure ships)
+  const prepareWave = (wave) => wave.ids.forEach((id, i) => { if (i === wave.captain) prepare(id, true); else if (treasureShip(wave, i)) prepare(id, false, true); });
   // a raider's ship and nothing more, for the title screen to fly across its sky far off: not one of the raiders, never
   // fighting. Her far model in one piece (made the first time it's wanted, and shared by every one of her class there)
   const pieces = {};

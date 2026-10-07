@@ -12,9 +12,13 @@
 //                     setting her scars, with no more draws or shaders; Wrecked burning; a hole by the mast cut in its own
 //                     wing only, not the one across the mast; held sideways on a phone, the buttons in 55% of the height
 //                     and the stats starting folded, clear of them when brought out; Sails in folding her wing tips
-//                     2.5 m aft or more and Fire! firing her guns, with no more draws or shaders; her four colours (hers,
-//                     a raider's, a captain's, a treasure ship's) all with the same shaders, the captain's black iron and
-//                     banner, the treasure ship's glints; pictures of each (and a raider Man-o'-war on the laptop)
+//                     2.5 m aft or more and Fire! firing her guns, with no more draws or shaders; as drawn, side-on,
+//                     her lids opening and guns running out changing over a fifth of the picture along her ports, her
+//                     port guns kicked back in changing it again and her starboard guns not, and from above (her wood
+//                     only) her lids swinging out from her side, not into her; her four colours (hers, a raider's, a
+//                     captain's, a treasure ship's) all with the same shaders, the captain's black iron and banner, the
+//                     treasure ship's glints; pictures of each (and a raider Man-o'-war on the laptop); on the phone, all
+//                     six at full detail shown in each colours in turn holding two sets of ships at most
 //   dist/game.html    the title screen and the port: a brand-new Captain finds Fair Winds chosen; a ship that can't be
 //                     afforded, then buying the Cutter and armour and setting the crystal power (the stats changing);
 //                     dragging the ship round; the window resized in port, the corner map still drawn at sea and the
@@ -70,13 +74,19 @@
 //                     next voyage; 16 flames at most on a phone
 //                     ships that move like they're alive: a Frigate's wings folded with her sails in, spread with them
 //                     set, snapped open in a Surge (a tip 3 m aft or more); her pennants following her speed; her lids
-//                     shut in calm, open with her guns out two seconds after a wave arrives; her port broadside's guns,
-//                     each kicking back on the model within 0.05 s of its own shot (the model's turns the very ones the
-//                     guns fire at), 0.3 m in or more, and out again once loaded; a raider Brig readying a broadside with
-//                     her lids open on that side; a shot through a raider's folded wing holing it within 0.6 m of where
-//                     it went through; five wakes in one draw, hers gold and as long as 1.5 s of her flight, a raider's
-//                     1.4 km off still glowing; a captain's and a treasure Brig's colours with no new shaders; a
-//                     Man-o'-war's column blown out once, dark, and her dipping at that end
+//                     shut in calm; her port side fired in calm bursting its lids open with its first gun, that gun run
+//                     out (under 0.2 m in) as it fires, and the lids shut again 10 s later; her lids open with her guns
+//                     out two seconds after a wave arrives; her port broadside's guns, each kicking back on the model
+//                     within 0.05 s of its own shot (the model's turns the very ones the guns fire at), 0.3 m in or more,
+//                     and out again once loaded; a raider Brig readying a broadside with her lids open on that side; a
+//                     shot through a raider's folded wing holing it within 0.6 m of where it went through; five wakes in
+//                     one draw, hers gold and as long as 1.5 s of her flight, soft (under a tenth of the pixels they
+//                     change burnt out to white-gold), a raider's 1.4 km off still glowing; a captain's and a treasure
+//                     Brig's colours with no new shaders, the treasure Brig's glints on metal that moves moving with it;
+//                     a wave with a treasure Brig told as a treasure ship's (her sails to shoot, its sound), her running
+//                     and worth three times a crew Brig; a Galleon captain coming in close (1,050 to 1,450 m) across the
+//                     Captain's path, as every Galleon runs; a Man-o'-war's column blown out once, dark, and her dipping
+//                     at that end
 //                     storms, clouds and a sky with depth: the cloud floor worked out in JavaScript agreeing with the
 //                     card's own picture (within 0.03 at 64 places); storms on waves 8 and 13 on Crosswinds, 4, 8 and 12
 //                     on the Maelstrom, none on Fair Winds, and banks of cloud on every third wave and storm waves; the
@@ -321,6 +331,59 @@ for (const name of quick ? [] : ['laptop', 'phone']) {
   console.log(`${name}: the Brig Battered changes ${Math.round(worn.changed * 100)}% of the picture of her hull (her first scar ${worn.scar} m), drawn in ${worn.calls.join(' and ')} goes with ${worn.programs.join(' and ')} shaders; Wrecked burns in ${burning} places`);
   if (!(worn.changed > 0.04) || !(worn.scar > 0) || worn.calls[0] !== worn.calls[1] || worn.programs[1] > worn.programs[0]) problems.push(`${name}: the ships demo's Battered should show her scars (over 4% of her hull changed) with no more draws or shaders: ${JSON.stringify(worn)}`);
   if (!(burning >= 2)) problems.push(`${name}: the ships demo's Wrecked ship should burn: ${burning} flames`);
+  // her guns as the graphics card draws them (src/ship/dress.js): the Brig side-on, her wings spread. Her lids opening
+  // and her guns running out change the picture along her row of port lids (the box round them on the screen); every
+  // port gun kicked back in, a second after a broadside, changes it again; her starboard guns kicked back changes
+  // nothing there (each side kicks its own guns). Then from above, with only her wood shown so nothing hides her lids,
+  // her port lids opened: they swing out from her side (the picture changes outboard of their hinges), not into her
+  await page.evaluate(() => { const H = window.__hangar; H.select('brig'); H.level('full'); H.wear('new'); H.livery('yours'); H.view('side', Math.PI / 2, 0.04); });
+  await page.waitForTimeout(1200);
+  const lidWork = () => {
+    const H = window.__hangar, r = H.renderer, c = r.domElement, k = document.createElement('canvas'), x = k.getContext('2d', { willReadFrequently: true });
+    k.width = c.width; k.height = c.height;
+    const S = H.shown[0], V = H.camera.position.constructor, grab = () => { r.render(H.scene, H.camera); x.drawImage(c, 0, 0); return x.getImageData(0, 0, k.width, k.height).data; };
+    // (her port lids, from the wood they're made of: where they hinge, and from bow to stern)
+    const g = S.body.children.find((o) => o.name === 'wood').geometry, P = g.attributes.position, RG = g.attributes.rig, lids = [];
+    for (let i = 0; i < P.count; i++) if (Math.round(RG.getX(i)) === 2 && RG.getY(i) > 0) lids.push(i);
+    // the share of the pixels (%) changed from a to b inside a box on the screen; and the box round points of hers
+    const changed = (a, b, B) => { let n = 0; for (let y = B[2]; y < B[3]; y++) for (let xx = B[0]; xx < B[1]; xx++) { const i = (y * k.width + xx) * 4; if (Math.max(Math.abs(a[i] - b[i]), Math.abs(a[i + 1] - b[i + 1]), Math.abs(a[i + 2] - b[i + 2])) > 16) n++; } return +(n / Math.max(1, (B[1] - B[0]) * (B[3] - B[2])) * 100).toFixed(1); };
+    const boxOf = (pts) => {
+      S.root.updateMatrixWorld(true);
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+      for (const p of pts) { const v = p.applyMatrix4(S.body.matrixWorld).project(H.camera), sx = (v.x + 1) / 2 * k.width, sy = (1 - v.y) / 2 * k.height; x0 = Math.min(x0, sx); x1 = Math.max(x1, sx); y0 = Math.min(y0, sy); y1 = Math.max(y1, sy); }
+      return [Math.max(0, Math.floor(x0)), Math.min(k.width, Math.ceil(x1)), Math.max(0, Math.floor(y0)), Math.min(k.height, Math.ceil(y1))];
+    };
+    return { H, S, V, U: S.U, grab, changed, boxOf, P, RG, lids };
+  };
+  await page.evaluate(`window.lidWork = ${lidWork}`);
+  const guns = await page.evaluate(() => {
+    const { H, U, V, grab, changed, boxOf, P, lids } = window.lidWork();
+    const band = boxOf(lids.map((i) => new V().fromBufferAttribute(P, i)));
+    H.rig({ fold: 0, open: 0 }); const shut = grab();
+    H.rig({ open: 2 }); const open = grab();
+    // (every gun of one side kicked back a second ago, its ripple done, and still loading)
+    const t = H.time, kicked = (b) => { U.uFire.value.setScalar(-1e4).setComponent(b, t - 1); U.uReady.value.setScalar(0).setComponent(b, t + 1.6); return grab(); };
+    const port = kicked(0), starboard = kicked(1);
+    U.uFire.value.setScalar(-1e4); U.uReady.value.setScalar(0); H.rig({ open: 0 });
+    return { lids: changed(shut, open, band), port: changed(open, port, band), starboard: changed(open, starboard, band) };
+  });
+  await page.evaluate(() => window.__hangar.view('top', Math.PI / 2, 1.45));
+  await page.waitForTimeout(1200);
+  Object.assign(guns, await page.evaluate(() => {
+    const { H, S, U, V, grab, changed, boxOf, P, RG, lids } = window.lidWork();
+    let hx = 0, hy = 0, z0 = Infinity, z1 = -Infinity;
+    for (const i of lids) { hx += RG.getY(i) / lids.length; hy += RG.getZ(i) / lids.length; z0 = Math.min(z0, P.getZ(i)); z1 = Math.max(z1, P.getZ(i)); }
+    // (as high as an open lid reaches, from 0.6 to 1.4 m outboard of her hinges, or as far inboard)
+    const side = (a, b) => boxOf([a, b].flatMap((dx) => [0, 0.7].flatMap((dy) => [z0, z1].map((z) => new V(hx + dx, hy + dy, z)))));
+    for (const o of S.body.children) if (o.isMesh) o.visible = o.name === 'wood';
+    H.rig({ fold: 0, open: 0 }); const shut = grab();
+    U.uGun.value.set(2, 0, 0, 0); const open = grab();
+    for (const o of S.body.children) o.visible = true;
+    H.rig({ open: 0 });
+    return { outboard: changed(shut, open, side(0.6, 1.4)), inboard: changed(shut, open, side(-1.4, -0.6)) };
+  }));
+  console.log(`${name}: the Brig's lids opening and guns running out change ${guns.lids}% of the picture along her ports, every port gun kicked back ${guns.port}% and every starboard gun ${guns.starboard}%; seen from above, her lids opening change ${guns.outboard}% of it outboard of their hinges and ${guns.inboard}% inboard`);
+  if (!(guns.lids > 20) || !(guns.port > 2) || !(guns.starboard < guns.port / 5) || !(guns.outboard > 25) || !(guns.inboard < 5)) problems.push(`${name}: the Brig's lids should swing out from her side as her guns run out, and her port guns (only) kick back in, as the graphics card draws them: ${JSON.stringify(guns)}`);
   // a big hole in her top port wing right by the mast (six hundredths of the way out along its yard, as big as a hole
   // grows): seen from astern it's cut in that wing only, not in the starboard wing across the mast (under a metre off)
   if (name === 'laptop') {
@@ -388,6 +451,22 @@ for (const name of quick ? [] : ['laptop', 'phone']) {
   if (P.crew !== P.yours || P.captain !== P.yours || P.treasure !== P.yours) problems.push(`${name}: a ship in any colours should need no new shaders: ${JSON.stringify(P)}`);
   if (alive.captain.iron !== '2c2a2e' || !(alive.captain.banner >= 30)) problems.push(`${name}: a raider captain's ship should have black iron fittings and a banner: ${JSON.stringify(alive.captain)}`);
   if (!(alive.treasure.glints >= 30) || alive.treasure.gold !== 'ffcf4a') problems.push(`${name}: a treasure ship should glint with gold: ${JSON.stringify(alive.treasure)}`);
+  // on a phone, the ships demo keeps no more than two sets of ships: all six at full detail shown in each colours in
+  // turn (the graphics card's count of shapes once each is drawn) hold the Captain's set and one other at most, and
+  // back in the Captain's colours just hers
+  if (name === 'phone') {
+    const sets = await page.evaluate(() => {
+      const H = window.__hangar, r = H.renderer, held = (l) => { if (l) H.livery(l); r.render(H.scene, H.camera); return r.info.memory.geometries; };
+      H.level('full'); H.select('all');
+      const out = { yours: held() };
+      for (const l of ['crew', 'captain', 'treasure']) out[l] = held(l);
+      out.back = held('yours'); H.select('brig');
+      return out;
+    });
+    const one = sets.crew - sets.yours;
+    console.log(`${name}: all six at full detail hold ${sets.yours} shapes on the graphics card in the Captain's colours, ${sets.crew}, ${sets.captain} and ${sets.treasure} in a raider's, a captain's and a treasure ship's in turn, and ${sets.back} back in hers`);
+    if (!(one > 50) || sets.captain > sets.yours + one * 1.2 || sets.treasure > sets.yours + one * 1.2 || sets.back > sets.yours + 2) problems.push(`${name}: the ships demo should let the ships built in other colours go, holding two sets of six at most: ${JSON.stringify(sets)}`);
+  }
   await page.close();
 }
 // the ships demo on a phone held sideways: its buttons on short lines, all on the screen and taking no more than 55% of
@@ -1307,15 +1386,23 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
     P.startSurge(); g.step(0.5, { sail: 1 }); out.fold.surge = +U.uFold.value.x.toFixed(2); g.step(3, {});
     const w = P.ship.wings.find((q) => q.top && q.side > 0);
     out.fold.aft = +(L.foldPoint(w.tip.clone(), 1, w.mz, 0).z - L.foldPoint(w.tip.clone(), 1, w.mz, 1).z).toFixed(2);
-    // her lids: shut in calm; a wave arriving (wave 1, a Skiff, far off): open and her guns out within two seconds
-    out.lids = { calm: +U.uGun.value.x.toFixed(2) };
-    g.waves.timer = 0.05; g.step(2, { locked: true }); out.lids.fight = [+U.uGun.value.x.toFixed(2), +U.uGun.value.y.toFixed(2)]; out.lids.state = g.waves.state;
-    for (const r of g.raiders.list) { r.frozen = true; r.f.pos.set(0, 900, -4000); for (const k of ['hull', 'sails', 'crystals']) r.f.full[k] = r.f.health[k] = 1e6; }
-    // her port broadside, in steps of a 60th of a second: each gun's 'fire' and the moment its gun on the model kicks
-    // back (the model's turn for each from the rig of her guns, kind 3, and port side +x)
+    // (the rig of her port guns, kind 3, port side +x: each one's turn as her side fires, first to last)
     const rig = [], seen = new Set(), geo = P.ship.body.children.find((o) => o.name === 'rigMetal').geometry.attributes.rig;
     for (let i = 0; i < geo.count; i++) if (geo.getX(i) === 3 && geo.getY(i) > 0) { const k = geo.getZ(i).toFixed(4); if (!seen.has(k)) { seen.add(k); rig.push([3, geo.getY(i), geo.getZ(i), geo.getW(i)]); } }
     rig.sort((a, b) => a[2] - b[2]);
+    // her lids: shut in calm. Her port side fired in calm: its lids burst open with its first gun, which goes off run out
+    // (as drawn the moment it fires), and they shut again a while after. A wave arriving (wave 1, a Skiff, far off): open
+    // and her guns out within two seconds
+    out.lids = { calm: +U.uGun.value.x.toFixed(2) };
+    g.cam.yaw = Math.PI / 2; g.cam.pitch = 0; g.step(1 / 60, { locked: true });
+    let shots = 0; const offC = g.events.on('fire', (e) => { if (e.owner === 'player' && e.battery === 'port') shots++; });
+    g.step(1 / 60, { fire: true, locked: true }); offC();
+    out.lids.first = { shots, lid: +U.uGun.value.x.toFixed(2), gunIn: +L.gunIn(U, rig[0], g.time).toFixed(2) };
+    g.cam.yaw = 0; g.step(10, { locked: true }); out.lids.shutAgain = +U.uGun.value.x.toFixed(2);
+    g.waves.timer = 0.05; g.step(2, { locked: true }); out.lids.fight = [+U.uGun.value.x.toFixed(2), +U.uGun.value.y.toFixed(2)]; out.lids.state = g.waves.state;
+    for (const r of g.raiders.list) { r.frozen = true; r.f.pos.set(0, 900, -4000); for (const k of ['hull', 'sails', 'crystals']) r.f.full[k] = r.f.health[k] = 1e6; }
+    // her port broadside, in steps of a 60th of a second: each gun's 'fire' and the moment its gun on the model kicks
+    // back
     const turns = g.gunnery.B.port.map((q) => q.delay).filter((d, i, a) => a.indexOf(d) === i).sort((a, b) => a - b);
     out.turns = { model: rig.map((q) => +q[2].toFixed(3)).join(), guns: turns.map((d) => +d.toFixed(3)).join() };
     const fired = [], off = g.events.on('fire', (e) => { if (e.owner === 'player' && e.battery === 'port') fired.push({ i: e.i, t: g.time }); });
@@ -1362,9 +1449,20 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
     for (const r of rs) { r.f.sail = 1; r.f.speed = r.f.H.vmax; }
     g.waves.timer = 1e9; g.waves.state = 'calm'; g.cam.yaw = 0; g.step(2.5, { sail: 1, locked: true });
     const draw = () => { rr.render(g.scene, g.camera); return rr.info.render.calls; };
-    const seenW = draw(); g.wakes.mesh.visible = false; const hidden = draw(); g.wakes.mesh.visible = true;
+    // (and the pictures with and without them: of the pixels the wakes change, how many burn out to white-gold, the
+    // brightest of their colours at the top where it wasn't before; her own, which the camera looks straight down, is
+    // most of them)
+    const cv = rr.domElement, k2 = document.createElement('canvas'), x2 = k2.getContext('2d', { willReadFrequently: true }); k2.width = cv.width; k2.height = cv.height;
+    const px = () => { x2.drawImage(cv, 0, 0); return x2.getImageData(0, 0, k2.width, k2.height).data; };
+    const seenW = draw(), withW = px(); g.wakes.mesh.visible = false; const hidden = draw(), noW = px(); g.wakes.mesh.visible = true;
+    let wakePx = 0, burnt = 0;
+    for (let i = 0; i < withW.length; i += 4) {
+      if (Math.max(Math.abs(withW[i] - noW[i]), Math.abs(withW[i + 1] - noW[i + 1]), Math.abs(withW[i + 2] - noW[i + 2])) <= 16) continue;
+      wakePx++; if (Math.max(withW[i], withW[i + 1], withW[i + 2]) >= 254 && Math.max(noW[i], noW[i + 1], noW[i + 2]) < 254) burnt++;
+    }
     const mine = g.wakes.of(P), far = g.wakes.of(rs[1].f);
-    out.wakes = { ...g.wakes.stats(), draws: seenW - hidden, length: +mine.length.toFixed(1), speed: +P.speed.toFixed(1), mine: mine.color.toString(16), far: far ? +far.bright.toFixed(2) : 0, farKind: far?.kind, farAt: Math.round(rs[1].f.pos.distanceTo(P.pos)) };
+    out.wakes = { ...g.wakes.stats(), draws: seenW - hidden, length: +mine.length.toFixed(1), speed: +P.speed.toFixed(1), mine: mine.color.toString(16), far: far ? +far.bright.toFixed(2) : 0, farKind: far?.kind, farAt: Math.round(rs[1].f.pos.distanceTo(P.pos)),
+      pixels: +(wakePx / (withW.length / 4) * 100).toFixed(2), burnt: +(burnt / Math.max(1, wakePx) * 100).toFixed(1) };
     // a raider captain's and a treasure ship's colours: no new shaders (after a crew Brig's); her iron, her banner
     g.raiders.clear(); g.raiders.spawn('brig', P.pos.clone().addScaledVector(P.forward(), 300).add(new V(-60, 0, 0)), 0, true); g.step(0.05, { locked: true }); draw();
     const p0 = rr.info.programs.length;
@@ -1373,6 +1471,31 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
     g.step(0.05, { locked: true }); draw();
     out.colours = { inView: [cb, tb].every((r) => { const q = r.f.pos.clone().project(g.camera); return Math.abs(q.x) < 1 && Math.abs(q.y) < 1 && q.z < 1; }) };
     Object.assign(out.colours, { programs: rr.info.programs.length - p0, captain: cb.livery, treasure: tb.livery, role: tb.role, wake: g.wakes.of(tb.f)?.kind, iron: g.raiders.templates['brig:captain'].mid.M.brass.color.getHexString() });
+    // a treasure Brig's glints on metal that moves (a spike at a yard's tip, a gun) carry its rig, so they move with it
+    const TB = g.raiders.templates['brig:treasure'].mid, gl = TB.glow.geometry.attributes, rm = TB.body.children.find((o) => o.name === 'rigMetal').geometry.attributes;
+    let onRig = 0, unrigged = 0;
+    for (let i = 0; i < gl.kind.count; i++) {
+      if (gl.kind.getX(i) !== 3) continue;
+      for (let j = 0; j < rm.position.count; j++) {
+        if (Math.abs(rm.position.getX(j) - gl.position.getX(i)) > 1e-4 || Math.abs(rm.position.getY(j) - gl.position.getY(i)) > 1e-4 || Math.abs(rm.position.getZ(j) - gl.position.getZ(i)) > 1e-4) continue;
+        if (rm.rig.getX(j) > 0.5) { onRig++; if ([0, 1, 2, 3].some((c) => Math.abs(rm.rig.getComponent(j, c) - gl.rig.getComponent(i, c)) > 1e-4)) unrigged++; }
+        break;
+      }
+    }
+    out.colours.glints = { onRig, unrigged };
+    // a wave with a treasure Brig in it (any class can sail as one): told as a treasure ship's wave, her sails to shoot,
+    // with the treasure ship's sound; the Brig in a treasure ship's colours, running, and worth three times a crew Brig's
+    // bounty. A wave led by a Galleon captain: she runs, as every Galleon does, so she comes in close (about 1.2 km off)
+    // and across the Captain's path, in a captain's colours
+    const told = [], offT = g.events.on('wave:start', (e) => told.push({ title: e.title, prize: e.prize }));
+    const comes = (wave) => { g.raiders.clear(); Object.assign(g.waves, { n: 7, state: 'calm', timer: 0.05, next: wave }); g.step(0.1, { locked: true }); };
+    comes({ ids: ['brig', 'cutter'], treasure: [0], captain: -1 });
+    const tbr = g.raiders.list.find((r) => r.id === 'brig'), crewBrig = g.raiders.spawn('brig', ahead(600, 0, 0), 0, true);
+    out.treasureWave = { ...told.at(-1), line: document.getElementById('banner-line').textContent, role: tbr?.role, livery: tbr?.livery, bounty: tbr ? +(tbr.bounty / crewBrig.bounty).toFixed(2) : 0 };
+    comes({ ids: ['galleon', 'cutter'], captain: 0 });
+    const gc = g.raiders.list.find((r) => r.id === 'galleon'), toGc = Math.atan2(gc.f.pos.x - P.pos.x, gc.f.pos.z - P.pos.z);
+    out.galleonCaptain = { ...told.at(-1), captain: gc.captain, livery: gc.livery, role: gc.role, d: Math.round(Math.hypot(gc.f.pos.x - P.pos.x, gc.f.pos.z - P.pos.z)), across: +Math.abs(Math.sin(gc.f.heading - toGc)).toFixed(2) };
+    offT(); g.raiders.clear(); Object.assign(g.waves, { state: 'calm', timer: 1e9, next: null });
     // a Man-o'-war's second column given its share and one more: it blows out, once; dark; she dips at that end
     g.raiders.clear();
     const m = g.raiders.spawn('manowar', P.pos.clone().add(new V(0, -30, 420)), Math.PI / 2, true);
@@ -1388,17 +1511,23 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
     return out;
   });
   const LF = life;
-  console.log(`alive: her wings folded ${LF.fold.in} with her sails in, ${LF.fold.out} set, ${LF.fold.surge} in a Surge (a tip ${LF.fold.aft} m further aft folded); her pennants ${LF.fold.slow} slow, ${LF.fold.fast} at speed; her lids ${LF.lids.calm} in calm, ${LF.lids.fight.join('/')} as the wave came (${LF.lids.state})`);
+  console.log(`alive: her wings folded ${LF.fold.in} with her sails in, ${LF.fold.out} set, ${LF.fold.surge} in a Surge (a tip ${LF.fold.aft} m further aft folded); her pennants ${LF.fold.slow} slow, ${LF.fold.fast} at speed; her lids ${LF.lids.calm} in calm, ${LF.lids.first.lid} as her side fired in calm (${LF.lids.first.shots} shot, its gun ${LF.lids.first.gunIn} m in) and ${LF.lids.shutAgain} again 10 s later, ${LF.lids.fight.join('/')} as the wave came (${LF.lids.state})`);
   console.log(`alive: a Frigate's port broadside: the model's turns ${LF.turns.model} (the guns' ${LF.turns.guns}); ${LF.ripple.shots} shots, each gun kicking back within ${LF.ripple.lag} s of its shot (the first ${LF.ripple.first} s in, the last ${LF.ripple.last} s), ${LF.ripple.inM} m in, ${LF.ripple.outAgain} m once loaded; a raider readying her ${LF.raider.side} broadside, her lids at ${LF.raider.open} of 2`);
-  console.log(`alive: a shot through a raider's folded wing (folded ${LF.folded.fold}) hit her ${LF.folded.part}, holed ${LF.folded.off} m from where it went through; ${LF.wakes.trails} wakes (${LF.wakes.points} points) in ${LF.wakes.draws} draw, hers #${LF.wakes.mine} ${LF.wakes.length} m long at ${LF.wakes.speed} m/s, a ${LF.wakes.farKind}'s ${LF.wakes.farAt} m off at ${LF.wakes.far}; a captain's and a treasure ship's colours ${LF.colours.programs} new shaders (#${LF.colours.iron} iron; a ${LF.colours.treasure} ${LF.colours.role} with a ${LF.colours.wake} wake); a Man-o'-war's column blown out ${LF.blowout.told} time(s): ${LF.blowout.crys.join(' / ')}, dipping ${LF.blowout.dip} rad`);
+  console.log(`alive: a shot through a raider's folded wing (folded ${LF.folded.fold}) hit her ${LF.folded.part}, holed ${LF.folded.off} m from where it went through; ${LF.wakes.trails} wakes (${LF.wakes.points} points) in ${LF.wakes.draws} draw, hers #${LF.wakes.mine} ${LF.wakes.length} m long at ${LF.wakes.speed} m/s, a ${LF.wakes.farKind}'s ${LF.wakes.farAt} m off at ${LF.wakes.far}, ${LF.wakes.pixels}% of the picture with ${LF.wakes.burnt}% of it burnt out; a captain's and a treasure ship's colours ${LF.colours.programs} new shaders (#${LF.colours.iron} iron; a ${LF.colours.treasure} ${LF.colours.role} with a ${LF.colours.wake} wake); a Man-o'-war's column blown out ${LF.blowout.told} time(s): ${LF.blowout.crys.join(' / ')}, dipping ${LF.blowout.dip} rad`);
   if (!(LF.fold.in > 0.9) || !(LF.fold.out < 0.1) || !(LF.fold.surge < 0) || !(LF.fold.aft >= 3)) problems.push(`her wings should fold with her sails in, spread with them set and snap open in a Surge: ${JSON.stringify(LF.fold)}`);
   if (!(LF.fold.slow < 0.2) || !(LF.fold.fast > 0.7)) problems.push(`her pennants should follow her speed: ${JSON.stringify(LF.fold)}`);
   if (!(LF.lids.calm < 0.05) || !(LF.lids.fight[0] > 1.95 && LF.lids.fight[1] > 1.95) || LF.lids.state !== 'fight') problems.push(`her lids should be shut in calm, and open with her guns out as a wave comes: ${JSON.stringify(LF.lids)}`);
+  if (!(LF.lids.first.shots >= 1) || !(LF.lids.first.lid > 1.99) || !(LF.lids.first.gunIn < 0.2) || !(LF.lids.shutAgain < 0.05)) problems.push(`a side fired in calm should burst its lids open with its first gun, run out as it fires, and shut them again later: ${JSON.stringify(LF.lids)}`);
   if (LF.turns.model !== LF.turns.guns || LF.ripple.shots !== 10 || !(+LF.ripple.lag <= 0.05) || !(LF.ripple.inM > 0.3) || !(LF.ripple.outAgain < 0.05)) problems.push(`her broadside's guns should kick back on the model each as it fires, and run out again once loaded: ${JSON.stringify({ turns: LF.turns, ripple: LF.ripple })}`);
   if (!LF.raider.side || !(LF.raider.open > 1.5)) problems.push(`a raider readying a broadside should open her lids on that side first: ${JSON.stringify(LF.raider)}`);
   if (!(LF.folded.fold > 0.9) || LF.folded.part !== 'sails' || !(LF.folded.off >= 0 && LF.folded.off < 0.6)) problems.push(`a shot through a folded wing should hole the sail where it went through: ${JSON.stringify(LF.folded)}`);
-  if (LF.wakes.draws !== 1 || LF.wakes.trails !== 5 || LF.wakes.mine !== 'ffc860' || !(LF.wakes.length > 0.8 * LF.wakes.speed * 1.5) || !(LF.wakes.far > 0.2) || !(LF.wakes.farAt > 1400)) problems.push(`every ship's wake should be drawn in one go behind her, a raider's far off still glowing: ${JSON.stringify(LF.wakes)}`);
+  if (LF.wakes.draws !== 1 || LF.wakes.trails !== 5 || LF.wakes.mine !== 'ffc860' || !(LF.wakes.length > 0.8 * LF.wakes.speed * 1.5) || !(LF.wakes.far > 0.2) || !(LF.wakes.farAt > 1400) || !(LF.wakes.pixels > 0.05) || !(LF.wakes.burnt < 10)) problems.push(`every ship's wake should be drawn in one go behind her, soft (never burnt out to white-gold), a raider's far off still glowing: ${JSON.stringify(LF.wakes)}`);
   if (!LF.colours.inView || LF.colours.programs !== 0 || LF.colours.captain !== 'captain' || LF.colours.treasure !== 'treasure' || LF.colours.role !== 'prize' || LF.colours.wake !== 'treasure' || LF.colours.iron !== '2c2a2e') problems.push(`a raider captain's and a treasure Brig's colours should need no new shaders: ${JSON.stringify(LF.colours)}`);
+  console.log(`alive: a treasure Brig's ${LF.colours.glints.onRig} glints on metal that moves, ${LF.colours.glints.unrigged} not moving with it; a wave with a treasure Brig told "${LF.treasureWave.title}" (${LF.treasureWave.line}), her colours ${LF.treasureWave.livery}, ${LF.treasureWave.role === 'prize' ? 'running' : 'NOT RUNNING'}, worth ${LF.treasureWave.bounty} times a crew Brig; a Galleon captain's wave told "${LF.galleonCaptain.title}", her colours ${LF.galleonCaptain.livery}, coming in ${LF.galleonCaptain.d} m off and ${LF.galleonCaptain.across > 0.9 ? 'across' : 'NOT ACROSS'} the Captain's path`);
+  if (!(LF.colours.glints.onRig >= 1) || LF.colours.glints.unrigged) problems.push(`a treasure ship's glints on metal that moves should move with it: ${JSON.stringify(LF.colours.glints)}`);
+  const TW = LF.treasureWave, GC = LF.galleonCaptain;
+  if (!TW.title?.includes('a treasure ship') || !TW.prize || !TW.line.includes('shoot her sails') || TW.role !== 'prize' || TW.livery !== 'treasure' || TW.bounty !== 3) problems.push(`a wave with a treasure Brig should be told as a treasure ship's wave, and she should run in her colours, worth three times a crew Brig: ${JSON.stringify(TW)}`);
+  if (!GC.title?.includes('a treasure ship') || !GC.prize || !GC.captain || GC.livery !== 'captain' || GC.role !== 'prize' || !(GC.d > 1050 && GC.d < 1450) || !(GC.across > 0.9)) problems.push(`a Galleon captain runs, so she should come in close, across the Captain's path: ${JSON.stringify(GC)}`);
   if (LF.blowout.told !== 1 || LF.blowout.crys.join() !== '1,0,1,1,1' || !(Math.sign(LF.blowout.dip) === LF.blowout.side && Math.abs(LF.blowout.dip) > 0.005)) problems.push(`a Man-o'-war's column given out should blow out once, go dark, and dip her at that end: ${JSON.stringify(LF.blowout)}`);
 
   // ---------- storms, clouds you fly through and hide in, and a sky with depth (sky.js, weather.js, world.js) ----------

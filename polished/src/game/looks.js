@@ -17,7 +17,8 @@
 //                   ship going down folds them
 //   her pennants    stream out straight at speed and hang limp when she's slow
 //   her guns        the Captain's lids fly open bow first and her guns run out as a wave arrives (clearing for action),
-//                   and close again once it's beaten; firing between waves snaps a side open. A raider's lids fly open
+//                   and close again once it's beaten; firing between waves bursts a side open with its first gun, its
+//                   guns run out at once. A raider's lids fly open
 //                   on the side she's about to fire a broadside from, as her ports glow, and stay open while she's in
 //                   the fight. Each gun kicks back in at its turn as its battery fires, stays in while it's reloaded and
 //                   runs out again just as it's loaded (bow and stern guns kick back along their barrels)
@@ -134,11 +135,13 @@ export function makeLooks({ scene, touch = false, fx = null }) {
     W.fold = down ? Math.min(1, W.fold + dt / LIFE.sink) : W.fold + (wantFold - W.fold) * ease(dt, surging ? LIFE.snap : LIFE.fold);
     U.uFold.value.x = W.fold; U.uFold.value.y += ((surging ? 1 : 0) - U.uFold.value.y) * ease(dt, 4);
     U.uWind.value.x += ((down ? 0 : f.speed / f.H.vmax) - U.uWind.value.x) * ease(dt, 2);
-    // each battery that fired since last frame (its volleys counted: guns.js), and when each will be loaded
+    // each battery that fired since last frame (its volleys counted: guns.js), and when each will be loaded. A side that
+    // fires with its lids still shut (between waves) bursts them open, its guns run out, as its first gun goes off: no
+    // shot leaves through a shut lid
     const g = f.gun, fire = U.uFire.value, ready = U.uReady.value;
     if (g) for (let b = 0; b < 4; b++) {
       const name = BATTERIES[b];
-      if (g.volleys[name] !== W.volleys[b]) { W.volleys[b] = g.volleys[name]; fire.setComponent(b, time); if (b < 2) W.fired[b] = time; }
+      if (g.volleys[name] !== W.volleys[b]) { W.volleys[b] = g.volleys[name]; fire.setComponent(b, time); if (b < 2) { W.fired[b] = time; W.open[b] = 2; } }
       ready.setComponent(b, time + g.ready[name]);
     }
     // the lids, each side: the Captain's open for the fight (and for a while after she fires between waves); a raider's
