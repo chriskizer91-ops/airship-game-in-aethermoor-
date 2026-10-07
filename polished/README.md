@@ -7,6 +7,8 @@ on its own: its own pages, tools and notes.
 It started as a copy of the game at commit `1887984` (the port, the three skies, Crystal Shards, and the Galleon and
 the Man-o'-war as raiders).
 
+Picking this up in a new session? Start with `docs/HANDOFF.md`.
+
 ## Building it
 
 From this folder (it uses the repository's `node_modules`, so run `npm install` once in the repository's main folder):
