@@ -106,6 +106,9 @@ async function main() {
   function applyHands() {
     const left = touch && settings.data.leftFire;
     document.body.classList.toggle('fire-left', left); input.leftFire = left; layout();
+    // (and the words that say which thumb does what, in the hint and How to fly: each has its left-handed words in
+    // data-left, and keeps its own in data-right)
+    for (const el of document.querySelectorAll('[data-left]')) { el.dataset.right ??= el.textContent; el.textContent = left ? el.dataset.left : el.dataset.right; }
   }
   settings.on((id, v, done) => {
     if (id === 'sound' || id === 'music' || id === 'effects') {
@@ -347,7 +350,7 @@ async function main() {
     if (W.sunk) return;
     if (W.lost > 0) {
       if ((W.lost -= dt) <= 0) {
-        W.sunk = true;
+        W.sunk = true; bigMap(false); // (the card says so over everything: game.html)
         $('paused-title').textContent = `The ${player.ship.recipe.name} went down`;
         $('paused-line').textContent = V.shards ? `Your crew got her home with half this voyage's shards: ◆ ${fmt(V.shards / 2)}.` : 'Your crew got her home.';
         $('btn-resume').hidden = true; $('btn-abandon').textContent = 'To port'; $('paused').hidden = false;
@@ -405,10 +408,11 @@ async function main() {
     calmUp(false); W.state = 'calm'; W.timer = 4; newWind();
   }
   // the card between waves up or down (while it's up there's nothing to fire at: the guns' label makes way for it, and
-  // a laptop's keys fold away)
+  // a laptop's keys fold away; the panels the edge tags keep clear of are measured again, with the label or without)
   function calmUp(on) {
     $('calm').hidden = !on; document.body.classList.toggle('between', on);
     if (on && !$('help').hidden) toggleHelp();
+    layout();
   }
   const goHome = () => { if (W.state === 'choose') endVoyage(1); };
   $('btn-sail-on').addEventListener('click', sailOn);
@@ -421,6 +425,7 @@ async function main() {
     if (!on) { input.look.x = input.look.y = 0; input.zoom = 0; input.pressed.clear(); } // nothing moved while paused carries over
     if (on) {
       if (document.pointerLockElement) document.exitPointerLock();
+      bigMap(false); // (the pause card lies over everything at sea, but the map would be in its way when it's done)
       const fighting = W.state === 'fight' || player.down;
       $('paused-title').textContent = 'Paused';
       $('paused-line').textContent = !V.shards ? 'Back to port now ends the voyage.' : fighting ? `Back to port now, mid-fight, and you keep half this voyage's shards: ◆ ${fmt(V.shards / 2)}.` : `Back to port now keeps all this voyage's shards: ◆ ${fmt(V.shards)}.`;
@@ -478,15 +483,15 @@ async function main() {
     if (mini.classList.contains('big')) placeMapClose();
   }
   // where the HUD's panels are, so the raiders' tags at the screen's edge keep clear of them: those along the top
-  // (your ship's panel, the compass, the pause button, the map and the score) and along the bottom (the touch
-  // buttons, the guns' label on a phone, the hint, the keys). Measured as a voyage starts, and when the window or
-  // the panels change
+  // (your ship's panel, the compass, the pause button, the map and the score, and on a laptop the guns' label under
+  // the compass) and along the bottom (the touch buttons, the guns' label on a phone, the hint, the keys). Measured as
+  // a voyage starts, and when the window, the panels or the card between waves change
   const EDGE = { top: [], bottom: [] }, TOP_IDS = ['ship', 'compass', 'btn-pause', 'minimap', 'score'], BOTTOM_IDS = ['touch-buttons', 'battery', 'touch-hint', 'help', 'btn-help'];
   function layout() {
     if (mode !== 'voyage') return;
     const boxes = (ids) => ids.filter((id) => !$(id).classList.contains('gone')).map((id) => $(id).getBoundingClientRect()).filter((b) => b.width && b.height).map((b) => ({ l: b.left, r: b.right, t: b.top, b: b.bottom }));
     EDGE.top = boxes(TOP_IDS); EDGE.bottom = boxes(BOTTOM_IDS).filter((b) => b.t > view.h * 0.4);
-    if (touch) EDGE.top.push(...boxes(['battery']).filter((b) => b.b < view.h * 0.4));
+    EDGE.top.push(...boxes(['battery']).filter((b) => b.b < view.h * 0.4)); // (the guns' label, wherever it is)
   }
   addEventListener('resize', resize);
   applyPicture(); applyHands(); fx.shake = settings.data.shake;
@@ -693,7 +698,7 @@ async function main() {
       setText(H[`n-${k}`], String(Math.ceil(player.health[k])));
       H[`row-${k}`].classList.toggle('low', player.frac(k) < 0.3);
     }
-    setText(H['score-n'], String(V.downed)); setText(H['score-raiders'], V.downed === 1 ? 'raider ' : 'raiders '); setText(H['wave-n'], String(W.n + 1));
+    setText(H['score-n'], String(V.downed)); setText(H['score-raiders'], V.downed === 1 ? 'raider ' : 'raiders '); setText(H['wave-n'], String(W.state === 'choose' ? W.n : W.n + 1)); // (the card up: the wave just beaten)
     const deg = compassDeg(player.heading);
     setText(H.heading, `${['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.round(deg / 45) % 8]} ${Math.round(deg)}°`);
     // the wind, against the ship: the arrow points the way it blows (up is the way you're heading), and in words how
@@ -732,9 +737,9 @@ async function main() {
       mctx.fillStyle = '#e2bd67'; mctx.lineWidth = Math.max(1.5, s / 4);
       mctx.beginPath(); mctx.moveTo(0, -s * 1.3); mctx.lineTo(s * 0.8, s); mctx.lineTo(0, s * 0.45); mctx.lineTo(-s * 0.8, s); mctx.closePath(); mctx.fill(); mctx.stroke();
       mctx.restore();
-      // the big map names the regions
+      // the big map names the regions (never smaller than 11 of the page's pixels, to read on a phone)
       if (mini.classList.contains('big')) {
-        const f = Math.round(W2 / 46);
+        const f = Math.round(Math.max(W2 / 46, 11 * dpr));
         mctx.font = `700 ${f}px Cinzel, Georgia, serif`; mctx.textAlign = 'center'; mctx.textBaseline = 'middle'; mctx.lineJoin = 'round';
         mctx.lineWidth = f / 4; mctx.strokeStyle = 'rgba(20, 10, 24, 0.85)'; mctx.fillStyle = '#ecdcb8';
         for (const R of REGIONS) { const name = R.name.replace(/^The /, ''); mctx.strokeText(name, R.u * W2, R.v * H2); mctx.fillText(name, R.u * W2, R.v * H2); }

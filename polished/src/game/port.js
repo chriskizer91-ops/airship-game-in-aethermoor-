@@ -96,7 +96,7 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
       if (narrow && !short) { vh = h * 0.36; cy = h * 0.2; } // (above the title, clear of it)
       else if (short) { vw = w * 0.34; cx = w * 0.8; vh = h * 0.8; } // (right of the title card)
       else { vw = w * 0.5; cx = w * 0.72; }
-    } else if (narrow && !short) { vh = h * (panel.dataset.tab === 'upgrades' ? 0.26 : 0.47) - 60; cy = 60 + vh / 2; }
+    } else if (narrow && !short) { vh = h * (panel.dataset.tab === 'upgrades' ? 0.26 : panel.classList.contains('buying') ? (h <= 720 ? 0.25 : 0.3) : 0.47) - 60; cy = 60 + vh / 2; }
     else { const pw = short ? Math.min(340, w * 0.46) : 380; vw = w - pw - 40; cx = vw / 2; vh = h - (short ? 110 : 140); cy = 54 + vh / 2; }
     const t = Math.tan(fov), fit = Math.min(t * (vh / h), t * camera.aspect * (vw / w));
     const dist = (frame.radius / fit) * 1.02, el = 0.2;
@@ -212,7 +212,8 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
     $('btn-title-sail').textContent = fresh ? 'Set sail' : `Set sail in the ${F.name}`;
     const rank = $('title-rank');
     rank.hidden = fresh; rank.textContent = d.shards ? `◆ ${fmt(d.shards)} to spend in port` : 'No shards yet: bring down raiders to earn them';
-    $('btn-skies').textContent = `Skies: ${SKIES[d.skies].name}`;
+    // (on a phone upright just the skies' name, so the port's top line never wraps)
+    const sk = $('btn-skies'); sk.innerHTML = `<span>Skies: </span>${SKIES[d.skies].name}`; sk.setAttribute('aria-label', `Skies: ${SKIES[d.skies].name}`);
     $('port-shards').textContent = `◆ ${fmt(d.shards)}`;
     for (const b of shipsEl.children) {
       const id = b.dataset.ship, own = d.ships[id].owned;
@@ -223,6 +224,7 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
     $('pp-blurb').textContent = st.blurb;
     const owned = cfg.owned;
     $('pp-buy').hidden = owned; $('pp-own').hidden = !owned; $('pp-tabs').hidden = !owned;
+    panel.classList.toggle('buying', !owned); // (on a phone upright her panel is taller, so how she sails shows above the Buy button)
     if (!owned && panel.dataset.tab !== 'ship') tab('ship');
     // a ship you don't own: the big button buys her, and fills with gold as you earn towards her price
     const price = PRICES[viewing], short = !owned && d.shards < price, b = $('btn-buy');

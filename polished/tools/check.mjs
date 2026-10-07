@@ -50,8 +50,10 @@
 //                     on the device through a reload; the keys folding away after a device's first two voyages;
 //                     directions as left and right (the right way round) and the wind in words; How to fly; the big
 //                     map fitting the screen with its cross; the card between waves a strip at the bottom, Enter and B
-//                     working with the mouse locked; on a phone, Fire on the left; and at four phone sizes (upright
-//                     and sideways), nothing on the screen landing on anything else, the edge tags clear of the panels
+//                     working with the mouse locked; on a phone, Fire on the left (and the words saying so); and at
+//                     three laptop sizes and four phone sizes (upright and sideways), nothing on the screen landing on
+//                     anything else, the edge tags clear of the panels, the pause card over everything; the port at the
+//                     four phone sizes showing a ship's stats and upgrades above its big button
 //                     the title screen: Aethermoor itself at sunset (not the port's void), her ship flying over the
 //                     Hearthsea and raiders crossing far off, the skies tinting it; "Set sail" straight to sea for a new
 //                     Captain, the afternoon put back exactly; the dip through the night between screens; on a phone,
@@ -207,6 +209,88 @@ for (const name of quick ? [] : ['laptop', 'phone']) {
 
 // ---------- the game ----------
 const gameReady = () => window.__game?.ready || !document.getElementById('error').hidden;
+// nothing on the screen lands on anything else (at sea in the Brig, at the page's size now): in a battle with the toast,
+// a warning and the banner (or the region's name, which shares its place) all showing at once, with their longest
+// words; the raiders' tags pinned at the screen's edge clear of the panels (`PANELS`), the guns' label among them; and
+// between waves, the card too, once it has risen into view. Then: the pause card over the card between waves, and over
+// the big map (which it closes), with its buttons the ones pressed; the panels the edge tags keep clear of measured
+// again when the card goes (a window turned while it was up); the big map fitting the screen with its cross, and the
+// regions' names on it big enough to read (11 of the page's pixels or more). `sink`: and the ship going down with the
+// big map open, its card over everything
+const layoutAt = (page, HUD, PANELS, sink = false) => page.evaluate(({ HUD, PANELS, sink }) => {
+  const g = window.__game, $ = (id) => document.getElementById(id), out = { laps: [], tags: [], off: [], pause: [] };
+  const box = (id) => { const el = $(id); if (!el || el.hidden || getComputedStyle(el).display === 'none' || getComputedStyle(el).visibility === 'hidden') return null; const b = el.getBoundingClientRect(); return b.width && b.height ? b : null; };
+  const lap = (a, b) => a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
+  const look = (ids, what) => {
+    const B = ids.map((id) => [id, box(id)]).filter(([, b]) => b);
+    for (const [id, b] of B) if (b.left < -1 || b.top < -1 || b.right > innerWidth + 1 || b.bottom > innerHeight + 1) out.off.push(`${what}: ${id}`);
+    for (let i = 0; i < B.length; i++) for (let j = i + 1; j < B.length; j++) if (lap(B[i][1], B[j][1])) out.laps.push(`${what}: ${B[i][0]} x ${B[j][0]}`);
+  };
+  // (the pause card on top: its corners and its buttons are what a press there finds)
+  const onTop = (what) => {
+    const c = document.querySelector('#paused .card').getBoundingClientRect(), r = $('btn-abandon').getBoundingClientRect();
+    const at = [[c.left + 4, c.top + 4], [c.right - 4, c.top + 4], [c.left + 4, c.bottom - 4], [c.right - 4, c.bottom - 4], [(r.left + r.right) / 2, (r.top + r.bottom) / 2]];
+    const hit = at.map(([x, y]) => document.elementFromPoint(x, y));
+    if (hit.some((el) => !el?.closest('#paused .card'))) out.pause.push(`${what}: ${hit.map((el) => el?.id || el?.className || el?.tagName).join(', ')}`);
+    if (!hit[4]?.closest('#btn-abandon')) out.pause.push(`${what}: its button is under ${hit[4]?.id || hit[4]?.tagName}`);
+  };
+  g.fly('brig'); const P = g.player; g.waves.timer = 1e9; g.raiders.setAI(false); P.pos.set(2000, 900, 1500); P.heading = 0.6;
+  const f = P.forward(), s = { x: Math.cos(0.6), y: 0, z: -Math.sin(0.6) };
+  // one raider ahead (locked on), and eight all round off the screen
+  g.raiders.spawn('frigate', P.pos.clone().addScaledVector(f, 260), P.heading + 2, true, true);
+  for (const [a, b, up] of [[-1, 0, 0], [0, -1, 0], [0, 1, 0], [0.5, -0.8, 500], [0.5, 0.8, 500], [0.6, 0, 700], [0.6, 0, -600], [0.5, -0.8, -450], [0.5, 0.8, -450]]) {
+    g.raiders.spawn('cutter', P.pos.clone().addScaledVector(f, a * 400).addScaledVector(s, b * 400).add({ x: 0, y: up, z: 0 }), P.heading, true);
+  }
+  g.cam.yaw = 0; g.cam.pitch = 0.15; g.step(0.2, {});
+  const say = { toast: 'The captain\'s Frigate is sinking! Fly through her shards', warn: 'Nearing the Thinning: the crystals can\'t lift you higher', region: 'The Sunscorch Wastes', 'banner-title': 'Wave 10: a raider captain', 'banner-line': 'a Frigate and two Cutters, behind you on your right · a wind from your right' };
+  for (const [id, t] of Object.entries(say)) $(id).textContent = t;
+  $('warn').hidden = false;
+  look(HUD.filter((id) => id !== 'region' && id !== 'calm'), 'a battle');
+  look(HUD.filter((id) => id !== 'banner' && id !== 'calm'), 'a battle, with the region\'s name');
+  const panels = PANELS.map((id) => [id, box(id)]).filter(([, b]) => b);
+  for (const t of document.querySelectorAll('#tags .tag.edge')) { const a = t.getBoundingClientRect(); for (const [id, b] of panels) if (lap(a, b)) out.tags.push(`${t.querySelector('b').textContent} at ${Math.round(a.left)},${Math.round(a.top)} x ${id}`); }
+  out.edgeTags = document.querySelectorAll('#tags .tag.edge').length;
+  // between waves: the card risen into view (its rising finished), then looked at with the rest
+  g.raiders.clear(); Object.assign(g.waves, { n: 2, state: 'fight', next: null }); g.step(0.15, {}); $('toast').textContent = say.toast;
+  $('calm').getAnimations().forEach((a) => a.finish());
+  out.calm = !!box('calm');
+  look(HUD.filter((id) => id !== 'region' && id !== 'banner'), 'between waves');
+  out.wave = [$('wave-n').textContent, /\d+/.exec($('calm-title').textContent)?.[0]]; // (the wave just beaten, as the card says)
+  g.pause(true); onTop('paused between waves'); g.pause(false);
+  // the window changing while the card is up (its panels measured without the guns' label), then Sail on: the label
+  // back, and kept clear of again
+  g.layout(); g.sailOn();
+  const gb = box('battery'), E = g.edge;
+  out.battery = !gb || [...E.top, ...E.bottom].some((e) => Math.abs(e.l - gb.left) < 1 && Math.abs(e.t - gb.top) < 1);
+  // the big map
+  $('minimap').click(); g.step(0.05, {});
+  const m = $('minimap').getBoundingClientRect(), x = $('map-close').getBoundingClientRect();
+  out.map = m.left >= 0 && m.top >= 0 && m.right <= innerWidth && m.bottom <= innerHeight && x.left >= m.left && x.right <= m.right && x.top >= m.top && x.bottom <= m.bottom;
+  const mc = $('minimap'), font = +(/(\d+(\.\d+)?)px/.exec(mc.getContext('2d').font)?.[1] ?? 0);
+  out.names = +(font / (mc.width / mc.clientWidth)).toFixed(1);
+  g.pause(true); out.mapClosed = !mc.classList.contains('big') && $('map-dim').hidden; onTop('paused with the big map open'); g.pause(false);
+  if (mc.classList.contains('big')) $('map-close').click();
+  if (sink) {
+    // her ship going down with the big map open: the card that says so, over everything
+    mc.click(); g.step(0.05, {}); P.hit('hull', 1e9); g.step(5, {});
+    out.sunk = g.waves.sunk; out.sunkMapClosed = !mc.classList.contains('big');
+    if (out.sunk) onTop('her ship gone down with the big map open');
+  }
+  $('warn').hidden = true; g.raiders.clear();
+  return out;
+}, { HUD, PANELS, sink });
+// what layoutAt found, as problems
+function layoutProblems(L, where) {
+  if (L.laps.length || L.off.length) problems.push(`${where}: the HUD's pieces land on each other or off the screen: ${[...L.laps, ...L.off].join('; ')}`);
+  if (L.tags.length) problems.push(`${where}: raiders' tags at the edge land on the panels: ${L.tags.join('; ')}`);
+  if (!L.calm || L.edgeTags < 5 || !L.map) problems.push(`${where}: the layout test didn't run as it should (the card between waves never in view, too few edge tags, or the big map not fitting): ${JSON.stringify({ calm: L.calm, edgeTags: L.edgeTags, map: L.map })}`);
+  if (L.pause.length || !L.mapClosed) problems.push(`${where}: the pause card should lie over everything at sea (and close the big map): ${[...L.pause, L.mapClosed ? '' : 'the big map still open'].filter(Boolean).join('; ')}`);
+  if (!L.battery) problems.push(`${where}: after the card between waves went (the window changed while it was up), the edge tags no longer keep clear of the guns' label`);
+  if (!(L.names >= 10.9)) problems.push(`${where}: the big map's names are too small to read (${L.names} px)`);
+  if (L.wave[0] !== L.wave[1]) problems.push(`${where}: between waves the score should say the wave just beaten, as the card does (Wave ${L.wave[1]}), not Wave ${L.wave[0]}`);
+  if ('sunk' in L && (!L.sunk || !L.sunkMapClosed)) problems.push(`${where}: her ship going down with the big map open should close it and show its card on top: ${JSON.stringify({ sunk: L.sunk, closed: L.sunkMapClosed })}`);
+  return `${L.laps.length + L.off.length + L.tags.length + L.pause.length ? `${L.laps.length + L.off.length} overlaps, ${L.tags.length} tags on panels, ${L.pause.length} under the pause card` : 'all clear'} (${L.edgeTags} tags at the edge, the map's names ${L.names} px)`;
+}
 // set up a fight near the Captain, run it for a while with the Captain firing at the nearest raider, then hold it. It's
 // a fight to look at, not to lose: her hull and crystals are kept at half or more, so a lucky run of raiders' broadsides
 // never sinks her and leaves the checks after it with a ship going down
@@ -1414,6 +1498,24 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   await wait(page, () => window.__game.mode === 'port', null, 'B goes back to port from the card between waves');
   console.log(`the card between waves: a strip from ${strip.top} to ${strip.bottom} px of ${strip.h}, keys "${strip.keys}", the guns' label ${strip.gunsHidden ? 'out of its way' : 'STILL SHOWING'}`);
   if (strip.state !== 'choose' || strip.bottom < strip.h - 60 || strip.top < strip.h * 0.62 || strip.keys !== 'Enter B' || !strip.gunsHidden) problems.push(`between waves the card should be a strip docked at the bottom, saying Enter and B: ${JSON.stringify(strip)}`);
+  // nothing on the screen lands on anything else on a laptop either (layoutAt, with the keys: shown on the first two
+  // voyages, then the Keys button), at this size and on two shorter windows (a 1366 by 768 laptop, a small window); the
+  // ship going down with the big map open, at the smallest
+  {
+    const HUD = ['ship', 'compass', 'btn-pause', 'minimap', 'score', 'battery', 'toast', 'warn', 'banner', 'region', 'aim', 'help', 'btn-help', 'calm'];
+    const PANELS = ['ship', 'compass', 'btn-pause', 'minimap', 'score', 'battery', 'help', 'btn-help'];
+    const voyages = await page.evaluate(() => { const S = window.__game.settings, n = S.data.voyages; S.keep('voyages', 0); return n; });
+    const layouts = [];
+    for (const [w, h] of [[1280, 800], [1366, 768], [1024, 640]]) {
+      await page.setViewportSize({ width: w, height: h }); await page.waitForTimeout(500);
+      await page.waitForFunction(([w, h]) => Math.abs(window.__game.camera.aspect - w / h) < 1e-6, [w, h], { timeout: 30000 }).catch(() => problems.push(`laptop ${w}x${h}: the game never heard the window change size`));
+      const keys = await page.evaluate(() => window.__game.settings.data.voyages < 2 ? 'the keys' : 'the Keys button');
+      layouts.push(`${w}x${h} with ${keys}: ${layoutProblems(await layoutAt(page, HUD, PANELS, w === 1024), `laptop ${w}x${h}`)}`);
+    }
+    console.log(`laptop layouts: ${layouts.join('; ')}`);
+    await page.evaluate((n) => window.__game.settings.keep('voyages', n + 3), voyages);
+    await page.setViewportSize({ width: 1280, height: 800 });
+  }
   await collect();
   const untold = (await page.evaluate(() => Object.keys(window.__game.events.PAYLOAD))).filter((k) => !told.has(k));
   console.log(`the game's news: ${told.size} kinds told${untold.length ? `, NEVER: ${untold.join(', ')}` : ', every kind'}`);
@@ -1604,12 +1706,15 @@ if (!quick) {
   if (worst.ms >= 1) problems.push(`phone: a step with three wrecks takes ${worst.ms} ms (should be under 1)`);
   if (worst.masts) problems.push(`phone: masts shouldn't fall on a phone (${worst.masts} did)`);
   // Fire on the left (the Settings card, on a phone): the buttons swap sides, and so do the stick and the aiming; the
-  // edge tags keep clear of the buttons where they are now
+  // edge tags keep clear of the buttons where they are now; the hint and How to fly say so (the right thumb steers,
+  // aiming on the left), and say it the other way round again when it's switched off
   await page.evaluate(() => { window.__game.pause(true); document.getElementById('btn-settings-pause').click(); });
   await page.tap('#set-leftFire'); await page.tap('#btn-settings-done');
   await page.evaluate(() => { const g = window.__game; g.pause(false); g.cam.yaw = 0; g.player.turn = 0; });
+  const hands = () => page.evaluate(() => ({ hint: document.getElementById('touch-hint').textContent, howto: [...document.querySelectorAll('#howto dl.touch-only dt, #howto dl.touch-only dd')].slice(0, 3).map((e) => e.textContent).join(' | ') }));
   const left = await page.evaluate(() => { const f = document.getElementById('btn-fire').getBoundingClientRect(), h = document.getElementById('touch-hint').getBoundingClientRect(), b = document.getElementById('touch-buttons').getBoundingClientRect(), e = window.__game.edge.bottom;
     return { fire: Math.round(f.left + f.width / 2), hint: Math.round(h.left), saved: window.__game.settings.data.leftFire, edge: e.some((x) => Math.abs(x.l - b.left) < 1 && Math.abs(x.t - b.top) < 1) }; });
+  const leftWords = await hands();
   await touch('touchStart', [300, 560]); await touch('touchMove', [330, 560]); await touch('touchMove', [360, 560]);
   await wait(page, () => window.__game.player.turn > 0.05, null, 'phone, Fire on the left: a thumb on the right steers');
   await touch('touchEnd');
@@ -1617,64 +1722,51 @@ if (!quick) {
   await wait(page, () => Math.abs(window.__game.cam.yaw) > 0.1, null, 'phone, Fire on the left: dragging on the left aims');
   await touch('touchEnd');
   console.log(`phone, Fire on the left: Fire at ${left.fire} px of 390, the hint at ${left.hint} px${left.edge ? ', the edge tags keeping clear of the buttons there' : ''}; steering on the right, aiming on the left`);
+  console.log(`phone, Fire on the left, the hint: "${leftWords.hint}"; How to fly: "${leftWords.howto}"`);
   if (left.fire > 195 || left.hint < 195 || !left.saved || !left.edge) problems.push(`phone: Fire on the left should move the buttons to the left: ${JSON.stringify(left)}`);
+  const says = (w, steer, aim) => w.hint.startsWith(`${steer} thumb: steer and climb. Drag on the ${aim} to aim.`) && w.howto.startsWith(`${steer} thumb | Put it down anywhere on the ${steer.toLowerCase()} and push`) && w.howto.endsWith(`| ${aim === 'left' ? 'Left' : 'Right'} thumb`);
+  if (!says(leftWords, 'Right', 'left')) problems.push(`phone: with Fire on the left, the hint and How to fly should say the right thumb steers and aiming is on the left: ${JSON.stringify(leftWords)}`);
   await page.evaluate(() => { window.__game.pause(true); document.getElementById('btn-settings-pause').click(); });
   await page.tap('#set-leftFire'); await page.tap('#btn-settings-done');
   await page.evaluate(() => window.__game.pause(false));
   if (await page.evaluate(() => document.body.classList.contains('fire-left'))) problems.push('phone: Fire on the left doesn\'t switch off again');
-  // nothing on the screen lands on anything else, on a phone held upright or sideways (two sizes each): in a battle
-  // with the toast, a warning and the banner (or the region's name, which shares its place) all showing at once, with
-  // their longest words; the raiders' tags pinned at the screen's edge clear of the panels; and between waves, the card
-  // too. The big map fits the screen
+  const rightWords = await hands();
+  if (!says(rightWords, 'Left', 'right')) problems.push(`phone: with Fire back on the right, the hint and How to fly should say the left thumb steers again: ${JSON.stringify(rightWords)}`);
+  // nothing on the screen lands on anything else, on a phone held upright or sideways (two sizes each): layoutAt,
+  // with the touch buttons and the hint
   const HUD = ['ship', 'compass', 'btn-pause', 'minimap', 'score', 'battery', 'toast', 'warn', 'banner', 'region', 'aim', 'btn-fire', 'btn-surge', 'btn-sail-up', 'btn-sail-down', 'touch-hint', 'calm'];
   const PANELS = ['ship', 'compass', 'btn-pause', 'minimap', 'score', 'battery', 'touch-buttons', 'touch-hint'];
-  const layoutAt = () => page.evaluate(({ HUD, PANELS }) => {
-    const g = window.__game, $ = (id) => document.getElementById(id), out = { laps: [], tags: [], off: [] };
-    const box = (id) => { const el = $(id); if (!el || el.hidden || getComputedStyle(el).display === 'none' || getComputedStyle(el).visibility === 'hidden') return null; const b = el.getBoundingClientRect(); return b.width && b.height ? b : null; };
-    const lap = (a, b) => a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
-    const look = (ids, what) => {
-      const B = ids.map((id) => [id, box(id)]).filter(([, b]) => b);
-      for (const [id, b] of B) if (b.left < -1 || b.top < -1 || b.right > innerWidth + 1 || b.bottom > innerHeight + 1) out.off.push(`${what}: ${id}`);
-      for (let i = 0; i < B.length; i++) for (let j = i + 1; j < B.length; j++) if (lap(B[i][1], B[j][1])) out.laps.push(`${what}: ${B[i][0]} x ${B[j][0]}`);
-    };
-    g.fly('brig'); const P = g.player; g.waves.timer = 1e9; g.raiders.setAI(false); P.pos.set(2000, 900, 1500); P.heading = 0.6;
-    const f = P.forward(), s = { x: Math.cos(0.6), y: 0, z: -Math.sin(0.6) };
-    // one raider ahead (locked on), and eight all round off the screen
-    g.raiders.spawn('frigate', P.pos.clone().addScaledVector(f, 260), P.heading + 2, true, true);
-    for (const [a, b, up] of [[-1, 0, 0], [0, -1, 0], [0, 1, 0], [0.5, -0.8, 500], [0.5, 0.8, 500], [0.6, 0, 700], [0.6, 0, -600], [0.5, -0.8, -450], [0.5, 0.8, -450]]) {
-      g.raiders.spawn('cutter', P.pos.clone().addScaledVector(f, a * 400).addScaledVector(s, b * 400).add({ x: 0, y: up, z: 0 }), P.heading, true);
-    }
-    g.cam.yaw = 0; g.cam.pitch = 0.15; g.step(0.2, {});
-    const say = { toast: 'The captain\'s Frigate is sinking! Fly through her shards', warn: 'Nearing the Thinning: the crystals can\'t lift you higher', region: 'The Sunscorch Wastes', 'banner-title': 'Wave 10: a raider captain', 'banner-line': 'a Frigate and two Cutters, behind you on your right · a wind from your right' };
-    for (const [id, t] of Object.entries(say)) $(id).textContent = t;
-    $('warn').hidden = false;
-    look(HUD.filter((id) => id !== 'region' && id !== 'calm'), 'a battle');
-    look(HUD.filter((id) => id !== 'banner' && id !== 'calm'), 'a battle, with the region\'s name');
-    const panels = PANELS.map((id) => [id, box(id)]).filter(([, b]) => b);
-    for (const t of document.querySelectorAll('#tags .tag.edge')) { const a = t.getBoundingClientRect(); for (const [id, b] of panels) if (lap(a, b)) out.tags.push(`${t.querySelector('b').textContent} at ${Math.round(a.left)},${Math.round(a.top)} x ${id}`); }
-    out.edgeTags = document.querySelectorAll('#tags .tag.edge').length;
-    // between waves
-    g.raiders.clear(); Object.assign(g.waves, { n: 2, state: 'fight', next: null }); g.step(0.05, {}); $('toast').textContent = say.toast;
-    look(HUD.filter((id) => id !== 'region' && id !== 'banner'), 'between waves');
-    out.calm = !$('calm').hidden;
-    // the big map
-    g.waves.state = 'calm'; $('minimap').click(); g.step(0.05, {});
-    const m = $('minimap').getBoundingClientRect(), x = $('map-close').getBoundingClientRect();
-    out.map = m.left >= 0 && m.top >= 0 && m.right <= innerWidth && m.bottom <= innerHeight && x.left >= m.left && x.right <= m.right && x.top >= m.top && x.bottom <= m.bottom;
-    $('map-close').click(); $('warn').hidden = true; g.raiders.clear();
-    return out;
-  }, { HUD, PANELS });
   const layouts = [];
   for (const [w, h] of [[390, 844], [360, 640], [844, 390], [740, 360]]) {
     // (the new size, once the game has heard of it: drawn in software, a frame can take longer than the half second)
     await page.setViewportSize({ width: w, height: h }); await page.waitForTimeout(500);
     await page.waitForFunction(([w, h]) => Math.abs(window.__game.camera.aspect - w / h) < 1e-6, [w, h], { timeout: 30000 }).catch(() => problems.push(`phone ${w}x${h}: the game never heard the window change size`));
-    const L = await layoutAt(); layouts.push(`${w}x${h}: ${L.laps.length + L.off.length + L.tags.length ? `${L.laps.length + L.off.length} overlaps, ${L.tags.length} tags on panels` : 'all clear'} (${L.edgeTags} tags at the edge)`);
-    if (L.laps.length || L.off.length) problems.push(`phone ${w}x${h}: the HUD's pieces land on each other or off the screen: ${[...L.laps, ...L.off].join('; ')}`);
-    if (L.tags.length) problems.push(`phone ${w}x${h}: raiders' tags at the edge land on the panels: ${L.tags.join('; ')}`);
-    if (!L.calm || L.edgeTags < 5 || !L.map) problems.push(`phone ${w}x${h}: the layout test didn't run as it should: ${JSON.stringify({ calm: L.calm, edgeTags: L.edgeTags, map: L.map })}`);
+    layouts.push(`${w}x${h}: ${layoutProblems(await layoutAt(page, HUD, PANELS, w === 360), `phone ${w}x${h}`)}`);
   }
   console.log(`phone layouts: ${layouts.join('; ')}`);
+  // the port at the same four sizes: its top line on one line, even with ◆ 12,345; a ship you can't afford yet showing
+  // all of how she sails above her Buy button; and her Upgrades tab showing two upgrades or more above Set sail
+  const ports = [];
+  for (const [w, h] of [[844, 390], [740, 360], [390, 844], [360, 640]]) {
+    await page.setViewportSize({ width: w, height: h }); await page.waitForTimeout(300);
+    const P = await page.evaluate(() => {
+      const g = window.__game, $ = (id) => document.getElementById(id), d = g.progress.data, r = (id) => $(id).getBoundingClientRect();
+      if (g.mode === 'voyage') g.endVoyage(0); else g.port.setMode('port');
+      d.shards = 1999; d.ships.frigate.owned = false; $('port-ships').querySelector('[data-ship="frigate"]').click();
+      const buy = r('btn-buy'), stats = [...document.querySelectorAll('.stat')].filter((s) => s.getBoundingClientRect().bottom <= buy.top + 1).length;
+      d.shards = 12345; d.flying = 'skiff'; $('port-ships').querySelector('[data-ship="skiff"]').click();
+      const top = ['port-shards', 'btn-skies', 'btn-settings-port'].map(r), line = Math.max(...top.map((b) => b.height)), right = Math.round(Math.max(...top.map((b) => b.right)));
+      $('pp-tab-upgrades').click();
+      const sail = r('btn-sail'), mods = [...document.querySelectorAll('.mod')].filter((m) => m.getBoundingClientRect().bottom <= sail.top + 1).length;
+      $('pp-tab-ship').click();
+      return { stats, line: Math.round(line), right, w: innerWidth, mods };
+    });
+    ports.push(`${w}x${h}: ${P.stats} of 5 stats and ${P.mods} upgrades in view, the top line ${P.line} px tall`);
+    if (P.stats < 5 || P.mods < 2 || P.line > 44 || P.right > P.w) problems.push(`phone ${w}x${h}: the port should show all of how a ship not owned sails above her Buy button, two upgrades or more on her Upgrades tab, and its top line on one line: ${JSON.stringify(P)}`);
+    if (w === 360) { await page.click('#port-ships [data-ship="frigate"]'); await page.waitForTimeout(1200); await shot(page, 'phone-small-port'); }
+    if (w === 740) { await page.click('#pp-tab-upgrades'); await page.waitForTimeout(1200); await shot(page, 'phone-sideways-port-upgrades'); await page.click('#pp-tab-ship'); }
+  }
+  console.log(`phone port: ${ports.join('; ')}`);
   await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(500);
   await page.evaluate(() => window.__game.fly('skiff'));
   await page.evaluate(battle, ['cutter', 'skiff']);
