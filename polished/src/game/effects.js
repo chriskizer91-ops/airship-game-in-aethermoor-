@@ -218,7 +218,7 @@ export function makeDebris(scene, q = 1, glowAt = null) {
   // `n` pieces (fewer on a phone) thrown from p along `dir` (a unit vector), each leaning off it by up to `spread`
   // (1 is about 50 degrees), at 10 to 24 m/s plus `vel` (the ship's own), `size` times their usual size, in colour `hex`
   function toss(kind, p, dir, spread, vel, n, size = 1, hex = 0xffffff) {
-    const b = B[kind], m = Math.max(1, Math.round(n * q)), F = b.fly;
+    const b = B[kind], m = Math.max(1, Math.round(n * q * api.share)), F = b.fly;
     col.setHex(hex); b.tossed += m;
     for (let k = 0; k < m; k++) {
       let i;
@@ -270,7 +270,9 @@ export function makeDebris(scene, q = 1, glowAt = null) {
     peak: { wood: B.wood.peak, canvas: B.canvas.peak, crystal: B.crystal.peak }, dropped: B.wood.dropped + B.canvas.dropped + B.crystal.dropped,
     cut: { wood: B.wood.dropped, canvas: B.canvas.dropped, crystal: B.crystal.dropped }, tossed: { wood: B.wood.tossed, canvas: B.canvas.tossed, crystal: B.crystal.tossed } });
   const resetStats = () => { for (const b of KINDS) { b.peak = b.n; b.dropped = 0; b.tossed = 0; } };
-  return { toss, update, clear, stats, resetStats, meshes: KINDS.map((b) => b.mesh) };
+  // (share: how much of `q` is made just now, 0 to 1: fx.js turns it down for the Settings card's picture)
+  const api = { toss, update, clear, stats, resetStats, meshes: KINDS.map((b) => b.mesh), share: 1 };
+  return api;
 }
 
 // Smoke (and fire) pouring off a ship as it's damaged: none above half hull, then more and darker. A raider going down

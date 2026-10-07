@@ -2,14 +2,15 @@
 //   Laptop: W/S sails, A/D or arrows turn, Space/E or Up climb, Shift/Q or Down dive, mouse aims (click the view to
 //   lock the mouse to it; Esc lets go), left click or F fires, R surges, C looks ahead, M map, P pause, H help.
 //   Phone: a stick under the left thumb steers and climbs, dragging on the right aims, Fire (slide the thumb off it to
-//   aim while firing), Surge and the sail buttons.
+//   aim while firing), Surge and the sail buttons. With Fire on the left (Settings: leftFire), the sides swap: the
+//   stick is under the right thumb, and the left one aims.
 // Only while `active` (flying); in port and on the title screen the controls are left alone.
 export function makeInput(canvas, el) {
   const keys = new Set();
   const s = {
     turn: 0, climb: 0, sail: 0, fire: false, look: { x: 0, y: 0 }, zoom: 0, lastLook: -1e9, locked: false,
     pressed: new Set(), // keys pressed since the last frame (for one-off actions)
-    active: true,
+    active: true, leftFire: false,
   };
   const now = () => performance.now() / 1000;
   const typing = (e) => /input|textarea|select/i.test(e.target.tagName);
@@ -71,7 +72,7 @@ export function makeInput(canvas, el) {
     if (e.pointerType === 'mouse' || !s.active) return;
     lastTouch = now();
     try { canvas.setPointerCapture(e.pointerId); } catch { /* still works without */ }
-    if (e.clientX < innerWidth * 0.42 && stick.id === null) {
+    if ((s.leftFire ? e.clientX > innerWidth * 0.58 : e.clientX < innerWidth * 0.42) && stick.id === null) {
       Object.assign(stick, { id: e.pointerId, ox: e.clientX, oy: e.clientY, x: 0, y: 0 });
       knob.hidden = false; knob.style.left = e.clientX + 'px'; knob.style.top = e.clientY + 'px'; knobDot.style.transform = 'translate(0px, 0px)';
     } else aims.set(e.pointerId, { x: e.clientX, y: e.clientY });

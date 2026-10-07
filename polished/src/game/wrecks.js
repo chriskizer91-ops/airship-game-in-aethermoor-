@@ -33,7 +33,7 @@ const FIRE = [0xff7a2a, 0xffc04a, 0xffe8a0], AMBER = 0xffc061, GOLD = 0xffd27a;
 
 // `tear(x, z, radius)` opens a hole in the cloud deck (world.js); falling masts are added to `scene` once they break away
 export function makeWrecks({ fx, tear = null, scene = null }) {
-  const q = fx.q, every = WRECK.puff[fx.touch ? 1 : 0], gap = WRECK.gap[fx.touch ? 1 : 0], debris = fx.debris, smoke = fx.smoke;
+  const every = WRECK.puff[fx.touch ? 1 : 0], gap = WRECK.gap[fx.touch ? 1 : 0], debris = fx.debris, smoke = fx.smoke;
   const made = () => ({ r: null, why: '', t: 0, full: false, chain: 0, fired: 0, next: 0, busy: 0, puff: 0, flick: 0, flames: 0, lastY: 0,
     crossed: false, gone: -1, told: false, burnt: false, dark: false, glint: 0, masts: false, cut: false, blast: new THREE.Vector3(), at: new THREE.Vector3(), puffed: new THREE.Vector3(), s: 1 });
   const pool = Array.from({ length: MAX }, made), list = [];
@@ -137,7 +137,7 @@ export function makeWrecks({ fx, tear = null, scene = null }) {
         for (const b of Z.sails) {
           if (b.isEmpty()) continue;
           const size = THREE.MathUtils.clamp((b.max.y - b.min.y) * 0.3, 2, 12);
-          for (let k = 0, m = Math.round(6 * q); k < m; k++) fx.spark(inBox(r, b), v.set(Math.random() - 0.5, 3 + Math.random() * 5, Math.random() - 0.5).add(vel), 0.6 + Math.random() * 0.5, size, FIRE[k % 3], 0.6, -2);
+          for (let k = 0, m = Math.round(6 * fx.q); k < m; k++) fx.spark(inBox(r, b), v.set(Math.random() - 0.5, 3 + Math.random() * 5, Math.random() - 0.5).add(vel), 0.6 + Math.random() * 0.5, size, FIRE[k % 3], 0.6, -2);
           b.getCenter(c); world(r, c.x, c.y, c.z, p);
           debris.toss('canvas', p, UP, 1.6, vel, 2, w.s, lk.sail);
         }
@@ -146,7 +146,7 @@ export function makeWrecks({ fx, tear = null, scene = null }) {
       // her masts crack at the deck: cut out of her hull, standing for a moment, then toppling one after another
       if (w.masts && !w.cut && t >= MASTS.from) fell(w);
       if (w.burnt && t < WRECK.sails + 0.9 && fx.room()) {
-        w.flames += dt * 10 * q;
+        w.flames += dt * 10 * fx.q;
         for (; w.flames >= 1; w.flames--) for (const b of Z.sails) if (!b.isEmpty()) fx.spark(inBox(r, b), v.set(0, 4 + Math.random() * 4, 0).add(vel), 0.5 + Math.random() * 0.4, THREE.MathUtils.clamp((b.max.y - b.min.y) * 0.18, 1.5, 8), FIRE[(Math.random() * 3) | 0], 0.6, -2);
       }
       // a struck ship's pennants come down their masts, and her hold glints gold now and then
@@ -197,7 +197,7 @@ export function makeWrecks({ fx, tear = null, scene = null }) {
   function deck(w) {
     const r = w.r, L = r.R.length, x = r.f.pos.x, z = r.f.pos.z;
     w.crossed = true;
-    for (let k = 0, n = Math.round(14 * q); k < n; k++) {
+    for (let k = 0, n = Math.round(14 * fx.q); k < n; k++) {
       const a = (k / n) * Math.PI * 2 + Math.random() * 0.3, cx = Math.cos(a), sz = Math.sin(a);
       smoke.emit(p.set(x + cx * L * 0.6, CLOUD_Y + 4, z + sz * L * 0.6), v.set(cx * 12, 2, sz * 12), 4, L * 0.3 + 6, L * 0.6 + 28, 1.3, 0.7, 1, 0.4);
     }

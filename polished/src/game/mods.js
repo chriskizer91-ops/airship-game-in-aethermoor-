@@ -3,11 +3,12 @@
 // loadout() turns a ship's stats and its upgrades into what the game flies and fires.
 import { STATS } from '../ships/index.js';
 
+// each in plain words (line), and exactly, a step at a time (step, in smaller print in port)
 export const MODS = [
-  { id: 'armour', name: 'Armour plates', step: 'Each step: +20% hull, but 4% less top speed and 10% slower to speed up' },
-  { id: 'canvas', name: 'Fine canvas', step: 'Each step: +20% sails and 4% more top speed' },
-  { id: 'drill', name: 'Gun drill', step: 'Each step: guns reload 10% faster' },
-  { id: 'crystals', name: 'Cut crystals', step: 'Each step: +20% crystals and climbs 12% faster' },
+  { id: 'armour', name: 'Armour plates', line: 'A tougher hull, but a little slower.', step: 'Each step: hull +20%, top speed −4%, speeding up −10%' },
+  { id: 'canvas', name: 'Fine canvas', line: 'Stronger sails, and a little faster.', step: 'Each step: sails +20%, top speed +4%' },
+  { id: 'drill', name: 'Gun drill', line: 'Your gunners reload faster.', step: 'Each step: reloading 10% quicker' },
+  { id: 'crystals', name: 'Cut crystals', line: 'Stronger crystals, and she climbs faster.', step: 'Each step: crystals +20%, climbing +12%' },
 ];
 export const STEPS = 3;
 // a step costs more on a bigger ship

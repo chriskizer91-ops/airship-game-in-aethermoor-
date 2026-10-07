@@ -18,6 +18,7 @@ What's built, by stage (all October 6):
 - **How a fight feels** (October 6): broadsides that ripple down the side with flame and gunsmoke, shots like crystal comets, the view kicking back with your guns and shaking when you're hit, marks on the crosshair for every hit, a red arc pointing to whoever hit you, and raiders' gun ports glowing just before their broadsides (see [How a fight feels](#how-a-fight-feels)).
 - **Wrecks worth watching** (October 6): debris that matches what you hit, raiders going down in a chain of blasts with their sails burning (and, on a laptop, their masts falling), a column of smoke and a hole torn in the cloud deck, the bounty rising from the wreck, the shard count counting up, slow motion when a wave's last raider goes down, and a Surge that feels fast (see [Wrecks](#wrecks) and [The Surge](#the-surge)).
 - **Sound and music** (October 6): Chris's music (shared with the laptop version) and his sound effects, new cannon, broadside and hit sounds made for this game on the same instruments, the sound of the sky, and a Settings card for the sound (see [Sound and music](#sound-and-music)).
+- **Clear type and a tidy screen** (October 6, Chris asked for clearer text): Cinzel for the game's title, banners, card headings and ship names, and Fira Sans for everything else, with even, upright figures so numbers can't be misread (no more 5 that looks like an S). The screen has a place for everything on a laptop, a phone held upright and a phone held sideways, so nothing lands on anything else. Plain words in port and in the sky ("ahead on your right", "Wind behind: 8% faster", "a full circle in 19 s"). The full Settings card (see [Settings](#settings)).
 
 Boarding waits (Chris, October 6: fill out the ship-to-ship fighting first).
 
@@ -35,17 +36,18 @@ The title screen remembers your best wave on each.
 
 ## The port
 
-- **Ships.** You start with the Skiff, the Zephyr. The Cutter (Gale) costs ◆ 300, the Brig (Tradewind) ◆ 900 and the Frigate (Tempest) ◆ 2,200. Tap a ship at the bottom to look at it; if it's yours, it's the one you sail.
-- **How she sails.** Bars for top speed, turning, climbing, hull and firepower, against the best any ship can be. Pale is the ship as built; gold past it is what upgrades add, and red is what they cost.
+- **Ships.** You start with the Skiff, the Zephyr. The Cutter (Gale) costs ◆ 300, the Brig (Tradewind) ◆ 900 and the Frigate (Tempest) ◆ 2,200. Tap a ship at the bottom to look at it; if it's yours, it's the one you sail. Looking at a ship you don't own, the big gold button buys her ("Buy the Tempest · ◆ 2,200"); until you can afford her it fills with gold as you earn towards her price, and says how many shards you have. Setting sail in your own ship is the plain line under it ("or set sail in the Zephyr").
+- **How she sails.** Bars for top speed, turning, climbing, hull and firepower, against the best any ship can be, in plain words: top speed in km/h, turning as the time for a full circle, climbing in metres a second, and firepower as light, fair, heavy or very heavy. Pale is the ship as built; gold past it is what upgrades add, and red is what they cost. Looking at another ship, a white mark on each bar shows where the ship you sail now is, to compare. Her guns are listed in words too ("Guns: 2 in the bow, 6 each side, 1 in the stern").
+- **On a phone** the panel has two tabs: **The ship** (what she's like and how she sails) and **Upgrades** (crystal power and the upgrades). A gold dot on Upgrades means there's one you can afford. The Upgrades tab makes the panel taller, with the ship smaller above it.
 - **Crystal power** (free, change it any time). A slider from Sails to Guns, in five notches. Each notch towards the guns gives 8% faster reloading and 6% heavier shots, and costs 6% top speed and 6% speeding up. Towards the sails, the other way round.
-- **Upgrades.** Four of them, each bought in three steps, for each ship separately:
+- **Upgrades.** Four of them, each bought in three steps, for each ship separately. Each says what it does in plain words, with the exact numbers in small print under it:
 
-| Upgrade | Each step |
-|---|---|
-| **Armour plates** | +20% hull, but 4% less top speed and 10% slower to speed up |
-| **Fine canvas** | +20% sails and 4% more top speed |
-| **Gun drill** | Guns reload 10% faster |
-| **Cut crystals** | +20% crystals and climbs 12% faster |
+| Upgrade | In port it says | Each step |
+|---|---|---|
+| **Armour plates** | A tougher hull, but a little slower. | +20% hull, but 4% less top speed and 10% slower to speed up |
+| **Fine canvas** | Stronger sails, and a little faster. | +20% sails and 4% more top speed |
+| **Gun drill** | Your gunners reload faster. | Guns reload 10% faster |
+| **Cut crystals** | Stronger crystals, and she climbs faster. | +20% crystals and climbs 12% faster |
 
 Steps cost ◆ 60, 140 and 280 on the Skiff, and more on bigger ships: 1.6 times as much on the Cutter, 2.6 times on the Brig and 4 times on the Frigate.
 
@@ -55,11 +57,12 @@ Playing on your phone and your laptop, **the newest progress always wins**. A ga
 
 ## A voyage
 
-- **The waves.** The first comes a few seconds after you set sail, 1.5 to 1.9 km ahead of you, more or less. A banner says what's coming, from where, and where the wind's from.
+- **The waves.** The first comes a few seconds after you set sail, 1.5 to 1.9 km ahead of you, more or less. A banner says what's coming, where she is from you in left and right ("dead ahead", "ahead on your right", "off your left side", "behind you on your right", "behind you"), and the wind ("the wind behind you", "a head wind", "a wind from your left").
 - **Crystal Shards.** A downed raider spills its shards as glowing amber crystals that drift slowly down, with a gold flash, and her bounty rises out of the wreck in gold: "◆ 75", or "Captain's bounty" or "Treasure" over a big one (just under a banner, if one is showing there, so both can be read). Fly within about 140 m and they're drawn to your ship, each with a little gold glint, and the shard count in the corner pops gold and counts up as they come in; leave them 30 seconds and they're gone. Skiffs are worth ◆ 15, Cutters 30, Brigs 60 and Frigates 100, and a raider captain four times as much. Each wave adds 10% (the fifth wave's raiders are worth 40% more than the first's), the skies add their share, and beating a wave adds ◆ 20 for each wave so far.
-- **After each wave.** When the last raider of a wave goes down, the world slows to a quarter speed for about a second and a half, so you can watch her go; then a card rises into view showing what you earned (it counts up), what's in the hold this voyage, and **what the next wave is**. **Sail on** (it sails on by itself after 25 seconds) or go **Back to port** and keep it all. Meanwhile the crew patch her up, back to full in about 8 seconds. Every voyage from port starts afresh at wave 1.
+- **After each wave.** When the last raider of a wave goes down, the world slows to a quarter speed for about a second and a half, so you can watch her go; then a card rises into view showing what you earned (it counts up), what's in the hold this voyage, and **what the next wave is**. It's a strip docked at the bottom of the screen (on a phone held upright, just above the buttons; held sideways, at the top under the compass, as the bottom is for your thumbs), so it never covers the wreck and her shards in the middle. **Sail on** (it sails on by itself after 25 seconds) or go **Back to port** and keep it all. On a laptop with the mouse locked to the view you can't click it, so **Enter** sails on and **B** goes back to port, and the buttons say so. Meanwhile the crew patch her up, back to full in about 8 seconds. Every voyage from port starts afresh at wave 1.
 - **Going down.** If your ship goes down, the crew get her home with half this voyage's shards. Pausing and going back to port in the middle of a fight also keeps half; between waves it keeps all.
-- **The wind** changes with every wave. It's shown next to the compass: the arrow points the way it blows (up is the way you're heading), and the number is how much it adds to or takes from your top speed, up to 14%. Raiders feel it too.
+- **The wind** changes with every wave. It's shown next to the compass in words: "Wind behind: 8% faster", "Head wind: 8% slower" or "Wind across: no help" (on a phone just the arrow and "8% faster"), up to 14%. The arrow points the way it blows (up is the way you're heading). Raiders feel it too.
+- **The region's name** shows in the sky when you cross into a new part of Aethermoor, but only at a quiet moment: never in the middle of a fight, never over a banner. If you cross over during a fight, it shows once the wave is beaten.
 - **The sun** is low in the west, and it throws the shadows of your masts, sails and rigging across your deck.
 - **The Surge.** **R**, or the Surge button on a phone: the crystals pour into the sails for 3 seconds, 60% more top speed, then 15 seconds to build up again (the bar in the top-left panel). For running from a broadside, catching a fleeing raider, or reaching shards before they fall. How it looks: see [The Surge](#the-surge).
 - **Raider captains** lead every fifth wave: wave 5 is a captain's Brig. A captain's ship has black sails and a gold pennant, and a gold tag. It's twice as sturdy, hits 20% harder and reloads 10% faster, and it's worth four times the shards. On Fair Winds, where a new Captain learns the ropes, she's no tougher than her crew, hits no harder and reloads no faster, but she's still worth four times the shards. (A Man-o'-war needs no captain: in a wave with one, the captain sails the next biggest ship.) Her ship is made ready while the card before her wave is up, so her wave arrives without a stutter.
@@ -83,21 +86,54 @@ Playing on your phone and your laptop, **the newest progress always wins**. A ga
 | **C** | Look ahead again |
 | **M** | Big map |
 | **P** | Pause (and the way back to port) |
-| **Enter** | Sail on, after a wave |
+| **Enter** / **B** | Sail on / back to port, after a wave |
 | **H** | Hide or show the keys |
 
-On a laptop the ships are drawn at full sharpness.
+The keys show in the lower left on a laptop's first two voyages, until the first wave comes; after that they're folded away into a small **Keys (H)** button. **How to fly**, on the pause card, lists them all again.
+
+On a laptop the ships are drawn at full sharpness (the picture setting Sharp).
 
 ### Phone
 
 - **Left thumb**: put it down anywhere on the left side and a stick appears under it. Push left or right to turn, up to climb, down to dive.
 - **Right thumb**: drag anywhere on the right side to swing the camera round the ship and aim. While your thumb rests there the view stays where you aimed it; lift it, and after a few seconds the view eases back behind the ship.
-- **Fire**: hold to keep firing as the guns reload, and **slide your thumb off it to aim while you fire**. **Surge**: the round blue button beside it.
+- **Fire**: hold to keep firing as the guns reload, and **slide your thumb off it to aim while you fire**. **Surge**: the round blue button beside it. Above them, which guns will fire, and their reload.
 - **Sail − / Sail +**: hold to take in or let out sail.
-- **❚❚** under the compass pauses. Tap the corner map to make it big.
-- **The gear** (on the title screen, in port, and on the pause card as **Settings**) opens the Settings card: sound on or off, and how loud the music and the sounds are.
+- **The pause button** (two bars, under the compass; held sideways, beside the map) pauses. The pause card has **How to fly**, which shows all the touch controls, and **Settings**.
+- **The corner map**: tap it to make it big. The big map fits the screen over a dimmed sky and names the regions; tap the cross, the map or the sky round it to close it.
+- **The gear** (on the title screen and in port, and on the pause card as **Settings**) opens the Settings card (see [Settings](#settings)). **Fire button on the left** there swaps the sides for left-handed players: Fire, Surge and Sail on the left, the stick under your right thumb, and aiming on the left.
+- A short hint in the lower corner says how to steer, aim and fire on your first three voyages; it fades a few seconds after you first touch the screen.
 
-On a phone the game draws a little less sharply so it stays smooth (and with fewer sparks and puffs of smoke), and pauses by itself if you leave the page. If the phone clears the game's pictures while you're away (phones do, after a long while), the game draws them again when you come back.
+On a phone the game draws a little less sharply so it stays smooth (the picture setting Balanced, with fewer sparks and puffs of smoke), and pauses by itself if you leave the page. If the phone clears the game's pictures while you're away (phones do, after a long while), the game draws them again when you come back.
+
+### The screen
+
+Everything on the screen has its own place, on a laptop, a phone held upright and a phone held sideways (or any short window), so nothing lands on anything else (the check measures it at four phone sizes):
+
+- **Along the top**: your ship's panel (left), the compass and wind (middle), the pause button, the corner map and the score (right). On a phone the ship's panel is smaller: speed and height on one line, then the sail, then the bars.
+- **Under the compass**: the region's name or a banner (they take turns: a banner always wins), with a soft dark backing so they read over bright cloud.
+- **The toast** (a raider down, a Surge) and a **warning** (sinking, the Thinning, the open sea) have their own places: on a laptop under the compass, on a phone under the banner and under the crosshair.
+- **At the bottom**: on a phone, the touch buttons (right, or left if you choose) and the hint (the other side); on a laptop, the keys.
+- **Raiders' tags** at the edge of the screen keep clear of the panels along the top and the buttons along the bottom.
+
+## Settings
+
+The gear on the title screen and in port, or **Settings** on the pause card, opens the Settings card. Everything on it takes effect at once and is kept on that device only (in the browser, never in the progress that goes between devices), so a phone and a laptop can each have their own:
+
+| Setting | What it does |
+|---|---|
+| **Sound on**, **Music**, **Sounds** | See [Sound and music](#sound-and-music) |
+| **Aim speed** | How far the view swings for the same drag or mouse move: Slow (half as far), Gentle, Normal, Quick, Fast (1.8 times as far) |
+| **Up and down** | Normal, or Flipped (pushing up looks down) |
+| **Picture** | **Smooth**, **Balanced** or **Sharp**. Smooth runs best on older phones: one screen pixel to each of the page's, small sun shadows, half the cloud puffs, raiders switching to their far model sooner, and fewer sparks, smoke and debris. Sharp looks finest. A phone starts on Balanced, a laptop on Sharp. |
+| **Camera shake** | Off, the view holds still: no shaking when you're hit and no kick from your guns |
+| **Fire button on the left** | Phones only: swaps the touch buttons and the stick for left-handed players |
+
+| Picture | Sharpness (screen pixels to the page's) | Sun shadows | Cloud puffs | Sparks, smoke, debris (of a laptop's full count): phone / laptop |
+|---|---|---|---|---|
+| Smooth | up to 1 | 512 | 55 | 45% / 50% |
+| Balanced | up to 1.5 | 1,024 | 85 | 60% / 75% |
+| Sharp | up to 2 | 2,048 | 110 | 60% / 100% (a phone never goes past its 60%: its batches are made that size) |
 
 The cloud deck's pattern is worked out once, when the game starts, and kept as a picture; the deck and the cloud shadows on the ground read it from there. That saves a phone most of the work of drawing the sky, and looks the same.
 
@@ -159,7 +195,7 @@ The game is silent until you first touch it (a tap, a click or a key anywhere): 
 - **Flying.** The wind rises with your speed and height, with gusts; the rigging whistles at full speed and in a Surge; the crystals hum, higher as you climb (wavering near the Thinning, sour when they're cracked); timbers creak, more in hard turns or when she's badly hurt; fire crackles when she's burning.
 - **Chris's sound effects** for the big moments: setting sail and coming home, a wave arriving (an alarm, a boss's brass for a captain or a Man-o'-war, a pirate's phrase for a treasure ship), a wave beaten, your ship lost, alarm bells when the hull or the crystals are badly hurt. In port: buying a ship (coins and a clunk), each upgrade, the skies, and the menu buttons; the crystal power slider plays a note for each notch, high and airy towards Sails, low and metallic towards Guns.
 - **Pausing** quiets the sounds and dulls the music. **Leaving the page** (another app, another tab, the phone locked) silences everything until you come back.
-- **Settings** (the gear on the title screen and in port, or Settings on the pause card): **Sound on**, and sliders for the **Music** and the **Sounds**. They change at once and are kept on that device only, so a phone can be quiet while a laptop plays. With the sound off the game does no sound work at all. On a phone the card adds: no sound? Check the silent switch on the side of your iPhone.
+- **Settings** (the gear on the title screen and in port, or Settings on the pause card): **Sound on**, and sliders for the **Music** and the **Sounds**. They change at once and are kept on that device only, so a phone can be quiet while a laptop plays. With the sound off the game does no sound work at all. On a phone the card adds: no sound? Check the silent switch on the side of your iPhone. (The card's other settings: see [Settings](#settings).)
 
 How it stays smooth on a phone: the game's own sounds are made once, in a moment after the first touch, as 35 short recordings (no sound files; about 2.5 MB of memory), so a big fight plays recordings instead of building hundreds of sounds a second. Each kind of sound has a few voices at once (fewer on a phone: six for your guns and five for the raiders'); a new sound takes the place of the least important one playing (the farthest), and a broadside landing all at once swells one sound rather than ten. A broadside plays four to six booms however many guns it has (so a Man-o'-war's 24 cost what five do). Everything goes through one mix that rides the loud moments and rounds off any peak, so even the worst fight never crackles. The sound runs on its own thread, and the game spends well under a thousandth of a second on a volley's sounds and a few hundredths of a thousandth each frame on the music and the sky (the check measures it).
 
@@ -250,14 +286,14 @@ On Fair Winds it always gets the Skiff through four waves, and gets past the wav
 - `src/game/wrecks.js`: a raider going down: the chain of blasts, her crystals and sails, falling masts, the smoke column, the hole in the cloud deck
 - `src/game/surge.js`: how a Surge looks: the wind streaks, the crystals flaring, the vapour trails
 - `src/game/sound.js`: what the game sounds like: the answers to the game's news (guns, hits, wrecks, shards, the port...), which of Chris's pieces plays when, and the sky's own sound
-- `src/game/settings.js`: the Settings card (each setting a row; kept on the device)
+- `src/game/settings.js`: the Settings card (each setting a row; kept on the device), what each picture setting draws, and the aim speeds
 - `src/audio/audio.js`: starting the sound with the first touch, stopping it when the page is left, and Chris's music and effects played through the game's own mix
 - `src/audio/mixer.js`: the mix: its buses and master, the voices each kind of sound gets, and placing a sound in the sky
 - `src/audio/voices.js`: the sounds made for this game (cannon, hits, blasts, chimes...) on the same instruments as Chris's, and making them into recordings
 - `src/audio/thareia/`: Chris's music and instruments, exactly as he gave them (shared with the laptop version)
 - `src/game/guns.js`: where each gun sits, which battery faces where, aiming ahead of a moving ship, gun weights, the rippling volleys, and the bolts
 - `src/game/input.js`: the keyboard, mouse and touch controls
-- `demos/game.html`: the title screen, port and HUD (with the bounties that rise from wrecks), the Settings card, and the help
+- `demos/game.html`: the title screen, port and HUD (with the bounties that rise from wrecks), the Settings card, How to fly and the keys; the fonts; and where everything goes on a laptop, a phone held upright and a phone held sideways
 - `tools/map-art.mjs`: packs the nine map tiles into `assets/map/` (run it if the tiles change)
 - `tools/sim-fight.mjs`: the simulated Captain, for tuning the raiders
 
@@ -275,5 +311,7 @@ On Fair Winds it always gets the Skiff through four waves, and gets past the wav
 - Wrecks and the rest: a shot in a raider's hull throws splinters, in a treasure ship's sails scraps of canvas, in the crystals glittering shards, and a 60-shot barrage (a big broadside's worth in one second) fits the debris's batches with not one piece cut short, and has all fallen away 4 seconds later. Each scrap of canvas keeps its own flapping beat when older scraps burn out around it, so it never jumps. A raider Brig blown apart goes up in at least three blasts within 3 seconds, her crystals are dark by 2 seconds, and she falls through the cloud deck before she's gone; her bounty shows the shards she spilled and is gone 3 seconds later. A raider captain brought down where her bounty would rise over a banner, or rise into it from just under it, has it show just under the banner, clear of its words all the while it can be read. A treasure ship striking her colours doesn't blow up, and her pennants come down; then, from 906 m, she sinks through the cloud deck within 16 seconds, before she's gone, and a raider whose crystals die at 740 m does within 14. A hole torn in the clouds just before going back to port is closed on the next voyage. The shard count counts up as shards come in. On a laptop, a raider Frigate blown apart topples her three masts with all her canvas (her far model loses its masts too), and each one goes only once it's under the cloud deck. In the whole voyage, bringing down wave 1's raider slows the world once, and the card is shown at once but held back 1.4 seconds (still out of sight a moment later), then rises into view, and Sail on is pressed once it's there. A Surge shows its streaks and widens the view over 9 degrees, trails vapour and flares the crystals, and 4 seconds later it's all back; at 20 frames a second its view widens just as it does at 60 (with less motion too, by up to 12 degrees with no overshoot). On a phone, the worst case (a Man-o'-war blown apart beside two other wrecks, in a fight) never runs out of sparks or smoke, cuts short at most one piece of debris in twenty, drops no masts, and a step stays under a thousandth of a second.
 
 - The sound: Chris's two files must be exactly as he gave them. Nothing is made before the first touch, and the first touch starts the sound (on a phone too, and a tap starts it again after it was stopped); leaving the page silences it and coming back starts it again. The title plays *Thareia*, the port *Market Day*, and a wave of raiders *Break the Grip*. The port's sounds play (the skies, buying, an upgrade); the Settings card silences the music when its slider is at nothing, keeps that through a reload, opens from the pause card too, closes with Esc, and fits a phone with its iPhone note. None of the game's recordings is silent, and each sounds as it should, read from its spectrum: the Captain's crack bright and a raider's darker, the boom, the roll and a blast deep, canvas and crystal in the 2-6 kHz band, the crystals dying falling, and a broadside rolling on over 2 seconds. A real volley is heard, the sounds go quiet while paused and come back, and firing, hits, a raider blown apart and shards gathered all sound; tests that run the clock without drawing only count. The worst fight (the Captain's broadside among five raiders with a Man-o'-war, hits, a blast and shards, over a recording of the battle music) is played offline and must never clip. And it measures what the sound costs a volley and a frame.
+
+- A clear, tidy screen: the fonts are Cinzel and Fira Sans (inside the page, all loading) with even figures, and the old pixel fonts are gone. In port, a ship not owned shows the big "Buy the Gale · ◆ 300" with "or set sail in the Zephyr" under it, and the stats are in plain words; on a phone the Upgrades tab shows the upgrades (with its gold dot when one can be bought) and the ship's tab the stats. The Settings card's picture changes the drawing at once (Smooth: one screen pixel to the page's, 512 shadows, 55 puffs, far models sooner, fewer sparks; Sharp back to a laptop's own), Fast aim swings the view 1.8 times as far and Slow half as far, Flipped turns up and down the other way, and with camera shake off a big jolt doesn't move the view at all; the aim speed survives a reload and is never in the save. The keys show on a device's first two voyages, fold at the first wave, and come back with their button. A raider "ahead on your right" really is on the right of the screen, and the wind is told in words by the banner and the compass. How to fly opens from the pause card with a laptop's keys, and Esc goes back. The big map fits the screen over a dimmed sky and its cross closes it. Between waves the card is a strip at the bottom, and Enter and B work. On a phone, Fire on the left moves the buttons and swaps the stick and the aiming; and at 390×844, 360×640, 844×390 and 740×360, in a battle with the toast, a warning and the banner (or the region's name) showing at once with their longest words, and again between waves, nothing on the screen lands on anything else or off it, the raiders' tags at the edge stay clear of the panels, and the big map fits.
 
 `node tools/check.mjs --quick` plays only the game page at laptop size, for checking during work; it ends with "all good (quick)". The full check is the one that counts.

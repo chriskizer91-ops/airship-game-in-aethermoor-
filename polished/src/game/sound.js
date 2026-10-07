@@ -51,7 +51,8 @@ const UPGRADE = { armour: 'anvil', canvas: 'map-open', drill: 'crossbow', crysta
 const LOW = { hull: 'deck-alarm', crystals: 'doldrums', sails: 'rope-creak' };
 // the menu buttons' sounds (by id)
 const BUTTONS = { 'btn-to-port': 'ui-confirm', 'btn-skies': 'ui-back', 'btn-pause': 'ui-open', 'btn-resume': 'ui-close', 'btn-sail-on': 'ui-confirm', 'btn-go-port': 'ui-back', 'btn-abandon': 'ui-back',
-  'btn-settings-title': 'ui-open', 'btn-settings-port': 'ui-open', 'btn-settings-pause': 'ui-open', 'btn-settings-done': 'ui-close' };
+  'btn-settings-title': 'ui-open', 'btn-settings-port': 'ui-open', 'btn-settings-pause': 'ui-open', 'btn-settings-done': 'ui-close',
+  'btn-howto': 'ui-open', 'btn-howto-done': 'ui-close', 'map-close': 'ui-close', 'pp-tab-ship': 'ui-cursor', 'pp-tab-upgrades': 'ui-cursor' };
 
 const rnd = (a, b) => a + Math.random() * (b - a);
 const pick = (list) => list[(Math.random() * list.length) | 0];

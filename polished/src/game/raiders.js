@@ -170,6 +170,7 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
   for (const R of FLEET) template(R.id, false);
   const list = [], escaped = [];
   let ai = true, foeNow = null; // (the ship they're fighting this frame, for working out each gun's aim)
+  let detailAt = 0.06; // how big on screen (her length over the view's height) a raider is drawn with her middle model (Settings: picture)
 
   function spawn(id, pos, heading, frozen = false, captain = false) {
     const S = skies(), Tm = template(id, captain), edge = (k) => (captain ? 1 + (CAPTAIN[k] - 1) * S.captain : 1), tough = S.toughness * edge('toughness');
@@ -328,7 +329,7 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
       const D = r.f.down;
       if (D) { D.y0 ??= r.f.pos.y; if (D.t > 40 || r.f.pos.y < Math.max(15, Math.min(CLOUD_Y - 140, D.y0 - 150))) r.gone = true; }
       const size = (r.R.length / Math.max(1, camera.position.distanceTo(r.f.pos))) * toScreen;
-      r.ship.detail(size < 0.06 ? 'far' : 'middle', camera.userData.pixelScale ?? 500);
+      r.ship.detail(size < detailAt ? 'far' : 'middle', camera.userData.pixelScale ?? 500);
     }
     for (let i = list.length - 1; i >= 0; i--) if (list[i].gone) { drop(list[i]); list.splice(i, 1); }
     return downed;
@@ -351,5 +352,5 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
   function clear() { for (const r of list) { r.gone = r.cleared = true; drop(r); } list.length = 0; }
   // build a class's models ahead of time (a captain's, before her wave), so nothing is built mid-fight
   const prepare = (id, captain = false) => { template(id, captain); };
-  return { list, escaped, spawn, spawnWave, update, hitBy, clear, prepare, templates: T, setAI: (on) => { ai = on; } };
+  return { list, escaped, spawn, spawnWave, update, hitBy, clear, prepare, templates: T, setAI: (on) => { ai = on; }, setDetail: (k) => { detailAt = k; }, get detailAt() { return detailAt; } };
 }

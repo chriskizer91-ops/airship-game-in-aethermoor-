@@ -2,6 +2,9 @@
 // berth with a brass rim, lit warm from the front and cool from behind. Drag to turn it.
 //   Title: the game's name and the three skies (difficulty) to choose from.
 //   Port: pick which ship to sail, buy ships and upgrades with Crystal Shards, and set where the crystals' power goes.
+//   Looking at a ship you don't own, the big gold button buys her (filling up as you earn towards her price), and
+//   setting sail in your own ship is a plain line under it. On a phone the panel has two tabs: the ship, and her
+//   upgrades (with a gold dot when there's one you can buy).
 import * as THREE from 'three';
 import { SHIPS, STATS } from '../ships/index.js';
 import { handling } from './flight.js';
@@ -57,6 +60,8 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
   const berth = makeBerth(); scene.add(berth);
   scene.add(new THREE.HemisphereLight(0x8a90c8, 0x2a1820, 0.6));
   const key = new THREE.DirectionalLight(0xffe2b8, 2.8); key.castShadow = true; key.shadow.mapSize.setScalar(touch ? 1024 : 2048); key.shadow.bias = -0.0004; key.shadow.normalBias = 0.04;
+  // the key light's shadow map, n pixels square (Settings: picture); drawn afresh at the new size
+  const setShadow = (n) => { if (key.shadow.mapSize.x === n) return; key.shadow.mapSize.setScalar(n); key.shadow.map?.dispose(); key.shadow.map = null; };
   const rimLight = new THREE.DirectionalLight(0x8fc8ff, 1.6);
   scene.add(key, key.target, rimLight);
   const camera = new THREE.PerspectiveCamera(36, 1, 0.5, 9000);
@@ -80,11 +85,16 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
     refresh();
   }
   // where the ship sits on screen: clear of the panels
+  // (the same three layouts as the page: a laptop, a phone upright (narrow), a phone sideways or any short window)
   function place() {
-    const w = innerWidth, h = innerHeight, narrow = w < 700, fov = THREE.MathUtils.degToRad(camera.fov / 2);
+    const w = innerWidth, h = innerHeight, narrow = w <= 700, short = h <= 500, fov = THREE.MathUtils.degToRad(camera.fov / 2);
     let cx = w / 2, cy = h / 2, vw = w, vh = h;
-    if (mode === 'title') { if (narrow) { vh = h * 0.42; cy = h * 0.24; } else { vw = w * 0.5; cx = w * 0.72; } }
-    else if (narrow) { vh = h * 0.47 - 60; cy = 60 + vh / 2; } else { vw = w - 420; cx = vw / 2; vh = h - 140; cy = 54 + vh / 2; }
+    if (mode === 'title') {
+      if (narrow && !short) { vh = h * 0.36; cy = h * 0.2; } // (above the title, clear of it)
+      else if (short) { vw = w * 0.34; cx = w * 0.8; vh = h * 0.8; } // (right of the title card)
+      else { vw = w * 0.5; cx = w * 0.72; }
+    } else if (narrow && !short) { vh = h * (panel.dataset.tab === 'upgrades' ? 0.26 : 0.47) - 60; cy = 60 + vh / 2; }
+    else { const pw = short ? Math.min(340, w * 0.46) : 380; vw = w - pw - 40; cx = vw / 2; vh = h - (short ? 110 : 140); cy = 54 + vh / 2; }
     const t = Math.tan(fov), fit = Math.min(t * (vh / h), t * camera.aspect * (vw / w));
     const dist = (frame.radius / fit) * 1.02, el = 0.2;
     camera.position.set(0, frame.cy + Math.sin(el) * dist, Math.cos(el) * dist);
@@ -133,6 +143,11 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
     d.shards -= price; d.ships[viewing].owned = true; d.flying = viewing; progress.save(); refresh();
     payload('port:buy').ship = viewing; emit('port:buy');
   });
+  // the tabs (on a phone): the ship, or her upgrades
+  const panel = $('port-panel');
+  const tab = (t) => { panel.dataset.tab = t; $('pp-tab-ship').setAttribute('aria-selected', String(t === 'ship')); $('pp-tab-upgrades').setAttribute('aria-selected', String(t === 'upgrades')); panel.scrollTop = 0; };
+  $('pp-tab-ship').addEventListener('click', () => tab('ship'));
+  $('pp-tab-upgrades').addEventListener('click', () => tab('upgrades'));
   $('pp-power').addEventListener('input', (e) => {
     const cfg = progress.data.ships[viewing], p = +e.target.value;
     if (cfg.power !== p) { const E = payload('port:power'); E.ship = viewing; E.power = p; emit('port:power'); }
@@ -143,7 +158,7 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
   for (const M of MODS) {
     const row = document.createElement('div');
     row.className = 'mod'; row.dataset.mod = M.id;
-    row.innerHTML = `<b>${M.name} <span class="pips"></span></b><button class="buy" type="button"></button><p>${M.step}</p>`;
+    row.innerHTML = `<b>${M.name}<span class="pips"></span></b><button class="buy" type="button"></button><p>${M.line}</p><small>${M.step}</small>`;
     row.querySelector('button').addEventListener('click', () => {
       const d = progress.data, cfg = d.ships[viewing], step = cfg.mods[M.id], cost = modCost(viewing, step);
       if (!cfg.owned || step >= STEPS || d.shards < cost) return;
@@ -169,12 +184,16 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
     const f = figures(R.id, { power: p, mods: { armour: p > 0 ? 3 : 0, canvas: 3, drill: 3, crystals: 3 } });
     for (const k in best) best[k] = Math.max(best[k], f[k]);
   }
+  // each in plain words: turning as the time for a full circle, climbing as metres a second, firepower in words
+  const WEIGHT = ['light', 'fair', 'heavy', 'very heavy'];
   const STAT_ROWS = [
-    ['speed', 'Top speed', (v) => `${fmt(v)} km/h`], ['turn', 'Turning', (v) => `${v.toFixed(0)}°/s`], ['climb', 'Climbing', (v) => `${v.toFixed(0)} m/s`],
-    ['hull', 'Hull', fmt], ['firepower', 'Firepower', (v) => `${fmt(v)}/s`],
+    ['speed', 'Top speed', (v) => `${fmt(v)} km/h`], ['turn', 'Turning', (v) => `a full circle in ${Math.round(360 / v)} s`], ['climb', 'Climbing', (v) => `${v.toFixed(0)} m a second`],
+    ['hull', 'Hull', fmt], ['firepower', 'Firepower', (v) => WEIGHT[Math.min(3, Math.floor((v / best.firepower) * 4))]],
   ];
   const statsEl = $('pp-stats');
-  statsEl.innerHTML = STAT_ROWS.map(([k, label]) => `<div class="stat" data-stat="${k}"><span>${label}</span><span class="bar"><i class="now"></i><i class="base"></i></span><b></b></div>`).join('');
+  statsEl.innerHTML = STAT_ROWS.map(([k, label]) => `<div class="stat" data-stat="${k}"><span>${label}</span><span class="bar"><i class="now"></i><i class="base"></i><i class="mine" hidden></i></span><b></b></div>`).join('');
+  // the guns, in words: "1 in the bow, 3 each side, 1 in the stern"
+  const gunWords = (st) => [st.bow && `${st.bow} in the bow`, st.side && `${st.side} each side`, st.stern && `${st.stern} in the stern`].filter(Boolean).join(', ');
 
   function refresh() {
     const d = progress.data, cfg = d.ships[viewing], R = SHIPS.find((s) => s.id === viewing), st = STATS[viewing];
@@ -190,36 +209,45 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
       b.setAttribute('aria-pressed', String(id === viewing));
       b.querySelector('em').textContent = id === d.flying ? 'Sailing' : own ? 'Yours' : `◆ ${fmt(PRICES[id])}`;
     }
-    $('pp-name').textContent = R.name; $('pp-cls').textContent = `${R.cls} · ${R.length} m · ${st.bow} bow, ${st.side} a side, ${st.stern} stern`;
+    $('pp-name').textContent = R.name; $('pp-cls').textContent = `${R.cls} · ${R.length} m · Guns: ${gunWords(st)}`;
     $('pp-blurb').textContent = st.blurb;
-    const owned = cfg.owned;
-    $('pp-buy').hidden = owned; $('pp-own').hidden = !owned;
+    const owned = cfg.owned, F = SHIPS.find((s) => s.id === d.flying);
+    $('pp-buy').hidden = owned; $('pp-own').hidden = !owned; $('pp-tabs').hidden = !owned;
+    if (!owned && panel.dataset.tab !== 'ship') tab('ship');
+    // a ship you don't own: the big button buys her, and fills with gold as you earn towards her price
+    const price = PRICES[viewing], short = !owned && d.shards < price, b = $('btn-buy');
     if (!owned) {
-      const price = PRICES[viewing], b = $('btn-buy');
-      b.textContent = `Buy the ${R.name} for ◆ ${fmt(price)}`; b.disabled = d.shards < price;
-      $('pp-need').textContent = d.shards < price ? `You need ◆ ${fmt(price - d.shards)} more. Bring down raiders to earn Crystal Shards.` : '';
+      b.firstElementChild.textContent = `Buy the ${R.name} · ◆ ${fmt(price)}`; b.disabled = short;
+      b.style.setProperty('--got', `${Math.round(Math.min(1, d.shards / Math.max(1, price)) * 100)}%`);
     }
+    $('pp-need').textContent = short ? `You have ◆ ${fmt(d.shards)}. Bring down raiders to earn the rest.` : '';
+    const sail = $('btn-sail');
+    sail.classList.toggle('alt', !owned); sail.textContent = owned ? `Set sail in the ${F.name}` : `or set sail in the ${F.name}`;
     const base = figures(viewing, { power: 0, mods: { armour: 0, canvas: 0, drill: 0, crystals: 0 } }), now = figures(viewing, cfg);
+    // (looking at another ship: a white mark on each bar where the ship you sail now is, to compare)
+    const mine = viewing !== d.flying ? figures(d.flying, d.ships[d.flying]) : null;
     for (const [k, , show] of STAT_ROWS) {
       const row = statsEl.querySelector(`[data-stat="${k}"]`), a = base[k] / best[k], n = now[k] / best[k];
       // pale: what's kept either way; past it, gold for what the upgrades add, red for what they cost
-      const [nowBar, baseBar] = row.querySelectorAll('i');
+      const [nowBar, baseBar, mark] = row.querySelectorAll('i');
       baseBar.style.width = `${Math.min(a, n) * 100}%`; nowBar.style.width = `${Math.max(a, n) * 100}%`;
       nowBar.classList.toggle('less', n < a - 1e-6);
+      mark.hidden = !mine; if (mine) mark.style.left = `calc(${Math.min(1, mine[k] / best[k]) * 100}% - 1px)`;
       row.querySelector('b').textContent = show(now[k]);
     }
     const p = $('pp-power'); p.value = String(cfg.power);
-    const pct = (x) => `${x > 0 ? '+' : '−'}${Math.abs(Math.round(x * 100))}%`;
+    const pct = (x) => `${Math.abs(Math.round(x * 100))}%`, n = Math.abs(cfg.power);
     $('pp-power-note').textContent = cfg.power === 0 ? 'Even: the crystals feed the sails and the guns alike.'
-      : `${POWER[cfg.power + 2]}: top speed ${pct(-0.06 * cfg.power)}, time to reload ${pct(-0.08 * cfg.power)}, shot weight ${pct(0.06 * cfg.power)}.`;
+      : cfg.power > 0 ? `${POWER[cfg.power + 2]}: she reloads ${pct(0.08 * n)} quicker and hits ${pct(0.06 * n)} harder, but she's ${pct(0.06 * n)} slower.`
+        : `${POWER[cfg.power + 2]}: she's ${pct(0.06 * n)} faster, but she reloads ${pct(0.08 * n)} slower and hits ${pct(0.06 * n)} lighter.`;
+    let canBuy = false;
     for (const row of modsEl.children) {
       const M = MODS.find((m) => m.id === row.dataset.mod), step = cfg.mods[M.id], b = row.querySelector('button');
       row.querySelector('.pips').textContent = '●'.repeat(step) + '○'.repeat(STEPS - step);
       if (step >= STEPS) { b.textContent = 'Done'; b.disabled = true; }
-      else { const cost = modCost(viewing, step); b.textContent = `◆ ${fmt(cost)}`; b.disabled = d.shards < cost; }
+      else { const cost = modCost(viewing, step); b.textContent = `◆ ${fmt(cost)}`; b.disabled = d.shards < cost; canBuy ||= owned && d.shards >= cost; }
     }
-    const F = SHIPS.find((s) => s.id === d.flying);
-    $('btn-sail').textContent = `Set sail in the ${F.name}`;
+    $('pp-tab-upgrades').querySelector('.dot').hidden = !canBuy;
   }
 
   function setMode(m) {
@@ -239,5 +267,5 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
   }
   function render() { place(); renderer.render(scene, camera); camera.clearViewOffset(); }
   function resize() { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
-  return { scene, camera, show, setMode, update, render, resize, refresh, get mode() { return mode; }, set mode(m) { mode = m; }, get spin() { return spin; } };
+  return { scene, camera, show, setMode, update, render, resize, refresh, setShadow, tab, get mode() { return mode; }, set mode(m) { mode = m; }, get spin() { return spin; } };
 }

@@ -15,7 +15,7 @@ export const SURGE_FX = { streaks: 90, span: 140, flare: 0.8, sparks: 30, trail:
 const BLUE = 0x9fe7ff, UP = new THREE.Vector3(0, 1, 0);
 
 export function makeSurge({ scene, fx }) {
-  const q = fx.q, N = Math.round(SURGE_FX.streaks * q), trailEvery = SURGE_FX.trail[fx.touch ? 1 : 0];
+  const N = Math.round(SURGE_FX.streaks * fx.q), trailEvery = SURGE_FX.trail[fx.touch ? 1 : 0];
   // a streak: a quad from its head (x = 0) back along its tail (x = 1), its width across y
   const quad = new THREE.BufferGeometry();
   quad.setAttribute('position', new THREE.Float32BufferAttribute([0, -0.5, 0, 1, -0.5, 0, 1, 0.5, 0, 0, 0.5, 0], 3));
@@ -66,7 +66,7 @@ export function makeSurge({ scene, fx }) {
     const hb = Z.hullBox;
     p.set(0, (hb.min.y + hb.max.y) / 2, hb.min.z).applyMatrix4(M());
     s.set(1, 0, 0).transformDirection(M()); u.set(0, 1, 0).transformDirection(M());
-    for (let i = 0, n = Math.round(24 * q); i < n; i++) {
+    for (let i = 0, n = Math.round(24 * fx.q); i < n; i++) {
       const a = (i / n) * Math.PI * 2;
       fx.spark(p, v.copy(P.velocity).addScaledVector(s, Math.cos(a) * 18).addScaledVector(u, Math.sin(a) * 18), 0.5, 2.2, BLUE, 2.5, 0);
     }
@@ -95,7 +95,7 @@ export function makeSurge({ scene, fx }) {
     // a low rumble while it lasts
     fx.cam.trauma = Math.max(fx.cam.trauma, SURGE_FX.rumble);
     // blue light streaming from the tops of her crystals up into the middle of her sails
-    sparks += dt * SURGE_FX.sparks * q;
+    sparks += dt * SURGE_FX.sparks * fx.q;
     if (sparks >= 1 && Z.crystals.length && Z.sails.length && fx.room()) for (; sparks >= 1; sparks--) {
       const b = Z.crystals[(Math.random() * Z.crystals.length) | 0], t = Z.sails[(Math.random() * Z.sails.length) | 0];
       if (b.isEmpty() || t.isEmpty()) continue;

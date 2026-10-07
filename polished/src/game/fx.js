@@ -15,8 +15,8 @@
 //   the Captain's ship going down: the game slows to half speed for a moment
 // The sparks live in plain number arrays made once (a fixed number: 1,100 on a laptop, 700 on a phone), so a fight
 // leaves nothing for a phone to clear away; when every spark is in use the oldest-placed is reused and counted as
-// `dropped`. Every count asked for is scaled by `q`: 1 on a laptop, 0.6 on a phone. Points are drawn no bigger than
-// a phone can fill quickly.
+// `dropped`. Every count asked for is scaled by `q`: 1 on a laptop, 0.6 on a phone (less with the Settings card's
+// picture set lower). Points are drawn no bigger than a phone can fill quickly.
 // The time dial (slowmo, timeScale) slows the game's clock for a moment; tests step the game directly, at full speed.
 // Players whose device asks for less motion get 0.3 of the shake and kick, and no buzzing.
 import * as THREE from 'three';
@@ -36,8 +36,11 @@ const noise = (t, a, b) => Math.sin(t * 23.1 + a) * 0.6 + Math.sin(t * 37.7 + b)
 const CAM = ['back', 'pitch', 'side', 'fov'];
 
 export function makeFx({ scene, camera, touch = false }) {
-  const q = touch ? 0.6 : 1;
-  const reduce = matchMedia('(prefers-reduced-motion: reduce)'), motion = () => (reduce.matches ? MOTION : 1);
+  // q: the share of sparks, smoke and debris asked for that's made; the Settings card's picture can turn it down (or
+  // up, to `Q`, what the batches were made room for: setQuality). `shake`: off, the view holds still (Settings)
+  const Q = touch ? 0.6 : 1;
+  let q = Q, shake = 1;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)'), motion = () => (reduce.matches ? MOTION : 1) * shake;
 
   // ---------- the glows: sparks, flashes, the bolts' heads and anything lit for one frame, in one batch ----------
   const SCAP = touch ? 700 : 1100, GCAP = 720, GMAX = SCAP + GCAP;
@@ -91,7 +94,7 @@ export function makeFx({ scene, camera, touch = false }) {
     gx[ng] = p.x; gy[ng] = p.y; gz[ng] = p.z; gr[ng] = r; gg[ng] = g; gb[ng] = b; gs[ng++] = size;
   }
 
-  const smoke = makeSmoke(scene, touch ? 600 : 900, touch ? 420 : 700), debris = makeDebris(scene, q, glowAt);
+  const smoke = makeSmoke(scene, touch ? 600 : 900, touch ? 420 : 700), debris = makeDebris(scene, Q, glowAt);
   // room for sparks that can be left out (a wreck's fire, the Surge's), so a fight's own always find room
   const room = (share = 0.85) => ns < SCAP * share;
 
@@ -245,7 +248,11 @@ export function makeFx({ scene, camera, touch = false }) {
     for (const k of CAM) { cam[k] = 0; camV[k] = 0; } cam.trauma = 0; st = -1; dial = 1;
   }
   return {
-    q, touch, spark, burst, glowAt, smoke, debris, room, cam, trauma, kick, applyCamera, slowmo, timeScale, update, clear, buzz,
+    get q() { return q; }, touch, spark, burst,
+    // the share of effects made (Settings: picture), at most what the batches were made room for
+    setQuality(v) { q = Math.min(Q, v); debris.share = q / Q; },
+    // the view's shake and kick on (1) or off (0) (Settings: camera shake)
+    set shake(v) { shake = v ? 1 : 0; }, get shake() { return shake > 0; }, glowAt, smoke, debris, room, cam, trauma, kick, applyCamera, slowmo, timeScale, update, clear, buzz,
     // the Captain's ship (flight.js), for the blasts near her and the glints at her hold
     follow: (flyer) => { ship = flyer; focus = flyer.pos; },
     get dial() { return dial; }, get timeScaleNow() { return dial; },

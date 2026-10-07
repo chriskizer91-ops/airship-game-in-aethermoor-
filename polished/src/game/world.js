@@ -20,6 +20,12 @@ export const CLOUD_Y = 430, THINNING = 2400;
 // The regions, a 12 x 8 grid over the map read off Chris's painting (names from the Magpie page)
 const GRID = ['sssswwsppppp', 'sssswwhppppp', 'swwwwhhppppp', 'swwwwhhppkks', 'sggwwhhkkkks', 'sggwwfhkkkks', 'sswfffkkkkss', 'ssssssssssss'];
 const NAMES = { s: 'The Open Sea', w: 'The Verdant Wilds', g: 'The Gloamwood', f: 'The Gloomfen', h: 'The Hearthsea', p: 'The Ironspire Peaks', k: 'The Sunscorch Wastes' };
+// each region's name and the middle of its cells on the map (0 to 1 across and down), for the big map's labels
+export const REGIONS = Object.entries(NAMES).filter(([k]) => k !== 's').map(([k, name]) => {
+  let u = 0, v = 0, n = 0;
+  GRID.forEach((row, r) => [...row].forEach((ch, c) => { if (ch === k) { u += (c + 0.5) / 12; v += (r + 0.5) / 8; n++; } }));
+  return { name, u: u / n, v: v / n };
+});
 export function regionAt(x, z) {
   const c = Math.floor((x / MAP.w + 0.5) * 12), r = Math.floor((z / MAP.h + 0.5) * 8);
   if (c < 0 || c > 11 || r < 0 || r > 7) return NAMES.s;
@@ -225,5 +231,6 @@ function makePuffs() {
   });
   const mesh = new THREE.Mesh(ig, mat);
   mesh.frustumCulled = false; mesh.renderOrder = 2;
-  return { mesh, follow: (p) => mat.uniforms.uCenter.value.copy(p) };
+  // (fewer of them for the Settings card's Smooth or Balanced picture: count(n))
+  return { mesh, N, follow: (p) => mat.uniforms.uCenter.value.copy(p), count: (n) => { ig.instanceCount = Math.max(0, Math.min(N, n)); } };
 }
