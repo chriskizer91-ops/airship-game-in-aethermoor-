@@ -388,8 +388,11 @@ export function masts(hull, batch, R, q, S, glows, wings = [], opts = {}) {
         const yA = ti === M.tiers.length - 1 ? y0 + H * 0.95 : y0 + M.tiers[ti + 1].at * H - 0.16;
         const A = V(side * mx(yA), yA, M.z);
         const Bp = root.clone().lerp(tip, 0.96), Cp = root.clone().lerp(tip, 0.035).add(V(0, 0.05, 0));
-        wings.push(sail(batch, A, Bp, Cp, q.sailDiv, sailUV, side, 0.09 * len, [1, side * 2, M.z]));
-        Object.assign(wings[wings.length - 1], { mast: mi, mz: M.z, tip: tip.clone(), top: ti === M.tiers.length - 1 });
+        // (the canvas's rig tells which wing it is, side x (2 + its number): it moves all the way with the wing, and her
+        // holes are cut in their own wing only, src/ship/dress.js)
+        const wi = wings.length;
+        wings.push(sail(batch, A, Bp, Cp, q.sailDiv, sailUV, side, 0.09 * len, [1, side * (2 + wi), M.z]));
+        Object.assign(wings[wi], { i: wi, mast: mi, mz: M.z, tip: tip.clone(), top: ti === M.tiers.length - 1 });
         ropes.push([A.clone(), tip.clone().add(V(0, 0.05, 0)), wing]);
         // sheets: from the yard's tip down to the rail (moving with the wing at its top, not at all at the rail)
         const zr = clamp(tip.z - 0.6, hull.zs + 0.3, hull.zb - 0.3), rail = V(side * (hull.deckHalf(zr) - 0.05), hull.deckY(zr) + R.rail.h, zr);

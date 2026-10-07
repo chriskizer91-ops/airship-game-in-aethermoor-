@@ -52,8 +52,8 @@ See them in the ships demo with the **Yours**, **Raider**, **Captain** and **Tre
 
 Every ship shows her damage on her own model (October 7; how it plays: `docs/game.md`, "Battle scars"):
 
-- **The hull, deck and brass bands** take scorched holes where shots strike, ringed with splintered wood and soot, glowing with embers while fresh, and grow sooty all over as the hull goes. Patched, a hole becomes a square of fresh planks.
-- **The sails** take ragged, scorched holes where shots go through, and fray from their free edges as they're torn. Patched, a hole is covered with a stitched square of new canvas.
+- **The hull, deck and brass bands** take scorched holes where shots strike, ringed with splintered wood and soot, glowing with embers while fresh, and grow sooty all over as the hull goes. Patched, a hole becomes a square of fresh planks. A ship keeps up to twelve scars; hits close together make one bigger scar.
+- **The sails** take ragged, scorched holes where shots go through (each wing sail knows its own holes, up to ten in all), and fray from their free edges as they're torn. Patched, a hole is covered with a stitched square of new canvas.
 - **The crystals**, cluster by cluster, dim, crack and sputter, and their furnace windows, glows, sparks and lamps dim with them.
 - **Flames** lick from the worst holes of a ship badly holed.
 

@@ -30,13 +30,15 @@ import { clamp } from './kit.js';
 
 // the clock every dressed ship's shaders read (seconds): one for all of them, set once a frame by the page
 export const WTIME = { value: 0 };
-// how many scars on a hull and holes in the sails each ship keeps (the worst kept when there are more), and clusters
-export const SCARS = 6, HOLES = 6, CLUSTERS = 8;
+// how many scars on a hull and holes in the sails each ship keeps, and clusters (her shaders stop at the first empty
+// place, so a ship pays only for the scars she has)
+export const SCARS = 12, HOLES = 10, CLUSTERS = 8;
 
 // One ship's looks: what her shaders read
 //   uScar   her hull's scars: where (her own frame) and how big (metres); negative once patched, 0 for none
 //   uHeat   how hot each scar still is (embers), 0 to 1
-//   uHole   her sails' holes: where and how big; negative once patched
+//   uHole   her sails' holes: where and how big; negative once patched. uHoleWing: which of her wings each is on (a
+//           hole near the mast cuts its own wing only, not the one across the mast or the tier below)
 //   uWear   x: soot and grime over the hull (0 to 1); y: how far her sails have frayed; z: how hard they flap (1 is a
 //           sound sail); w: unused
 //   uCrys   how bright each crystal cluster still is (1 whole, 0 dark); uCrack: how cracked (0 to 1)
@@ -49,7 +51,7 @@ export const SCARS = 6, HOLES = 6, CLUSTERS = 8;
 //   uMark   how much her crystals' edges glow gold (a Man-o'-war the Captain's guns are locked on to)
 export function makeLook() {
   return {
-    uWTime: WTIME, uScar: { value: new Float32Array(SCARS * 4) }, uHeat: { value: new Float32Array(SCARS) }, uHole: { value: new Float32Array(HOLES * 4) },
+    uWTime: WTIME, uScar: { value: new Float32Array(SCARS * 4) }, uHeat: { value: new Float32Array(SCARS) }, uHole: { value: new Float32Array(HOLES * 4) }, uHoleWing: { value: new Float32Array(HOLES).fill(-1) },
     uWear: { value: new THREE.Vector4(0, 0, 1, 0) }, uCrys: { value: new Float32Array(CLUSTERS).fill(1) }, uCrack: { value: new Float32Array(CLUSTERS) }, uSpark: { value: 1 },
     uFold: { value: new THREE.Vector4(0, 0, 0, 0) }, uGun: { value: new THREE.Vector4(0, 0, 0, 0) }, uFire: { value: new THREE.Vector4(-1e4, -1e4, -1e4, -1e4) },
     uReady: { value: new THREE.Vector4(0, 0, 0, 0) }, uWind: { value: new THREE.Vector2(0.6, 0) }, uMark: { value: 0 },
@@ -175,10 +177,11 @@ const HULL_GLOW = `
   totalEmissiveRadiance *= 1.0 - 0.9 * max(max(wSoot, wHole), wFresh);
   totalEmissiveRadiance += vec3(1.0, 0.22, 0.04) * wEmber * (0.65 + 0.35 * sin(uWTime * 9.0 + wn * 25.0)) * 1.4 * (1.0 - 0.6 * wHole);`;
 // the sails: frayed from the free edge (vEdge 0 there) as they're torn, charred brown along the frays; each hole ragged
-// and scorched round its edge; each patch a darker square of new canvas, laid in the sail's own plane, its edge stitched
+// and scorched round its edge, on its own wing (vWing: which one this is); each patch a darker square of new canvas,
+// laid in the sail's own plane, its edge stitched. A sound sail (unless it's striped) skips all of it: next to no cost
 const SAIL_FRAG = `
-  float wChar = 0.0, wPatch = 0.0, wStitch = 0.0;
-  float wn = wN(vLocal * 3.1) * 0.6 + wN(vLocal * 9.0) * 0.4;
+  float wChar = 0.0, wPatch = 0.0, wStitch = 0.0, wn = 0.5;
+  if (uWear.y > 0.0 || uHole[0].w != 0.0 || uStripe.w > 0.0) wn = wN(vLocal * 3.1) * 0.6 + wN(vLocal * 9.0) * 0.4;
   if (uWear.y > 0.0) {
     float fe = vEdge - uWear.y * (0.35 + 0.9 * wn);
     if (fe < 0.0) discard;
@@ -189,6 +192,7 @@ const SAIL_FRAG = `
     for (int i = 0; i < ${HOLES}; i++) {
       vec4 h = uHole[i];
       if (h.w == 0.0) break;
+      if (uHoleWing[i] >= 0.0 && abs(uHoleWing[i] - vWing) > 0.5) continue;
       vec3 q = vLocal - h.xyz;
       if (h.w > 0.0) {
         float d = length(q) / h.w + (wn - 0.5) * 0.8;
@@ -214,9 +218,10 @@ const SAIL_GLOW = `
   totalEmissiveRadiance *= (1.0 - wChar) * (1.0 - 0.45 * wPatch);`;
 // the crystals: each cluster's own brightness and cracks (read in the vertex shader by the cluster's number, so the
 // pixels need no lookups), dull and grey as they die; the slow pulse they always had, and white-violet cracks that
-// flash as they sputter
+// flash as they sputter (worked out only on a cluster that's cracked)
 const GEM_FRAG = `
-  float wLine = (1.0 - smoothstep(0.0, 0.06, abs(wN(vLocal * 5.0) - 0.5))) * vCrack;
+  float wLine = 0.0;
+  if (vCrack > 0.0) wLine = (1.0 - smoothstep(0.0, 0.06, abs(wN(vLocal * 5.0) - 0.5))) * vCrack;
   diffuseColor.rgb = mix(vec3(dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11))) * vec3(0.3, 0.27, 0.38), diffuseColor.rgb, 0.2 + 0.8 * vCrys);
   diffuseColor.rgb *= 1.0 - 0.8 * wLine;
   totalEmissiveRadiance *= vCrys * uSpark * (1.0 - 0.85 * wLine) * (1.0 + 0.164 * sin(uWTime * 2.4));
@@ -257,12 +262,13 @@ const DRESS = {
   } },
   sail: { key: 'sail-wear', compile(sh) {
     const U = this.userData.U;
-    Object.assign(sh.uniforms, { uHole: U.uHole, uWear: U.uWear, uStripe: { value: new THREE.Vector4().fromArray(this.userData.stripe ?? NO_STRIPE) } }, rigUniforms(U));
-    pre(sh, `attribute float billow;\nuniform vec4 uWear;\nvarying vec3 vLocal;\nvarying vec3 vLocalN;\nvarying float vEdge;\n${RIG_GLSL}`,
-      `varying vec3 vLocal;\nvarying vec3 vLocalN;\nvarying float vEdge;\nuniform vec4 uHole[${HOLES}];\nuniform vec4 uWear;\nuniform vec4 uStripe;\n${NOISE}`);
+    Object.assign(sh.uniforms, { uHole: U.uHole, uHoleWing: U.uHoleWing, uWear: U.uWear, uStripe: { value: new THREE.Vector4().fromArray(this.userData.stripe ?? NO_STRIPE) } }, rigUniforms(U));
+    pre(sh, `attribute float billow;\nuniform vec4 uWear;\nvarying vec3 vLocal;\nvarying vec3 vLocalN;\nvarying float vEdge;\nvarying float vWing;\n${RIG_GLSL}`,
+      `varying vec3 vLocal;\nvarying vec3 vLocalN;\nvarying float vEdge;\nvarying float vWing;\nuniform vec4 uHole[${HOLES}];\nuniform float uHoleWing[${HOLES}];\nuniform vec4 uWear;\nuniform vec4 uStripe;\n${NOISE}`);
     // (folded with her wing; and the ripple in the wind, harder as the sails are torn. Her scars stay where they are on
-    // the canvas, wherever the wing is: they're read from where the canvas was made)
-    sh.vertexShader = after(after(sh.vertexShader, 'beginnormal_vertex', RIG_NORMAL), 'begin_vertex', `transformed = rigP; vLocal = position; vLocalN = normal; vEdge = rig.w;
+    // the canvas, wherever the wing is: they're read from where the canvas was made. Which wing it is: from its rig,
+    // [1, side x (2 + its number), ...])
+    sh.vertexShader = after(after(sh.vertexShader, 'beginnormal_vertex', RIG_NORMAL), 'begin_vertex', `transformed = rigP; vLocal = position; vLocalN = normal; vEdge = rig.w; vWing = abs(rig.y) - 2.0;
       transformed += objectNormal * billow * uWear.z * (sin(uWTime * 2.3 + position.x * 0.9 + position.y * 0.6) * 0.05 + sin(uWTime * 3.7 + position.z * 1.3) * 0.025);`);
     sh.fragmentShader = after(after(sh.fragmentShader, 'map_fragment', SAIL_FRAG), 'emissivemap_fragment', SAIL_GLOW);
   } },
@@ -423,7 +429,10 @@ export function sailPoint(w, a, b, c, out) {
 // The scars, holes and cracked crystals behind a ship's looks, as plain numbers, written into her looks (write) for
 // her shaders. The game (src/game/looks.js) adds to them as she's hit; the ships demo sets them all at once
 export function makeWear(ship) {
-  const S = () => ({ on: false, x: 0, y: 0, z: 0, nx: 0, ny: 1, nz: 0, r: 0, r0: 0, heat: 0, patched: false, cap: 3, burning: false, sewn: 0 });
+  const S = () => ({ on: false, x: 0, y: 0, z: 0, nx: 0, ny: 1, nz: 0, r: 0, r0: 0, heat: 0, patched: false, cap: 3, burning: false, sewn: 0, wing: -1 });
+  const L = ship.hull.zb - ship.hull.zs;
+  // (which one goes when every place is taken: a patch before a wound, then the coolest and smallest)
+  const gone = (x) => (x.patched ? -10 : 0) + x.heat + x.r * 0.3;
   const W = {
     U: ship.U, ship, scars: Array.from({ length: SCARS }, S), holes: Array.from({ length: HOLES }, S),
     clusters: ship.recipe.clusters.length, dmg: new Float32Array(CLUSTERS), crys: new Float32Array(CLUSTERS).fill(1), crack: new Float32Array(CLUSTERS),
@@ -431,22 +440,27 @@ export function makeWear(ship) {
     // (for the game: her flames this frame, the first one's place in the batch and their tips in the world; how hot her
     // hottest open scar is; her hull's share when the crew began patching her; her own beat for sputtering; her beam)
     fires: 0, firstFlame: 0, tips: new Float32Array(SCARS * 3), hot: 0, from: -1, mending: 0, seed: Math.random() * 100, half: ship.hull.half((ship.hull.zs + ship.hull.zb) / 2),
-    // a scar on the hull at p (her own frame), facing n, `r` metres, `heat` 0 to 1: one close by grows instead (up to 3
-    // m); with six already, the coolest, smallest goes
+    // a scar on the hull at p (her own frame), facing n, `r` metres, `heat` 0 to 1. One close by (within 1.6 times its
+    // size, or a fifteenth of her length on a big ship) grows instead, up to 3 m, and burns afresh (a patch hit again is
+    // a wound again). With every place taken, the nearest within twice that grows; failing that, a patch goes, or else
+    // the coolest, smallest wound: so her first hits keep their marks through a long fight
     scar(p, n, r, heat = 1) {
-      let s = near(W.scars, p, 0.9 * r);
-      if (s) { s.r = s.r0 = Math.min(s.cap, Math.hypot(s.r0, r * 0.5)); s.heat = Math.max(s.heat, heat); s.patched = false; return s; }
-      s = W.scars.find((x) => !x.on) ?? W.scars.reduce((a, b) => (b.heat + b.r * 0.3 < a.heat + a.r * 0.3 ? b : a));
+      const within = Math.max(1.6 * r, L / 15);
+      let s = near(W.scars, p, within) ?? (full(W.scars) ? near(W.scars, p, 2 * within) : null);
+      if (s) { s.r = s.r0 = Math.min(s.cap, Math.max(r, Math.hypot(s.r, r * 0.5))); s.heat = Math.max(s.heat, heat); s.patched = false; return s; }
+      s = W.scars.find((x) => !x.on) ?? W.scars.reduce((a, b) => (gone(b) < gone(a) ? b : a));
       Object.assign(s, { on: true, x: p.x, y: p.y, z: p.z, nx: n.x, ny: n.y, nz: n.z, r, r0: r, heat, patched: false, cap: 3 });
       return s;
     },
-    // a hole in a sail at p, `r` metres, on wing w (a hole grows to at most 0.4 of its yard); with six, the smallest goes
+    // a hole in a sail at p, `r` metres, on wing w (a hole grows to at most 0.4 of its yard). One close by on the same
+    // wing grows instead; with every place taken, the nearest on that wing within three times its size grows, or else a
+    // patch goes, or the smallest hole
     hole(p, r, w) {
-      const cap = w ? 0.4 * w.B.distanceTo(w.C) : 3;
-      let h = near(W.holes, p, 1.2 * r);
-      if (h) { h.r = h.r0 = Math.min(h.cap, Math.hypot(h.r0, r)); h.patched = false; h.sewn = 0; return h; }
-      h = W.holes.find((x) => !x.on) ?? W.holes.reduce((a, b) => (b.r0 < a.r0 ? b : a));
-      Object.assign(h, { on: true, x: p.x, y: p.y, z: p.z, r: Math.min(r, cap), r0: Math.min(r, cap), heat: 0, patched: false, cap, sewn: 0 });
+      const cap = w ? 0.4 * w.B.distanceTo(w.C) : 3, wing = w?.i ?? -1;
+      let h = near(W.holes, p, 1.2 * r, wing) ?? (full(W.holes) ? near(W.holes, p, 3 * r, wing) : null);
+      if (h) { h.r = h.r0 = Math.min(h.cap, Math.hypot(h.r, r)); h.patched = false; h.sewn = 0; return h; }
+      h = W.holes.find((x) => !x.on) ?? W.holes.reduce((a, b) => (gone(b) < gone(a) ? b : a));
+      Object.assign(h, { on: true, x: p.x, y: p.y, z: p.z, r: Math.min(r, cap), r0: Math.min(r, cap), heat: 0, patched: false, cap, sewn: 0, wing });
       return h;
     },
     // which cluster a point (her own frame) belongs to: the nearest along her length
@@ -465,31 +479,34 @@ export function makeWear(ship) {
     },
     // into her looks: the scars and holes packed from the first (her shaders stop at the first empty one)
     write() {
-      const U = W.U, sc = U.uScar.value, he = U.uHeat.value, ho = U.uHole.value;
+      const U = W.U, sc = U.uScar.value, he = U.uHeat.value, ho = U.uHole.value, hw = U.uHoleWing.value;
       let k = 0;
       for (const s of W.scars) if (s.on && s.r > 0.01) { sc[k * 4] = s.x; sc[k * 4 + 1] = s.y; sc[k * 4 + 2] = s.z; sc[k * 4 + 3] = s.patched ? -s.r : s.r; he[k] = s.patched ? 0 : s.heat; k++; }
       for (; k < SCARS; k++) { sc[k * 4 + 3] = 0; he[k] = 0; }
       k = 0;
-      for (const h of W.holes) if (h.on && h.r > 0.01) { ho[k * 4] = h.x; ho[k * 4 + 1] = h.y; ho[k * 4 + 2] = h.z; ho[k * 4 + 3] = h.patched ? -h.r : h.r; k++; }
-      for (; k < HOLES; k++) ho[k * 4 + 3] = 0;
+      for (const h of W.holes) if (h.on && h.r > 0.01) { ho[k * 4] = h.x; ho[k * 4 + 1] = h.y; ho[k * 4 + 2] = h.z; ho[k * 4 + 3] = h.patched ? -h.r : h.r; hw[k] = h.wing; k++; }
+      for (; k < HOLES; k++) { ho[k * 4 + 3] = 0; hw[k] = -1; }
       U.uWear.value.set(W.grime, W.fray, W.flap, 0);
       U.uCrys.value.set(W.crys); U.uCrack.value.set(W.crack); U.uSpark.value = W.spark;
     },
   };
   return W;
 }
-function near(list, p, within) {
+// whether every place for a scar (or a hole) is taken; the nearest one within `within` metres of p (on wing `wing`, for
+// a sail's)
+function full(list) { for (const s of list) if (!s.on) return false; return true; }
+function near(list, p, within, wing = -1) {
   let best = null, bd = within * within;
-  for (const s of list) { if (!s.on) continue; const d = (s.x - p.x) ** 2 + (s.y - p.y) ** 2 + (s.z - p.z) ** 2; if (d < bd) { bd = d; best = s; } }
+  for (const s of list) { if (!s.on || s.wing !== wing) continue; const d = (s.x - p.x) ** 2 + (s.y - p.y) ** 2 + (s.z - p.z) ** 2; if (d < bd) { bd = d; best = s; } }
   return best;
 }
 
 // The sputter of failing crystals at time t (seconds): mostly bright, guttering low now and then, the same at any frame
 // rate (a smooth noise, worked out here so her crystals, glows, sparks and lamps all gutter together)
+const beat = (n) => { const s = Math.sin(n * 127.1) * 43758.5453; return s - Math.floor(s); };
 export function sputter(t) {
-  const x = t * 11, i = Math.floor(x), f = x - i, k = f * f * (3 - 2 * f);
-  const h = (n) => { const s = Math.sin(n * 127.1) * 43758.5453; return s - Math.floor(s); };
-  return h(i) + (h(i + 1) - h(i)) * k > 0.35 ? 1 : 0.25;
+  const x = t * 11, i = Math.floor(x), f = x - i, k = f * f * (3 - 2 * f), a = beat(i);
+  return a + (beat(i + 1) - a) * k > 0.35 ? 1 : 0.25;
 }
 
 // ---------- the ships demo's three looks ----------

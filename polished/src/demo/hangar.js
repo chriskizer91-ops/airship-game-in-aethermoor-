@@ -284,7 +284,7 @@ async function main() {
     for (const s of shown) { s.U.uFire.value.setScalar(time); s.U.uReady.value.set(time + 2.6, time + 2.6, time + 1.1, time + 1.1); }
   }
   $('btn-card').addEventListener('click', () => {
-    const open = $('card').hidden; $('card').hidden = !open;
+    const open = $('card').hidden; $('card').hidden = !open; room();
     $('btn-card').textContent = open ? 'Hide stats' : 'Stats'; $('btn-card').setAttribute('aria-expanded', String(open));
   });
   function updateCard() {
@@ -325,16 +325,20 @@ async function main() {
     room();
   }
   // the ship framed in the sky between the title and the buttons at the bottom (three rows of them on a laptop), not
-  // behind them: the view's middle moved up to the middle of that space
+  // behind them: the view's middle moved up to the middle of that space. The stats card stops short of the buttons
+  // (scrolling if it must, on a small phone held sideways)
   function room() {
     const d = $('dock').getBoundingClientRect(), t = $('title').getBoundingClientRect(), h = innerHeight;
     const top = t.height ? t.bottom : 0, bottom = d.height ? d.top : h, off = Math.max(0, Math.round(h / 2 - (top + bottom) / 2));
     if (off > 1) camera.setViewOffset(innerWidth, h, 0, off, innerWidth, h); else camera.clearViewOffset();
+    const card = $('card'), room = Math.max(90, Math.floor(bottom - 8 - (parseFloat(getComputedStyle(card).top) || 0))) + 'px';
+    if (card.style.maxHeight !== room) card.style.maxHeight = room;
   }
   document.fonts?.ready.then(room);
   addEventListener('resize', () => { resize(); show(); });
 
-  if (innerWidth < 640) { $('card').hidden = true; $('btn-card').textContent = 'Stats'; $('btn-card').setAttribute('aria-expanded', 'false'); }
+  // (on a phone, upright or sideways, the stats start folded away: Stats brings them out)
+  if (innerWidth < 640 || innerHeight < 480) { $('card').hidden = true; $('btn-card').textContent = 'Stats'; $('btn-card').setAttribute('aria-expanded', 'false'); }
   resize(); mark(); show();
   const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let last = performance.now(), time = 0, roomT = 0;

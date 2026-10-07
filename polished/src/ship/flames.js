@@ -69,20 +69,24 @@ export function makeFlames(max = 28) {
 
 // The flames of one ship (build.js's or raiders.js's, with her scars W from dress.js's makeWear): from her `count`
 // worst scars (the biggest, then the hottest), each a quarter metre off her planks, sized to her, leaning back from
-// `vel` (her velocity, m/s; or none). Returns how many were added
+// `vel` (her velocity, m/s; or none). Returns how many were added. (Her open scars are put in order by hand into one
+// list kept for good: nothing is made new each frame)
 const _p = new THREE.Vector3(), order = [], worst = (a, b) => b.r - a.r || b.heat - a.heat;
 export function shipFlames(flames, W, count, vel = null) {
   for (const s of W.scars) s.burning = false;
   W.firstFlame = flames.count;
   if (count <= 0) return 0;
-  order.length = 0;
-  for (const s of W.scars) if (s.on && !s.patched && s.r > 0.05) order.push(s);
-  order.sort(worst);
+  let n = 0;
+  for (const s of W.scars) if (s.on && !s.patched && s.r > 0.05) {
+    let i = n++;
+    while (i > 0 && worst(s, order[i - 1]) < 0) { order[i] = order[i - 1]; i--; }
+    order[i] = s;
+  }
   const body = W.ship.body, L = W.ship.recipe.length, k = Math.min(1.8, Math.max(0.6, L / 25));
   let lx = 0, ly = 0, lz = 0;
   if (vel) { lx = -vel.x * 0.025; ly = -vel.y * 0.025; lz = -vel.z * 0.025; const m = Math.hypot(lx, ly, lz); if (m > 1.5) { lx *= 1.5 / m; ly *= 1.5 / m; lz *= 1.5 / m; } }
   let added = 0;
-  for (let i = 0; i < order.length && i < count; i++) {
+  for (let i = 0; i < n && i < count; i++) {
     const s = order[i];
     _p.set(s.x + s.nx * 0.25, s.y + s.ny * 0.25, s.z + s.nz * 0.25).applyMatrix4(body.matrixWorld);
     if (!flames.add(_p, 1.25 * k * (0.8 + 0.2 * s.r), 2.6 * k * (0.8 + 0.2 * s.r), lx, ly, lz, (s.x * 7.3 + s.z * 3.1) % 6.28, 1)) break;

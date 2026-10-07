@@ -183,7 +183,8 @@ export function makeLooks({ scene, touch = false, fx = null }) {
 
   // between waves (the Captain's ship only): the crew patch her up as her bars fill. The fires and embers go out, each
   // hole in her sails is sewn over (it closes up, then a patch is sewn on), each scar in her planks is patched with
-  // fresh planks and shrinks with how much of her hull is mended since (to half its size, mended whole)
+  // fresh planks and shrinks with how much of her hull is mended since (to half its size, mended whole). A patch only
+  // ever shrinks: one from an earlier wave keeps its size as the crew start again after the next
   function repair(ship, dt) {
     const W = wearOf(ship), f = player, hullF = f ? f.frac('hull') : 1;
     if (W.from < 0) W.from = hullF;
@@ -193,7 +194,7 @@ export function makeLooks({ scene, touch = false, fx = null }) {
       if (!s.on) continue;
       s.heat = Math.max(0, s.heat - dt);
       if (!s.patched && s.heat <= 0) { s.patched = true; s.r0 = s.r; }
-      if (s.patched) s.r = s.r0 * (1 - 0.5 * mended);
+      if (s.patched) s.r = Math.min(s.r, s.r0 * (1 - 0.5 * mended));
     }
     for (const h of W.holes) {
       if (!h.on || h.patched) continue;

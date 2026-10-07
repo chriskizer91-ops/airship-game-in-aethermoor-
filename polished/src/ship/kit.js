@@ -36,7 +36,9 @@ export const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); r
 // [kind, a, b, c], and how it moves:
 //   0  nothing in particular
 //   1  a wing: [1, side x (1 + how much it moves with the wing, 0 to 1), the mast's z, how far in from the sail's free
-//      edge]: the wing sails, their yards and spikes and the ropes along them, which fold back with the sail setting
+//      edge]: the wing sails, their yards and spikes and the ropes along them, which fold back with the sail setting.
+//      A wing sail's canvas has side x (2 + which of her wings it is) there, so her holes know their own wing (anything
+//      past 2 moves all the way)
 //   2  a gun port's lid: [2, its hinge's x, its hinge's y, its turn in the ripple (seconds)]: swings open about its hinge
 //   3  a broadside gun: [3, side x how far it runs in, its turn when the side fires, its turn as the lids open]
 //   4  a bow or stern gun (or a swivel): [4, which way it points (+1 forward, -1 aft, +2 to port, -2 to starboard), its

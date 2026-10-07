@@ -313,12 +313,12 @@ export function smokeFrom(flyer, fx, dt) {
     burning > 0.6 ? (burning - 0.5) * Math.random() : 0);
   if (burning > 0.5 && Math.random() < burning * (fires ? 0.5 : 1)) fx.spark(at, rise.copy(drift).setY(drift.y + 3), 0.6 + Math.random() * 0.5, 1.2 + L * 0.06, Math.random() < 0.5 ? 0xff7a2a : 0xffc04a);
 }
-// one of a ship's open scars, the bigger the likelier (none if she has none)
+// one of a ship's open scars (not one patched over), the bigger the likelier (none if she has none)
 function pick(scars) {
   let sum = 0;
-  for (const s of scars) if (s.on) sum += s.r;
+  for (const s of scars) if (s.on && !s.patched) sum += s.r;
   if (sum <= 0) return null;
   let x = Math.random() * sum;
-  for (const s of scars) if (s.on && (x -= s.r) <= 0) return s;
+  for (const s of scars) if (s.on && !s.patched && (x -= s.r) <= 0) return s;
   return null;
 }
