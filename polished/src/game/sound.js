@@ -13,10 +13,12 @@
 //                      of air, a whump as she breaks through the cloud deck and, if she burned, a muffled boom below it.
 //                      Your own ship going down: everything goes dull and far away
 //   rewards            each shard gathered chimes, higher up the scale for each one of a run; spilled shards clink;
-//                      the Surge fills the sails with a rush; locking on clicks; a broadside loaded again clacks
+//                      the Surge fills the sails with a rush, and as the next one charges a hum climbs to full and a
+//                      soft ping says it's ready; locking on clicks; a broadside loaded again clacks
 //   Chris's effects    (sounds.js) for the moments they fit: setting sail and coming home, a wave arriving (an alarm, a
 //                      boss's brass for a captain or a Man-o'-war, a pirate phrase for a treasure ship), a wave beaten,
-//                      the ship lost, alarms when she's badly hurt, buying and upgrading in port, the skies, the menus
+//                      the ship lost, alarms when she's badly hurt, a soft chord on crossing into another region,
+//                      buying and upgrading in port, the skies, the menus
 //   the sky            wind rising with speed and height, gusts, the rigging whistling at full tilt or in a Surge, the
 //                      crystals humming higher as she climbs (wavering near the Thinning, sour when they're cracked),
 //                      timbers creaking (more in hard turns, or badly hurt), fire crackling when she burns
@@ -26,11 +28,14 @@
 //                      down. Pieces change only at those moments (and on crossing into another region between waves,
 //                      not more than once in 20 s). It dips under your broadsides, blasts and banners
 // Sounds play at their normal speed in slow motion. While tests run the game's clock without drawing (audio.quiet),
-// the news is only counted. Another part of the game can play one of Chris's effects with effect(id, { at }) (its
-// level is in CHRIS: add one there first).
+// the news is only counted, and so it is while the sound isn't running (turned off, or the page left) or the Sounds
+// slider is at nothing: nothing is made then, not even the sky's sound. Another part of the game can play one of
+// Chris's effects with effect(id, { at }) (its level is in CHRIS: add one there first).
 import { on } from './events.js';
 import { regionAt, CLOUD_Y, THINNING } from './world.js';
+import { SURGE } from './flight.js';
 import { whiteNoise } from '../audio/voices.js';
+import { LEVELS } from '../audio/mixer.js';
 
 // Chris's effects that are used, each at a level of its own: about what's wanted (its loudest twentieth of a second)
 // over what it has, from offline recordings of each
@@ -235,7 +240,7 @@ export function makeSound({ audio, touch = false, where = () => null }) {
   let cues = null, sky = null, mode = 'title';
   // the answers, once the sound is on and its recordings made
   const live = () => {
-    if (!audio.ready || !audio.ctx || document.hidden) return null;
+    if (!audio.ready || !audio.hearing()) return null;
     return (cues ??= makeCues(audio.mixer, audio.bank, { touch, effect: audio.effect }));
   };
   const M = () => audio.mixer;
@@ -262,6 +267,8 @@ export function makeSound({ audio, touch = false, where = () => null }) {
   cue('lock', withCues((c, e) => c.lock(e)));
   cue('guns:ready', withCues((c, e) => c.ready(e)));
   cue('raider:escaped', () => fx('hex'));
+  // crossing into another region (its name shown): a soft chord with a far bell
+  cue('region', () => { if (!audio.mixer) return; M().here(0, 0.4); audio.effect('new-area', CHRIS['new-area'] * 0.6, 'fx'); });
   cue('surge', () => { if (!audio.mixer) return; M().here(0, 0.4); audio.effect('sails', CHRIS.sails, 'fx'); M().here(0, 0.2); audio.effect('haste', CHRIS.haste, 'fx'); });
   // one of her parts badly hurt: the alarm bell for the hull, her lift failing for the crystals, the rigging for the sails
   cue('player:low', (e) => { if (!audio.mixer) return; const id = LOW[e.part]; M().here(0, 0.2); audio.effect(id, CHRIS[id], 'fx'); });
@@ -318,9 +325,12 @@ export function makeSound({ audio, touch = false, where = () => null }) {
     // between waves, crossing into the Gloomfen or the Sunscorch Wastes (or out of them) changes the music, now and then
     if (mode === 'voyage' && !D.fight && !D.down && (D.look -= dt) <= 0) { D.look = 1; const c = calm(); if (c !== D.want && t - D.changed > 20) { D.want = c; D.changed = t; } }
     if (mode === 'voyage' && player && audio.ready) {
-      if (!sky) sky = makeSky(audio.mixer);
-      if ((D.sky -= dt) <= 0) { D.sky = 0.1; skyFrom(player); }
-      if (!D.paused) extras(dt, player);
+      if (audio.hearing()) {
+        if (!sky) sky = makeSky(audio.mixer);
+        if ((D.sky -= dt) <= 0) { D.sky = 0.1; skyFrom(player); }
+        if (!D.paused) extras(dt, player);
+      } else if (sky) { sky.stop(); sky = null; } // (the Sounds slider at nothing: the sky's sound let go)
+      D.charge = player.surge.charge;
     }
     R.frames++; R.ms += performance.now() - t0;
   }
@@ -328,8 +338,9 @@ export function makeSound({ audio, touch = false, where = () => null }) {
     const v = Math.min(1.4, p.speed / 60), h = clamp(p.pos.y / THINNING, 0, 1), cloud = clamp(1 - Math.abs(p.pos.y - CLOUD_Y) / 40, 0, 1);
     sky.set(v, h, p.down ? 0 : p.climb, p.surge.on > 0, p.frac('crystals'), cloud, !!p.down);
   }
-  // timbers creaking now and then (more in hard turns, or badly hurt), fire crackling while she burns, and a quiet chime
-  // when the Surge is ready again
+  // timbers creaking now and then (more in hard turns, or badly hurt), fire crackling while she burns, and the Surge
+  // charging: a hum climbing to full that ends as it's ready (Chris's recharge, started 1.7 s before), then a soft ping
+  const HUM = 1 - 1.7 / SURGE.recharge;
   function extras(dt, p) {
     const m = audio.mixer, B = audio.bank, hurt = p.frac('hull');
     if (!p.down && (D.creak -= dt * (Math.abs(p.turn) > 0.6 || hurt < 0.3 ? 3 : 1)) <= 0) {
@@ -340,8 +351,9 @@ export function makeSound({ audio, touch = false, where = () => null }) {
       D.crackle = rnd(0.1, 0.17); m.here(rnd(-0.5, 0.5), 0.1);
       const s = m.voice('misc', 0.2, m.now()); if (s) m.play(s, 'misc', 0.2, pick(B.tick), m.now(), rnd(0.7, 1.3), 0.12);
     }
-    if (p.surge.charge >= 1 && D.charge < 1 && !p.down) { m.here(0, 0.3); audio.effect('notify', CHRIS.notify * 0.6, 'fx'); }
-    D.charge = p.surge.charge;
+    const c = p.surge.charge;
+    if (c >= HUM && D.charge < HUM && c < 1 && !p.down) { m.here(0, 0.3); audio.effect('recharge', CHRIS.recharge * 0.5, 'fx'); }
+    if (c >= 1 && D.charge < 1 && !p.down) { m.here(0, 0.3); audio.effect('notify', CHRIS.notify * 0.6, 'fx'); }
   }
   const listen = (camera, pos) => { if (audio.mixer) audio.mixer.listen(camera, pos); };
   // one of Chris's effects (an id in sounds.js) for any other part of the game: out in the sky at `at` (a point in the
@@ -359,11 +371,15 @@ export function makeSound({ audio, touch = false, where = () => null }) {
   // her bow guns in a melee of five raiders (a captain's Man-o'-war 150 m off firing all 24 guns of a side, a Frigate,
   // a Brig and two Cutters), eight hits on her hull and eight on a raider within 30 ms, near misses, a raider blown
   // apart 200 m off with the chain of blasts along her hull, fourteen shards gathered, the wind at full speed, and (if
-  // given) a recording of the music under it all
+  // given) a recording of the music under it all, and some of Chris's effects that come in the same moments (WORST: a
+  // captain's wave banner with the music dipping under it, the hull's alarm bell, spilled shards' coins and a shard's
+  // pickup, recorded live by worstChris(), as his effects can't be played offline)
   // a few seconds played offline: fn(cues, mixer) answers news made up for it (setting the mixer's clock for each), heard
   // from a ship at (0, 900, 0) with the camera behind her looking north
   const scene = (secs, fn, music = null) => audio.offline(secs, (m) => { m.listenAt(0, 900, 0, 0, 915, -45, -1, 0, 0); fn(makeCues(m, audio.bank, { touch }), m); m.clock = -1; }, music);
-  function selfTest(music = null) {
+  const WORST = [['boss', 0, 'ui'], ['deck-alarm', 0.15], ['coins', 0.3], ['shard-pickup', 0.5]];
+  const worstChris = () => audio.recordEffects(WORST.map(([id, at, bus]) => [id, CHRIS[id] * (bus === 'ui' ? LEVELS.ui / LEVELS.fx : 1), at]), 3);
+  function selfTest(music = null, chris = null) {
     return scene(7, (c, m) => {
       const V = (x, y, z) => ({ x, y, z });
       const gun = (t, owner, kind, ship, p, i, n, weight, captain = false) => { m.clock = t; c.fire({ owner, kind, battery: 'port', p, weight, ship, i, n, raider: owner === 'raider' ? { captain } : null }); };
@@ -383,7 +399,8 @@ export function makeSound({ audio, touch = false, where = () => null }) {
       m.clock = 0.6; c.blast({ at: V(30, 900, 200), size: 42, big: true, first: true }); c.down({ why: 'hull', at: V(30, 900, 200) });
       for (let k = 0; k < 5; k++) { m.clock = 0.95 + k * 0.35; c.blast({ at: V(30, 900, 195 + k * 4), size: 17, big: false, first: false }); }
       for (let i = 0; i < 14; i++) { m.clock = 1.1 + i * 0.07; c.gather({ value: 10, run: i + 1, at: V(0, 900, 0) }); }
+      if (chris) { m.clock = 0.25; m.dipMusic(-6, 1.5); const s = m.ctx.createBufferSource(); s.buffer = chris; s.connect(m.fx); s.start(0.2); }
     }, music);
   }
-  return { update, listen, effect, ui: (id) => fx(id), selfTest, scene, makeSky, stats, get cues() { return cues; }, get sky() { return sky; }, director: D, frame: R, CHRIS, PIECES };
+  return { update, listen, effect, ui: (id) => fx(id), selfTest, worstChris, scene, makeSky, stats, get cues() { return cues; }, get sky() { return sky; }, director: D, frame: R, CHRIS, PIECES };
 }

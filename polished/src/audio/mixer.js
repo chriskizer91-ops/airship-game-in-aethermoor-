@@ -5,7 +5,9 @@
 //                 and one gate that silences them while paused), the menus' sounds, and the music (its own volume, a
 //                 dip under big moments, and a filter that dulls it while paused); one reverb, made here from noise
 //   the master    a compressor that rides the loud moments, a soft clip that rounds off any peak before it can crackle
-//                 (straight up to 0.7, then curving to at most 0.98), and the master volume ("Sound on")
+//                 (straight up to 0.7, then curving to at most 0.98, with room above: it only flattens a peak past
+//                 twice full scale, and the worst fight stays under 0.95 going into it: the self-test), and the
+//                 master volume ("Sound on")
 //   voices        a fixed table of slots per kind of sound (gun, foe, hit, whiz, chime, blast, creak, ui...), fewer on a
 //                 phone. A new sound takes a free slot, or the quietest, least important one of its kind (faded out in
 //                 a few milliseconds), or is dropped if every one playing matters more. A burst of hits landing within
@@ -30,10 +32,14 @@ const METER = `registerProcessor('peak-meter', class extends AudioWorkletProcess
   }
 });`;
 
-// the soft clip: straight to 0.7, then a curve that never quite reaches 0.98
+// the soft clip: straight to 0.7, then a curve that never quite reaches 0.98. A curve only covers what comes into it
+// from -1 to 1 (past that it holds its end, a hard clip), so the sound is halved going in and the curve drawn for
+// twice as far: it bends anything up to twice full scale smoothly
+export const KNEE = 0.7, ROOM = 2;
+export const soft = (x) => { const a = Math.abs(x); return a <= KNEE ? x : Math.sign(x) * (KNEE + 0.28 * Math.tanh((a - KNEE) / 0.28)); };
 const CURVE = (() => {
-  const n = 2048, c = new Float32Array(n);
-  for (let i = 0; i < n; i++) { const x = (i / (n - 1)) * 2 - 1, a = Math.abs(x); c[i] = a <= 0.7 ? x : Math.sign(x) * (0.7 + 0.28 * Math.tanh((a - 0.7) / 0.28)); }
+  const n = 4096, c = new Float32Array(n);
+  for (let i = 0; i < n; i++) c[i] = soft(((i / (n - 1)) * 2 - 1) * ROOM);
   return c;
 })();
 // the reverb: stereo noise, a moment's delay, dying away and darkening as it goes (a filter closing from bright to dull)
@@ -53,10 +59,12 @@ export function makeMixer(ctx, { touch = false } = {}) {
   const lowpass = (f, to) => { const b = ctx.createBiquadFilter(); b.type = 'lowpass'; b.frequency.value = f; b.Q.value = 0.7; if (to) b.connect(to); return b; };
 
   // ---------- the master ----------
-  const mix = gain(1), comp = ctx.createDynamicsCompressor(), clip = ctx.createWaveShaper(), master = gain(1);
-  comp.threshold.value = -10; comp.knee.value = 8; comp.ratio.value = 4; comp.attack.value = 0.003; comp.release.value = 0.22;
+  // (the mix a little under full going into the compressor, which catches peaks quickly and firmly: tuned with the
+  // self-test so the worst fight stays well under the soft clip's ceiling, and a calm sky sounds about as loud as before)
+  const mix = gain(0.84), comp = ctx.createDynamicsCompressor(), into = gain(1 / ROOM), clip = ctx.createWaveShaper(), master = gain(1);
+  comp.threshold.value = -12; comp.knee.value = 8; comp.ratio.value = 6; comp.attack.value = 0.002; comp.release.value = 0.22;
   clip.curve = CURVE; clip.oversample = 'none';
-  mix.connect(comp); comp.connect(clip); clip.connect(master); master.connect(ctx.destination);
+  mix.connect(comp); comp.connect(into); into.connect(clip); clip.connect(master); master.connect(ctx.destination);
   // ---------- the buses ----------
   const hold = gain(1, mix), muffle = lowpass(20000, hold);
   const fx = gain(LEVELS.fx, muffle), amb = gain(LEVELS.amb, muffle), ui = gain(LEVELS.ui, mix);
@@ -196,15 +204,16 @@ export function makeMixer(ctx, { touch = false } = {}) {
   return M;
 }
 
-// Reading a recording: its peak, how many samples clipped (at full scale), its loudness (dB, over the whole), and how
-// long until it falls 50 dB below its peak
-export function measure(buf) {
+// Reading a recording (its channels from `from`, `count` of them): its peak, how many samples clipped (at full scale)
+// and how many went past the soft clip's knee, its loudness (dB, over the whole), and how long until it falls 50 dB
+// below its peak
+export function measure(buf, from = 0, count = buf.numberOfChannels - from) {
   const ch = [], n = buf.length;
-  for (let c = 0; c < buf.numberOfChannels; c++) ch.push(buf.getChannelData(c));
-  let peak = 0, clipped = 0, sum = 0;
-  for (const d of ch) for (let i = 0; i < n; i++) { const a = Math.abs(d[i]); if (a > peak) peak = a; if (a >= 0.999) clipped++; sum += d[i] * d[i]; }
+  for (let c = from; c < from + count; c++) ch.push(buf.getChannelData(c));
+  let peak = 0, clipped = 0, over = 0, sum = 0;
+  for (const d of ch) for (let i = 0; i < n; i++) { const a = Math.abs(d[i]); if (a > peak) peak = a; if (a >= 0.999) clipped++; if (a > KNEE) over++; sum += d[i] * d[i]; }
   const thr = peak * Math.pow(10, -50 / 20);
   let last = 0;
   for (let i = n - 1; i >= 0 && !last; i--) for (const d of ch) if (Math.abs(d[i]) > thr) { last = i; break; }
-  return { peak: +peak.toFixed(3), clipped, rmsDb: +(10 * Math.log10(sum / (n * ch.length) + 1e-12)).toFixed(1), ring: +(last / buf.sampleRate).toFixed(2) };
+  return { peak: +peak.toFixed(3), clipped, over, rmsDb: +(10 * Math.log10(sum / (n * ch.length) + 1e-12)).toFixed(1), ring: +(last / buf.sampleRate).toFixed(2) };
 }

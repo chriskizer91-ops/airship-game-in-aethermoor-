@@ -52,6 +52,7 @@
 //   wave:cleared    { n, bonus }                 wave n beaten, and the shards it added
 //   player:down     { why }                      the Captain's ship going down ('hull' or 'crystals')
 //   player:low      { part }                     one of her parts dropping below 30%
+//   region          { name }                     the Captain's ship crossing into another region (its name shown)
 //   port:buy        { ship }                     a ship bought
 //   port:upgrade    { ship, mod, step }          an upgrade bought (step: how many of it she has now)
 //   port:power      { ship, power }              the crystal power moved (-2 sails .. 2 guns)
@@ -85,6 +86,7 @@ export const PAYLOAD = {
   'wave:cleared': { n: 0, bonus: 0 },
   'player:down': { why: '' },
   'player:low': { part: '' },
+  region: { name: '' },
   'port:buy': { ship: '' },
   'port:upgrade': { ship: '', mod: '', step: 0 },
   'port:power': { ship: '', power: 0 },

@@ -32,14 +32,18 @@
 //                     a second as at 60; on the phone, a Man-o'-war going down beside two other wrecks within every
 //                     budget
 //                     the sound: Chris's two files (music.js, sounds.js) exactly as he gave them; nothing made before
-//                     the first touch, which starts it (on the phone too, and again after it was stopped); going quiet
-//                     when the page is left and back when it's shown; the title's, the port's and a wave's music; the
-//                     port's sounds; the Settings card silencing the music and keeping it through a reload (and
-//                     fitting a phone); the recordings made for the game none silent, each sounding as it should (a
-//                     bright crack, a deep boom, a glassy crystal...); a real volley heard; hits, a raider blown apart
-//                     and shards gathered all sounding; the sounds gated while paused; tests that run the clock only
-//                     counting; a five-raider melee with a Man-o'-war, over a recording of the battle music, never
-//                     clipping (an offline render); and what the sound costs a volley and a frame
+//                     the first touch, which starts it (on the phone too, and again after it was stopped, with the
+//                     silent blip as the finger lifts); going quiet when the page is left and back when it's shown;
+//                     the title's, the port's and a wave's music; the port's sounds; the Settings card silencing and
+//                     stopping the music and keeping it through a reload, the music back when it's turned up (and the
+//                     card fitting a phone); the recordings made for the game none silent, each sounding as it should
+//                     (a bright crack, a deep boom, a glassy crystal...); a real volley heard; hits, a raider blown
+//                     apart and shards gathered all sounding; nothing played (or kept for later) with the sound off,
+//                     and only its tick when it's back on; nothing made with the Sounds slider at nothing; a soft
+//                     chord on crossing into another region; the sounds gated while paused; tests that run the clock
+//                     only counting; a five-raider melee with a Man-o'-war and Chris's effects of the same moments,
+//                     over a recording of the battle music, staying under the soft clip's ceiling (an offline
+//                     render); and what the sound costs a volley and a frame
 //                     a clear, tidy screen: the fonts (Cinzel and Fira Sans, inside the page, loading); the port in
 //                     plain words, a ship not owned bought with the big button, and on a phone its two tabs; the
 //                     Settings card's picture, aim speed, up and down and camera shake taking effect at once, and kept
@@ -367,17 +371,17 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   await page.waitForTimeout(1500);
   await shot(page, 'laptop-port');
   if (await page.evaluate(() => document.elementFromPoint(innerWidth / 3, innerHeight / 2)?.id) !== 'stage') problems.push('in port, presses on the ship don\'t reach her');
-  // Settings, from the gear in port: the music slider taken down to nothing silences the music straight away, and it's
-  // kept on this device (through the reload further on)
+  // Settings, from the gear in port: the music slider taken down to nothing silences the music straight away and stops
+  // it (no notes made for nothing), and it's kept on this device (through the reload further on)
   await page.click('#btn-settings-port');
   const opened = await page.evaluate(() => !document.getElementById('settings').hidden);
   await page.$eval('#set-music', (el) => { el.value = '0'; el.dispatchEvent(new Event('input')); el.dispatchEvent(new Event('change')); });
-  await wait(page, () => window.__game.audio.mixer.music.gain.value < 0.01, null, 'the music slider at nothing silences the music');
+  await wait(page, () => window.__game.audio.mixer.music.gain.value < 0.01 && window.__game.audio.music === null, null, 'the music slider at nothing silences the music and stops it');
   await shot(page, 'laptop-settings');
   await page.click('#btn-settings-done');
-  const settingsKept = await page.evaluate(() => ({ closed: document.getElementById('settings').hidden, saved: JSON.parse(localStorage.getItem('skies-of-aethermoor/settings-1') ?? '{}'), gain: +window.__game.audio.mixer.music.gain.value.toFixed(4) }));
-  console.log(`settings: ${opened ? 'opened from the port' : 'DID NOT OPEN'}; music at nothing: the music's volume ${settingsKept.gain}, saved ${JSON.stringify(settingsKept.saved)}`);
-  if (!opened || !settingsKept.closed || settingsKept.saved.music !== 0 || settingsKept.gain >= 0.01) problems.push(`the Settings card should open from the port, silence the music at nothing, save it and close: ${JSON.stringify({ opened, ...settingsKept })}`);
+  const settingsKept = await page.evaluate(() => ({ closed: document.getElementById('settings').hidden, saved: JSON.parse(localStorage.getItem('skies-of-aethermoor/settings-1') ?? '{}'), gain: +window.__game.audio.mixer.music.gain.value.toFixed(4), playing: window.__game.audio.music }));
+  console.log(`settings: ${opened ? 'opened from the port' : 'DID NOT OPEN'}; music at nothing: the music's volume ${settingsKept.gain}, playing ${settingsKept.playing ?? 'nothing'}, saved ${JSON.stringify(settingsKept.saved)}`);
+  if (!opened || !settingsKept.closed || settingsKept.saved.music !== 0 || settingsKept.gain >= 0.01 || settingsKept.playing !== null) problems.push(`the Settings card should open from the port, silence and stop the music at nothing, save it and close: ${JSON.stringify({ opened, ...settingsKept })}`);
   // the Settings card's other rows, chosen on the card at sea, each taking effect at once: the picture (Smooth: one
   // screen pixel to each of the page's, small shadows, half the cloud puffs, raiders' far models sooner, fewer sparks;
   // Sharp, a laptop's own, back as it was), aim speed (Fast swings the view 1.8 times as far for the same drag, Slow
@@ -1147,6 +1151,7 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   const mark = () => page.evaluate(() => window.__game.audio.ctx.currentTime);
   const loudestSince = (from) => page.evaluate((from) => +window.__game.audio.mixer.peak(from).toFixed(3), from);
   await wait(page, () => window.__game.audio.state === 'running' && window.__game.audio.ready, null, 'the sound starts again with a key after the page is reloaded');
+  await wait(page, () => window.__game.audio.music === 'flight' || window.__game.audio.music === 'marsh' || window.__game.audio.music === 'desert', null, 'the music turned up again starts again (at sea between waves)');
   await page.evaluate(() => window.__game.audio.level()); await wait(page, () => window.__game.audio.mixer.metered, null, 'the sound\'s level meter starts');
   await page.evaluate(() => window.__game.gunnery.cancel()); await page.waitForTimeout(900); // (the last volley's guns all gone quiet)
   await reloaded(); const calm0 = await mark(); await page.waitForTimeout(400); const calmLevel = await loudestSince(calm0); // (the music and the wind)
@@ -1202,19 +1207,87 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   });
   console.log(`a fight's sounds: a raider Brig shot down (${fightSound.down || 'NOT DOWN'}): ${fightSound.gun} gun, ${fightSound.hit} hit, ${fightSound.blast} blast and ${fightSound.chime} shard sounds, ${fightSound.effects} of Chris's`);
   if (fightSound.down !== 'hull' || !fightSound.gun || !fightSound.hit || !fightSound.blast || !fightSound.chime || !fightSound.effects) problems.push(`firing, hits, a raider blown apart and shards gathered should all sound: ${JSON.stringify(fightSound)}`);
+  // the sound turned off in Settings: its clock stops, and nothing at all is played meanwhile, not a fight's sounds, nor
+  // Chris's effects, nor the port's notes (or they'd all wait, and burst out together when it came back): so turning it
+  // back on brings only the tick that says so. And the Sounds slider at nothing: the game's sounds and the sky's let go,
+  // and back when it's turned up
+  const offSound = await page.evaluate(async () => {
+    const g = window.__game, A = g.audio, S = A.mixer.stats.started, P = g.player, pause = (ms) => new Promise((r) => setTimeout(r, ms));
+    const total = () => { let n = 0; for (const k in S) n += S[k]; return n; };
+    const fight = (secs) => {
+      g.raiders.clear(); g.bolts.clear(); P.pos.set(0, 900, 0); P.heading = 0; P.speed = 3; P.sail = 0.05; P.vy = 0; P.repair(1);
+      const foe = g.raiders.spawn('brig', P.pos.clone().add({ x: 0, y: 4, z: 220 }), 2, true);
+      for (const k in g.gunnery.ready) g.gunnery.ready[k] = 0;
+      for (let t = 0; t < secs; t += 0.05) {
+        const T = P.pos.clone(); T.y += P.ship.recipe.length * 0.42 + 2; const look = foe.f.pos.clone().sub(T).normalize();
+        g.cam.pitch = -Math.asin(look.y); g.cam.yaw = Math.atan2(look.x, look.z) - P.heading;
+        g.step(0.05, { fire: true });
+      }
+      g.raiders.clear(); g.bolts.clear();
+    };
+    const try_ = () => { g.sound.ui('ui-confirm'); g.sound.effect('coins'); g.sound.effect('boss'); A.tone({ f: 440, ratio: 2, index: 0.8, d: 0.4, g: 0.1 }); };
+    const out = {};
+    A.loudSteps = true;
+    try {
+      g.settings.set('sound', false);
+      for (let i = 0; i < 60 && A.state === 'running'; i++) await pause(50);
+      const n0 = total(), fx0 = A.stats.effects, t0 = A.stats.tones, fire0 = A.stats.events.fire ?? 0, hit0 = A.stats.events.hit ?? 0;
+      try_(); fight(3);
+      out.off = { state: A.state, sounds: total() - n0, effects: A.stats.effects - fx0, tones: A.stats.tones - t0, fire: (A.stats.events.fire ?? 0) - fire0, hits: (A.stats.events.hit ?? 0) - hit0 };
+      const tick0 = A.stats.played['ui-cursor'] ?? 0, fx1 = A.stats.effects;
+      g.settings.set('sound', true);
+      for (let i = 0; i < 60 && (A.stats.played['ui-cursor'] ?? 0) === tick0; i++) await pause(50);
+      out.back = { state: A.state, tick: (A.stats.played['ui-cursor'] ?? 0) - tick0, effects: A.stats.effects - fx1 };
+      // the Sounds slider at nothing
+      g.settings.set('effects', 0);
+      for (let i = 0; i < 80 && g.sound.sky; i++) await pause(50); // (let go at the next frame drawn)
+      const n1 = total(), fx2 = A.stats.effects;
+      try_(); fight(1.5);
+      out.none = { sky: !!g.sound.sky, sounds: total() - n1, effects: A.stats.effects - fx2 };
+      g.settings.set('effects', 1);
+      for (let i = 0; i < 80 && !g.sound.sky; i++) await pause(50);
+      const n2 = total(); fight(1.5);
+      out.up = { sky: !!g.sound.sky, sounds: total() - n2 };
+    } finally { A.loudSteps = false; g.settings.set('sound', true); g.settings.set('effects', 1); }
+    return out;
+  });
+  console.log(`the sound off: ${offSound.off.state}, a fight (${offSound.off.fire} guns, ${offSound.off.hits} hits) and Chris's effects made ${offSound.off.sounds} sounds, ${offSound.off.effects} effects and ${offSound.off.tones} notes; on again: ${offSound.back.state}, with ${offSound.back.tick} tick (${offSound.back.effects} effects in all); the Sounds slider at nothing: the sky's sound ${offSound.none.sky ? 'STILL MADE' : 'let go'}, ${offSound.none.sounds} sounds and ${offSound.none.effects} effects made; turned up: the sky ${offSound.up.sky ? 'back' : 'NOT BACK'}, ${offSound.up.sounds} sounds`);
+  if (offSound.off.state !== 'suspended' || !offSound.off.fire || !offSound.off.hits || offSound.off.sounds || offSound.off.effects || offSound.off.tones) problems.push(`with the sound off nothing should be played (or kept to play later): ${JSON.stringify(offSound.off)}`);
+  if (offSound.back.state !== 'running' || offSound.back.tick !== 1) problems.push(`turning the sound back on should play just its tick: ${JSON.stringify(offSound.back)}`);
+  if (offSound.none.sky || offSound.none.sounds || offSound.none.effects || !offSound.up.sky || !offSound.up.sounds) problems.push(`with the Sounds slider at nothing, none of the game's sounds should be made, and they should come back when it's turned up: ${JSON.stringify(offSound)}`);
+  // crossing into another region between waves: its name shown, and a soft chord (Chris's new-area)
+  const crossing = await page.evaluate(async () => {
+    const g = window.__game, A = g.audio, P = g.player, pause = (ms) => new Promise((r) => setTimeout(r, ms));
+    const n0 = A.stats.events.region ?? 0, chord0 = A.stats.played['new-area'] ?? 0, spots = [[6000, -4000], [-6000, 4000], [-6000, -4000], [6000, 4000], [0, 6000], [0, -6000]];
+    A.loudSteps = true;
+    try {
+      for (let i = 0; i < 40 && (A.stats.events.region ?? 0) === n0; i++) {
+        const [x, z] = spots[i % spots.length]; P.pos.set(x, 900, z); g.step(0.25, {});
+        if ((A.stats.events.region ?? 0) === n0) await pause(150); // (a banner's place is kept for it for a few seconds)
+      }
+    } finally { A.loudSteps = false; }
+    const out = { told: (A.stats.events.region ?? 0) - n0, name: document.getElementById('region').textContent, chord: (A.stats.played['new-area'] ?? 0) - chord0 };
+    P.pos.set(0, 900, 0);
+    return out;
+  });
+  console.log(`crossing into ${crossing.name}: told ${crossing.told} time${crossing.told === 1 ? '' : 's'}, ${crossing.chord} chord`);
+  if (crossing.told !== 1 || crossing.chord !== 1) problems.push(`crossing into another region should show its name and play a soft chord, once: ${JSON.stringify(crossing)}`);
   // a wave arriving changes the music: Break the Grip for a wave of raiders
   await page.evaluate(() => { const g = window.__game; g.raiders.clear(); g.raiders.setAI(false); Object.assign(g.waves, { n: 0, state: 'calm', timer: 0.05, next: null }); });
   await wait(page, () => window.__game.audio.music === 'battle', null, 'a wave of raiders arriving plays Break the Grip');
-  // the worst a fight can sound (five raiders and a Man-o'-war, the Captain's broadside, hits, a blast, shards...), over
-  // three seconds of the battle music recorded as it plays: an offline render that must never clip
+  // the worst a fight can sound (five raiders and a Man-o'-war, the Captain's broadside, hits, a blast, shards...), with
+  // Chris's effects that come in the same moments (a captain's wave banner, the hull's alarm bell, coins, a shard's
+  // pickup: recorded live, as they can't be played offline), over three seconds of the battle music recorded as it
+  // plays, every slider at the top: an offline render. What goes into the soft clip must stay under 0.95 (the clip only
+  // rounds it a little, never flattening it), and what comes out never clips
   const self = await page.evaluate(async () => {
-    const A = window.__game.audio, rec = await A.recordMusic(3);
-    let music = 0; if (rec) for (const d of [rec.getChannelData(0), rec.getChannelData(1)]) for (let i = 0; i < d.length; i++) music = Math.max(music, Math.abs(d[i]));
-    return { ...(await window.__game.sound.selfTest(rec)), music: +music.toFixed(3) };
+    const g = window.__game, A = g.audio, [rec, chris] = await Promise.all([A.recordMusic(3), g.sound.worstChris()]);
+    const top = (b) => { let p = 0; if (b) for (const d of [b.getChannelData(0), b.getChannelData(1)]) for (let i = 0; i < d.length; i++) p = Math.max(p, Math.abs(d[i])); return +p.toFixed(3); };
+    return { ...(await g.sound.selfTest(rec, chris)), music: top(rec), chris: top(chris) };
   });
-  console.log(`the worst fight (offline, ${self.stats.started.gun + self.stats.started.foe} gun sounds, ${self.stats.merged} hits merged, ${self.stats.dropped} sounds left out), over the battle music (peaking at ${self.music}): peaks at ${self.peak}, ${self.clipped} samples clipped, ${self.rmsDb} dB; 7 s made in ${self.made} ms and rendered in ${self.rendered} ms`);
-  if (!(self.music > 0.05)) problems.push(`the battle music didn't record: ${self.music}`);
-  if (self.peak > 0.99 || self.clipped || !(self.rmsDb > -40)) problems.push(`the worst fight's sound should never clip: ${JSON.stringify(self)}`);
+  console.log(`the worst fight (offline, ${self.stats.started.gun + self.stats.started.foe} gun sounds, ${self.stats.merged} hits merged, ${self.stats.dropped} sounds left out, and Chris's effects peaking at ${self.chris}), over the battle music (peaking at ${self.music}): into the soft clip it peaks at ${self.into.peak}, ${self.into.over} samples past its ${self.knee} knee; out of it ${self.peak}, ${self.clipped} samples clipped, ${self.rmsDb} dB; 7 s made in ${self.made} ms and rendered in ${self.rendered} ms`);
+  if (!(self.music > 0.05) || !(self.chris > 0.05)) problems.push(`the battle music or Chris's effects didn't record: ${self.music}, ${self.chris}`);
+  if (self.into.peak > 0.95 || self.peak > 0.98 || self.clipped || !(self.rmsDb > -40)) problems.push(`the worst fight's sound should stay under 0.95 going into the soft clip, and never clip: ${JSON.stringify({ ...self, stats: undefined })}`);
   // what the sound costs: each volley's sounds and each frame's (the music and the sky), on this machine
   const cost = await page.evaluate(() => {
     const g = window.__game, A = g.audio, ms0 = A.stats.ms, P = g.player, hull0 = P.full.hull;
@@ -1291,16 +1364,21 @@ if (!quick) {
   await wait(page, () => window.__game.audio.state === 'running', null, 'phone: the first tap starts the sound');
   await page.evaluate(() => window.__game.audio.ctx.suspend());
   await wait(page, () => window.__game.audio.state === 'suspended', null, 'phone: the sound stops');
+  // (as an iPhone has it: a finger landing on the screen may not start sound, only its lifting may, so the silent blip
+  // must go with that too)
+  await page.evaluate(() => { const A = window.__game.audio, C = A.ctx, real = C.resume.bind(C); window.__blips = { ...A.stats.blips }; C.resume = () => (/^(pointerdown|touchstart)$/.test(window.event?.type ?? '') ? Promise.resolve() : real()); });
   await page.tap('#port-ships [data-ship="skiff"]');
   await wait(page, () => window.__game.audio.state === 'running', null, 'phone: a tap starts the stopped sound again');
-  // the Settings card fits the phone, and says where the iPhone's silent switch is
+  const blipped = await page.evaluate(() => { const A = window.__game.audio; delete A.ctx.resume; return ['pointerup', 'touchend', 'click'].filter((k) => (A.stats.blips[k] ?? 0) > (window.__blips[k] ?? 0)); });
+  // the Settings card fits the phone, and says to check the phone isn't on silent
   await page.tap('#btn-settings-port');
-  const phoneSettings = await page.evaluate(() => { const b = document.querySelector('#settings .card').getBoundingClientRect(), n = document.querySelector('.settings-note'); return { left: Math.round(b.left), right: Math.round(b.right), top: Math.round(b.top), bottom: Math.round(b.bottom), note: n.offsetHeight > 0 && n.textContent.includes('silent switch'), rows: document.querySelectorAll('#settings-rows .setting').length }; });
+  const phoneSettings = await page.evaluate(() => { const b = document.querySelector('#settings .card').getBoundingClientRect(), n = document.querySelector('.settings-note'); return { left: Math.round(b.left), right: Math.round(b.right), top: Math.round(b.top), bottom: Math.round(b.bottom), note: n.offsetHeight > 0 && n.textContent.includes('isn\'t on silent'), rows: document.querySelectorAll('#settings-rows .setting').length }; });
   await shot(page, 'phone-settings');
   await page.tap('#btn-settings-done');
-  console.log(`phone: sound ${phoneBefore === 'none' ? 'not made' : 'MADE'} before the first tap, started by it, and again after it stopped; Settings ${phoneSettings.left}-${phoneSettings.right} px across, ${phoneSettings.rows} rows, ${phoneSettings.note ? 'with' : 'WITHOUT'} the iPhone note`);
+  console.log(`phone: sound ${phoneBefore === 'none' ? 'not made' : 'MADE'} before the first tap, started by it, and again after it stopped (the silent blip with ${blipped.join(', ') || 'NO TOUCH THAT COUNTS'}); Settings ${phoneSettings.left}-${phoneSettings.right} px across, ${phoneSettings.rows} rows, ${phoneSettings.note ? 'with' : 'WITHOUT'} the note about silent`);
   if (phoneBefore !== 'none') problems.push(`phone: the sound shouldn't start before the first tap (${phoneBefore})`);
-  if (phoneSettings.left < 0 || phoneSettings.right > 390 || phoneSettings.top < 0 || phoneSettings.bottom > 844 || !phoneSettings.note || phoneSettings.rows < 3) problems.push(`phone: the Settings card should fit the screen, with the iPhone note: ${JSON.stringify(phoneSettings)}`);
+  if (!blipped.length) problems.push('phone: a tap that finds the sound stopped should play the silent blip as the finger lifts (an iPhone needs it then)');
+  if (phoneSettings.left < 0 || phoneSettings.right > 390 || phoneSettings.top < 0 || phoneSettings.bottom > 844 || !phoneSettings.note || phoneSettings.rows < 3) problems.push(`phone: the Settings card should fit the screen, with the note about silent: ${JSON.stringify(phoneSettings)}`);
   await page.evaluate(() => { window.__game.progress.data.shards = 500; window.__game.port.refresh(); });
   await page.tap('#port-ships [data-ship="cutter"]');
   await page.waitForTimeout(1500);

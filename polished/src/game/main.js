@@ -105,7 +105,11 @@ async function main() {
     document.body.classList.toggle('fire-left', left); input.leftFire = left; layout();
   }
   settings.on((id, v, done) => {
-    if (id === 'sound' || id === 'music' || id === 'effects') { audio.apply(); if (done && (id === 'effects' || (id === 'sound' && v))) sound.ui('ui-cursor'); } // (a tick, to hear the new level)
+    if (id === 'sound' || id === 'music' || id === 'effects') {
+      const on = audio.apply();
+      // (a tick, to hear the new level, once the sound is running again)
+      if (done && (id === 'effects' || (id === 'sound' && v))) on.then((running) => { if (running) sound.ui('ui-cursor'); });
+    }
     else if (id === 'picture') { applyPicture(); resize(); }
     else if (id === 'shake') fx.shake = v;
     else if (id === 'leftFire') applyHands();
@@ -694,6 +698,7 @@ async function main() {
     const r = regionAt(player.pos.x, player.pos.z);
     if (r !== region && (regionTimer -= 0.1) <= 0 && W.state !== 'fight' && !(W.state === 'choose' && view.h <= 500) && !player.down && performance.now() > bannerAt.until) {
       region = r; regionTimer = 2; const el = $('region'); el.textContent = r; flash(el);
+      payload('region').name = r; emit('region'); // (a soft chord: sound.js)
     }
     // the corner map, with the ship as a gold arrow and the raiders as red dots. It's sized here, as it's drawn, so it's
     // always as sharp as it shows (it has no size while hidden on the title screen or in port, or before the big map)
