@@ -1,9 +1,10 @@
 // title.js: the title screen, drawn in Aethermoor itself. The Captain's ship (the one he sails, at full detail) flies a
 // slow, gentle circle 700 m up over the Hearthsea and the island city at sunset, leaning into her turn, with the
 // camera drifting along with her, the sun low beside her; and two or three raiders cross far off about their own
-// business (they never fight here), one after another, so there's nearly always one in sight. Each sails a course
-// angled about 30 degrees toward or away from the view, so her rust-red sails show (square sails seen straight from the
-// side lie edge-on, leaving bare masts), and each is her far model in one piece, drawn in one go (raiders.js model).
+// business (they never fight here), one after another, so there's nearly always one in sight. Each is turned about 30
+// degrees toward or away from the line of sight to her, wherever she is in the view, so her rust-red sails show (square
+// sails seen straight from the side lie edge-on, leaving bare masts), and each is her far model in one piece, drawn in
+// one go (raiders.js model).
 // Drag the sky to swing the view round her; let go, and a moment later it eases back.
 // The sunset is the title's own (world.js SUNSET): its own sun, sky, clouds and light, and its own sky light on the
 // brass, all put back to the voyages' afternoon (DAY) the moment she sails or the port opens. The skies chosen tint it
@@ -27,12 +28,15 @@ const DRIFT = new THREE.Vector2(-0.0022 / 0.00045, -0.0009 / 0.00045);
 // off as it started. For each way: how far off (k: a Brig there is k of the view's height long, half way across; a
 // Frigate looks bigger, a Cutter smaller), how high (e: over the eye line, as a share of the distance, so they sail just
 // above the horizon), about how many seconds a crossing takes (T), which way, how far across the view its first raider
-// is when the title opens (at), and how far its course is angled from straight across (tilt, radians: about 30 degrees,
-// so her sails show), always further off to the right of the screen and nearer to the left: on a laptop or a phone held
-// sideways her ship sits right of the title's card, so the view reaches less far to the right of her than to the left,
-// and a course angled the other way would run out of sight only far off to the left. So a raider crossing to the left
-// comes on, bow toward the view, and one crossing to the right sails away, stern toward it. A phone held upright has
-// the first two (its view is narrow, and all of it is open sky)
+// is when the title opens (at), and how far it's angled (tilt, radians: about 30 degrees). The way is angled that far
+// from straight across the view, always further off to the right of the screen and nearer to the left: on a laptop or
+// a phone held sideways her ship sits right of the title's card, so the view reaches less far to the right of her than
+// to the left, and a way angled the other way would run out of sight only far off to the left. And each raider on it is
+// turned that far from side-on to the line of sight to her, wherever she is along it (a straight way can't keep one
+// angle to it: the line of sight swings 50 to 90 degrees as she crosses a wide view, and where it met her way side-on
+// her sails would lie edge-on again); at this size, her bow a little off her way can't be seen. A raider crossing to the
+// left comes on, bow toward the view, and one crossing to the right sails away, stern toward it. A phone held upright
+// has the first two ways (its view is narrow, and all of it is open sky)
 const LANES = [{ k: 0.05, e: 0.07, T: 36, dir: 1, at: 0.72, tilt: 0.56 }, { k: 0.034, e: 0.11, T: 46, dir: -1, at: 0.42, tilt: 0.58 }, { k: 0.024, e: 0.045, T: 58, dir: 1, at: 0.12, tilt: 0.54 }];
 const CREWS = ['brig', 'frigate', 'cutter', 'frigate', 'brig', 'cutter'], BRIG = 25; // (each way's next raider is the next of these)
 const SUN_OFF = 400; // how far from her the sun's shadow camera sits, along the light (as main.js)
@@ -97,7 +101,9 @@ export function makeTitle({ renderer, scene, world, lights, art, raiders, shipFo
   // through a point D metres beyond her and h metres above her (u: how far along it a raider is, plus to the left; dir:
   // which way she sails along it, plus to the left). A raider that has crossed out of sight hands over to the next,
   // which starts just out of sight on the other side; one the view has moved on ahead of waits just out of sight on its
-  // side. (They're only ever moved while out of sight)
+  // side. (They're only ever moved while out of sight.) Each is turned by her tilt from side-on to the line of sight
+  // from where the camera would be undragged (`back`: how far behind her that is, along the ground), so she doesn't
+  // turn as the view swings round
   const lanes = LANES.map((L, i) => ({ ...L, i, n: i, ship: null, R: null, models: {}, u: null, D: 0, h: 0, v: 0, way: new THREE.Vector3() }));
   function crew(c) {
     if (c.ship) scene.remove(c.ship.root);
@@ -124,7 +130,8 @@ export function makeTitle({ renderer, scene, world, lights, art, raiders, shipFo
     return true;
   }
   const edge = (c, side) => (side > 0 ? span.hi : span.lo) + side * (c.R.length * 0.6 + 4); // (just out of sight that side)
-  function cross(dt, dist, toScreen, drift) {
+  const los = new THREE.Vector3();
+  function cross(dt, dist, toScreen, drift, back) {
     const a = Math.atan2(SUN.x, SUN.z) + lay.side + drift; // (the ways drift round with the view, so they keep their angle to it)
     ahead.set(Math.sin(a), 0, Math.cos(a)); across.set(Math.cos(a), 0, -Math.sin(a));
     PV.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
@@ -145,7 +152,10 @@ export function makeTitle({ renderer, scene, world, lights, art, raiders, shipFo
       } else if (opening) { c.u = 0; c.v = 12; }
       const s = c.ship;
       at.copy(pos).addScaledVector(ahead, c.D).addScaledVector(c.way, c.u); at.y += c.h + Math.sin(t * 0.17 + c.i * 2.1) * 6;
-      s.root.position.copy(at); s.root.rotation.set(0, Math.atan2(c.way.x * c.dir, c.way.z * c.dir), 0);
+      // (the line of sight to her along the ground, and her bow: dir x (across it to the left x cos tilt, less along it x sin tilt))
+      los.copy(ahead).multiplyScalar(c.D + back).addScaledVector(c.way, c.u).normalize();
+      const hx = c.dir * (los.z * Math.cos(c.tilt) - los.x * Math.sin(c.tilt)), hz = c.dir * (-los.x * Math.cos(c.tilt) - los.z * Math.sin(c.tilt));
+      s.root.position.copy(at); s.root.rotation.set(0, Math.atan2(hx, hz), 0);
       s.update(dt, still);
     }
   }
@@ -217,7 +227,7 @@ export function makeTitle({ renderer, scene, world, lights, art, raiders, shipFo
     camera.lookAt(target); camera.updateMatrixWorld();
     const toScreen = 1 / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)), scale = renderer.domElement.height * toScreen;
     ship.glow.material.uniforms.uScale.value = scale;
-    cross(dt, dist, toScreen, drift);
+    cross(dt, dist, toScreen, drift, dist * Math.cos(pitch));
     // the sky: the clouds carried on the wind (faster in a breeze), the sun's shadows round her, sails and crystals alive
     clouds += dt * breeze; world.time.value = clouds;
     world.mood.uDrift.value.copy(DRIFT).multiplyScalar(clouds);

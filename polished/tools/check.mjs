@@ -90,19 +90,22 @@
 //                     screen readying her broadside; the pause card over everything (and closing the big map); the
 //                     score saying the wave just beaten; the big map's names 11 px or more and none on (or touching)
 //                     another; her ship going down with the big map open, its card on top; and a bounty rising where
-//                     the card between waves comes up keeping clear of it. The port at the four phone sizes and a
-//                     narrow one held sideways (640 by 360): its top line on one line, its panel clear of the top line
-//                     and of the ships; a ship not owned showing all her stats above her Buy button; two upgrades or
-//                     more above Set sail; each of the four ships' blurbs (owned or not) all above the button's fade;
-//                     and held upright, the panel no taller than what's in it
+//                     the card between waves comes up keeping clear of it. The port at the four phone sizes, a
+//                     narrow one held sideways (640 by 360) and the smallest (568 by 320): its top line on one line,
+//                     its panel clear of the top line and of the ships; every ship's button all inside the ships' row;
+//                     a ship not owned showing all her stats above her Buy button; two upgrades or more above Set sail
+//                     (one under 360 px tall); each of the four ships' blurbs (owned or not) all above the button's
+//                     fade; and held upright, the panel no taller than what's in it
 //                     the title screen: Aethermoor itself at sunset (not the port's void), her ship flying 700 m up
 //                     within 600 m of the island city in the Hearthsea, at full detail, and two or three raiders
-//                     crossing far off (on their far models, none fighting), the Maelstrom tinting it at least 15%
-//                     darker than Fair Winds; "Set sail" straight to sea for a new Captain, the afternoon put back
-//                     exactly; the dip through the night between every two screens; a drag swinging the view round her,
-//                     coasting the same at any frame rate and easing back; the sun's shadows sized to her; at laptop,
-//                     tablet and phone sizes, a raider in sight most of the time, each sailing a course angled 25 to 35
-//                     degrees from straight across (so her sails show) and drawn in one go, on a phone held upright
+//                     crossing far off (on their far models, none fighting; coloured from their paintings, whose
+//                     pixels are let go once they're put together), the Maelstrom tinting it at least 15% darker than
+//                     Fair Winds; "Set sail" straight to sea for a new Captain, the afternoon put back exactly; the dip
+//                     through the night between every two screens; a drag swinging the view round her, coasting the
+//                     same at any frame rate and easing back; the sun's shadows sized to her; at laptop, tablet and
+//                     phone sizes, a raider in sight most of the time, each turned 25 to 35 degrees from side-on to
+//                     the line of sight to her wherever she is in the view (so her sails show), sailing across it bow
+//                     first, and drawn in one go, on a phone held upright
 //                     small and low over the horizon (clearly far off), her ship clear of the title's card, and the
 //                     card fitting the screen; dragging her round in port; on a phone, its frames costing no more than
 //                     a voyage's and drawn in fewer goes, and pictures of it upright and sideways
@@ -431,10 +434,12 @@ function bountyProblems(B, where) {
 // on the big button: five minutes of its clock (a frame every half second): how much of the time a raider is in sight
 // clear of the title's card (on a phone held upright, that's above the panel), how long they look on the screen (the
 // middle of their lengths, in the page's pixels), how high over the horizon (the middle of their heights over it, in the
-// page's pixels), how far each one's course is angled from straight across the view (the least and the most, in
-// degrees: about 30, so her sails show), how many goes each takes to draw (one), and how many times her ship (the
-// Frigate, long) lies under the card; and the card: all of it on the screen without scrolling, and how many lines the
-// game's name takes and whether the opening line shows. Her ship and the save are put back after
+// page's pixels), how far each one is turned from side-on to the line of sight to her (the least, the tenth of the way
+// up and the most, in degrees: about 30, so her sails show; side-on, square sails lie edge-on), how many times one in
+// sight was seen moving across the view stern first (none: she sails bow first, whichever way she's turned), how many
+// goes each takes to draw (one), and how many times her ship (the Frigate, long) lies under the card; and the card: all
+// of it on the screen without scrolling, and how many lines the game's name takes and whether the opening line shows.
+// Her ship and the save are put back after
 async function titleAt(page, w, h) {
   await page.setViewportSize({ width: w, height: h }); await page.waitForTimeout(300);
   return page.evaluate(() => {
@@ -450,8 +455,8 @@ async function titleAt(page, w, h) {
     const V = T.camera.position.constructor, v = new V(), px = [], S = T.ship, b = S.bounds;
     const at = (p) => { v.copy(p).project(T.camera); return [(v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight, v.z]; };
     const behind = (x, y) => x > card.left && x < card.right && y > card.top && y < card.bottom;
-    let seen = 0; out.under = 0; out.angle = [90, 0]; out.pieces = 0;
-    const lift = [], m = T.camera.matrixWorld.elements, horizon = new V();
+    let seen = 0; out.under = 0; out.pieces = 0; out.astern = 0;
+    const lift = [], m = T.camera.matrixWorld.elements, horizon = new V(), los = new V(), bow = new V(), rel = new V(), angles = [], last = new Map();
     for (let i = 0; i < 600; i++) {
       T.update(0.5);
       let k = 0;
@@ -463,8 +468,15 @@ async function titleAt(page, w, h) {
         if (z < 1 && x > 0 && x < innerWidth && y > 0 && y < innerHeight && !behind(x, y)) {
           k++; px.push((r.recipe.length / T.camera.position.distanceTo(r.root.position)) * innerHeight * T.camera.projectionMatrix.elements[5] / 2);
           lift.push(hy - y);
-          const a = r.root.rotation.y, across = Math.abs(Math.sin(a) * m[0] + Math.cos(a) * m[2]) / Math.hypot(m[0], m[2]), deg = (Math.acos(Math.min(1, across)) * 180) / Math.PI;
-          out.angle = [Math.min(out.angle[0], deg), Math.max(out.angle[1], deg)];
+          // (how far she's turned from side-on to the line of sight to her, along the ground; and, in the camera's own
+          // frame, whether she moved across the view since the last look the way her bow points)
+          const a = r.root.rotation.y;
+          bow.set(Math.sin(a), 0, Math.cos(a)); los.copy(r.root.position).sub(T.camera.position).setY(0).normalize();
+          angles.push((Math.asin(Math.min(1, Math.abs(bow.dot(los)))) * 180) / Math.PI);
+          rel.copy(r.root.position).applyMatrix4(T.camera.matrixWorldInverse); bow.transformDirection(T.camera.matrixWorldInverse);
+          const before = last.get(r), dx = before && i - before.i === 1 && rel.distanceTo(before.at) < 40 ? rel.x - before.at.x : 0;
+          if (Math.abs(dx) > 0.2 && dx * bow.x < 0) out.astern++;
+          last.set(r, { i, at: rel.clone() });
           let n = 0; r.root.traverse((o) => { if (o.isMesh && o.visible) n++; }); out.pieces = Math.max(out.pieces, n);
         }
       }
@@ -480,7 +492,8 @@ async function titleAt(page, w, h) {
     }
     px.sort((a, c) => a - c); lift.sort((a, c) => a - c);
     out.seen = +(seen / 600).toFixed(2); out.long = Math.round(px[px.length >> 1] ?? 0); out.ship = S.recipe.name;
-    out.lift = Math.round(lift[lift.length >> 1] ?? 0); out.angle = out.angle.map(Math.round);
+    out.lift = Math.round(lift[lift.length >> 1] ?? 0); angles.sort((a, c) => a - c);
+    out.angle = angles.length ? [angles[0], angles[Math.floor(angles.length / 10)], angles.at(-1)].map(Math.round) : [];
     Object.assign(d, { flying: was.flying, voyages: was.voyages, shards: was.shards }); d.ships.frigate.owned = was.owned;
     g.port.setMode('port'); g.port.setMode('title');
     return out;
@@ -492,14 +505,15 @@ const UPRIGHT_FAR = { long: 40, lift: 45 };
 function titleProblems(t, raiders) {
   if (t.under) problems.push(`${t.size}: her ship on the title screen should keep clear of the title's card (under it ${t.under} times of 60)`);
   if (raiders && !(t.seen >= 0.7 && t.long >= 16)) problems.push(`${t.size}: a raider should be crossing in sight on the title screen most of the time (70% or more), big enough to see (16 px or more): in sight ${Math.round(t.seen * 100)}% of the time, ${t.long} px long`);
-  // each raider's course angled about 30 degrees from straight across, so her sails show; each drawn in one go; and on a
-  // phone held upright, small and low over the horizon, clearly far off
-  if (t.seen && (t.angle[0] < 24 || t.angle[1] > 36 || t.pieces !== 1)) problems.push(`${t.size}: the title's raiders should sail courses angled 25 to 35 degrees from straight across the view (so their sails show), each drawn in one go: ${t.angle.join(' to ')} degrees, ${t.pieces} pieces`);
+  // each raider in sight turned about 30 degrees from side-on to the line of sight to her, wherever she is in the view,
+  // so her sails show, and sailing across it bow first; each drawn in one go; and on a phone held upright, small and low
+  // over the horizon, clearly far off
+  if (t.seen && (t.angle[0] < 24 || t.angle[2] > 36 || t.astern || t.pieces !== 1)) problems.push(`${t.size}: the title's raiders should be turned 25 to 35 degrees from side-on to the line of sight to them wherever they are in the view (so their sails show), sail across it bow first, and each be drawn in one go: ${t.angle.join(', ')} degrees (the least, the tenth of the way up, the most), stern first ${t.astern} times, ${t.pieces} pieces`);
   const upright = +t.size.split('x')[0] <= 700 && +t.size.split('x')[1] > 500;
   if (upright && t.seen && (t.long > UPRIGHT_FAR.long || t.lift > UPRIGHT_FAR.lift)) problems.push(`${t.size}: on a phone held upright the title's raiders should look far off: small (${UPRIGHT_FAR.long} px long or less) and low over the horizon (${UPRIGHT_FAR.lift} px or less): ${t.long} px long, ${t.lift} px over it`);
   const sideways = +t.size.split('x')[1] <= 500;
   if (!t.fits || (sideways && t.name !== 1) || (sideways && +t.size.split('x')[1] >= 350 && !t.opening)) problems.push(`${t.size}: the title's card should fit the screen without scrolling (held sideways, the game's name on one line, and the opening line when there's room): ${JSON.stringify(t)}`);
-  return `${t.size}: a raider in sight ${Math.round(t.seen * 100)}% of the time, ${t.long} px long, ${t.lift} px over the horizon, her course ${t.angle.join(' to ')} degrees from straight across, in ${t.pieces} piece${t.pieces > 1 ? 's' : ''}; her ${t.ship} under the card ${t.under} times; the card ${t.fits ? 'fits' : 'DOES NOT FIT'}, the name on ${t.name} line${t.name > 1 ? 's' : ''}, ${t.opening ? 'with' : 'without'} the opening line`;
+  return `${t.size}: a raider in sight ${Math.round(t.seen * 100)}% of the time, ${t.long} px long, ${t.lift} px over the horizon, ${t.angle.length ? `turned ${t.angle[0]} to ${t.angle[2]} degrees from side-on to the line of sight to her (a tenth under ${t.angle[1]})` : 'none seen to turn'}${t.astern ? `, STERN FIRST ${t.astern} times` : ''}, in ${t.pieces} piece${t.pieces > 1 ? 's' : ''}; her ${t.ship} under the card ${t.under} times; the card ${t.fits ? 'fits' : 'DOES NOT FIT'}, the name on ${t.name} line${t.name > 1 ? 's' : ''}, ${t.opening ? 'with' : 'without'} the opening line`;
 }
 // set up a fight near the Captain, run it for a while with the Captain firing at the nearest raider, then hold it. It's
 // a fight to look at, not to lose: her hull and crystals are kept at half or more, so a lucky run of raiders' broadsides
@@ -1445,6 +1459,7 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
       chosen: [...document.querySelectorAll('#skies [aria-checked="true"]')].map((b) => b.dataset.skies).join(),
       first: [...document.querySelectorAll('#skies button')].filter((b) => b.querySelector('.first') && !b.querySelector('.first').hidden).map((b) => b.dataset.skies + ': ' + b.querySelector('.first').textContent).join() };
     out.drawn = await drawn();
+    out.paintings = g.raiders.paintings(); // (the title's raiders coloured from their paintings, and their pixels let go since)
     const T = g.title, S = T.ship, a = S.root.position.clone(); T.update(1); const b = S.root.position.clone();
     out.ship = { name: S.recipe.name, inWorld: S.root.parent === g.scene, level: S.level, up: Math.round(b.y), fromCity: Math.round(Math.hypot(b.x - 30, b.z - 180)), moved: +a.distanceTo(b).toFixed(1) };
     out.raiders = T.raiders.map((r) => `${r.recipe.cls} ${r.level}${r.root.parent === g.scene ? '' : ' NOT IN THE SKY'}`).join(', ');
@@ -1490,13 +1505,14 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
     g.port.setMode('port');
     return out;
   });
-  console.log(`the title screen: drawing "${titleSky.drawn}"; her ship the ${titleSky.ship.name} (${titleSky.ship.level} detail) ${titleSky.ship.up} m up, ${titleSky.ship.fromCity} m from the island city, flying ${titleSky.ship.moved} m in a second; raiders crossing: ${titleSky.raiders} (${titleSky.fighting} fighting); the sun ${titleSky.sun.y} up, rays ${titleSky.sun.rays}, ${titleSky.sun.ownLight ? 'its own' : 'THE AFTERNOON\'S'} light on the brass; the sky beside her ${titleSky.cross.sky}; the whole picture Fair Winds ${titleSky.fair.all}, Maelstrom ${titleSky.mael.all}`);
+  console.log(`the title screen: drawing "${titleSky.drawn}"; her ship the ${titleSky.ship.name} (${titleSky.ship.level} detail) ${titleSky.ship.up} m up, ${titleSky.ship.fromCity} m from the island city, flying ${titleSky.ship.moved} m in a second; raiders crossing: ${titleSky.raiders} (${titleSky.fighting} fighting), coloured from ${titleSky.paintings.read} paintings, ${titleSky.paintings.held} still holding their pixels; the sun ${titleSky.sun.y} up, rays ${titleSky.sun.rays}, ${titleSky.sun.ownLight ? 'its own' : 'THE AFTERNOON\'S'} light on the brass; the sky beside her ${titleSky.cross.sky}; the whole picture Fair Winds ${titleSky.fair.all}, Maelstrom ${titleSky.mael.all}`);
   console.log(`the title for a new Captain: "${titleSky.fresh.button}", ${titleSky.fresh.toPort ? '"To port" plain beside it' : 'NO PLAIN "To port"'}, ${titleSky.fresh.first || 'NO FIRST-VOYAGE HINT'}; Set sail: ${titleSky.sailed.mode} in the ${titleSky.sailed.ship}, "${titleSky.sailed.banner}", the afternoon back (the sun ${titleSky.sailed.sun} off, rays ${titleSky.sailed.rays}, haze from ${titleSky.sailed.haze} m, ${titleSky.sailed.env ? 'its light on the brass' : 'THE SUNSET\'S LIGHT'}), drawing "${titleSky.drawnAtSea}", ships in the sky: ${titleSky.sailed.ships}; back from ${titleSky.back.voyages} voyage: "${titleSky.back.button}", "${titleSky.back.rank}"; To port draws "${titleSky.port.drawn}"; the veil from ${Object.entries(titleSky.veils).map(([k, v]) => `${k} ${v || 'NEVER'}`).join(', ')}`);
   const D = titleSky.drag;
   // (the sun on the screen: x and y from -1 to 1 across it, and whether it's in front of the camera)
   const sunBack = D.sun0[2] && Math.abs(D.sun0[0]) < 1.3 && Math.abs(D.sun0[1]) < 1.3 && D.sun[2] && Math.abs(D.sun[0] - D.sun0[0]) < 0.25 && Math.abs(D.sun[1] - D.sun0[1]) < 0.25;
   console.log(`the title's drag: swung ${D.swung}, ${D.still ? `MOVED ${D.still} WITH NO TIME PASSING` : 'still while no time passes'}, back to ${D.back} ten seconds after (the sun at ${D.sun0.slice(0, 2).join(', ')} on the screen before, ${D.sun[2] ? D.sun.slice(0, 2).join(', ') : 'BEHIND THE CAMERA'} after); its coast ${D.coast[0]} at 60 frames a second, ${D.coast[1]} at 15; dragged to ${D.reopened[0]}, it opens next time at ${D.reopened[1]}; the shadows' box ${titleSky.shadow.slice(0, 3).join(', ')} m (the Frigate, the Skiff, the Frigate)`);
   if (titleSky.drawn !== 'world' || !titleSky.ship.inWorld || titleSky.ship.level !== 'full' || Math.abs(titleSky.ship.up - 700) > 30 || titleSky.ship.fromCity > 600 || !(titleSky.ship.moved > 5)) problems.push(`the title screen should draw the world, with her ship flying over the Hearthsea: ${JSON.stringify({ drawn: titleSky.drawn, ship: titleSky.ship })}`);
+  if (!titleSky.paintings.read || titleSky.paintings.held) problems.push(`the title's raiders should be coloured from their paintings, and let go of the paintings' pixels once they're put together (about 2 MB kept otherwise): ${JSON.stringify(titleSky.paintings)}`);
   if (!/^\w+ far, \w+ far(, \w+ far)?$/.test(titleSky.raiders) || titleSky.fighting) problems.push(`two or three raiders should cross the title's sky far off (their far models), not fighting: ${titleSky.raiders} (${titleSky.fighting} in the fight)`);
   if (!(titleSky.sun.y < 0.2) || titleSky.sun.rays !== 1 || !titleSky.sun.ownLight) problems.push(`the title screen should have its own low sun, with rays and its own light on the brass: ${JSON.stringify(titleSky.sun)}`);
   const lum = ([r, g, b]) => 0.3 * r + 0.59 * g + 0.11 * b;
@@ -2133,13 +2149,15 @@ if (!quick) {
     layouts.push(`${w}x${h}: ${layoutProblems(await layoutAt(page, HUD, PANELS, w === 360), `phone ${w}x${h}`)}; a bounty ${bountyProblems(await bountyCard(page), `phone ${w}x${h}`)}`);
   }
   console.log(`phone layouts: ${layouts.join('; ')}`);
-  // the port at the same four sizes and a narrow phone held sideways (640 by 360): its top line on one line, even with
-  // ◆ 12,345, and its panel clear of the top line and of the ships along the bottom; a ship you can't afford yet showing
-  // all of how she sails above her Buy button; her Upgrades tab showing two upgrades or more above Set sail; each of the
-  // four ships' blurbs (owned or not) all above the button's fade, not tucked under it; and on a phone held upright,
-  // the panel no taller than what's in it, so her ship has the room above it (no empty band under the button)
+  // the port at the same four sizes, a narrow phone held sideways (640 by 360) and the smallest (568 by 320, an iPhone
+  // SE's first one): its top line on one line, even with ◆ 12,345, and its panel clear of the top line and of the ships
+  // along the bottom; every ship's button all inside the ships' row (none cut off at its end); a ship you can't afford
+  // yet showing all of how she sails above her Buy button; her Upgrades tab showing two upgrades or more above Set sail
+  // (one on a screen under 360 px tall, as with the browser's bars showing); each of the four ships' blurbs (owned or
+  // not) all above the button's fade, not tucked under it; and on a phone held upright, the panel no taller than what's
+  // in it, so her ship has the room above it (no empty band under the button)
   const ports = [];
-  for (const [w, h] of [[844, 390], [740, 360], [640, 360], [390, 844], [360, 640]]) {
+  for (const [w, h] of [[844, 390], [740, 360], [640, 360], [568, 320], [390, 844], [360, 640]]) {
     await page.setViewportSize({ width: w, height: h }); await page.waitForTimeout(300);
     const P = await page.evaluate(() => {
       const g = window.__game, $ = (id) => document.getElementById(id), d = g.progress.data, r = (id) => $(id).getBoundingClientRect();
@@ -2161,16 +2179,19 @@ if (!quick) {
         for (const other of ['port-ships', 'port-shards', 'btn-skies', 'btn-settings-port']) if (lap(pn, r(other))) laps.add(other);
       };
       for (const id of ['skiff', 'cutter', 'brig', 'frigate']) { if (id !== 'skiff') look(id, false); look(id, true); }
+      const row = r('port-ships'), cut = [...$('port-ships').querySelectorAll('button')].filter((b) => { const x = b.getBoundingClientRect(); return x.left < row.left - 0.5 || x.right > row.right + 0.5; }).map((b) => b.dataset.ship);
       for (const id in was.owned) d.ships[id].owned = was.owned[id];
       d.flying = was.flying; $('port-ships').querySelector(`[data-ship="${was.flying}"]`).click();
-      return { stats, line: Math.round(line), right, w: innerWidth, mods, tucked, empty, laps: [...laps] };
+      return { stats, line: Math.round(line), right, w: innerWidth, mods, tucked, empty, laps: [...laps], cut };
     });
-    ports.push(`${w}x${h}: ${P.stats} of 5 stats and ${P.mods} upgrades in view, the top line ${P.line} px tall, ${P.tucked.length ? `BLURBS UNDER THE FADE: ${P.tucked.join(', ')}` : 'every blurb clear of the fade'}${P.empty.length ? `, EMPTY UNDER THE BUTTON: ${P.empty.join(', ')}` : ''}${P.laps.length ? `, THE PANEL ON ${P.laps.join(', ')}` : ''}`);
-    if (P.stats < 5 || P.mods < 2 || P.line > 44 || P.right > P.w) problems.push(`phone ${w}x${h}: the port should show all of how a ship not owned sails above her Buy button, two upgrades or more on her Upgrades tab, and its top line on one line: ${JSON.stringify(P)}`);
+    ports.push(`${w}x${h}: ${P.stats} of 5 stats and ${P.mods} upgrade${P.mods === 1 ? '' : 's'} in view, the top line ${P.line} px tall, ${P.cut.length ? `SHIPS CUT OFF: ${P.cut.join(', ')}` : 'all four ships in their row'}, ${P.tucked.length ? `BLURBS UNDER THE FADE: ${P.tucked.join(', ')}` : 'every blurb clear of the fade'}${P.empty.length ? `, EMPTY UNDER THE BUTTON: ${P.empty.join(', ')}` : ''}${P.laps.length ? `, THE PANEL ON ${P.laps.join(', ')}` : ''}`);
+    if (P.stats < 5 || P.mods < (h < 360 ? 1 : 2) || P.line > 44 || P.right > P.w) problems.push(`phone ${w}x${h}: the port should show all of how a ship not owned sails above her Buy button, ${h < 360 ? 'an upgrade' : 'two upgrades or more'} on her Upgrades tab, and its top line on one line: ${JSON.stringify(P)}`);
+    if (P.cut.length) problems.push(`phone ${w}x${h}: in port every ship's button should be all inside the ships' row, not cut off at its end: ${P.cut.join(', ')}`);
     if (P.laps.length) problems.push(`phone ${w}x${h}: in port the panel lands on ${P.laps.join(', ')}`);
     if (P.tucked.length) problems.push(`phone ${w}x${h}: in port a ship's blurb should be all above the button's fade, not tucked under it: ${P.tucked.join(', ')}`);
     if (P.empty.length) problems.push(`phone ${w}x${h}: in port on a phone held upright, the panel should be no taller than what's in it (her ship has the room above): empty under the button for ${P.empty.join(', ')}`);
     if (w === 360) { await page.click('#port-ships [data-ship="frigate"]'); await page.waitForTimeout(1200); await shot(page, 'phone-small-port'); }
+    if (w === 568) { await page.waitForTimeout(1200); await shot(page, 'phone-smallest-sideways-port'); }
     if (w === 740) { await page.click('#pp-tab-upgrades'); await page.waitForTimeout(1200); await shot(page, 'phone-sideways-port-upgrades'); await page.click('#pp-tab-ship'); }
   }
   console.log(`phone port: ${ports.join('; ')}`);

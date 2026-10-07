@@ -579,6 +579,14 @@
     #port-ships button { padding: 5px 6px 4px; }
     #port-ships button b { font-size: 13px; }
   }
+  /* the smallest phones held sideways (568 px across, as an iPhone SE's first one): the panel a little narrower and the
+     ships' buttons a little tighter, so all four fit along the bottom without being cut off */
+  @media (max-width: 600px) and (max-height: 500px) {
+    #port-panel { width: 47vw; }
+    #port-ships { max-width: calc(53vw - var(--gutter) - 16px); }
+    #port-ships button { padding: 5px 4px 4px; }
+    #port-ships button b { font-size: 12px; }
+  }
   /* the tabs, wherever the panel is short (a phone either way). The Upgrades tab shows the upgrades first (no heading:
      the tab says it), then crystal power, so they're there without scrolling */
   @media (max-width: 700px), (max-height: 500px) {

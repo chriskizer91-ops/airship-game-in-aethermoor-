@@ -654,7 +654,7 @@ async function main() {
   // where a raider goes down, her bounty rises out of the wreck in gold and fades: "◆ 75", "Captain's bounty ◆ 600",
   // "Treasure ◆ 400". Six labels, reused. One that would rise over a banner showing then (a wave's, say), or rise into
   // it (it rises 40 px), shows just under it instead (dy, in pixels) and doesn't rise, so both can be read
-  const BOUNTY_LIFE = 2.2, BOUNTIES = [...document.querySelectorAll('#bounties .bounty')].map((el) => ({ el, at: new THREE.Vector3(), t: BOUNTY_LIFE, dy: 0, rise: 40, label: el.querySelector('small'), num: el.querySelector('b span') }));
+  const BOUNTY_LIFE = 2.2, BOUNTIES = [...document.querySelectorAll('#bounties .bounty')].map((el) => ({ el, at: new THREE.Vector3(), t: BOUNTY_LIFE, dy: 0, rise: 40, w: 0, h: 0, label: el.querySelector('small'), num: el.querySelector('b span') }));
   let bountyN = 0;
   function bounty(r, total, at) {
     const b = BOUNTIES[bountyN]; bountyN = (bountyN + 1) % BOUNTIES.length;
@@ -667,7 +667,7 @@ async function main() {
     b.label.textContent = r.captain ? 'Captain\'s bounty' : r.role === 'prize' ? 'Treasure' : '';
     b.num.textContent = fmt(total);
     b.el.classList.toggle('rich', r.captain || r.role === 'prize'); b.el.hidden = false;
-    b.w = b.el.offsetWidth; b.h = b.el.offsetHeight; // (once, as it's shown: for keeping clear of the card between waves)
+    b.w = 0; // (its size is measured only if the card between waves comes up while it shows: not here, mid-step)
   }
   function bounties(dt) {
     for (const b of BOUNTIES) {
@@ -681,6 +681,7 @@ async function main() {
       // the card between waves up (or rising: the wave's last raider has just gone down), and the bounty where it is or
       // will be: it shows just under the card instead (above it, where the card is at the bottom)
       if (W.state === 'choose' && CALM_AT.on) {
+        if (!b.w) { b.w = b.el.offsetWidth; b.h = b.el.offsetHeight; } // (once, the first time it's wanted: rare, as a wave ends)
         const hw = (b.w * s) / 2 + 6, hh = (b.h * s) / 2 + 6, C = CALM_AT;
         if (x + hw > C.l && x - hw < C.r && y + hh > C.t && y - hh < C.b) y = C.top ? C.b + hh : C.t - hh;
       }

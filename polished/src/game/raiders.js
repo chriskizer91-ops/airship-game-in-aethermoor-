@@ -163,13 +163,18 @@ function raiderShip(T) {
 // planks, deck and bands, their average colour), times its own colour (the pennants and crystals have their own), and
 // glows as it does (the lamplight, the crystals, the sails' warmth). Her cut-out parts (the painted rails) keep only the
 // triangles that are mostly painted, and her sails glow (SAIL_GLOW, of their own colour) as canvas does with the low
-// sun behind it: the title looks toward the sun, so it's their shaded side that shows. The paintings are read once, small
+// sun behind it: the title looks toward the sun, so it's their shaded side that shows. The paintings are read small,
+// and their pixels let go as soon as the ships being put together then are done (the title's opening puts its two or
+// three together at once): kept, the two big picture sheets' would hold about 2 MB for the whole game, on a phone too.
+// A class put together later reads them again
 const SAIL_GLOW = 0.5;
 const LIN = Array.from({ length: 256 }, (_, i) => { const c = i / 255; return c < 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; }); // (a byte of a painting, as light)
-const paintings = new Map(); // (a texture's pixels, read once, and the average colour of what's painted)
+const paintings = new Map(); // (a texture's pixels, while they're wanted, and the average colour of what's painted)
+let letGo = false; // (the pixels' letting go is waiting for the work in hand to finish)
 function painting(tex) {
   let p = paintings.get(tex);
-  if (!p) {
+  if (!p?.d) {
+    if (!letGo) { letGo = true; queueMicrotask(() => { letGo = false; for (const q of paintings.values()) q.d = null; }); }
     const img = tex.image, w = Math.min(512, img.width), h = Math.min(512, img.height), c = document.createElement('canvas'); c.width = w; c.height = h;
     const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(img, 0, 0, w, h);
     const d = g.getImageData(0, 0, w, h).data, mean = [0, 0, 0];
@@ -449,5 +454,7 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
     const move = shipMotion(Tm.R, body, []);
     return { root, body, recipe: Tm.R, length: Tm.R.length, level: 'far', update: (dt, opts) => { move(dt, opts); } };
   }
-  return { list, escaped, spawn, spawnWave, update, hitBy, clear, prepare, model, templates: T, setAI: (on) => { ai = on; }, setDetail: (k) => { detailAt = k; }, get detailAt() { return detailAt; } };
+  // (for the check: how many paintings the title's raiders were coloured from, and how many still hold their pixels)
+  const read = () => ({ read: paintings.size, held: [...paintings.values()].filter((p) => p.d).length });
+  return { list, escaped, spawn, spawnWave, update, hitBy, clear, prepare, model, paintings: read, templates: T, setAI: (on) => { ai = on; }, setDetail: (k) => { detailAt = k; }, get detailAt() { return detailAt; } };
 }
