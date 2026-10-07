@@ -1,6 +1,9 @@
-// port.js: the title screen and the port. Both show your ship turning slowly in a quiet void over a round stone
-// berth with a brass rim, lit warm from the front and cool from behind. Drag to turn it.
-//   Title: the game's name and the three skies (difficulty) to choose from.
+// port.js: the port, and the title screen's panel. The port (Chris: a racing game's garage) shows your ship turning
+// slowly in a quiet void over a round stone berth with a brass rim, lit warm from the front and cool from behind. Drag
+// to turn it. (The title screen's sky, with your ship flying over Aethermoor at sunset, is title.js.)
+//   Title: the game's name, the three skies (difficulty) to choose from, and a big "Set sail" (straight out to sea in
+//   your ship: a new Captain has nothing to buy yet), with "To port" beside it. A new Captain is told which skies
+//   suit a first voyage; one who has been to sea sees the shards waiting to be spent.
 //   Port: pick which ship to sail, buy ships and upgrades with Crystal Shards, and set where the crystals' power goes.
 //   Looking at a ship you don't own, the big gold button buys her (filling up as you earn towards her price), and
 //   setting sail in your own ship is a plain line under it. On a phone the panel has two tabs: the ship, and her
@@ -102,9 +105,9 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
     camera.setViewOffset(w, h, w / 2 - cx, h / 2 - cy, w, h);
   }
 
-  // ---------- drag to turn the ship (the title and port panels let presses through to it, game.html) ----------
+  // ---------- drag to turn the ship (the port's panels let presses through to it, game.html) ----------
   const canvas = renderer.domElement;
-  canvas.addEventListener('pointerdown', (e) => { if (mode === 'voyage') return; drag = { x: e.clientX, id: e.pointerId }; spinV = 0; });
+  canvas.addEventListener('pointerdown', (e) => { if (mode !== 'port') return; drag = { x: e.clientX, id: e.pointerId }; spinV = 0; });
   addEventListener('pointermove', (e) => { if (!drag || e.pointerId !== drag.id) return; const dx = e.clientX - drag.x; drag.x = e.clientX; spin += dx * 0.008; spinV = dx * 0.008; });
   addEventListener('pointerup', (e) => { if (drag && e.pointerId === drag.id) drag = null; });
   addEventListener('pointercancel', () => { drag = null; });
@@ -114,13 +117,14 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
   for (const [id, S] of Object.entries(SKIES)) {
     const b = document.createElement('button');
     b.type = 'button'; b.dataset.skies = id; b.setAttribute('role', 'radio');
-    b.innerHTML = `<b>${S.name}</b><span>${S.line}</span><small></small>`;
+    b.innerHTML = `<b>${S.name}</b><span>${S.line}</span><small></small>${id === 'fair' ? '<i class="first" hidden>Best for your first voyage</i>' : ''}`;
     b.addEventListener('click', () => {
       if (progress.data.skies !== id) { payload('port:skies').skies = id; emit('port:skies'); }
       progress.data.skies = id; progress.save(); refresh();
     });
     skiesEl.append(b);
   }
+  $('btn-title-sail').addEventListener('click', () => onSail(progress.data.flying));
   $('btn-to-port').addEventListener('click', () => setMode('port'));
   $('btn-skies').addEventListener('click', () => setMode('title'));
 
@@ -197,11 +201,17 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
 
   function refresh() {
     const d = progress.data, cfg = d.ships[viewing], R = SHIPS.find((s) => s.id === viewing), st = STATS[viewing];
+    const fresh = progress.newCaptain, F = SHIPS.find((s) => s.id === d.flying);
     for (const b of skiesEl.children) {
       b.setAttribute('aria-checked', String(b.dataset.skies === d.skies));
       const n = d.best[b.dataset.skies];
       b.querySelector('small').textContent = n ? `Best: wave ${n}` : '';
+      const first = b.querySelector('.first'); if (first) first.hidden = !fresh;
     }
+    // the title's big button sails at once; a Captain back from the sea is shown the shards waiting in port
+    $('btn-title-sail').textContent = fresh ? 'Set sail' : `Set sail in the ${F.name}`;
+    const rank = $('title-rank');
+    rank.hidden = fresh; rank.textContent = d.shards ? `◆ ${fmt(d.shards)} to spend in port` : 'No shards yet: bring down raiders to earn them';
     $('btn-skies').textContent = `Skies: ${SKIES[d.skies].name}`;
     $('port-shards').textContent = `◆ ${fmt(d.shards)}`;
     for (const b of shipsEl.children) {
@@ -211,7 +221,7 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
     }
     $('pp-name').textContent = R.name; $('pp-cls').textContent = `${R.cls} · ${R.length} m · Guns: ${gunWords(st)}`;
     $('pp-blurb').textContent = st.blurb;
-    const owned = cfg.owned, F = SHIPS.find((s) => s.id === d.flying);
+    const owned = cfg.owned;
     $('pp-buy').hidden = owned; $('pp-own').hidden = !owned; $('pp-tabs').hidden = !owned;
     if (!owned && panel.dataset.tab !== 'ship') tab('ship');
     // a ship you don't own: the big button buys her, and fills with gold as you earn towards her price
@@ -250,12 +260,14 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
     $('pp-tab-upgrades').querySelector('.dot').hidden = !canBuy;
   }
 
+  // the title (its sky is title.js's) or the port (her ship on the berth)
   function setMode(m) {
     mode = m;
     $('title').hidden = m !== 'title'; $('port').hidden = m !== 'port';
-    if (m === 'title' || m === 'port') { show(m === 'title' ? progress.data.flying : viewing); onMode?.(m); }
+    if (m === 'port') show(viewing); else if (m === 'title') refresh();
+    if (m === 'title' || m === 'port') onMode?.(m);
   }
-  progress.onLoad(() => { viewing = progress.data.flying; if (mode !== 'voyage') show(viewing); });
+  progress.onLoad(() => { viewing = progress.data.flying; if (mode === 'port') show(viewing); else refresh(); });
 
   function update(dt) {
     if (!ship) return;

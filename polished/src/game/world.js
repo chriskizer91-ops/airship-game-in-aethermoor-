@@ -2,6 +2,9 @@
 // ground, the open sea runs on past its edges, a broken deck of cloud floats between, and big clouds drift at the
 // ship's height. The sky is late afternoon with the sun low in the west. A wreck falling through the cloud deck tears
 // a hole in it (tear), which closes again over a few seconds (update).
+// The sky's look (its colours, the sun, how cloudy it is, the light) is a LOOK, kept in uniforms that every shader
+// drawing it shares (setLook): the voyages keep DAY, the late afternoon exactly as it has always been; the title screen
+// has a sunset of its own (title.js), with rays fanning out of the low sun.
 import * as THREE from 'three';
 import tile1 from '../../assets/map/tile-1.avif';
 import tile2 from '../../assets/map/tile-2.avif';
@@ -14,7 +17,7 @@ import tile8 from '../../assets/map/tile-8.avif';
 import tile9 from '../../assets/map/tile-9.avif';
 
 export const MAP = { w: 23040, h: 15360, px: 5 }; // metres; x runs east, z runs south, the map's centre at the origin
-export const SUN = new THREE.Vector3(-0.55, 0.52, 0.25).normalize();
+export const SUN = new THREE.Vector3(-0.55, 0.52, 0.25).normalize(); // (where the sun is: set by the look, setLook)
 export const CLOUD_Y = 430, THINNING = 2400;
 
 // The regions, a 12 x 8 grid over the map read off Chris's painting (names from the Magpie page)
@@ -32,13 +35,56 @@ export function regionAt(x, z) {
   return NAMES[GRID[r][c]];
 }
 
+// ---------- the look of the sky ----------
+// A look: where the sun is; the sky's colours (overhead, halfway up, at the horizon, warm round the sun, the sun itself,
+// and under the horizon); rays fanning out of the sun (0: none); the cloud deck's colours (lit, shaded, seen from
+// under it) and the big clouds' (lit, shaded); how much cloud there is (0 as ever, more above 0); a tint on the ground
+// (1: as Chris painted it); and the lights that go with it: the haze (its colour, where it starts and is thickest),
+// the sun's light, the sky's (overhead and from the ground) and the sky's light on the brass. Lights and haze are
+// written as colours are in CSS, and turned into the numbers the lights take once (look)
+const lin = (hex) => new THREE.Color(hex).toArray();
+const look = (o) => { for (const k of ['fog', 'light', 'hemiSky', 'hemiGround']) if (typeof o[k] === 'number') o[k] = lin(o[k]); return o; };
+export const DAY = look({
+  sun: [-0.55, 0.52, 0.25], zen: [0.13, 0.3, 0.66], mid: [0.36, 0.58, 0.88], hor: [0.84, 0.88, 0.93], warm: [1.0, 0.86, 0.66], sunCol: [1.0, 0.92, 0.75], below: [0.78, 0.84, 0.92], rays: 0,
+  deckLit: [1.0, 0.97, 0.92], deckShade: [0.74, 0.77, 0.86], deckUnder: [0.62, 0.65, 0.72], puffLit: [1.06, 1.06, 1.06], puffShade: [0.82, 0.82, 0.82], cover: 0, ground: [1, 1, 1],
+  fog: 0xc9d6e6, fogNear: 4000, fogFar: 34000, light: 0xfff0d6, lightI: 2.6, hemiSky: 0xc3dcff, hemiGround: 0x7c8a5c, hemiI: 0.75, env: 0.9,
+});
+// the title screen's sunset: the sun just over the horizon in the west-south-west, the sky burning orange into violet,
+// the clouds peach and gold-edged, the ground in warm shadow
+export const SUNSET = look({
+  sun: [-0.69, 0.1, 0.32], zen: [0.1, 0.14, 0.34], mid: [0.55, 0.38, 0.5], hor: [1.0, 0.58, 0.32], warm: [1.0, 0.45, 0.18], sunCol: [1.0, 0.62, 0.32], below: [0.45, 0.32, 0.36], rays: 1,
+  deckLit: [0.96, 0.52, 0.34], deckShade: [0.42, 0.27, 0.38], deckUnder: [0.3, 0.22, 0.3], puffLit: [1.08, 0.64, 0.46], puffShade: [0.42, 0.29, 0.4], cover: -0.06, ground: [0.72, 0.54, 0.5],
+  fog: 0xb27a68, fogNear: 3000, fogFar: 30000, light: 0xffa060, lightI: 2.2, hemiSky: 0xffa888, hemiGround: 0x3a2a30, hemiI: 0.55, env: 0.6,
+});
+// and in the Maelstrom's skies: storm cloud rolling in over the sunset, darker and heavier
+export const STORMY = look({
+  sun: [-0.69, 0.1, 0.32], zen: [0.06, 0.06, 0.11], mid: [0.26, 0.2, 0.27], hor: [0.66, 0.36, 0.24], warm: [0.82, 0.32, 0.13], sunCol: [0.86, 0.42, 0.22], below: [0.26, 0.2, 0.24], rays: 0.45,
+  deckLit: [0.17, 0.11, 0.11], deckShade: [0.045, 0.04, 0.06], deckUnder: [0.04, 0.035, 0.05], puffLit: [0.34, 0.21, 0.19], puffShade: [0.07, 0.06, 0.09], cover: 0.1, ground: [0.42, 0.35, 0.36],
+  fog: 0x4a3440, fogNear: 2000, fogFar: 22000, light: 0xff7a44, lightI: 1.3, hemiSky: 0x8a6878, hemiGround: 0x201820, hemiI: 0.42, env: 0.35,
+});
+// a look part way from a to b (k: 0 to 1), written into `out` (made once, and kept)
+export function mixLook(a, b, k, out = {}) {
+  for (const key in a) {
+    const x = a[key], y = b[key];
+    if (typeof x === 'number') out[key] = x + (y - x) * k;
+    else { const o = (out[key] ??= [0, 0, 0]); for (let i = 0; i < 3; i++) o[i] = x[i] + (y[i] - x[i]) * k; }
+  }
+  return out;
+}
+// the look's uniforms, shared by the sky, the cloud deck, the big clouds and the ground's cloud shadows
+const V = (a) => new THREE.Vector3(...a);
+const MOOD = {
+  uZen: { value: V(DAY.zen) }, uMid: { value: V(DAY.mid) }, uHor: { value: V(DAY.hor) }, uWarm: { value: V(DAY.warm) }, uSunCol: { value: V(DAY.sunCol) }, uBelow: { value: V(DAY.below) },
+  uRays: { value: 0 }, uDeckLit: { value: V(DAY.deckLit) }, uDeckShade: { value: V(DAY.deckShade) }, uDeckUnder: { value: V(DAY.deckUnder) },
+  uPuffLit: { value: V(DAY.puffLit) }, uPuffShade: { value: V(DAY.puffShade) }, uCover: { value: 0 }, uDrift: { value: new THREE.Vector2() },
+};
 const SKY_GLSL = `
+  uniform vec3 uZen; uniform vec3 uMid; uniform vec3 uHor; uniform vec3 uWarm;
   vec3 skyColor(vec3 d, vec3 sun) {
     float h = d.y, s = max(dot(normalize(vec3(d.x, max(d.y, 0.0), d.z)), sun), 0.0);
-    vec3 zen = vec3(0.13, 0.3, 0.66), mid = vec3(0.36, 0.58, 0.88), hor = vec3(0.84, 0.88, 0.93), warm = vec3(1.0, 0.86, 0.66);
-    vec3 c = mix(hor, mid, smoothstep(0.0, 0.22, h));
-    c = mix(c, zen, smoothstep(0.2, 0.9, h));
-    c = mix(c, warm, pow(s, 5.0) * 0.55 * (1.0 - smoothstep(0.0, 0.5, h)));
+    vec3 c = mix(uHor, uMid, smoothstep(0.0, 0.22, h));
+    c = mix(c, uZen, smoothstep(0.2, 0.9, h));
+    c = mix(c, uWarm, pow(s, 5.0) * 0.55 * (1.0 - smoothstep(0.0, 0.5, h)));
     return c;
   }`;
 export const HAZE = new THREE.Color(0xc9d6e6);
@@ -46,12 +92,19 @@ export const HAZE = new THREE.Color(0xc9d6e6);
 function makeSky() {
   const mat = new THREE.ShaderMaterial({
     side: THREE.BackSide, depthWrite: false, fog: false,
-    uniforms: { uSun: { value: SUN } },
+    uniforms: { uSun: { value: SUN }, ...MOOD },
     vertexShader: 'varying vec3 vDir; void main() { vDir = position; vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0); gl_Position = p.xyww; }',
-    fragmentShader: `varying vec3 vDir; uniform vec3 uSun; ${SKY_GLSL}
+    // (the rays: a fan of light and shade round the sun, lowest near the horizon; worked out only when there are any)
+    fragmentShader: `varying vec3 vDir; uniform vec3 uSun; uniform vec3 uSunCol; uniform vec3 uBelow; uniform float uRays; ${SKY_GLSL}
       void main() { vec3 d = normalize(vDir); float s = max(dot(d, uSun), 0.0);
-        vec3 c = skyColor(d, uSun) + vec3(1.0, 0.92, 0.75) * (pow(s, 120.0) * 0.9 + smoothstep(0.9993, 0.9996, s) * 4.0);
-        c = mix(c, vec3(0.78, 0.84, 0.92), smoothstep(0.0, -0.2, d.y));
+        vec3 c = skyColor(d, uSun) + uSunCol * (pow(s, 120.0) * 0.9 + smoothstep(0.9993, 0.9996, s) * 4.0);
+        if (uRays > 0.0) {
+          vec3 t1 = normalize(cross(uSun, vec3(0.0, 1.0, 0.0))), t2 = cross(t1, uSun);
+          float ang = atan(dot(d, t2), dot(d, t1));
+          float fan = (0.5 + 0.5 * sin(ang * 17.0 + sin(ang * 5.0) * 2.0)) * (0.5 + 0.5 * sin(ang * 7.0 - 1.3));
+          c += uSunCol * fan * pow(s, 5.0) * (1.0 - smoothstep(-0.05, 0.45, d.y)) * uRays * 0.45;
+        }
+        c = mix(c, uBelow, smoothstep(0.0, -0.2, d.y));
         gl_FragColor = vec4(c, 1.0); }`,
   });
   const m = new THREE.Mesh(new THREE.SphereGeometry(1, 40, 20), mat);
@@ -65,11 +118,12 @@ function makeSky() {
 // working it out again: the deck and the ground used to work it out four times for every pixel, the biggest cost on a
 // phone. The picture keeps 16 bits in two channels, so cloud edges stay smooth.
 const CLOUD_P = 16, CLOUD_N = 1024, HOLES = 3;
+// (uCover: more cloud above 0, the look's)
 const CLOUD_GLSL = `
-  uniform sampler2D uCloud;
+  uniform sampler2D uCloud; uniform float uCover;
   float cloudAt(vec2 uv) { return dot(texture2D(uCloud, uv).rg, vec2(255.0 * 256.0, 255.0) / 65535.0); }
   float cover(vec2 xz, float t) { vec2 p = xz * 0.00045 + vec2(t * 0.0022, t * 0.0009);
-    return smoothstep(0.44, 0.64, cloudAt(p / ${CLOUD_P.toFixed(1)}) * 0.85 + cloudAt((p * 3.3 + 7.0) / ${CLOUD_P.toFixed(1)}) * 0.25); }`;
+    return smoothstep(0.44 - uCover, 0.64 - uCover, cloudAt(p / ${CLOUD_P.toFixed(1)}) * 0.85 + cloudAt((p * 3.3 + 7.0) / ${CLOUD_P.toFixed(1)}) * 0.25); }`;
 // the pattern itself: value noise, octaves 2.07 times finer each, on lattices that wrap round so the picture tiles
 function makeCloudBake(renderer) {
   const target = new THREE.WebGLRenderTarget(CLOUD_N, CLOUD_N, { format: THREE.RGFormat, type: THREE.UnsignedByteType, depthBuffer: false,
@@ -120,23 +174,25 @@ export async function makeWorld(renderer) {
   const clouds = makeCloudBake(renderer), uCloud = { value: clouds.texture };
   const shade = (mat) => {
     mat.onBeforeCompile = (sh) => {
-      sh.uniforms.uTime = time; sh.uniforms.uSun = { value: SUN }; sh.uniforms.uCloud = uCloud;
+      sh.uniforms.uTime = time; sh.uniforms.uSun = { value: SUN }; sh.uniforms.uCloud = uCloud; sh.uniforms.uCover = MOOD.uCover;
       sh.vertexShader = 'varying vec3 vWorld;\n' + sh.vertexShader.replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;');
       sh.fragmentShader = 'varying vec3 vWorld;\nuniform float uTime;\nuniform vec3 uSun;\n' + CLOUD_GLSL + '\n' + sh.fragmentShader.replace('#include <map_fragment>',
         '#include <map_fragment>\nvec2 sp = vWorld.xz - uSun.xz / uSun.y * ' + CLOUD_Y.toFixed(1) + ';\ndiffuseColor.rgb *= 1.0 - 0.38 * cover(sp, uTime);');
     };
-    mat.customProgramCacheKey = () => 'ground-cloud-shadow-2';
+    mat.customProgramCacheKey = () => 'ground-cloud-shadow-3';
     return mat;
   };
+  const ground = []; // (their materials, tinted by the look)
   textures.forEach((t, i) => {
     const col = i % 3, row = Math.floor(i / 3);
     const m = new THREE.Mesh(new THREE.PlaneGeometry(tw, th).rotateX(-Math.PI / 2), shade(new THREE.MeshBasicMaterial({ map: t, toneMapped: false })));
     m.position.set(-MAP.w / 2 + tw * (col + 0.5), 0, -MAP.h / 2 + th * (row + 0.5));
-    group.add(m);
+    group.add(m); ground.push(m.material);
   });
   // the open sea past the map's edges, the same deep blue as its painted sea. It's drawn first and the map over it:
   // laid just under the map instead, the two would flicker where the far ground is too far off to tell them apart
-  const sea = new THREE.Mesh(new THREE.PlaneGeometry(160000, 160000).rotateX(-Math.PI / 2), shade(new THREE.MeshBasicMaterial({ color: 0x0a3b80, toneMapped: false, depthWrite: false })));
+  const SEA = new THREE.Color(0x0a3b80);
+  const sea = new THREE.Mesh(new THREE.PlaneGeometry(160000, 160000).rotateX(-Math.PI / 2), shade(new THREE.MeshBasicMaterial({ color: SEA, toneMapped: false, depthWrite: false })));
   sea.renderOrder = -5; group.add(sea);
 
   // the deck of cloud: white and gold-edged from above, grey from beneath, gaps where the ground shows through, and the
@@ -144,15 +200,15 @@ export async function makeWorld(renderer) {
   const holes = Array.from({ length: HOLES }, () => new THREE.Vector4(0, 0, 1, 0)), torn = holes.map(() => ({ r: 1, age: 9 }));
   const deck = new THREE.Mesh(new THREE.PlaneGeometry(160000, 160000).rotateX(-Math.PI / 2), new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: false,
-    uniforms: { uTime: time, uSun: { value: SUN }, uCloud, uHoles: { value: holes } },
+    uniforms: { uTime: time, uSun: { value: SUN }, uCloud, uHoles: { value: holes }, ...MOOD },
     vertexShader: 'varying vec3 vW; void main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
-    fragmentShader: `varying vec3 vW; uniform float uTime; uniform vec3 uSun; uniform vec4 uHoles[${HOLES}]; ${SKY_GLSL} ${CLOUD_GLSL}
+    fragmentShader: `varying vec3 vW; uniform float uTime; uniform vec3 uSun; uniform vec4 uHoles[${HOLES}]; uniform vec3 uDeckLit; uniform vec3 uDeckShade; uniform vec3 uDeckUnder; ${SKY_GLSL} ${CLOUD_GLSL}
       void main() {
         float c = cover(vW.xz, uTime);
         for (int i = 0; i < ${HOLES}; i++) { vec4 h = uHoles[i]; if (h.w > 0.0) c *= 1.0 - h.w * (1.0 - smoothstep(h.z * 0.4, h.z, length(vW.xz - h.xy))); }
         float lit = cover(vW.xz + uSun.xz * 160.0, uTime);
-        vec3 top = mix(vec3(1.0, 0.97, 0.92), vec3(0.74, 0.77, 0.86), lit * 0.6) ;
-        vec3 under = vec3(0.62, 0.65, 0.72);
+        vec3 top = mix(uDeckLit, uDeckShade, lit * 0.6);
+        vec3 under = uDeckUnder;
         vec3 col = cameraPosition.y > vW.y ? top : under;
         vec3 toCam = vW - cameraPosition; float d = length(toCam);
         vec3 haze = skyColor(normalize(vec3(toCam.x, 0.0, toCam.z)), uSun);
@@ -184,7 +240,35 @@ export async function makeWorld(renderer) {
   }
   // a fresh voyage (or back to port): every hole closed at once, so none is left open from the last fight
   function clear() { for (let i = 0; i < HOLES; i++) { holes[i].w = 0; torn[i].age = 9; } }
-  return { group, time, puffs, deck, clouds, tear, update, clear, holes };
+
+  // the look (DAY, SUNSET or between): the sky, the clouds, the sun and the tint on the ground, and if they're given,
+  // the lights and the haze (the sun's light, the sky's light, and the scene they're in)
+  const tint = new THREE.Color(), now = mixLook(DAY, DAY, 0), back = {}; // (the look now, and one kept aside)
+  function setLook(L, lights) {
+    if (L !== now) mixLook(L, L, 0, now);
+    SUN.set(L.sun[0], L.sun[1], L.sun[2]).normalize();
+    for (const k of ['zen', 'mid', 'hor', 'warm', 'sunCol', 'below', 'deckLit', 'deckShade', 'deckUnder', 'puffLit', 'puffShade']) MOOD['u' + k[0].toUpperCase() + k.slice(1)].value.fromArray(L[k]);
+    MOOD.uRays.value = L.rays; MOOD.uCover.value = L.cover;
+    tint.fromArray(L.ground);
+    for (const m of ground) m.color.copy(tint);
+    sea.material.color.copy(SEA).multiply(tint);
+    if (!lights) return;
+    const { sun, hemi, scene } = lights;
+    sun.color.fromArray(L.light); sun.intensity = L.lightI;
+    hemi.color.fromArray(L.hemiSky); hemi.groundColor.fromArray(L.hemiGround); hemi.intensity = L.hemiI;
+    scene.fog.color.fromArray(L.fog); scene.fog.near = L.fogNear; scene.fog.far = L.fogFar;
+    scene.environmentIntensity = L.env;
+  }
+  // the sky's light on the brass in a look: a blurred picture of its sky (`size`: how fine), drawn once (and again if the
+  // drawing context is lost). The sky is put back as it was
+  const envScene = new THREE.Scene(); envScene.add(group.children[0].clone());
+  function skyLight(L, size = 256) {
+    mixLook(now, now, 0, back); setLook(L);
+    const pmrem = new THREE.PMREMGenerator(renderer), t = pmrem.fromScene(envScene, 0.04, 1, 60000, { size }).texture;
+    pmrem.dispose(); setLook(back);
+    return t;
+  }
+  return { group, time, puffs, deck, clouds, tear, update, clear, holes, setLook, skyLight, mood: MOOD };
 }
 
 // A soft cumulus picture drawn once, and instanced billboards of it
@@ -213,10 +297,11 @@ function makePuffs() {
   const ig = new THREE.InstancedBufferGeometry().copy(geo); ig.instanceCount = N;
   const mat = new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, fog: false,
-    uniforms: { uMap: { value: cloudTexture() }, uCenter: { value: new THREE.Vector3() }, uSpan: { value: SPAN }, uSun: { value: SUN } },
-    vertexShader: `attribute vec3 offset; attribute float size; uniform vec3 uCenter; uniform float uSpan; varying vec2 vUv; varying float vFade;
+    uniforms: { uMap: { value: cloudTexture() }, uCenter: { value: new THREE.Vector3() }, uSpan: { value: SPAN }, uSun: { value: SUN }, uPuffLit: MOOD.uPuffLit, uPuffShade: MOOD.uPuffShade, uDrift: MOOD.uDrift },
+    // (uDrift: how far the wind has carried them, on the title screen)
+    vertexShader: `attribute vec3 offset; attribute float size; uniform vec3 uCenter; uniform float uSpan; uniform vec2 uDrift; varying vec2 vUv; varying float vFade;
       void main() {
-        vec3 p = offset; p.xz = uCenter.xz + mod(offset.xz - uCenter.xz + uSpan * 0.5, uSpan) - uSpan * 0.5;
+        vec3 p = offset; p.xz = uCenter.xz + mod(offset.xz + uDrift - uCenter.xz + uSpan * 0.5, uSpan) - uSpan * 0.5;
         vec4 mv = viewMatrix * vec4(p, 1.0);
         mv.xy += position.xy * vec2(size * 1.6, size);
         float d = length(p.xz - uCenter.xz);
@@ -224,8 +309,8 @@ function makePuffs() {
         vFade *= smoothstep(60.0, 260.0, -mv.z);
         vUv = uv; gl_Position = projectionMatrix * mv;
       }`,
-    fragmentShader: `uniform sampler2D uMap; varying vec2 vUv; varying float vFade;
-      void main() { vec4 c = texture2D(uMap, vUv); c.rgb *= mix(0.82, 1.06, vUv.y); c.a *= vFade * 0.9; if (c.a < 0.01) discard; gl_FragColor = c;
+    fragmentShader: `uniform sampler2D uMap; uniform vec3 uPuffLit; uniform vec3 uPuffShade; varying vec2 vUv; varying float vFade;
+      void main() { vec4 c = texture2D(uMap, vUv); c.rgb *= mix(uPuffShade, uPuffLit, vUv.y); c.a *= vFade * 0.9; if (c.a < 0.01) discard; gl_FragColor = c;
         #include <colorspace_fragment>
       }`,
   });

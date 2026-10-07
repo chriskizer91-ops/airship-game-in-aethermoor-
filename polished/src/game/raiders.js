@@ -352,5 +352,7 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
   function clear() { for (const r of list) { r.gone = r.cleared = true; drop(r); } list.length = 0; }
   // build a class's models ahead of time (a captain's, before her wave), so nothing is built mid-fight
   const prepare = (id, captain = false) => { template(id, captain); };
-  return { list, escaped, spawn, spawnWave, update, hitBy, clear, prepare, templates: T, setAI: (on) => { ai = on; }, setDetail: (k) => { detailAt = k; }, get detailAt() { return detailAt; } };
+  // a raider's ship and nothing more, for the title screen to fly across its sky: not one of the raiders, never fighting
+  const model = (id) => raiderShip(template(id, false));
+  return { list, escaped, spawn, spawnWave, update, hitBy, clear, prepare, model, templates: T, setAI: (on) => { ai = on; }, setDetail: (k) => { detailAt = k; }, get detailAt() { return detailAt; } };
 }

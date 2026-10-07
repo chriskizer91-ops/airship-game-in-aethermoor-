@@ -1,7 +1,8 @@
 // progress.js: what the Captain has earned and owns, kept between visits: Crystal Shards (Aethermoor's money), the
-// ships bought, each ship's upgrades and crystal power setting, which skies (difficulty) were chosen, and the best
-// wave reached. Kept in the browser on this device, and, when the game is opened on claude.ai, also in the page's own
-// private store for this person, so it follows them between devices.
+// ships bought, each ship's upgrades and crystal power setting, which skies (difficulty) were chosen, the best wave
+// reached, and how many voyages are behind the Captain (none: a new Captain, whom the title screen helps along). Kept
+// in the browser on this device, and, when the game is opened on claude.ai, also in the page's own private store for
+// this person, so it follows them between devices.
 // the three skies: how well the raiders aim, how quickly they reload, how hard they hit, how much they take, how fast
 // they fly, how many more of them come, what shards pay, and how much of a raider captain's edge over her crew she has
 // (raiders.js: on Fair Winds none, as she's the first big fight a new Captain meets, in a Skiff; only her bounty is
@@ -25,7 +26,7 @@ const HELD = 600e3; // how long a voyage stays on this device's own list after t
 // the store took it }
 function fresh() {
   return {
-    v: 1, saved: 0, synced: 0, skies: 'cross', shards: 0, flying: 'skiff', best: { fair: 0, cross: 0, mael: 0 },
+    v: 1, saved: 0, synced: 0, skies: 'cross', shards: 0, flying: 'skiff', best: { fair: 0, cross: 0, mael: 0 }, voyages: 0,
     ships: Object.fromEntries(IDS.map((id) => [id, { owned: id === 'skiff', power: 0, mods: { armour: 0, canvas: 0, drill: 0, crystals: 0 } }])),
     got: [], banked: [],
   };
@@ -64,7 +65,7 @@ export function makeProgress() {
     const lost = old.banked.filter((b) => b?.n > 0 && !data.got.includes(b.id) && (!b.at || now - b.at < HELD));
     data.banked = lost.map((b) => ({ ...b, sent: 1, at: 0 }));
     for (const b of lost) data.shards += b.n;
-    if (lost.length) for (const k in data.best) data.best[k] = Math.max(data.best[k], old.best[k] ?? 0);
+    if (lost.length) { for (const k in data.best) data.best[k] = Math.max(data.best[k], old.best[k] ?? 0); data.voyages = Math.max(data.voyages, old.voyages); }
     writeLocal();
     // (whether this device had progress of its own, so a new browser isn't told it came from another device)
     for (const f of listeners) f(data, old.saved > 0, lost.length > 0);
@@ -147,8 +148,10 @@ export function makeProgress() {
         const last = data.banked[data.banked.length - 1];
         if (last && !last.sent) last.n += n; else data.banked.push({ id: Math.random().toString(36).slice(2, 10), n, sent: 0, at: 0 });
       }
-      data.shards += n; data.best[data.skies] = Math.max(data.best[data.skies], wave); save();
+      data.shards += n; data.best[data.skies] = Math.max(data.best[data.skies], wave); data.voyages++; save();
     },
+    // a Captain who has never been to sea (a save from before voyages were counted shows it in what it holds)
+    get newCaptain() { return !data.voyages && !data.shards && !Object.values(data.best).some((n) => n > 0) && !IDS.some((id) => id !== 'skiff' && data.ships[id].owned); },
     // (f(data, had, kept): `had` is whether this device had progress of its own, `kept` whether a voyage won here was added)
     onLoad: (f) => listeners.push(f),
     // a fresh start (it keeps the stamps and the voyages the store holds, or the store would bring them straight back)

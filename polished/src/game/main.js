@@ -10,6 +10,8 @@
 // red arc pointing where the shot came from. A raider going down shows her bounty rising from the wreck, and the shard
 // count in the corner counts up as they come in. Bringing down the last raider of a wave slows the world for a moment
 // before the card between waves rises.
+// The title screen is drawn in the world itself, at sunset (title.js); the port in its own quiet void (port.js). Going
+// from one to another (or out to sea) dips through the night for a moment, so no scene ever shows in the wrong place.
 // The sound (sound.js, through audio.js) answers the same news, and plays Chris's music; it starts with the first touch
 // anywhere on the page. The Settings card (settings.js: the sound, aim speed, up and down, the picture, camera shake,
 // and on a phone Fire on the left) opens from a gear on the title screen, in port and on the pause card.
@@ -20,7 +22,7 @@ import * as THREE from 'three';
 import { loadShipArt } from '../ship/materials.js';
 import { buildShip } from '../ship/build.js';
 import { SHIPS, FLEET } from '../ships/index.js';
-import { makeWorld, regionAt, REGIONS, SUN, HAZE, MAP, THINNING } from './world.js';
+import { makeWorld, regionAt, REGIONS, SUN, HAZE, MAP, THINNING, DAY } from './world.js';
 import { makeInput } from './input.js';
 import { makeFlyer, WIND, windHelp } from './flight.js';
 import { makeBolts, makeGunnery, batteryFor, BATTERY_NAMES, intercept } from './guns.js';
@@ -33,6 +35,7 @@ import { makeProgress, SKIES } from './progress.js';
 import { loadout } from './mods.js';
 import { makePickups } from './pickups.js';
 import { makePort } from './port.js';
+import { makeTitle } from './title.js';
 import { hitZones, firstHit } from './damage.js';
 import { smokeFrom } from './effects.js';
 import { makeAudio } from '../audio/audio.js';
@@ -74,13 +77,13 @@ async function main() {
   const [world, art] = await Promise.all([makeWorld(renderer), loadShipArt(renderer)]);
   scene.add(world.group);
 
-  // the day sky lights the brass: a blurred picture of it, drawn once (and again if the drawing context is lost)
-  const envScene = new THREE.Scene(); envScene.add(world.group.children[0].clone());
-  const skyLight = () => { const pmrem = new THREE.PMREMGenerator(renderer), t = pmrem.fromScene(envScene, 0.04, 1, 60000).texture; pmrem.dispose(); return t; };
-  scene.environment = skyLight();
-  scene.environmentIntensity = 0.9;
-  const hemi = new THREE.HemisphereLight(0xc3dcff, 0x7c8a5c, 0.75);
-  const sun = new THREE.DirectionalLight(0xfff0d6, 2.6);
+  // the afternoon sky lights the brass: a blurred picture of it, drawn once (and again if the drawing context is lost)
+  let dayLight = world.skyLight(DAY);
+  scene.environment = dayLight;
+  // the sky's light and the sun's, coloured by the look of the sky (world.js: the voyages' afternoon, the title's sunset)
+  const hemi = new THREE.HemisphereLight(), sun = new THREE.DirectionalLight();
+  const lights = { sun, hemi, scene };
+  world.setLook(DAY, lights);
   sun.castShadow = true; sun.shadow.mapSize.set(picture().shadow, picture().shadow);
   sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.04;
   scene.add(hemi, sun, sun.target);
@@ -118,19 +121,32 @@ async function main() {
   // ---------- the ship you fly, and a voyage ----------
   const built = new Map(), zones = new Map();
   const shipFor = (R) => { if (!built.has(R.id)) { const s = buildShip(R, 'full', art); s.glow.material.uniforms.uScale.value = camera.userData.pixelScale ?? 500; built.set(R.id, s); } return built.get(R.id); };
-  const port = makePort({ renderer, env: scene.environment, progress, shipFor, touch, onSail: (id) => sail(id), onMode: (m) => enter(m) });
+  const port = makePort({ renderer, env: dayLight, progress, shipFor, touch, onSail: (id) => sail(id), onMode: (m) => enter(m) });
+  const title = makeTitle({ renderer, scene, world, lights, art, raiders, shipFor, progress, touch, dayLight: () => dayLight });
   // a phone can drop the drawing context after a long time in the background (or a laptop's graphics can restart).
   // three.js puts back the ships, the map and the shadows by itself, but not the pictures drawn once at start-up: the
-  // sky's light on the brass and the cloud pattern. Pause, and draw those again when the context comes back.
+  // sky's light on the brass (the afternoon's, and the title's sunset) and the cloud pattern. Pause, and draw those
+  // again when the context comes back.
   canvas.addEventListener('webglcontextlost', () => { if (mode === 'voyage' && !paused) pause(true); });
-  canvas.addEventListener('webglcontextrestored', () => { scene.environment = port.scene.environment = skyLight(); world.clouds.bake(); });
-  let mode = 'title', paused = false, player = null, gunnery = null;
+  canvas.addEventListener('webglcontextrestored', () => {
+    world.clouds.bake(); dayLight = port.scene.environment = world.skyLight(DAY);
+    if (!title.on) scene.environment = dayLight;
+    title.relight();
+  });
+  let mode = '', paused = false, player = null, gunnery = null;
   const V = { shards: 0, downed: 0, hits: 0 }; // this voyage
   // the waves: which (n, from 0), what's happening between them, and the next wave once it's known (shown on the card)
   const W = { n: 0, state: 'calm', timer: 5, lost: 0, choose: 0, sunk: false, next: null, bonus: 0, bonusAt: 0, bonusShown: -1 };
   let told = null; // the screen the events were last told of
+  // a new screen: the title's sky (or the afternoon's again), and a dip through the night as it changes. The change
+  // itself is at once (the night covers it), then the new screen comes up out of the night over half a second
+  const veil = $('veil');
+  let dip = null;
   function enter(m) {
+    if (m !== 'title') title.leave();
+    if (m !== mode) { dip?.cancel(); dip = veil.animate([{ opacity: 1 }, { opacity: 0 }], { duration: lessMotion.matches ? 150 : 520, easing: 'ease-out' }); }
     mode = m; document.body.dataset.mode = m;
+    if (m === 'title') { fx.clear(); title.enter(); } // (no smoke left hanging in its sky from the last fight)
     if (told !== m) { told = m; payload('mode').mode = m; emit('mode'); }
     input.active = m === 'voyage' && !paused;
     if (m !== 'voyage' && document.pointerLockElement) document.exitPointerLock();
@@ -148,6 +164,8 @@ async function main() {
   function sail(id, force = false) {
     const d = progress.data;
     if (!d.ships[id].owned && !force) return;
+    title.leave(); // (the afternoon again, before her ship is put in the sky)
+    const first = progress.newCaptain;
     const R = SHIPS.find((s) => s.id === id), ship = shipFor(R), L = loadout(id, d.ships[id]);
     const a = Math.random() * Math.PI * 2, at = { pos: new THREE.Vector3(Math.sin(a) * 2500, 680, Math.cos(a) * 2500), heading: a + Math.PI };
     ship.root.rotation.set(0, at.heading, 0); ship.root.position.copy(at.pos);
@@ -177,7 +195,7 @@ async function main() {
     clearTimeout(hintTimer); hintTimer = 0; hint.hidden = sailed >= 3; hint.classList.remove('gone');
     layout();
     region = regionAt(at.pos.x, at.pos.z); // the region's name shows when you cross into the next one
-    banner(`The ${R.name} sets sail`, `${skies().name} · ${windWords()}`);
+    banner(first ? 'Your first voyage, Captain' : `The ${R.name} sets sail`, `${skies().name} · ${windWords()}`);
     const E = payload('voyage:start'); E.ship = id; E.skies = d.skies; emit('voyage:start');
   }
   // back to port: keep this share of the voyage's shards
@@ -456,7 +474,7 @@ async function main() {
     camera.aspect = w / h; camera.fov = viewFov = w < h ? 68 : 55; camera.updateProjectionMatrix();
     camera.userData.pixelScale = renderer.domElement.height / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
     for (const s of built.values()) s.glow.material.uniforms.uScale.value = camera.userData.pixelScale;
-    port.resize(); layout();
+    port.resize(); title.resize(); layout();
     if (mini.classList.contains('big')) placeMapClose();
   }
   // where the HUD's panels are, so the raiders' tags at the screen's edge keep clear of them: those along the top
@@ -790,6 +808,7 @@ async function main() {
   function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
     if (mode === 'voyage') { if (!paused && !W.sunk) tick(dt * fx.timeScale(dt)); renderer.render(scene, camera); }
+    else if (mode === 'title') { input.read(); title.update(dt); title.render(); }
     else { input.read(); port.update(dt); port.render(); }
     // while the game stands still (paused, or your ship gone down), a tag's "Broadside!" stops flashing (game.html)
     const still = mode === 'voyage' && (paused || W.sunk);
@@ -804,7 +823,7 @@ async function main() {
   window.__game = {
     ready: true, get player() { return player; }, get gunnery() { return gunnery; }, cam, input, raiders, bolts, pickups, renderer, camera, scene, world, sun, waves: W, voyage: V,
     fx, events, wrecks, surge, get lastArc() { return lastArc; }, get time() { return time; }, audio, sound, settings,
-    progress, port, sail, endVoyage, pause, sailOn, wind: WIND, get mode() { return mode; }, get paused() { return paused; },
+    progress, port, title, sail, endVoyage, pause, sailOn, wind: WIND, get mode() { return mode; }, get paused() { return paused; },
     fly: (id) => sail(id, true), // a voyage in any ship, owned or not (for tests)
     words: { side: sideWords, wind: () => windWords() }, layout, edge: EDGE, // (directions in words, and the panels the edge tags keep clear of)
     get hits() { return V.hits; }, get downed() { return V.downed; }, get locked() { return locked; },

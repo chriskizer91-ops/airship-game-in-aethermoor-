@@ -65,7 +65,7 @@
 
   /* ---------- the title screen ---------- */
   #title { display: grid; align-content: center; align-content: safe center; padding: 24px clamp(18px, 7vw, 90px); overflow-y: auto;
-    background: linear-gradient(90deg, rgba(8, 6, 16, 0.88), rgba(8, 6, 16, 0.4) 58%, rgba(8, 6, 16, 0)); }
+    background: linear-gradient(90deg, rgba(8, 6, 16, 0.84), rgba(8, 6, 16, 0.5) 40%, rgba(8, 6, 16, 0) 60%); }
   .title-card { max-width: 480px; }
   #title h1 { margin: 0; font: 700 clamp(40px, 6.4vw, 74px)/1.02 var(--display); color: var(--gold); text-shadow: 0 3px 0 #000, 0 0 30px rgba(0, 0, 0, 0.8); }
   #title .lede { margin: 12px 0 18px; font-size: clamp(14px, 1.7vw, 16px); color: var(--cream); }
@@ -78,7 +78,14 @@
   #skies button small:empty { display: none; }
   #skies button[aria-checked='true'] { background: var(--plum); border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); }
   #skies button[aria-checked='true'] b { color: var(--gold); }
-  #btn-to-port { margin-top: 18px; }
+  /* (a new Captain's hint, on Fair Winds) */
+  #skies .first { justify-self: start; margin-top: 2px; padding: 1px 8px; border-radius: 9px; background: var(--gold); color: var(--plum); font: normal 600 11.5px/1.5 var(--body); }
+  #title-rank { margin: -6px 0 4px; font-size: 15px; font-weight: 500; text-shadow: 0 1px 0 #000, 0 0 10px rgba(0, 0, 0, 0.85); }
+  .title-go { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; margin-top: 18px; }
+  .title-go .plain { min-height: 48px; padding: 10px 20px; font-size: 16px; }
+
+  /* the dip through the night between the title, the port and the sea (main.js fades it away) */
+  #veil { position: fixed; inset: 0; z-index: 10; background: var(--night); opacity: 0; pointer-events: none; }
 
   /* ---------- the port ---------- */
   .port-top { position: fixed; top: var(--top); left: var(--gutter); right: var(--gutter); display: flex; align-items: center; gap: 10px; pointer-events: none; }
@@ -365,6 +372,8 @@
     #title h1 { font-size: clamp(34px, 10.5vw, 46px); }
     #skies button { padding: 8px 12px; }
     #skies button b { font-size: 17px; }
+    .title-go { margin-top: 14px; }
+    .title-go .big { flex: 1 1 auto; padding: 11px 16px; font-size: 18px; }
     .port-top h1 { font-size: 26px; }
     .port-top { gap: 8px; }
     #btn-skies { font-size: 13px; padding: 6px 10px; }
@@ -439,7 +448,11 @@
     #skies button { align-content: start; padding: 7px 9px; }
     #skies button b { font-size: 15px; }
     #skies button span { font-size: 11.5px; line-height: 1.3; }
-    #btn-to-port { margin-top: 10px; padding: 9px 22px; font-size: 17px; }
+    .title-go { margin-top: 10px; gap: 8px; flex-wrap: nowrap; }
+    .title-go .big { padding: 9px 18px; font-size: 17px; }
+    .title-go .plain { min-height: 42px; padding: 8px 16px; font-size: 15px; }
+    #title-rank { margin: -4px 0 2px; font-size: 13.5px; }
+    #skies .first { font-size: 10.5px; padding: 0 6px; }
     .port-top h1 { font-size: 24px; }
     #port-panel { width: min(340px, 46vw); top: calc(var(--top) + 50px); padding-top: 6px; }
     #pp-name { font-size: 22px; }
@@ -501,6 +514,21 @@
     #settings .big { padding: 8px 22px; font-size: 16px; }
     #howto dl { grid-template-columns: auto 1fr auto 1fr; gap: 4px 10px; font-size: 13px; margin: 8px 0; }
   }
+  /* a small phone held upright: the title's panel tighter (no opening line), so her ship shows above it */
+  @media (max-width: 700px) and (max-height: 720px) {
+    #title { padding-top: 12px; padding-bottom: 14px; }
+    #title h1 { font-size: clamp(30px, 9vw, 38px); }
+    #title .lede { display: none; }
+    #title-rank { margin: 6px 0 0; }
+    #title h2 { margin: 8px 0 5px; }
+    #skies { gap: 6px; }
+    #skies button { padding: 6px 11px; gap: 1px; }
+    #skies button b { font-size: 15.5px; }
+    #skies button span { font-size: 12px; line-height: 1.3; }
+    .title-go { margin-top: 10px; gap: 8px; }
+    .title-go .big { padding: 10px 12px; font-size: 16px; }
+    .title-go .plain { min-height: 44px; padding: 8px 14px; font-size: 15px; }
+  }
   /* a laptop window short and narrow at once: the upright phone's top, the short one's middle */
   @media (max-width: 700px) and (max-height: 500px) {
     #btn-pause { top: var(--top); left: auto; right: calc(var(--gutter) + var(--map-w) + 8px); translate: none; }
@@ -518,14 +546,16 @@
 <canvas id="stage"></canvas>
 <p id="loading">Raising the sails…</p>
 
-<!-- the title screen: the game's name and the three skies to choose from -->
+<!-- the title screen, over your ship flying at sunset: the game's name, the three skies to choose from, and set sail
+     (or go to port first) -->
 <section id="title" class="screen" hidden>
   <div class="title-card">
     <h1>Skies of Aethermoor</h1>
     <p class="lede">Raiders are loose over Aethermoor, Captain. Bring them down, gather their Crystal Shards, and build your ship in port.</p>
+    <p id="title-rank" class="shards" hidden></p>
     <h2>Choose your skies</h2>
     <div id="skies" role="radiogroup" aria-label="Skies"></div>
-    <button id="btn-to-port" class="big" type="button">To port</button>
+    <div class="title-go"><button id="btn-title-sail" class="big" type="button">Set sail</button><button id="btn-to-port" class="plain" type="button">To port</button></div>
   </div>
   <button id="btn-settings-title" class="panel gear" type="button" aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M10.09 4.03 L10.54 1.10 L13.46 1.10 L13.91 4.03 L16.28 5.01 L18.67 3.26 L20.74 5.33 L18.99 7.72 L19.97 10.09 L22.90 10.54 L22.90 13.46 L19.97 13.91 L18.99 16.28 L20.74 18.67 L18.67 20.74 L16.28 18.99 L13.91 19.97 L13.46 22.90 L10.54 22.90 L10.09 19.97 L7.72 18.99 L5.33 20.74 L3.26 18.67 L5.01 16.28 L4.03 13.91 L1.10 13.46 L1.10 10.54 L4.03 10.09 L5.01 7.72 L3.26 5.33 L5.33 3.26 L7.72 5.01Z M12 8.4a3.6 3.6 0 1 0 0.001 0Z"/></svg></button>
 </section>
@@ -676,6 +706,7 @@
     <div class="choices"><button id="btn-settings-done" class="big" type="button">Done</button></div>
   </div>
 </section>
+<div id="veil" aria-hidden="true"></div>
 <p id="error" hidden></p>
 <!--SCRIPT-->
 </body>
