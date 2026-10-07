@@ -125,7 +125,7 @@ async function main() {
   const built = new Map(), zones = new Map();
   const shipFor = (R) => { if (!built.has(R.id)) { const s = buildShip(R, 'full', art); s.glow.material.uniforms.uScale.value = camera.userData.pixelScale ?? 500; built.set(R.id, s); } return built.get(R.id); };
   const port = makePort({ renderer, env: dayLight, progress, shipFor, touch, onSail: (id) => sail(id), onMode: (m) => enter(m) });
-  const title = makeTitle({ renderer, scene, world, lights, art, raiders, shipFor, progress, touch, dayLight: () => dayLight });
+  const title = makeTitle({ renderer, scene, world, lights, art, raiders, shipFor, progress, dayLight: () => dayLight });
   // a phone can drop the drawing context after a long time in the background (or a laptop's graphics can restart).
   // three.js puts back the ships, the map and the shadows by itself, but not the pictures drawn once at start-up: the
   // sky's light on the brass (the afternoon's, and the title's sunset) and the cloud pattern. Pause, and draw those

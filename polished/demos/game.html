@@ -446,7 +446,7 @@
     :root { --map-w: 108px; }
     #title { align-content: start; padding: 12px var(--gutter) 12px clamp(18px, 5vw, 48px); }
     .title-card { max-width: min(56vw, 480px); }
-    #title h1 { font-size: clamp(28px, 5vw, 38px); }
+    #title h1 { font-size: clamp(24px, 4.6vw, 38px); } /* (on one line, on a small phone too) */
     #title .lede { margin: 6px 0 8px; font-size: 13px; }
     #title h2 { margin: 6px 0 4px; font-size: 14px; }
     #skies { grid-template-columns: repeat(3, 1fr); gap: 6px; }
@@ -529,8 +529,9 @@
     #howto dl { grid-template-columns: auto 1fr auto 1fr; gap: 4px 10px; font-size: 13px; margin: 8px 0; }
   }
   /* a small phone held upright: the title's panel tighter (no opening line), so her ship shows above it; a ship you
-     don't own in port, her panel taller again (port.js knows) */
-  @media (max-width: 700px) and (max-height: 720px) {
+     don't own in port, her panel taller again (port.js knows). Upright only: a small phone held sideways keeps the
+     sideways layout (above) */
+  @media (max-width: 700px) and (min-height: 501px) and (max-height: 720px) {
     #port-panel.buying { top: 25vh; }
     #title { padding-top: 12px; padding-bottom: 14px; }
     #title h1 { font-size: clamp(30px, 9vw, 38px); }
@@ -544,6 +545,11 @@
     .title-go { margin-top: 10px; gap: 8px; }
     .title-go .big { padding: 10px 12px; font-size: 16px; }
     .title-go .plain { min-height: 44px; padding: 8px 14px; font-size: 15px; }
+  }
+  /* a small phone held sideways with its browser's bars showing: no opening line either, so Set sail still shows */
+  @media (max-height: 340px) {
+    #title .lede { display: none; }
+    #title-rank { margin: 4px 0 0; }
   }
   /* a laptop window not so tall (a 1366 by 768 laptop's browser, or smaller): the banner's words a little smaller, so it
      keeps between the toast and the crosshair even when it takes two lines */

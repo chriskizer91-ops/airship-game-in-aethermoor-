@@ -56,8 +56,11 @@
 //                     four phone sizes showing a ship's stats and upgrades above its big button
 //                     the title screen: Aethermoor itself at sunset (not the port's void), her ship flying over the
 //                     Hearthsea and raiders crossing far off, the skies tinting it; "Set sail" straight to sea for a new
-//                     Captain, the afternoon put back exactly; the dip through the night between screens; on a phone,
-//                     its frames costing no more than a voyage's, and pictures of it upright and sideways
+//                     Captain, the afternoon put back exactly; the dip through the night between every two screens; a
+//                     drag swinging the view round her, coasting the same at any frame rate and easing back; the sun's
+//                     shadows sized to her; at laptop, tablet and phone sizes, a raider in sight most of the time, her
+//                     ship clear of the title's card, and the card fitting the screen; dragging her round in port; on a
+//                     phone, its frames costing no more than a voyage's, and pictures of it upright and sideways
 // Run: node tools/build.mjs && node tools/check.mjs [--quick] [folder]
 //   --quick: only the game page at laptop size (for checking during work; the full run is the one that counts)
 import { chromium } from 'playwright';
@@ -291,6 +294,60 @@ function layoutProblems(L, where) {
   if ('sunk' in L && (!L.sunk || !L.sunkMapClosed)) problems.push(`${where}: her ship going down with the big map open should close it and show its card on top: ${JSON.stringify({ sunk: L.sunk, closed: L.sunkMapClosed })}`);
   return `${L.laps.length + L.off.length + L.tags.length + L.pause.length ? `${L.laps.length + L.off.length} overlaps, ${L.tags.length} tags on panels, ${L.pause.length} under the pause card` : 'all clear'} (${L.edgeTags} tags at the edge, the map's names ${L.names} px)`;
 }
+// the title screen at one size (w x h), for a Captain back from the sea with shards to spend and the Frigate's name
+// on the big button: five minutes of its clock (a frame every half second): how much of the time a raider is in sight
+// clear of the title's card (on a phone held upright, that's above the panel), how long they look on the screen (the
+// middle of their lengths, in the page's pixels), and how many times her ship (the Frigate, long) lies under the card;
+// and the card: all of it on the screen without scrolling, and how many lines the game's name takes and whether the
+// opening line shows. Her ship and the save are put back after
+async function titleAt(page, w, h) {
+  await page.setViewportSize({ width: w, height: h }); await page.waitForTimeout(300);
+  return page.evaluate(() => {
+    const g = window.__game, d = g.progress.data, T = g.title, el = document.getElementById('title'), out = { size: `${innerWidth}x${innerHeight}` };
+    if (g.mode === 'voyage') g.endVoyage(0);
+    const was = { flying: d.flying, voyages: d.voyages, shards: d.shards, owned: d.ships.frigate.owned };
+    Object.assign(d, { voyages: Math.max(1, d.voyages), shards: 1234, flying: 'frigate' }); d.ships.frigate.owned = true;
+    g.port.setMode('port'); g.port.setMode('title'); T.resize();
+    const card = el.querySelector('.title-card').getBoundingClientRect(), h1 = el.querySelector('h1');
+    out.fits = el.scrollHeight <= el.clientHeight + 1 && card.bottom <= innerHeight + 1;
+    out.name = Math.round(h1.getBoundingClientRect().height / parseFloat(getComputedStyle(h1).lineHeight));
+    out.opening = el.querySelector('.lede').offsetHeight > 0;
+    const V = T.camera.position.constructor, v = new V(), px = [], S = T.ship, b = S.bounds;
+    const at = (p) => { v.copy(p).project(T.camera); return [(v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight, v.z]; };
+    const behind = (x, y) => x > card.left && x < card.right && y > card.top && y < card.bottom;
+    let seen = 0; out.under = 0;
+    for (let i = 0; i < 600; i++) {
+      T.update(0.5);
+      let k = 0;
+      for (const r of T.raiders) {
+        const [x, y, z] = at(r.root.position);
+        if (z < 1 && x > 0 && x < innerWidth && y > 0 && y < innerHeight && !behind(x, y)) { k++; px.push((r.recipe.length / T.camera.position.distanceTo(r.root.position)) * innerHeight * T.camera.projectionMatrix.elements[5] / 2); }
+      }
+      if (k) seen++;
+      if (i % 10) continue;
+      S.root.updateMatrixWorld(true);
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+      for (let c = 0; c < 8; c++) {
+        const [x, y] = at(new V(c & 1 ? b.max.x : b.min.x, c & 2 ? b.max.y : b.min.y, c & 4 ? b.max.z : b.min.z).applyMatrix4(S.root.matrixWorld));
+        x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+      }
+      if (x0 < card.right && x1 > card.left && y0 < card.bottom && y1 > card.top) out.under++;
+    }
+    px.sort((a, c) => a - c);
+    out.seen = +(seen / 600).toFixed(2); out.long = Math.round(px[px.length >> 1] ?? 0); out.ship = S.recipe.name;
+    Object.assign(d, { flying: was.flying, voyages: was.voyages, shards: was.shards }); d.ships.frigate.owned = was.owned;
+    g.port.setMode('port'); g.port.setMode('title');
+    return out;
+  });
+}
+// what titleAt found, as problems (`raiders`: also hold it to raiders in sight most of the time)
+function titleProblems(t, raiders) {
+  if (t.under) problems.push(`${t.size}: her ship on the title screen should keep clear of the title's card (under it ${t.under} times of 60)`);
+  if (raiders && !(t.seen >= 0.7 && t.long >= 16)) problems.push(`${t.size}: a raider should be crossing in sight on the title screen most of the time (70% or more), big enough to see (16 px or more): in sight ${Math.round(t.seen * 100)}% of the time, ${t.long} px long`);
+  const sideways = +t.size.split('x')[1] <= 500;
+  if (!t.fits || (sideways && t.name !== 1) || (sideways && +t.size.split('x')[1] >= 350 && !t.opening)) problems.push(`${t.size}: the title's card should fit the screen without scrolling (held sideways, the game's name on one line, and the opening line when there's room): ${JSON.stringify(t)}`);
+  return `${t.size}: a raider in sight ${Math.round(t.seen * 100)}% of the time, ${t.long} px long; her ${t.ship} under the card ${t.under} times; the card ${t.fits ? 'fits' : 'DOES NOT FIT'}, the name on ${t.name} line${t.name > 1 ? 's' : ''}, ${t.opening ? 'with' : 'without'} the opening line`;
+}
 // set up a fight near the Captain, run it for a while with the Captain firing at the nearest raider, then hold it. It's
 // a fight to look at, not to lose: her hull and crystals are kept at half or more, so a lucky run of raiders' broadsides
 // never sinks her and leaves the checks after it with a ship going down
@@ -352,10 +409,10 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   // the view on the title screen swings round the ship when the sky is dragged: presses on the open sky reach it,
   // through the title screen
   const under = await page.evaluate(() => document.elementFromPoint(innerWidth * 0.72, innerHeight / 2)?.id);
-  const spin0 = await page.evaluate(() => window.__game.title.yaw);
+  const yaw0 = await page.evaluate(() => window.__game.title.yaw);
   const soundBefore = await page.evaluate(() => window.__game.audio.state); // (nothing made before the first touch)
   await page.mouse.move(920, 400); await page.mouse.down(); await page.mouse.move(1070, 400, { steps: 5 }); await page.mouse.up();
-  const turned = Math.abs((await page.evaluate(() => window.__game.title.yaw)) - spin0);
+  const turned = Math.abs((await page.evaluate(() => window.__game.title.yaw)) - yaw0);
   if (under !== 'stage' || turned < 0.8) problems.push(`dragging the sky on the title screen doesn't swing the view round her (the press reaches "${under}", swung ${turned.toFixed(2)})`);
   // the sound: that first touch starts it, its recordings are made, and the title's music plays (Thareia)
   await wait(page, () => window.__game.audio.state === 'running' && window.__game.audio.ready, null, 'the first touch starts the sound and makes its recordings');
@@ -463,6 +520,12 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   await page.waitForTimeout(1500);
   await shot(page, 'laptop-port');
   if (await page.evaluate(() => document.elementFromPoint(innerWidth / 3, innerHeight / 2)?.id) !== 'stage') problems.push('in port, presses on the ship don\'t reach her');
+  // and dragging there turns her round (port.js's own drag: the title's is title.js's)
+  const spin0 = await page.evaluate(() => window.__game.port.spin);
+  await page.mouse.move(352, 400); await page.mouse.down(); await page.mouse.move(502, 400, { steps: 5 }); await page.mouse.up();
+  const spun = Math.abs((await page.evaluate(() => window.__game.port.spin)) - spin0);
+  console.log(`port: dragging beside the panel turned her ${spun.toFixed(2)}`);
+  if (spun < 0.8) problems.push(`in port, dragging the open space beside the panel should turn her round (turned ${spun.toFixed(2)})`);
   // Settings, from the gear in port: the music slider taken down to nothing silences the music straight away and stops
   // it (no notes made for nothing), and it's kept on this device (through the reload further on)
   await page.click('#btn-settings-port');
@@ -1078,7 +1141,11 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   // with Fair Winds marked as best for a first voyage; "Set sail" starts a voyage in her ship at once, with its own
   // banner, and puts back the afternoon sky exactly (sun, rays, haze and light); back from the sea, the button names her
   // ship and the shards waiting are shown, and "To port" opens the port in its void. Each change of screen dips
-  // through the night (the veil)
+  // through the night (the veil): to the title, to sea, home to port, back to the title, and to port.
+  // A drag on its sky swings the view round her; let go, and it coasts on (the same at any frame rate, and not at all
+  // while no time passes), then eases back to show the sun again within ten seconds; and the title always opens framed,
+  // whatever a drag did last time. And the sun's shadows: their box sized to her on the title every time, even when the
+  // last voyage was in a smaller ship
   const titleSky = await page.evaluate(async () => {
     const g = window.__game, $ = (id) => document.getElementById(id), R = g.renderer, gl = R.getContext(), out = {};
     const frames = (n) => new Promise((r) => { const f = () => (--n ? requestAnimationFrame(f) : r()); requestAnimationFrame(f); });
@@ -1091,8 +1158,9 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
       return m.map((v) => Math.round(v / (w * h)));
     };
     const shot = (skies) => { if (skies) { document.querySelector(`#skies [data-skies="${skies}"]`).click(); g.title.update(0.05); g.title.update(2); } g.title.update(1 / 60); g.title.render(); return { sky: block(0.75, 0.04, 0.95, 0.3), all: block(0.6, 0, 1, 1) }; };
+    const veil = () => $('veil').getAnimations().map((a) => a.effect.getKeyframes()[0].opacity).join(' '), veils = out.veils = {};
     g.progress.reset(); g.port.setMode('port'); await frames(2); g.port.setMode('title');
-    out.veil = $('veil').getAnimations().map((a) => a.effect.getKeyframes()[0].opacity).join(' ');
+    veils.title = veil();
     out.fresh = { button: $('btn-title-sail').textContent, toPort: $('btn-to-port').classList.contains('plain') && $('btn-to-port').offsetHeight > 0, rank: $('title-rank').hidden,
       first: [...document.querySelectorAll('#skies button')].filter((b) => b.querySelector('.first') && !b.querySelector('.first').hidden).map((b) => b.dataset.skies + ': ' + b.querySelector('.first').textContent).join() };
     out.drawn = await drawn();
@@ -1102,22 +1170,51 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
     out.fighting = g.raiders.list.length;
     out.sun = { y: +g.sun.position.clone().sub(g.sun.target.position).normalize().y.toFixed(2), rays: g.world.mood.uRays.value, ownLight: g.scene.environment !== g.port.scene.environment };
     out.cross = shot(); out.fair = shot('fair'); out.mael = shot('mael'); shot('cross');
+    // the wind: the big clouds carried as far, and the same way, as the cloud deck's pattern (world.js cover() moves it
+    // 0.0022 and 0.0009 of its 1/0.00045-metre cells each tick of its clock)
+    out.wind = { drift: g.world.mood.uDrift.value.toArray(), deck: [-0.0022 / 0.00045 * g.world.time.value, -0.0009 / 0.00045 * g.world.time.value] };
+    // a drag on the sky (40 pixels a frame for five frames at 30 a second), then let go
+    const C = g.renderer.domElement, ptr = (type, x, on = window) => on.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: 400, pointerId: 9, pointerType: 'mouse', bubbles: true }));
+    const drag = (moves, px) => { ptr('pointerdown', 900, C); for (let i = 1; i <= moves; i++) { ptr('pointermove', 900 + i * px); T.update(1 / 30); } ptr('pointerup', 900 + moves * px); };
+    const sunAt = () => { const p = T.camera.position.clone().addScaledVector(g.sun.position.clone().sub(g.sun.target.position).normalize(), 30000).project(T.camera); return [+p.x.toFixed(2), +p.y.toFixed(2), p.z < 1]; };
+    T.update(0.1); const y0 = T.yaw, sun0 = sunAt();
+    drag(5, 40);
+    const swung = T.yaw - y0; T.update(0); T.update(0);
+    out.drag = { sun0, swung: +swung.toFixed(2), still: T.yaw - y0 - swung };
+    for (let i = 0; i < 40; i++) T.update(0.25);
+    Object.assign(out.drag, { back: +T.yaw.toFixed(4), sun: sunAt() });
+    // its coast over the two seconds after letting go, at 60 frames a second and at 15
+    const coast = (step) => { drag(3, 30); const a = T.yaw; for (let i = 0; i < Math.round(2 / step); i++) T.update(step); const c = T.yaw - a; for (let i = 0; i < 40; i++) T.update(0.25); return +c.toFixed(3); };
+    out.drag.coast = [coast(1 / 60), coast(1 / 15)];
+    // dragged, then the port and back: the title opens framed
+    drag(2, 50); const before = T.yaw; g.port.setMode('port'); g.port.setMode('title');
+    out.drag.reopened = [+before.toFixed(2), T.yaw];
     // set sail from the title
-    $('btn-title-sail').click(); g.waves.timer = 1e9; g.step(1 / 60, {});
+    $('btn-title-sail').click(); veils.sail = veil(); g.waves.timer = 1e9; g.step(1 / 60, {});
     const P = g.player, day = new g.sun.position.constructor(-0.55, 0.52, 0.25).normalize(), sunNow = g.sun.position.clone().sub(g.sun.target.position).normalize();
     const names = [...document.querySelectorAll('#port-ships button b')].map((x) => x.textContent);
     out.sailed = { mode: g.mode, ship: P?.ship.recipe.id, banner: $('banner-title').textContent, sun: +sunNow.distanceTo(day).toFixed(5), rays: g.world.mood.uRays.value, cover: g.world.mood.uCover.value,
       haze: g.scene.fog.near, light: g.sun.intensity, env: g.scene.environment === g.port.scene.environment, ships: g.scene.children.filter((o) => names.includes(o.name)).map((o) => o.name).join(' '),
       titleRaiders: T.raiders.filter((r) => r.root.parent).length };
     out.drawnAtSea = await drawn();
-    g.endVoyage(1); g.port.setMode('title');
+    g.endVoyage(1); veils.home = veil(); g.port.setMode('title'); veils.back = veil();
     out.back = { voyages: g.progress.data.voyages, button: $('btn-title-sail').textContent, rank: $('title-rank').hidden ? '' : $('title-rank').textContent, first: !!document.querySelector('#skies .first:not([hidden])') };
-    $('btn-to-port').click();
+    $('btn-to-port').click(); veils.port = veil();
     out.port = { mode: g.mode, drawn: await drawn(), rays: g.world.mood.uRays.value };
+    // the sun's shadows: on the title in the Frigate, then a voyage in the Skiff, then the title in the Frigate again
+    const d = g.progress.data, box = () => +g.sun.shadow.camera.right.toFixed(1);
+    d.ships.frigate.owned = true; d.flying = 'frigate'; g.port.setMode('title'); out.shadow = [box()];
+    g.fly('skiff'); g.waves.timer = 1e9; out.shadow.push(box()); g.endVoyage(0);
+    d.flying = 'frigate'; g.port.setMode('title'); out.shadow.push(box(), g.sun.shadow.camera.far - g.sun.shadow.camera.near);
+    g.port.setMode('port');
     return out;
   });
   console.log(`the title screen: drawing "${titleSky.drawn}"; her ship the ${titleSky.ship.name} (${titleSky.ship.level} detail) ${titleSky.ship.up} m up, ${titleSky.ship.fromCity} m from the island city, flying ${titleSky.ship.moved} m in a second; raiders crossing: ${titleSky.raiders} (${titleSky.fighting} fighting); the sun ${titleSky.sun.y} up, rays ${titleSky.sun.rays}, ${titleSky.sun.ownLight ? 'its own' : 'THE AFTERNOON\'S'} light on the brass; the sky beside her ${titleSky.cross.sky}; the whole picture Fair Winds ${titleSky.fair.all}, Maelstrom ${titleSky.mael.all}`);
-  console.log(`the title for a new Captain: "${titleSky.fresh.button}", ${titleSky.fresh.toPort ? '"To port" plain beside it' : 'NO PLAIN "To port"'}, ${titleSky.fresh.first || 'NO FIRST-VOYAGE HINT'}; Set sail: ${titleSky.sailed.mode} in the ${titleSky.sailed.ship}, "${titleSky.sailed.banner}", the afternoon back (the sun ${titleSky.sailed.sun} off, rays ${titleSky.sailed.rays}, haze from ${titleSky.sailed.haze} m, ${titleSky.sailed.env ? 'its light on the brass' : 'THE SUNSET\'S LIGHT'}), drawing "${titleSky.drawnAtSea}", ships in the sky: ${titleSky.sailed.ships}; back from ${titleSky.back.voyages} voyage: "${titleSky.back.button}", "${titleSky.back.rank}"; To port draws "${titleSky.port.drawn}"; the veil ${titleSky.veil ? `from ${titleSky.veil}` : 'NEVER DIPPED'}`);
+  console.log(`the title for a new Captain: "${titleSky.fresh.button}", ${titleSky.fresh.toPort ? '"To port" plain beside it' : 'NO PLAIN "To port"'}, ${titleSky.fresh.first || 'NO FIRST-VOYAGE HINT'}; Set sail: ${titleSky.sailed.mode} in the ${titleSky.sailed.ship}, "${titleSky.sailed.banner}", the afternoon back (the sun ${titleSky.sailed.sun} off, rays ${titleSky.sailed.rays}, haze from ${titleSky.sailed.haze} m, ${titleSky.sailed.env ? 'its light on the brass' : 'THE SUNSET\'S LIGHT'}), drawing "${titleSky.drawnAtSea}", ships in the sky: ${titleSky.sailed.ships}; back from ${titleSky.back.voyages} voyage: "${titleSky.back.button}", "${titleSky.back.rank}"; To port draws "${titleSky.port.drawn}"; the veil from ${Object.entries(titleSky.veils).map(([k, v]) => `${k} ${v || 'NEVER'}`).join(', ')}`);
+  const D = titleSky.drag;
+  // (the sun on the screen: x and y from -1 to 1 across it, and whether it's in front of the camera)
+  const sunBack = D.sun0[2] && Math.abs(D.sun0[0]) < 1.3 && Math.abs(D.sun0[1]) < 1.3 && D.sun[2] && Math.abs(D.sun[0] - D.sun0[0]) < 0.25 && Math.abs(D.sun[1] - D.sun0[1]) < 0.25;
+  console.log(`the title's drag: swung ${D.swung}, ${D.still ? `MOVED ${D.still} WITH NO TIME PASSING` : 'still while no time passes'}, back to ${D.back} ten seconds after (the sun at ${D.sun0.slice(0, 2).join(', ')} on the screen before, ${D.sun[2] ? D.sun.slice(0, 2).join(', ') : 'BEHIND THE CAMERA'} after); its coast ${D.coast[0]} at 60 frames a second, ${D.coast[1]} at 15; dragged to ${D.reopened[0]}, it opens next time at ${D.reopened[1]}; the shadows' box ${titleSky.shadow.slice(0, 3).join(', ')} m (the Frigate, the Skiff, the Frigate)`);
   if (titleSky.drawn !== 'world' || !titleSky.ship.inWorld || titleSky.ship.level !== 'full' || Math.abs(titleSky.ship.up - 700) > 30 || titleSky.ship.fromCity > 600 || !(titleSky.ship.moved > 5)) problems.push(`the title screen should draw the world, with her ship flying over the Hearthsea: ${JSON.stringify({ drawn: titleSky.drawn, ship: titleSky.ship })}`);
   if (!/^(\w+ (middle|far)), \w+ (middle|far)(, \w+ (middle|far))?$/.test(titleSky.raiders) || titleSky.fighting) problems.push(`two or three raiders should cross the title's sky, not fighting: ${titleSky.raiders} (${titleSky.fighting} in the fight)`);
   if (!(titleSky.sun.y < 0.2) || titleSky.sun.rays !== 1 || !titleSky.sun.ownLight) problems.push(`the title screen should have its own low sun, with rays and its own light on the brass: ${JSON.stringify(titleSky.sun)}`);
@@ -1129,7 +1226,18 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   if (titleSky.sailed.sun > 1e-4 || titleSky.sailed.rays !== 0 || titleSky.sailed.cover !== 0 || titleSky.sailed.haze !== 4000 || titleSky.sailed.light !== 2.6 || !titleSky.sailed.env || titleSky.sailed.ships !== 'Zephyr' || titleSky.sailed.titleRaiders) problems.push(`setting sail should put the afternoon sky back exactly, and leave only her ship in the sky: ${JSON.stringify(titleSky.sailed)}`);
   if (titleSky.back.voyages !== 1 || titleSky.back.button !== 'Set sail in the Zephyr' || !titleSky.back.rank || titleSky.back.first) problems.push(`back from the sea, the title should name her ship and show the shards: ${JSON.stringify(titleSky.back)}`);
   if (titleSky.port.mode !== 'port' || titleSky.port.drawn !== 'port void' || titleSky.port.rays !== 0) problems.push(`"To port" from the title should open the port in its void: ${JSON.stringify(titleSky.port)}`);
-  if (titleSky.veil !== '1') problems.push(`changing screens should dip through the night: ${titleSky.veil}`);
+  const wind = titleSky.wind;
+  if (!(Math.hypot(...wind.deck) > 10) || Math.hypot(wind.drift[0] - wind.deck[0], wind.drift[1] - wind.deck[1]) > Math.hypot(...wind.deck) * 0.001) problems.push(`on the title the big clouds should drift with the cloud deck, on one wind: carried ${wind.drift.map(Math.round)} m, the deck ${wind.deck.map(Math.round)} m`);
+  if (Object.keys(titleSky.veils).length !== 5 || Object.values(titleSky.veils).some((v) => v !== '1')) problems.push(`every change of screen should dip through the night (the title, to sea, home to port, back to the title, to port): ${JSON.stringify(titleSky.veils)}`);
+  if (!sunBack || !(Math.abs(D.swung) > 0.8) || D.still !== 0 || !(Math.abs(D.back) < 0.02)) problems.push(`a drag on the title's sky should swing the view, stand still while no time passes, and ease back to show the sun where it was within ten seconds: ${JSON.stringify(D)}`);
+  if (!(Math.abs(D.coast[0]) > 0.1) || Math.abs(D.coast[0] - D.coast[1]) > Math.abs(D.coast[0]) * 0.05 + 0.01) problems.push(`the title's view should coast on as far after a drag at any frame rate: ${D.coast[0]} at 60 frames a second, ${D.coast[1]} at 15`);
+  if (!(Math.abs(D.reopened[0]) > 0.3) || D.reopened[1] !== 0) problems.push(`the title should open framed, whatever a drag did last time: dragged to ${D.reopened[0]}, it opened at ${D.reopened[1]}`);
+  if (titleSky.shadow.slice(0, 3).join() !== '34,6.8,34' || titleSky.shadow[3] > 34 * 4 + 0.1) problems.push(`the sun's shadows on the title should be sized to her every time (34 m for the Frigate, even after a voyage in the Skiff): ${titleSky.shadow.join(', ')}`);
+  // the title at a laptop's size, and a narrow window's (a tablet held upright): raiders in sight, clear of the card
+  const titles = [];
+  for (const [w, h] of [[1280, 800], [768, 1024]]) titles.push(titleProblems(await titleAt(page, w, h), w === 1280));
+  await page.setViewportSize({ width: 1280, height: 800 }); await page.waitForTimeout(300);
+  console.log(`the title screen: ${titles.join('; ')}`);
 
   // between waves, back to port and out again, the way a player moves up: look at the Cutter in port (too dear), sail
   // the Skiff, beat wave 4 (the card shows a raider captain's Brig coming next, built while the card is up), bank the
@@ -1788,7 +1896,16 @@ if (!quick) {
   });
   console.log(`phone: a frame of the title screen ${frameTimes.title} ms (${frameTimes.calls.title} draws), of a voyage ${frameTimes.voyage} ms (${frameTimes.calls.voyage} draws), here in software at ${frameTimes.ratio} pixels to the page's`);
   if (!(frameTimes.title <= frameTimes.voyage * 1.1)) problems.push(`phone: the title screen's frames should cost no more than a voyage's: ${JSON.stringify(frameTimes)}`);
-  await page.setViewportSize({ width: 844, height: 390 }); await page.waitForTimeout(2500);
+  // the title on phones upright and sideways, small ones too (an iPhone SE's, with the browser's bars showing): raiders
+  // in sight, her ship clear of the card, and the card fitting the screen
+  const phoneTitles = [];
+  for (const [w, h] of [[390, 844], [360, 640], [844, 390], [640, 360], [667, 320]]) phoneTitles.push(titleProblems(await titleAt(page, w, h), w === 390 || w === 844));
+  console.log(`phone, the title screen: ${phoneTitles.join('; ')}`);
+  // (the picture once the title has come up out of the night: drawn in software, a frame can take seconds after the
+  // window changes size, and the dip waits for it)
+  await page.setViewportSize({ width: 844, height: 390 }); await page.waitForTimeout(1000);
+  await wait(page, () => !document.getElementById('veil').getAnimations().length, null, 'phone: the title coming up out of the night');
+  await page.waitForTimeout(1500);
   await shot(page, 'phone-title-sideways');
   await page.close();
 }

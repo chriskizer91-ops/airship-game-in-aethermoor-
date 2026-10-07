@@ -78,6 +78,8 @@ const MOOD = {
   uRays: { value: 0 }, uDeckLit: { value: V(DAY.deckLit) }, uDeckShade: { value: V(DAY.deckShade) }, uDeckUnder: { value: V(DAY.deckUnder) },
   uPuffLit: { value: V(DAY.puffLit) }, uPuffShade: { value: V(DAY.puffShade) }, uCover: { value: 0 }, uDrift: { value: new THREE.Vector2() },
 };
+// each colour of a look and the uniform it goes to (paired once: setLook runs every frame while the title's skies blend)
+const MOOD_KEYS = ['zen', 'mid', 'hor', 'warm', 'sunCol', 'below', 'deckLit', 'deckShade', 'deckUnder', 'puffLit', 'puffShade'].map((k) => [k, MOOD['u' + k[0].toUpperCase() + k.slice(1)]]);
 const SKY_GLSL = `
   uniform vec3 uZen; uniform vec3 uMid; uniform vec3 uHor; uniform vec3 uWarm;
   vec3 skyColor(vec3 d, vec3 sun) {
@@ -247,7 +249,7 @@ export async function makeWorld(renderer) {
   function setLook(L, lights) {
     if (L !== now) mixLook(L, L, 0, now);
     SUN.set(L.sun[0], L.sun[1], L.sun[2]).normalize();
-    for (const k of ['zen', 'mid', 'hor', 'warm', 'sunCol', 'below', 'deckLit', 'deckShade', 'deckUnder', 'puffLit', 'puffShade']) MOOD['u' + k[0].toUpperCase() + k.slice(1)].value.fromArray(L[k]);
+    for (let i = 0; i < MOOD_KEYS.length; i++) { const m = MOOD_KEYS[i]; m[1].value.fromArray(L[m[0]]); }
     MOOD.uRays.value = L.rays; MOOD.uCover.value = L.cover;
     tint.fromArray(L.ground);
     for (const m of ground) m.color.copy(tint);
