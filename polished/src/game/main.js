@@ -658,7 +658,8 @@ async function main() {
         H.tags.append(el); // (raiders.js takes it away with its raider)
       }
       if (r.f.down) { el.remove(); continue; }
-      // (one hidden in cloud far off: her tag stays where she was last seen, saying so)
+      // (one hidden in cloud far off: her tag stays where she was last seen, saying so, with how far off that is; one
+      // readying a broadside there isn't lost, sky.js, so a "Broadside!" at the edge points to where she really is)
       proj.copy(r.lost ? r.seenAt : r.f.pos); proj.y += r.R.length * 0.45 + 3; proj.project(camera);
       // in pixels from the middle of the screen; off screen (or behind), pinned to the edge in its direction
       const behind = proj.z > 1;
@@ -687,7 +688,7 @@ async function main() {
       if (edge && el._turn !== turn) { el._turn = turn; el._arrow.style.transform = `rotate(${turn}rad)`; }
       if (slow || el._fresh) {
         el._fresh = false;
-        const d = Math.round(r.f.pos.distanceTo(player.pos) / 10) * 10;
+        const d = Math.round((r.lost ? r.seenAt : r.f.pos).distanceTo(player.pos) / 10) * 10; // (one lost in cloud: how far off she was last seen, where her tag is)
         if (el._dist !== d) { el._dist = d; el._d.textContent = `${d} m`; }
         if (!TAG.measured && !el._warn && el.offsetHeight) { TAG.measured = true; TAG.h = el.offsetHeight + 1; }
         for (let i = 0; i < 3; i++) setWidth(el._m[i], r.f.frac(PARTS[i]));

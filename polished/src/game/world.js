@@ -497,14 +497,16 @@ function cloudTexture() {
 const BANK = 6;
 function makePuffs() {
   const N = 110, SPAN = 14000, ALL = BANK + N;
-  const geo = new THREE.PlaneGeometry(1, 1);
   const offs = new Float32Array(ALL * 3), sizes = new Float32Array(ALL), bank = new Float32Array(ALL);
   let seed = 9; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
   for (let i = BANK; i < ALL; i++) { offs.set([rnd() * SPAN, 520 + rnd() * 1500, rnd() * SPAN], i * 3); sizes[i] = 260 + rnd() * 520; }
   bank.fill(1, 0, BANK);
+  // (the plane's corners copied in, then each cloud's place, size and whether it's the bank's set on the drawn geometry
+  // itself, the very arrays bank() writes into: copying a geometry copies its arrays too, and the bank would be placed
+  // in arrays nobody draws)
+  const ig = new THREE.InstancedBufferGeometry().copy(new THREE.PlaneGeometry(1, 1)); ig.instanceCount = ALL;
   const offA = new THREE.InstancedBufferAttribute(offs, 3), sizeA = new THREE.InstancedBufferAttribute(sizes, 1);
-  geo.setAttribute('offset', offA); geo.setAttribute('size', sizeA); geo.setAttribute('bank', new THREE.InstancedBufferAttribute(bank, 1));
-  const ig = new THREE.InstancedBufferGeometry().copy(geo); ig.instanceCount = ALL;
+  ig.setAttribute('offset', offA); ig.setAttribute('size', sizeA); ig.setAttribute('bank', new THREE.InstancedBufferAttribute(bank, 1));
   const U = { uMap: { value: cloudTexture() }, uCenter: { value: new THREE.Vector3() }, uSpan: { value: SPAN }, uSun: { value: SUN }, uPuffLit: MOOD.uPuffLit, uPuffShade: MOOD.uPuffShade, uDrift: MOOD.uDrift,
     uBank: { value: 0 }, uFlash: MOOD.uFlash, uMist: MOOD.uMist };
   const mat = new THREE.ShaderMaterial({

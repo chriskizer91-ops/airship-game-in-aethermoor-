@@ -16,7 +16,8 @@
 //                       and in a storm, to feel the speed against. cloudAt(p) says how deep in cloud any point is
 //   hiding              a ship deep in cloud is hidden: raiders more than a little way off can't see the Captain there
 //                       (raiders.js) until her own guns give her away for a few seconds (reveal), and the Captain's guns
-//                       can't lock on to a raider hidden far off. Inside a cloud the raiders aim worse at her
+//                       can't lock on to a raider hidden far off (unless she's readying a broadside: her gun ports glow
+//                       through the cloud). Inside a cloud the raiders aim worse at her
 //   and                 her shadow on the cloud floor with the glory round it, the sun's glare when you look into it
 // Its news (events.js): storm (coming, here, passing), lightning, gust and hidden. Nothing here is made while the game
 // runs; each frame only numbers are written.
@@ -159,20 +160,23 @@ export function makeSky({ world, lights, scene, renderer, touch = false, fx = nu
     if (hidden !== W.hidden) { W.hidden = hidden; HIDP.on = hidden; HIDP.why = hidden ? 'cloud' : clock < W.revealUntil ? 'guns' : 'out'; emit('hidden'); }
     player.hidden = hidden;
     // the raiders, a third of them each frame: hidden deep in cloud (and lost to the Captain's sight more than a little
-    // way off), and where she last saw each
+    // way off, unless she's readying a broadside: her gun ports glow through the cloud and give her away), and where
+    // she last saw each
     W.raiderT = (W.raiderT + 1) % 3;
     for (let i = 0; i < raiders.length; i++) {
       const r = raiders[i];
       if (r.f.down) { r.hidden = r.lost = false; continue; }
       if (i % 3 === W.raiderT || r.hidden === undefined) r.hidden = cloudAt(r.f.pos) > HIDE.thick;
-      r.lost = r.hidden && r.f.pos.distanceTo(player.pos) > HIDE.near;
+      r.lost = r.hidden && !r.charge?.b && r.f.pos.distanceTo(player.pos) > HIDE.near;
       if (!r.lost) (r.seenAt ??= new THREE.Vector3()).copy(r.f.pos);
     }
 
-    // rain (in a storm) or the region's motes, falling through a box round the camera
+    // rain (in a storm) or the region's motes, falling through a box round the camera. Changing from one to another,
+    // the old fades out first (in a second or so) and the new comes in from nothing: a storm over the Wastes' dust or
+    // the Peaks' snow brings its rain in as gently as it does from clear air
     W.rain = smooth(0.3, 0.8, W.storm);
     const kind = W.rain > 0.02 ? 'rain' : REGION_AIR[W.region]?.air ?? '';
-    if (kind !== W.kind) { W.motes = ease(W.motes, 0, dt, 0.4); if (W.motes < 0.03 || W.rain > 0.02) { W.kind = kind; if (kind) air.set(kind, Q.rain); } }
+    if (kind !== W.kind) { W.motes = ease(W.motes, 0, dt, 0.4); if (W.motes < 0.03) { W.kind = kind; W.motes = 0; if (kind) air.set(kind, Q.rain); } }
     else W.motes = ease(W.motes, kind === 'rain' ? W.rain : kind ? 1 : 0, dt, 1.2);
     air.U.uOn.value = W.motes; air.mesh.visible = !!W.kind && W.motes > 0.02 && air.count > 0;
     if (air.mesh.visible) {
