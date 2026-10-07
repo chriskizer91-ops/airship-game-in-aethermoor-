@@ -270,15 +270,15 @@ The raiders fly the same four classes as the Captain, by the same rules. They're
 | 15 | **a Man-o'-war**, **a raider captain's Frigate**, a Brig and a Cutter |
 | after that | three to six, mixed (at most one Man-o'-war), with a captain every fifth wave |
 
-**How hard it is.** `node tools/sim-fight.mjs skiff 5 cross` sends out a simulated Captain. It simply points at the nearest raider and fires, keeps a raider abeam in a ship with broadsides, and waits for repairs between waves. It never climbs out of a broadside, never surges and never dodges, and pays no heed to a raider's gun ports glowing. On Crosswinds it (measured again on October 6, after the wrecks, debris and slow motion came in, about a dozen runs of each):
+**How hard it is.** `node tools/sim-fight.mjs skiff 5 cross` sends out a simulated Captain. It simply points at the nearest raider and fires, keeps a raider abeam in a ship with broadsides, and waits for repairs between waves. It never climbs out of a broadside, never surges and never dodges, and pays no heed to a raider's gun ports glowing. On Crosswinds it (measured again on October 7, once the sound, the clearer screen and the title over Aethermoor were in: 16 runs of the Skiff and 36 of the Brig, and 16 of the Frigate on Maelstrom):
 
-- usually gets the Skiff through four waves (about one time in three only three), with about ◆ 400 in the hold (enough for the Cutter), and then the wave-5 captain sinks it
-- usually gets the Brig through seven waves, and about one time in three all eight
-- gets the Frigate through seven waves on Maelstrom most times, sometimes six (once in a while fewer)
-- beats the treasure ship's wave (wave 6) in a Cutter, catching her in two to three minutes (now and then she gets away); in a Brig it sinks her escort first, then shoots her sails away until she strikes her colours, all in under a minute
-- in a Frigate, beats wave 12's Man-o'-war about half the time: it fights her side to side, where she's strongest
+- nearly always gets the Skiff through four waves, with about ◆ 400 in the hold (enough for the Cutter), and then the wave-5 captain sinks it (in 16 runs it beat her once, and once it went down in wave 4)
+- usually gets the Brig through seven waves, and then wave 8 (a Frigate and two Cutters) sinks it; about one time in five it gets through all eight, and about one time in ten the wave-5 captain sinks it
+- gets the Frigate through seven waves on Maelstrom most times (now and then all eight), sometimes six, and about one time in five the wave-5 captain sinks it
+- beats the treasure ship's wave (wave 6) in a Cutter, catching her in two to three minutes (now and then she gets away); in a Brig it sinks her escort first, then shoots her sails away until she strikes her colours, all in about a minute
+- in a Frigate, beats wave 12's Man-o'-war about half the time: it fights her side to side, where she's strongest (this and the Cutter's chase were last measured on October 6; nothing that changes a fight has changed since)
 
-On Fair Winds it always gets the Skiff through four waves, and gets past the wave-5 captain about seven times in eight (21 of 24 runs). That's since October 6, when Fair Winds was made easier for learning the ropes: its raiders hit half as hard as on Crosswinds, and a raider captain there is no tougher than her crew, hits no harder and reloads no faster. Before, the Skiff got past her only about one time in three. A real Captain who uses height, the Surge and the wind does better.
+On Fair Winds it always gets the Skiff through four waves, and gets past the wave-5 captain about seven times in ten (17 of 24 runs on October 7; 21 of 24 when it was first measured, on October 6). That's since October 6, when Fair Winds was made easier for learning the ropes: its raiders hit half as hard as on Crosswinds, and a raider captain there is no tougher than her crew, hits no harder and reloads no faster. Before, the Skiff got past her only about one time in three. A real Captain who uses height, the Surge and the wind does better.
 
 ## The code
 
