@@ -154,7 +154,8 @@ export function makeWrecks({ fx, tear = null, scene = null }) {
       // the column of smoke (and fire, from a burning one) until she's under the cloud deck: one broad column, each
       // puff from somewhere between her stern and the latest blast (or her middle, if no blast), with its own size, shade
       // and drift, at uneven times, so it rolls rather than running in smooth ropes; near her, a burning one's smoke is
-      // lit orange from below. Each puff is left hanging where she was, so the column marks her fall
+      // thick and black, lit orange from below, and it greys as it thins away. Each puff is left hanging where she was,
+      // so the column marks her fall
       const hull = w.why === 'hull';
       if (w.why !== 'struck' && r.f.pos.y > CLOUD_Y - 30 && ((w.puff -= dt) <= 0 || r.f.pos.distanceTo(w.puffed) > (L * gap + 2) * (hull ? 1 : 1.6))) {
         w.puff = every * (hull ? 1 : 1.6) * (0.7 + Math.random() * 0.6); w.puffed.copy(r.f.pos);
@@ -164,7 +165,7 @@ export function makeWrecks({ fx, tear = null, scene = null }) {
             const u = hull ? Math.random() : 0, f = 0.7 + Math.random() * 0.6;
             world(r, w.blast.x * u + (Math.random() - 0.5) * bx * 0.5, y0 + (w.blast.y - y0) * u + Math.random() * by * 0.25, z0 + (w.blast.z - z0) * u + (Math.random() - 0.5) * bz * (hull ? 0.1 : 0.4), p);
             v.copy(vel).multiplyScalar(0.12); v.x += (Math.random() - 0.5) * 5; v.y += 1 + Math.random() * 2.5; v.z += (Math.random() - 0.5) * 5;
-            if (hull) smoke.emit(p, v, 6 + Math.random() * 2, L * 0.28 * f, (L * 0.9 + 6) * f, Math.random() < 0.2 ? 0.22 + Math.random() * 0.2 : 0.02 + Math.random() * 0.13, 0.55 + Math.random() * 0.25, PUFF.pour, 1.1 + Math.random() * 0.8, 0.5 + Math.random() * 0.5);
+            if (hull) smoke.emit(p, v, 6 + Math.random() * 2, L * 0.28 * f, (L * 0.9 + 6) * f, Math.random() < 0.15 ? 0.18 + Math.random() * 0.18 : Math.random() * 0.08, 0.72 + Math.random() * 0.2, PUFF.pour, 1.1 + Math.random() * 0.8, 0.5 + Math.random() * 0.5);
             else smoke.emit(p, v, 5 + Math.random() * 2, L * 0.2 * f, (L * 0.6 + 4) * f, 0.38 + Math.random() * 0.22, 0.5 + Math.random() * 0.2, PUFF.pour, 1.1 + Math.random() * 0.8);
             if (hull && Math.random() < 0.5 && fx.room()) fx.spark(p, v.setY(v.y + 4), 0.5 + Math.random() * 0.4, 1.2 + L * 0.08, FIRE[(Math.random() * 2) | 0], 1, -1);
           }

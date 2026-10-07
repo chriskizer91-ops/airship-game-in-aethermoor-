@@ -1,66 +1,100 @@
 // check.mjs: opens the built pages in a headless browser the size of a laptop and of a phone, checks nothing went
-// wrong, and takes pictures into shots/ (or the folder given).
-//   the save          two devices sharing one save on claude.ai: the newest save always wins, and no voyage's shards are
-//                     lost, even when a write fails or a tab stops hearing the store (no browser needed)
+// wrong, and takes pictures into shots/ (or the folder given). docs/game.md says what it checks in a few plain lines;
+// this is the whole of it.
+//   the save          two devices sharing one save on claude.ai (no browser needed): the newest save always wins (a tab
+//                     left open, a tap before the store answers, play with no connection, a phone whose clock is slow),
+//                     and no voyage's shards are lost (a write that fails once or twice, a tab that stopped hearing the
+//                     store and one that hears it again, both devices banking a voyage at the same moment, a voyage
+//                     played with no connection); a new browser isn't told its progress came from another device; a
+//                     brand-new Captain starts on Fair Winds, and a save already made keeps the skies it chose
 //   dist/hangar.html  every ship at every level of detail, with its triangle count kept near its budget
-//   dist/game.html    the title screen and the port (buying a ship and an upgrade, crystal power, dragging the ship
-//                     round); each of the four ships flown: how fast it goes, turns and climbs; every battery fired at
-//                     a raider and hitting it; a raider shot down (high, and low) and its shards gathered; raiders
-//                     fighting back; a captain leading wave 5 (no tougher than her crew on Fair Winds); banking from
-//                     the card between waves and setting sail again; a whole voyage played to the end; the save
-//                     surviving a reload; the keyboard, mouse, wheel and touch controls answering; the drawing context
-//                     lost and got back; pictures of the title, the port and a battle
+//   dist/game.html    the title screen and the port: a brand-new Captain finds Fair Winds chosen; a ship that can't be
+//                     afforded, then buying the Cutter and armour and setting the crystal power (the stats changing);
+//                     dragging the ship round; the window resized in port, the corner map still drawn at sea and the
+//                     big map at its own size. Each of the four ships flown: how fast it goes, turns and climbs; every
+//                     battery fired at a raider of the same class 260 m off, locking on and hitting it; a raider shot
+//                     down (high, and low under the clouds, falling before she goes) and its shards gathered, the count
+//                     popping; the sun's shadows reaching the ship; raiders far off on their far model; a Cutter
+//                     fighting back against a Captain who does nothing; a captain leading wave 5 (twice as tough as her
+//                     crew on Crosswinds, no tougher on Fair Winds), a treasure ship in wave 6, a Man-o'-war in waves 12
+//                     and 15; a treasure ship shot until she strikes, and another let run until she gets away; back to
+//                     port from the card after wave 4 (the next wave's captain made ready), the Cutter bought and
+//                     sailed: wave 1 one Skiff, only the Cutter in the sky; a whole voyage played to the end (beaten,
+//                     sailed on, sunk, home with half); the save surviving a reload; the keyboard, mouse, wheel (a
+//                     trackpad's flick and a mouse's notch) and touch controls answering; the drawing context lost and
+//                     got back (the sky's light and the cloud pattern drawn again); pictures of the title, the port and
+//                     a battle
 //                     how a fight feels: every piece of news told (events.js), and none missed when listeners stop or
-//                     start as it's told; a broadside rippling bow to stern with its gunsmoke (two puffs a port), the
-//                     ship heeling and the view kicking back (less for reduced motion); hits marked on the crosshair
-//                     in the part's colour and a kill's ring; a hit on you shaking the view, its red arc pointing at
-//                     the shooter and naming her; a near miss told once; a raider's ports glowing before her
-//                     broadside, and her tag flashing "Broadside!" while she's off screen (on the phone too, stacked
-//                     clear of another raider's tag at that edge, and holding still while the game is paused); a raider
-//                     shot down mid-broadside firing no more; a Man-o'-war's four batteries all rippling at once;
-//                     comet tails; a busy fight with two raiders downed in it fitting its sparks' and smoke's budgets,
-//                     and a step's cost; back to port from the pause menu ending the pause; on the phone, smaller
-//                     budgets, a buzz for a hit and a kill, and none for a ship that gives up
-//                     wrecks worth watching: debris matching the part hit, with room for a 60-shot barrage, and canvas
-//                     scraps keeping their own flapping beat; a raider blown apart in a chain of blasts, her crystals
-//                     going dark, through the cloud deck; her bounty rising (a captain's, clear of a banner all the
-//                     while it can be read); a treasure ship striking without a blast, and sinking through the
-//                     clouds (and a raider whose crystals die); the holes in the clouds closed for the next voyage;
-//                     the shard count counting up; masts falling on a laptop (gone from her far model too), and going
-//                     only under the clouds; slow motion for a wave's last raider and the card waiting for it before
-//                     it rises; the Surge's streaks, wider view, vapour and flare, and its view the same at 20 frames
-//                     a second as at 60; on the phone, a Man-o'-war going down beside two other wrecks within every
-//                     budget
+//                     start as it's told; a Frigate's broadside rippling bow to stern (one shot at once, all ten within
+//                     0.7 s) with its gunsmoke (two puffs a port), tails over 20 m, the ship heeling to starboard and
+//                     the view kicking back over half a metre and settling within a second (a third of it for reduced
+//                     motion); hits marked on the crosshair in the part's colour and a kill's ring; a hit on you shaking
+//                     the view, its red arc pointing at the shooter and naming her, one taking the hull under 30% told;
+//                     a shot passing 10 m off one near miss, doing no harm; a raider's ports glowing at least 0.45 s
+//                     before her broadside, and her tag flashing "Broadside!" while she's off screen (not on screen; on
+//                     the phone too, stacked clear of another raider's tag at that edge, and holding still while the
+//                     game is paused); a raider shot down mid-broadside firing no more; a Man-o'-war's four batteries all
+//                     rippling at once; a busy fight (a Frigate against three raiders for 15 s, two blown apart) fitting
+//                     its sparks' and smoke's budgets, a step under a millisecond, a blast throwing 90 sparks or more;
+//                     back to port from the pause menu ending the pause; on the phone, smaller budgets, a buzz for a
+//                     hit and a kill, and none for a ship that gives up
+//                     wrecks worth watching: debris matching the part hit, a 60-shot barrage fitting its batches with
+//                     not a piece cut short and all fallen 4 s later, and canvas scraps keeping their own flapping beat;
+//                     a raider Brig blown apart in three blasts or more within 3 s, her crystals dark by 2 s, through
+//                     the cloud deck; her bounty rising and gone 3 s later (a captain's clear of a banner all the while
+//                     it can be read); a treasure ship striking without a blast, and from 906 m sinking through the
+//                     clouds within 16 s (and a raider whose crystals die at 740 m within 14); the holes in the clouds
+//                     closed for the next voyage; the shard count counting up; masts falling on a laptop (gone from her
+//                     far model too), and going only under the clouds; slow motion for a wave's last raider and the
+//                     card waiting 1.4 s for it before it rises; the Surge's streaks, view (over 9 degrees wider),
+//                     vapour and flare, all back 4 s later, and its view the same at 20 frames a second as at 60 (with
+//                     less motion, up to 12 degrees and no overshoot); on the phone, a Man-o'-war going down beside two
+//                     other wrecks within every budget (debris cut short at most one piece in twenty, no masts falling)
 //                     the sound: Chris's two files (music.js, sounds.js) exactly as he gave them; nothing made before
 //                     the first touch, which starts it (on the phone too, and again after it was stopped, with the
 //                     silent blip as the finger lifts); going quiet when the page is left and back when it's shown;
 //                     the title's, the port's and a wave's music; the port's sounds; the Settings card silencing and
 //                     stopping the music and keeping it through a reload, the music back when it's turned up (and the
-//                     card fitting a phone); the recordings made for the game none silent, each sounding as it should
-//                     (a bright crack, a deep boom, a glassy crystal...); a real volley heard; hits, a raider blown
-//                     apart and shards gathered all sounding; nothing played (or kept for later) with the sound off,
-//                     and only its tick when it's back on; nothing made with the Sounds slider at nothing; a soft
-//                     chord on crossing into another region; the sounds gated while paused; tests that run the clock
-//                     only counting; a five-raider melee with a Man-o'-war and Chris's effects of the same moments,
-//                     over a recording of the battle music, staying under the soft clip's ceiling (an offline
-//                     render); and what the sound costs a volley and a frame
-//                     a clear, tidy screen: the fonts (Cinzel and Fira Sans, inside the page, loading); the port in
-//                     plain words, a ship not owned bought with the big button, and on a phone its two tabs; the
-//                     Settings card's picture, aim speed, up and down and camera shake taking effect at once, and kept
-//                     on the device through a reload; the keys folding away after a device's first two voyages;
-//                     directions as left and right (the right way round) and the wind in words; How to fly; the big
-//                     map fitting the screen with its cross; the card between waves a strip at the bottom, Enter and B
-//                     working with the mouse locked; on a phone, Fire on the left (and the words saying so); and at
-//                     three laptop sizes and four phone sizes (upright and sideways), nothing on the screen landing on
-//                     anything else, the edge tags clear of the panels, the pause card over everything; the port at the
-//                     four phone sizes showing a ship's stats and upgrades above its big button
-//                     the title screen: Aethermoor itself at sunset (not the port's void), her ship flying over the
-//                     Hearthsea and raiders crossing far off, the skies tinting it; "Set sail" straight to sea for a new
-//                     Captain, the afternoon put back exactly; the dip through the night between every two screens; a
-//                     drag swinging the view round her, coasting the same at any frame rate and easing back; the sun's
-//                     shadows sized to her; at laptop, tablet and phone sizes, a raider in sight most of the time, her
-//                     ship clear of the title's card, and the card fitting the screen; dragging her round in port; on a
-//                     phone, its frames costing no more than a voyage's, and pictures of it upright and sideways
+//                     card fitting a phone, closing with Esc); the recordings made for the game none silent, each
+//                     sounding as it should from its spectrum (a bright crack, a darker raider's, a deep boom, roll and
+//                     blast, canvas and crystal in 2-6 kHz, falling bells, a broadside rolling over 2 s); a real volley
+//                     heard; hits, a raider blown apart and shards gathered all sounding; nothing played (or kept for
+//                     later) with the sound off, and only its tick when it's back on; nothing made with the Sounds
+//                     slider at nothing; a soft chord on crossing into another region; the sounds gated while paused;
+//                     tests that run the clock only counting; a five-raider melee with a Man-o'-war and Chris's effects
+//                     of the same moments, over a recording of the battle music, staying under 0.95 going into the soft
+//                     clip (an offline render); and what the sound costs a volley and a frame
+//                     a clear, tidy screen: the fonts (Cinzel and Fira Sans, inside the page, loading, even figures);
+//                     the port in plain words, a ship not owned bought with the big button, and on a phone its two tabs;
+//                     the Settings card's picture (Smooth: one screen pixel to the page's, 512 shadows, 55 puffs, far
+//                     models sooner, fewer sparks), aim speed (Fast 1.8 times, Slow half), up and down and camera shake
+//                     taking effect at once, and kept on the device through a reload (never in the save); the keys
+//                     folding away after a device's first two voyages; directions as left and right (the right way
+//                     round) and the wind in words; How to fly; the big map fitting the screen with its cross; the card
+//                     between waves a strip at the bottom, Enter and B working with the mouse locked; on a phone, Fire
+//                     on the left (and the words saying so); and at three laptop sizes and four phone sizes (upright
+//                     and sideways), in a battle with the toast, a warning and the banner (or the region's name) at
+//                     once with their longest words, and between waves: nothing on the screen landing on anything else
+//                     or off it; the edge tags clear of the panels, arrows and all, and again with every raider off the
+//                     screen readying her broadside; the pause card over everything (and closing the big map); the
+//                     score saying the wave just beaten; the big map's names 11 px or more and none on (or touching)
+//                     another; her ship going down with the big map open, its card on top; and a bounty rising where
+//                     the card between waves comes up keeping clear of it. The port at the four phone sizes and a
+//                     narrow one held sideways (640 by 360): its top line on one line, its panel clear of the top line
+//                     and of the ships; a ship not owned showing all her stats above her Buy button; two upgrades or
+//                     more above Set sail; each of the four ships' blurbs (owned or not) all above the button's fade;
+//                     and held upright, the panel no taller than what's in it
+//                     the title screen: Aethermoor itself at sunset (not the port's void), her ship flying 700 m up
+//                     within 600 m of the island city in the Hearthsea, at full detail, and two or three raiders
+//                     crossing far off (on their far models, none fighting), the Maelstrom tinting it at least 15%
+//                     darker than Fair Winds; "Set sail" straight to sea for a new Captain, the afternoon put back
+//                     exactly; the dip through the night between every two screens; a drag swinging the view round her,
+//                     coasting the same at any frame rate and easing back; the sun's shadows sized to her; at laptop,
+//                     tablet and phone sizes, a raider in sight most of the time, each sailing a course angled 25 to 35
+//                     degrees from straight across (so her sails show) and drawn in one go, on a phone held upright
+//                     small and low over the horizon (clearly far off), her ship clear of the title's card, and the
+//                     card fitting the screen; dragging her round in port; on a phone, its frames costing no more than
+//                     a voyage's and drawn in fewer goes, and pictures of it upright and sideways
 // Run: node tools/build.mjs && node tools/check.mjs [--quick] [folder]
 //   --quick: only the game page at laptop size (for checking during work; the full run is the one that counts)
 import { chromium } from 'playwright';
@@ -185,6 +219,9 @@ const wait = (page, fn, arg, what) => page.waitForFunction(fn, arg, { timeout: 6
   // a new browser (or one with its site data cleared) takes the save without being told it came from another device
   const fresh = device(new Map()); fresh.onLoad((d, had) => told.fresh.push(had)); await wait();
   sync.push(['a new browser', `${got(fresh)}, told ${told.fresh.join(' ')}`, '1870+brig, told false']);
+  // a brand-new Captain starts on Fair Winds; a save already made keeps the skies it chose (even with no voyages yet)
+  const newbie = device(new Map(), { online: false }), keeps = device(new Map([['skies-of-aethermoor/save-1', JSON.stringify({ v: 1, saved: 5, skies: 'cross', voyages: 0 })]]), { online: false });
+  sync.push(['a brand-new Captain, and an old save', `${newbie.data.skies} ${keeps.data.skies}`, 'fair cross']);
   for (const [what, was, want] of sync) if (was !== want) problems.push(`the save between two devices, ${what}: ${was}, should be ${want}`);
   console.log(`the save between two devices: ${sync.every(([, a, b]) => a === b) ? 'the newest save always wins, and no voyage is lost' : 'WRONG'}`);
 }
@@ -218,8 +255,10 @@ const gameReady = () => window.__game?.ready || !document.getElementById('error'
 // between waves, the card too, once it has risen into view. Then: the pause card over the card between waves, and over
 // the big map (which it closes), with its buttons the ones pressed; the panels the edge tags keep clear of measured
 // again when the card goes (a window turned while it was up); the big map fitting the screen with its cross, and the
-// regions' names on it big enough to read (11 of the page's pixels or more). `sink`: and the ship going down with the
-// big map open, its card over everything
+// regions' names on it big enough to read (11 of the page's pixels or more) and none of them on (or touching) another.
+// The edge tags are measured with their arrows, and again with every raider off the screen readying her broadside (each
+// tag taller, saying "Broadside!", with a bigger arrow). `sink`: and the ship going down with the big map open, its card
+// over everything
 const layoutAt = (page, HUD, PANELS, sink = false) => page.evaluate(({ HUD, PANELS, sink }) => {
   const g = window.__game, $ = (id) => document.getElementById(id), out = { laps: [], tags: [], off: [], pause: [] };
   const box = (id) => { const el = $(id); if (!el || el.hidden || getComputedStyle(el).display === 'none' || getComputedStyle(el).visibility === 'hidden') return null; const b = el.getBoundingClientRect(); return b.width && b.height ? b : null; };
@@ -251,8 +290,21 @@ const layoutAt = (page, HUD, PANELS, sink = false) => page.evaluate(({ HUD, PANE
   look(HUD.filter((id) => id !== 'region' && id !== 'calm'), 'a battle');
   look(HUD.filter((id) => id !== 'banner' && id !== 'calm'), 'a battle, with the region\'s name');
   const panels = PANELS.map((id) => [id, box(id)]).filter(([, b]) => b);
-  for (const t of document.querySelectorAll('#tags .tag.edge')) { const a = t.getBoundingClientRect(); for (const [id, b] of panels) if (lap(a, b)) out.tags.push(`${t.querySelector('b').textContent} at ${Math.round(a.left)},${Math.round(a.top)} x ${id}`); }
+  const tagsClear = (what) => {
+    for (const t of document.querySelectorAll('#tags .tag.edge')) {
+      const w = t.querySelector('.arrow'), parts = [['', t.getBoundingClientRect()], ...(getComputedStyle(w).display !== 'none' ? [['its arrow ', w.getBoundingClientRect()]] : [])];
+      for (const [bit, a] of parts) for (const [id, b] of panels) if (lap(a, b)) out.tags.push(`${what}${bit}${t.querySelector('b').textContent} at ${Math.round(a.left)},${Math.round(a.top)} x ${id}`);
+    }
+  };
+  tagsClear('');
   out.edgeTags = document.querySelectorAll('#tags .tag.edge').length;
+  // (every raider readying her broadside: placed again as things stand, twice, as the first measures a warning's height)
+  for (const r of g.raiders.list) r.charge.b = 'port';
+  g.placeTags(); g.placeTags();
+  out.warnTags = document.querySelectorAll('#tags .tag.edge.warn').length;
+  tagsClear('readying a broadside: ');
+  for (const r of g.raiders.list) r.charge.b = null;
+  g.placeTags();
   // between waves: the card risen into view (its rising finished), then looked at with the rest
   g.raiders.clear(); Object.assign(g.waves, { n: 2, state: 'fight', next: null }); g.step(0.15, {}); $('toast').textContent = say.toast;
   $('calm').getAnimations().forEach((a) => a.finish());
@@ -271,6 +323,13 @@ const layoutAt = (page, HUD, PANELS, sink = false) => page.evaluate(({ HUD, PANE
   out.map = m.left >= 0 && m.top >= 0 && m.right <= innerWidth && m.bottom <= innerHeight && x.left >= m.left && x.right <= m.right && x.top >= m.top && x.bottom <= m.bottom;
   const mc = $('minimap'), font = +(/(\d+(\.\d+)?)px/.exec(mc.getContext('2d').font)?.[1] ?? 0);
   out.names = +(font / (mc.width / mc.clientWidth)).toFixed(1);
+  // (how near the two closest names come, in the page's pixels: the gap between their boxes, across or up and down)
+  const N = g.mapNames;
+  out.nameGap = Infinity;
+  for (let i = 0; i < N.length; i++) for (let j = i + 1; j < N.length; j++) {
+    const a = N[i], b = N[j], gap = Math.max(Math.abs(a.x - b.x) - (a.w + b.w) / 2, Math.abs(a.y - b.y) - (a.h + b.h) / 2) / (mc.width / mc.clientWidth);
+    if (gap < out.nameGap) { out.nameGap = +gap.toFixed(1); out.nearest = `${a.name} and ${b.name}`; }
+  }
   g.pause(true); out.mapClosed = !mc.classList.contains('big') && $('map-dim').hidden; onTop('paused with the big map open'); g.pause(false);
   if (mc.classList.contains('big')) $('map-close').click();
   if (sink) {
@@ -285,21 +344,56 @@ const layoutAt = (page, HUD, PANELS, sink = false) => page.evaluate(({ HUD, PANE
 // what layoutAt found, as problems
 function layoutProblems(L, where) {
   if (L.laps.length || L.off.length) problems.push(`${where}: the HUD's pieces land on each other or off the screen: ${[...L.laps, ...L.off].join('; ')}`);
-  if (L.tags.length) problems.push(`${where}: raiders' tags at the edge land on the panels: ${L.tags.join('; ')}`);
-  if (!L.calm || L.edgeTags < 5 || !L.map) problems.push(`${where}: the layout test didn't run as it should (the card between waves never in view, too few edge tags, or the big map not fitting): ${JSON.stringify({ calm: L.calm, edgeTags: L.edgeTags, map: L.map })}`);
+  if (L.tags.length) problems.push(`${where}: raiders' tags at the edge (or their arrows) land on the panels: ${L.tags.join('; ')}`);
+  if (!L.calm || L.edgeTags < 5 || L.warnTags < 5 || !L.map) problems.push(`${where}: the layout test didn't run as it should (the card between waves never in view, too few edge tags, or the big map not fitting): ${JSON.stringify({ calm: L.calm, edgeTags: L.edgeTags, map: L.map })}`);
   if (L.pause.length || !L.mapClosed) problems.push(`${where}: the pause card should lie over everything at sea (and close the big map): ${[...L.pause, L.mapClosed ? '' : 'the big map still open'].filter(Boolean).join('; ')}`);
   if (!L.battery) problems.push(`${where}: after the card between waves went (the window changed while it was up), the edge tags no longer keep clear of the guns' label`);
   if (!(L.names >= 10.9)) problems.push(`${where}: the big map's names are too small to read (${L.names} px)`);
+  if (!(L.nameGap >= 2.5)) problems.push(`${where}: the big map's names ${L.nearest} land on or touch each other (${L.nameGap} px apart)`);
   if (L.wave[0] !== L.wave[1]) problems.push(`${where}: between waves the score should say the wave just beaten, as the card does (Wave ${L.wave[1]}), not Wave ${L.wave[0]}`);
   if ('sunk' in L && (!L.sunk || !L.sunkMapClosed)) problems.push(`${where}: her ship going down with the big map open should close it and show its card on top: ${JSON.stringify({ sunk: L.sunk, closed: L.sunkMapClosed })}`);
-  return `${L.laps.length + L.off.length + L.tags.length + L.pause.length ? `${L.laps.length + L.off.length} overlaps, ${L.tags.length} tags on panels, ${L.pause.length} under the pause card` : 'all clear'} (${L.edgeTags} tags at the edge, the map's names ${L.names} px)`;
+  return `${L.laps.length + L.off.length + L.tags.length + L.pause.length ? `${L.laps.length + L.off.length} overlaps, ${L.tags.length} tags on panels, ${L.pause.length} under the pause card` : 'all clear'} (${L.edgeTags} tags at the edge, ${L.warnTags} of them saying "Broadside!" in turn; the map's names ${L.names} px, ${L.nameGap} px apart at the closest)`;
+}
+// a raider's bounty and the card between waves (at the page's size now): the wave's last raider brought down right where
+// the card will rise (her bounty would rise over its words), and the bounty looked at every 0.1 s while it can be read
+// (over half opaque), with the card risen at once (its rising runs on the page's own clock): never on the card
+const bountyCard = (page) => page.evaluate(() => {
+  const g = window.__game, $ = (id) => document.getElementById(id), calm = $('calm'), risen = () => calm.getAnimations().forEach((a) => a.finish());
+  const lap = (a, c) => a.left < c.right - 1 && c.left < a.right - 1 && a.top < c.bottom - 1 && c.top < a.bottom - 1;
+  g.fly('brig'); const P = g.player; g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false); P.pos.set(2000, 900, 1500); P.heading = 0.6; P.speed = 3; P.sail = 0.05;
+  g.cam.yaw = 0; g.cam.pitch = 0.15;
+  // where the card sits, shown once
+  Object.assign(g.waves, { n: 2, state: 'fight', next: null }); g.step(0.15, {}); risen();
+  const c = calm.getBoundingClientRect(); g.sailOn(); g.waves.timer = 1e9; g.step(0.05, {});
+  const V = P.pos.constructor, x = (c.left + c.right) / 2, y = (c.top + c.bottom) / 2;
+  const at = new V((x / innerWidth) * 2 - 1, 1 - (2 * y) / innerHeight, 0.5).unproject(g.camera).sub(g.camera.position).normalize().multiplyScalar(260).add(g.camera.position);
+  const r = g.raiders.spawn('cutter', at, Math.PI / 2, true);
+  r.f.pos.y -= 2 + r.R.length * 0.3; r.ship.root.position.copy(r.f.pos); // (so her bounty starts in the card's middle)
+  g.waves.state = 'fight'; g.step(0.05, {});
+  r.f.hit('hull', 1e9);
+  const out = { seen: 0, over: [], card: false };
+  for (let t = 0.1; t < 2.2; t += 0.1) {
+    g.step(0.1, {}); risen();
+    const b = [...document.querySelectorAll('#bounties .bounty')].find((e) => !e.hidden);
+    if (calm.hidden || !b || +b.style.opacity <= 0.5) continue;
+    out.card = true; out.seen++;
+    if (lap(b.getBoundingClientRect(), calm.getBoundingClientRect())) out.over.push(+t.toFixed(1));
+  }
+  g.sailOn(); g.raiders.clear();
+  return out;
+});
+function bountyProblems(B, where) {
+  if (!B.card || B.seen < 8 || B.over.length) problems.push(`${where}: a bounty rising where the card between waves comes up should keep clear of it all the while it can be read: ${JSON.stringify(B)}`);
+  return B.over.length ? `ON THE CARD at ${B.over.join(', ')} s` : `clear of the card (looked at ${B.seen} times)`;
 }
 // the title screen at one size (w x h), for a Captain back from the sea with shards to spend and the Frigate's name
 // on the big button: five minutes of its clock (a frame every half second): how much of the time a raider is in sight
 // clear of the title's card (on a phone held upright, that's above the panel), how long they look on the screen (the
-// middle of their lengths, in the page's pixels), and how many times her ship (the Frigate, long) lies under the card;
-// and the card: all of it on the screen without scrolling, and how many lines the game's name takes and whether the
-// opening line shows. Her ship and the save are put back after
+// middle of their lengths, in the page's pixels), how high over the horizon (the middle of their heights over it, in the
+// page's pixels), how far each one's course is angled from straight across the view (the least and the most, in
+// degrees: about 30, so her sails show), how many goes each takes to draw (one), and how many times her ship (the
+// Frigate, long) lies under the card; and the card: all of it on the screen without scrolling, and how many lines the
+// game's name takes and whether the opening line shows. Her ship and the save are put back after
 async function titleAt(page, w, h) {
   await page.setViewportSize({ width: w, height: h }); await page.waitForTimeout(300);
   return page.evaluate(() => {
@@ -315,13 +409,23 @@ async function titleAt(page, w, h) {
     const V = T.camera.position.constructor, v = new V(), px = [], S = T.ship, b = S.bounds;
     const at = (p) => { v.copy(p).project(T.camera); return [(v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight, v.z]; };
     const behind = (x, y) => x > card.left && x < card.right && y > card.top && y < card.bottom;
-    let seen = 0; out.under = 0;
+    let seen = 0; out.under = 0; out.angle = [90, 0]; out.pieces = 0;
+    const lift = [], m = T.camera.matrixWorld.elements, horizon = new V();
     for (let i = 0; i < 600; i++) {
       T.update(0.5);
       let k = 0;
+      // (the horizon: far off at the eye's height, straight ahead)
+      horizon.set(-m[8], 0, -m[10]).normalize().multiplyScalar(30000).add(T.camera.position);
+      const hy = at(horizon)[1];
       for (const r of T.raiders) {
         const [x, y, z] = at(r.root.position);
-        if (z < 1 && x > 0 && x < innerWidth && y > 0 && y < innerHeight && !behind(x, y)) { k++; px.push((r.recipe.length / T.camera.position.distanceTo(r.root.position)) * innerHeight * T.camera.projectionMatrix.elements[5] / 2); }
+        if (z < 1 && x > 0 && x < innerWidth && y > 0 && y < innerHeight && !behind(x, y)) {
+          k++; px.push((r.recipe.length / T.camera.position.distanceTo(r.root.position)) * innerHeight * T.camera.projectionMatrix.elements[5] / 2);
+          lift.push(hy - y);
+          const a = r.root.rotation.y, across = Math.abs(Math.sin(a) * m[0] + Math.cos(a) * m[2]) / Math.hypot(m[0], m[2]), deg = (Math.acos(Math.min(1, across)) * 180) / Math.PI;
+          out.angle = [Math.min(out.angle[0], deg), Math.max(out.angle[1], deg)];
+          let n = 0; r.root.traverse((o) => { if (o.isMesh && o.visible) n++; }); out.pieces = Math.max(out.pieces, n);
+        }
       }
       if (k) seen++;
       if (i % 10) continue;
@@ -333,20 +437,28 @@ async function titleAt(page, w, h) {
       }
       if (x0 < card.right && x1 > card.left && y0 < card.bottom && y1 > card.top) out.under++;
     }
-    px.sort((a, c) => a - c);
+    px.sort((a, c) => a - c); lift.sort((a, c) => a - c);
     out.seen = +(seen / 600).toFixed(2); out.long = Math.round(px[px.length >> 1] ?? 0); out.ship = S.recipe.name;
+    out.lift = Math.round(lift[lift.length >> 1] ?? 0); out.angle = out.angle.map(Math.round);
     Object.assign(d, { flying: was.flying, voyages: was.voyages, shards: was.shards }); d.ships.frigate.owned = was.owned;
     g.port.setMode('port'); g.port.setMode('title');
     return out;
   });
 }
-// what titleAt found, as problems (`raiders`: also hold it to raiders in sight most of the time)
+// what titleAt found, as problems (`raiders`: also hold it to raiders in sight most of the time). On a phone held upright
+// a raider looked near before (October 7: about 50 px long, 60 to 100 px over the horizon)
+const UPRIGHT_FAR = { long: 40, lift: 45 };
 function titleProblems(t, raiders) {
   if (t.under) problems.push(`${t.size}: her ship on the title screen should keep clear of the title's card (under it ${t.under} times of 60)`);
   if (raiders && !(t.seen >= 0.7 && t.long >= 16)) problems.push(`${t.size}: a raider should be crossing in sight on the title screen most of the time (70% or more), big enough to see (16 px or more): in sight ${Math.round(t.seen * 100)}% of the time, ${t.long} px long`);
+  // each raider's course angled about 30 degrees from straight across, so her sails show; each drawn in one go; and on a
+  // phone held upright, small and low over the horizon, clearly far off
+  if (t.seen && (t.angle[0] < 24 || t.angle[1] > 36 || t.pieces !== 1)) problems.push(`${t.size}: the title's raiders should sail courses angled 25 to 35 degrees from straight across the view (so their sails show), each drawn in one go: ${t.angle.join(' to ')} degrees, ${t.pieces} pieces`);
+  const upright = +t.size.split('x')[0] <= 700 && +t.size.split('x')[1] > 500;
+  if (upright && t.seen && (t.long > UPRIGHT_FAR.long || t.lift > UPRIGHT_FAR.lift)) problems.push(`${t.size}: on a phone held upright the title's raiders should look far off: small (${UPRIGHT_FAR.long} px long or less) and low over the horizon (${UPRIGHT_FAR.lift} px or less): ${t.long} px long, ${t.lift} px over it`);
   const sideways = +t.size.split('x')[1] <= 500;
   if (!t.fits || (sideways && t.name !== 1) || (sideways && +t.size.split('x')[1] >= 350 && !t.opening)) problems.push(`${t.size}: the title's card should fit the screen without scrolling (held sideways, the game's name on one line, and the opening line when there's room): ${JSON.stringify(t)}`);
-  return `${t.size}: a raider in sight ${Math.round(t.seen * 100)}% of the time, ${t.long} px long; her ${t.ship} under the card ${t.under} times; the card ${t.fits ? 'fits' : 'DOES NOT FIT'}, the name on ${t.name} line${t.name > 1 ? 's' : ''}, ${t.opening ? 'with' : 'without'} the opening line`;
+  return `${t.size}: a raider in sight ${Math.round(t.seen * 100)}% of the time, ${t.long} px long, ${t.lift} px over the horizon, her course ${t.angle.join(' to ')} degrees from straight across, in ${t.pieces} piece${t.pieces > 1 ? 's' : ''}; her ${t.ship} under the card ${t.under} times; the card ${t.fits ? 'fits' : 'DOES NOT FIT'}, the name on ${t.name} line${t.name > 1 ? 's' : ''}, ${t.opening ? 'with' : 'without'} the opening line`;
 }
 // set up a fight near the Captain, run it for a while with the Captain firing at the nearest raider, then hold it. It's
 // a fight to look at, not to lose: her hull and crystals are kept at half or more, so a lucky run of raiders' broadsides
@@ -401,9 +513,13 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   console.log(`the news, with listeners stopping and starting as it's told: heard "${bus.heard}", ${bus.during} listening after, ${bus.left} left over`);
   if (bus.heard !== 'a b d | b d late b d late | b d late' || bus.during !== 3 || !bus.threw || bus.left !== 0) problems.push(`a listener stopping or starting as the news is told should never make another miss it: ${JSON.stringify(bus)}`);
   await countEvents();
-  // the title screen, then the port: choose skies, buy a ship and an upgrade, set the crystal power
+  // the title screen, then the port: choose skies, buy a ship and an upgrade, set the crystal power. A brand-new Captain
+  // finds Fair Winds chosen (the skies marked best for a first voyage), so Set sail takes her out on it
   await page.evaluate(() => window.__game.progress.reset());
   if (await mode(page) !== 'title') problems.push('the game does not open on the title screen');
+  const newSkies = await page.evaluate(() => { window.__game.port.setMode('title'); return { save: window.__game.progress.data.skies, chosen: [...document.querySelectorAll('#skies [aria-checked="true"]')].map((b) => b.dataset.skies).join() }; });
+  console.log(`a brand-new Captain's skies: ${newSkies.save}, chosen on the title: ${newSkies.chosen}`);
+  if (newSkies.save !== 'fair' || newSkies.chosen !== 'fair') problems.push(`a brand-new Captain should find Fair Winds chosen on the title: ${JSON.stringify(newSkies)}`);
   await page.waitForTimeout(2000);
   await shot(page, 'laptop-title');
   // the view on the title screen swings round the ship when the sky is dragged: presses on the open sky reach it,
@@ -608,7 +724,7 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
     const mark = document.getElementById('hitmark'), playing = (id) => document.getAnimations().some((a) => a.effect?.target?.id === id);
     g.events.on('hit', (e) => { if (e.target === 'raider') hits.push(e.part); });
     const marked = () => ({ playing: playing('hitmark'), part: mark.dataset.part, right: mark.getAttribute('stroke') === HIT_COLOUR[mark.dataset.part] && hits.includes(mark.dataset.part) });
-    g.progress.reset();
+    g.progress.reset(); g.progress.data.skies = 'cross'; // (a new save starts on Fair Winds: these fights are on Crosswinds)
     const voyage = (id) => { g.fly(id); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false); return g.player; };
     const aimAt = (P, tp) => {
       const T = P.pos.clone(); T.y += P.ship.recipe.length * 0.42 + 2;
@@ -826,7 +942,7 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   });
   const feel = await page.evaluate(() => {
     const g = window.__game, out = {}, E = g.events, FX = g.fx;
-    g.progress.reset();
+    g.progress.reset(); g.progress.data.skies = 'cross';
     const voyage = (id) => { g.fly(id); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false); return g.player; };
     const still = (P) => { P.speed = 3; P.sail = 0.05; P.vy = 0; P.turn = 0; P.climb = 0; };
     // a rippling broadside: the Frigate's port side once into empty sky. One shot at once, all ten by 0.7 s, bow first,
@@ -1052,7 +1168,7 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
     const g = window.__game, $ = (id) => document.getElementById(id), out = { drawnOver: !!($('banner').compareDocumentPosition($('bounties')) & Node.DOCUMENT_POSITION_FOLLOWING), runs: [] };
     g.raiders.prepare('cutter', true); // (built first, so the banner is still showing when she goes down)
     for (const below of [null, 50]) {
-      g.progress.reset(); g.fly('brig'); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false); // (setting sail shows a banner)
+      g.progress.reset(); g.progress.data.skies = 'cross'; g.fly('brig'); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false); // (setting sail shows a banner)
       const P = g.player; P.speed = 3; P.sail = 0.05; g.step(0.05, {});
       const bn = $('banner').getBoundingClientRect(), V = P.pos.constructor, y = below === null ? (bn.top + bn.bottom) / 2 : bn.bottom + below;
       const at = new V(0, 1 - 2 * y / innerHeight, 0.5).unproject(g.camera).sub(g.camera.position).normalize().multiplyScalar(260).add(g.camera.position);
@@ -1081,7 +1197,7 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   // and the canvas's shader uses it), so its flapping never jumps
   const scraps = await page.evaluate(() => {
     const g = window.__game, FX = g.fx, D = FX.debris;
-    g.progress.reset(); g.fly('brig'); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false);
+    g.progress.reset(); g.progress.data.skies = 'cross'; g.fly('brig'); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false);
     const P = g.player, V = P.pos.constructor, from = P.aimAt().clone().addScaledVector(P.forward(), 40), up = new V(0, 1, 0), none = new V();
     FX.clear(); g.step(1 / 60, {});
     D.toss('canvas', from, up, 1, none, 6); g.step(1, {});
@@ -1162,6 +1278,7 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
     g.progress.reset(); g.port.setMode('port'); await frames(2); g.port.setMode('title');
     veils.title = veil();
     out.fresh = { button: $('btn-title-sail').textContent, toPort: $('btn-to-port').classList.contains('plain') && $('btn-to-port').offsetHeight > 0, rank: $('title-rank').hidden,
+      chosen: [...document.querySelectorAll('#skies [aria-checked="true"]')].map((b) => b.dataset.skies).join(),
       first: [...document.querySelectorAll('#skies button')].filter((b) => b.querySelector('.first') && !b.querySelector('.first').hidden).map((b) => b.dataset.skies + ': ' + b.querySelector('.first').textContent).join() };
     out.drawn = await drawn();
     const T = g.title, S = T.ship, a = S.root.position.clone(); T.update(1); const b = S.root.position.clone();
@@ -1169,7 +1286,7 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
     out.raiders = T.raiders.map((r) => `${r.recipe.cls} ${r.level}${r.root.parent === g.scene ? '' : ' NOT IN THE SKY'}`).join(', ');
     out.fighting = g.raiders.list.length;
     out.sun = { y: +g.sun.position.clone().sub(g.sun.target.position).normalize().y.toFixed(2), rays: g.world.mood.uRays.value, ownLight: g.scene.environment !== g.port.scene.environment };
-    out.cross = shot(); out.fair = shot('fair'); out.mael = shot('mael'); shot('cross');
+    out.cross = shot('cross'); out.fair = shot('fair'); out.mael = shot('mael'); shot('cross');
     // the wind: the big clouds carried as far, and the same way, as the cloud deck's pattern (world.js cover() moves it
     // 0.0022 and 0.0009 of its 1/0.00045-metre cells each tick of its clock)
     out.wind = { drift: g.world.mood.uDrift.value.toArray(), deck: [-0.0022 / 0.00045 * g.world.time.value, -0.0009 / 0.00045 * g.world.time.value] };
@@ -1216,12 +1333,12 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   const sunBack = D.sun0[2] && Math.abs(D.sun0[0]) < 1.3 && Math.abs(D.sun0[1]) < 1.3 && D.sun[2] && Math.abs(D.sun[0] - D.sun0[0]) < 0.25 && Math.abs(D.sun[1] - D.sun0[1]) < 0.25;
   console.log(`the title's drag: swung ${D.swung}, ${D.still ? `MOVED ${D.still} WITH NO TIME PASSING` : 'still while no time passes'}, back to ${D.back} ten seconds after (the sun at ${D.sun0.slice(0, 2).join(', ')} on the screen before, ${D.sun[2] ? D.sun.slice(0, 2).join(', ') : 'BEHIND THE CAMERA'} after); its coast ${D.coast[0]} at 60 frames a second, ${D.coast[1]} at 15; dragged to ${D.reopened[0]}, it opens next time at ${D.reopened[1]}; the shadows' box ${titleSky.shadow.slice(0, 3).join(', ')} m (the Frigate, the Skiff, the Frigate)`);
   if (titleSky.drawn !== 'world' || !titleSky.ship.inWorld || titleSky.ship.level !== 'full' || Math.abs(titleSky.ship.up - 700) > 30 || titleSky.ship.fromCity > 600 || !(titleSky.ship.moved > 5)) problems.push(`the title screen should draw the world, with her ship flying over the Hearthsea: ${JSON.stringify({ drawn: titleSky.drawn, ship: titleSky.ship })}`);
-  if (!/^(\w+ (middle|far)), \w+ (middle|far)(, \w+ (middle|far))?$/.test(titleSky.raiders) || titleSky.fighting) problems.push(`two or three raiders should cross the title's sky, not fighting: ${titleSky.raiders} (${titleSky.fighting} in the fight)`);
+  if (!/^\w+ far, \w+ far(, \w+ far)?$/.test(titleSky.raiders) || titleSky.fighting) problems.push(`two or three raiders should cross the title's sky far off (their far models), not fighting: ${titleSky.raiders} (${titleSky.fighting} in the fight)`);
   if (!(titleSky.sun.y < 0.2) || titleSky.sun.rays !== 1 || !titleSky.sun.ownLight) problems.push(`the title screen should have its own low sun, with rays and its own light on the brass: ${JSON.stringify(titleSky.sun)}`);
   const lum = ([r, g, b]) => 0.3 * r + 0.59 * g + 0.11 * b;
   if (!(lum(titleSky.cross.sky) > 70) || !(titleSky.cross.sky[0] > titleSky.cross.sky[2])) problems.push(`the sky beside her on the title screen should be warm and bright (the port's void is near black): ${titleSky.cross.sky}`);
   if (!(lum(titleSky.mael.all) < lum(titleSky.fair.all) * 0.85)) problems.push(`the Maelstrom's skies should tint the title darker than Fair Winds': ${titleSky.mael.all} against ${titleSky.fair.all}`);
-  if (titleSky.fresh.button !== 'Set sail' || !titleSky.fresh.toPort || !titleSky.fresh.rank || titleSky.fresh.first !== 'fair: Best for your first voyage') problems.push(`a new Captain's title should offer "Set sail", a plain "To port", and mark Fair Winds for a first voyage: ${JSON.stringify(titleSky.fresh)}`);
+  if (titleSky.fresh.button !== 'Set sail' || !titleSky.fresh.toPort || !titleSky.fresh.rank || titleSky.fresh.first !== 'fair: Best for your first voyage' || titleSky.fresh.chosen !== 'fair') problems.push(`a new Captain's title should offer "Set sail", a plain "To port", and mark Fair Winds for a first voyage, chosen: ${JSON.stringify(titleSky.fresh)}`);
   if (titleSky.sailed.mode !== 'voyage' || titleSky.sailed.ship !== 'skiff' || !titleSky.sailed.banner.includes('first voyage') || titleSky.drawnAtSea !== 'world') problems.push(`"Set sail" on the title should start a voyage in her ship at once: ${JSON.stringify(titleSky.sailed)}`);
   if (titleSky.sailed.sun > 1e-4 || titleSky.sailed.rays !== 0 || titleSky.sailed.cover !== 0 || titleSky.sailed.haze !== 4000 || titleSky.sailed.light !== 2.6 || !titleSky.sailed.env || titleSky.sailed.ships !== 'Zephyr' || titleSky.sailed.titleRaiders) problems.push(`setting sail should put the afternoon sky back exactly, and leave only her ship in the sky: ${JSON.stringify(titleSky.sailed)}`);
   if (titleSky.back.voyages !== 1 || titleSky.back.button !== 'Set sail in the Zephyr' || !titleSky.back.rank || titleSky.back.first) problems.push(`back from the sea, the title should name her ship and show the shards: ${JSON.stringify(titleSky.back)}`);
@@ -1245,7 +1362,7 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   // hanging in the sky
   const again = await page.evaluate(() => {
     const g = window.__game, out = {}, $ = (id) => document.getElementById(id);
-    g.progress.reset(); g.port.setMode('port');
+    g.progress.reset(); g.progress.data.skies = 'cross'; g.port.setMode('port');
     document.querySelector('#port-ships [data-ship="cutter"]').click(); $('btn-sail').click();
     out.first = g.player.ship.recipe.id;
     delete g.raiders.templates['brig:captain'];
@@ -1274,7 +1391,7 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   // and the card rises only after it), sail on, then sink and get home with half
   const fought = await page.evaluate(async () => {
     const g = window.__game, out = {};
-    g.progress.reset(); g.port.setMode('port');
+    g.progress.reset(); g.progress.data.skies = 'cross'; g.port.setMode('port');
     document.getElementById('btn-sail').click();
     const P = g.player; g.wind.strength = 0;
     out.sailed = g.mode === 'voyage' && P.ship.recipe.id === 'skiff';
@@ -1618,7 +1735,7 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
       await page.setViewportSize({ width: w, height: h }); await page.waitForTimeout(500);
       await page.waitForFunction(([w, h]) => Math.abs(window.__game.camera.aspect - w / h) < 1e-6, [w, h], { timeout: 30000 }).catch(() => problems.push(`laptop ${w}x${h}: the game never heard the window change size`));
       const keys = await page.evaluate(() => window.__game.settings.data.voyages < 2 ? 'the keys' : 'the Keys button');
-      layouts.push(`${w}x${h} with ${keys}: ${layoutProblems(await layoutAt(page, HUD, PANELS, w === 1024), `laptop ${w}x${h}`)}`);
+      layouts.push(`${w}x${h} with ${keys}: ${layoutProblems(await layoutAt(page, HUD, PANELS, w === 1024), `laptop ${w}x${h}`)}; a bounty ${bountyProblems(await bountyCard(page), `laptop ${w}x${h}`)}`);
     }
     console.log(`laptop layouts: ${layouts.join('; ')}`);
     await page.evaluate((n) => window.__game.settings.keep('voyages', n + 3), voyages);
@@ -1632,7 +1749,7 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
 }
 if (!quick) {
   const page = await open('game', 'phone', gameReady);
-  await page.evaluate(() => window.__game.progress.reset());
+  await page.evaluate(() => { const p = window.__game.progress; p.reset(); p.data.skies = 'cross'; });
   const start = await page.evaluate(() => ({ touch: document.body.classList.contains('touch') }));
   if (!start.touch) problems.push('phone: the touch controls are not showing');
   await page.waitForTimeout(2500); // let the loading cover fade
@@ -1849,13 +1966,16 @@ if (!quick) {
     // (the new size, once the game has heard of it: drawn in software, a frame can take longer than the half second)
     await page.setViewportSize({ width: w, height: h }); await page.waitForTimeout(500);
     await page.waitForFunction(([w, h]) => Math.abs(window.__game.camera.aspect - w / h) < 1e-6, [w, h], { timeout: 30000 }).catch(() => problems.push(`phone ${w}x${h}: the game never heard the window change size`));
-    layouts.push(`${w}x${h}: ${layoutProblems(await layoutAt(page, HUD, PANELS, w === 360), `phone ${w}x${h}`)}`);
+    layouts.push(`${w}x${h}: ${layoutProblems(await layoutAt(page, HUD, PANELS, w === 360), `phone ${w}x${h}`)}; a bounty ${bountyProblems(await bountyCard(page), `phone ${w}x${h}`)}`);
   }
   console.log(`phone layouts: ${layouts.join('; ')}`);
-  // the port at the same four sizes: its top line on one line, even with ◆ 12,345; a ship you can't afford yet showing
-  // all of how she sails above her Buy button; and her Upgrades tab showing two upgrades or more above Set sail
+  // the port at the same four sizes and a narrow phone held sideways (640 by 360): its top line on one line, even with
+  // ◆ 12,345, and its panel clear of the top line and of the ships along the bottom; a ship you can't afford yet showing
+  // all of how she sails above her Buy button; her Upgrades tab showing two upgrades or more above Set sail; each of the
+  // four ships' blurbs (owned or not) all above the button's fade, not tucked under it; and on a phone held upright,
+  // the panel no taller than what's in it, so her ship has the room above it (no empty band under the button)
   const ports = [];
-  for (const [w, h] of [[844, 390], [740, 360], [390, 844], [360, 640]]) {
+  for (const [w, h] of [[844, 390], [740, 360], [640, 360], [390, 844], [360, 640]]) {
     await page.setViewportSize({ width: w, height: h }); await page.waitForTimeout(300);
     const P = await page.evaluate(() => {
       const g = window.__game, $ = (id) => document.getElementById(id), d = g.progress.data, r = (id) => $(id).getBoundingClientRect();
@@ -1867,10 +1987,25 @@ if (!quick) {
       $('pp-tab-upgrades').click();
       const sail = r('btn-sail'), mods = [...document.querySelectorAll('.mod')].filter((m) => m.getBoundingClientRect().bottom <= sail.top + 1).length;
       $('pp-tab-ship').click();
-      return { stats, line: Math.round(line), right, w: innerWidth, mods };
+      const was = { flying: d.flying, owned: Object.fromEntries(Object.keys(d.ships).map((id) => [id, d.ships[id].owned])) }, tucked = [], empty = [], laps = new Set();
+      const lap = (a, c) => a.left < c.right - 1 && c.left < a.right - 1 && a.top < c.bottom - 1 && c.top < a.bottom - 1;
+      const look = (id, own) => {
+        d.ships[id].owned = own; $('port-ships').querySelector(`[data-ship="${id}"]`).click(); $('pp-tab-ship').click();
+        const b = r('pp-blurb'), so = document.querySelector('.sail-out').getBoundingClientRect(), pn = r('port-panel');
+        if (b.height && b.bottom > so.top + 1) tucked.push(`${id}${own ? '' : ' (not owned)'} by ${Math.round(b.bottom - so.top)} px`);
+        if (innerWidth <= 700 && innerHeight > 500 && pn.bottom - so.bottom > 12) empty.push(`${id}${own ? '' : ' (not owned)'}: ${Math.round(pn.bottom - so.bottom)} px`);
+        for (const other of ['port-ships', 'port-shards', 'btn-skies', 'btn-settings-port']) if (lap(pn, r(other))) laps.add(other);
+      };
+      for (const id of ['skiff', 'cutter', 'brig', 'frigate']) { if (id !== 'skiff') look(id, false); look(id, true); }
+      for (const id in was.owned) d.ships[id].owned = was.owned[id];
+      d.flying = was.flying; $('port-ships').querySelector(`[data-ship="${was.flying}"]`).click();
+      return { stats, line: Math.round(line), right, w: innerWidth, mods, tucked, empty, laps: [...laps] };
     });
-    ports.push(`${w}x${h}: ${P.stats} of 5 stats and ${P.mods} upgrades in view, the top line ${P.line} px tall`);
+    ports.push(`${w}x${h}: ${P.stats} of 5 stats and ${P.mods} upgrades in view, the top line ${P.line} px tall, ${P.tucked.length ? `BLURBS UNDER THE FADE: ${P.tucked.join(', ')}` : 'every blurb clear of the fade'}${P.empty.length ? `, EMPTY UNDER THE BUTTON: ${P.empty.join(', ')}` : ''}${P.laps.length ? `, THE PANEL ON ${P.laps.join(', ')}` : ''}`);
     if (P.stats < 5 || P.mods < 2 || P.line > 44 || P.right > P.w) problems.push(`phone ${w}x${h}: the port should show all of how a ship not owned sails above her Buy button, two upgrades or more on her Upgrades tab, and its top line on one line: ${JSON.stringify(P)}`);
+    if (P.laps.length) problems.push(`phone ${w}x${h}: in port the panel lands on ${P.laps.join(', ')}`);
+    if (P.tucked.length) problems.push(`phone ${w}x${h}: in port a ship's blurb should be all above the button's fade, not tucked under it: ${P.tucked.join(', ')}`);
+    if (P.empty.length) problems.push(`phone ${w}x${h}: in port on a phone held upright, the panel should be no taller than what's in it (her ship has the room above): empty under the button for ${P.empty.join(', ')}`);
     if (w === 360) { await page.click('#port-ships [data-ship="frigate"]'); await page.waitForTimeout(1200); await shot(page, 'phone-small-port'); }
     if (w === 740) { await page.click('#pp-tab-upgrades'); await page.waitForTimeout(1200); await shot(page, 'phone-sideways-port-upgrades'); await page.click('#pp-tab-ship'); }
   }
@@ -1882,7 +2017,7 @@ if (!quick) {
   await shot(page, 'phone-battle');
   // the title screen on a phone is the first thing Chris sees: each of its frames costs no more than a voyage's (timed
   // in turns, the title and a voyage just set out, each frame finished before the next; the page's own frames held
-  // meanwhile). And how it looks held sideways
+  // meanwhile), and it's drawn in fewer goes than a voyage's. And how it looks held sideways
   const frameTimes = await page.evaluate(() => {
     const g = window.__game, gl = g.renderer.getContext(), px = new Uint8Array(4), raf = window.requestAnimationFrame, held = [];
     window.requestAnimationFrame = (f) => { held.push(f); return 0; };
@@ -1896,6 +2031,7 @@ if (!quick) {
   });
   console.log(`phone: a frame of the title screen ${frameTimes.title} ms (${frameTimes.calls.title} draws), of a voyage ${frameTimes.voyage} ms (${frameTimes.calls.voyage} draws), here in software at ${frameTimes.ratio} pixels to the page's`);
   if (!(frameTimes.title <= frameTimes.voyage * 1.1)) problems.push(`phone: the title screen's frames should cost no more than a voyage's: ${JSON.stringify(frameTimes)}`);
+  if (!(frameTimes.calls.title < frameTimes.calls.voyage)) problems.push(`phone: the title screen should be drawn in fewer goes than a voyage: ${frameTimes.calls.title} draws against ${frameTimes.calls.voyage}`);
   // the title on phones upright and sideways, small ones too (an iPhone SE's, with the browser's bars showing): raiders
   // in sight, her ship clear of the card, and the card fitting the screen
   const phoneTitles = [];

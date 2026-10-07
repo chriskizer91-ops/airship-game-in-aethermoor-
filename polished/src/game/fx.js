@@ -157,12 +157,13 @@ export function makeFx({ scene, camera, touch = false }) {
     for (let i = 0, m = Math.round(2 * q); i < m; i++) spark(e.p, fv.copy(e.vel).addScaledVector(e.dir, KINDS[e.kind].speed * 0.04).add(sp.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(6)), 0.5, 2.2, 0xff9a3a);
     // and powder smoke, white-grey, billowing out of the port: a jet blasting out a dozen metres or so and spreading
     // wide, and (on a laptop) a slower cloud behind it that keeps more of her speed, so the bank she leaves rolls back
-    // along her side as she sails on. Thick at first, it thins away over five seconds. (A phone gets the jet alone, a
-    // little bigger, and smokes every other port of a big raider broadside)
+    // along her side as she sails on. Thick at first, it thins away over five seconds. (A phone gets the jet alone, as
+    // many puffs as ever but each much bigger, rising a little more and lasting longer, so a broadside still leaves a
+    // bank of smoke along her side that shows over her deck; and it smokes every other port of a big raider broadside)
     if (!(touch && !mine && e.n > 8 && e.i % 2)) {
       const s = big * (0.85 + Math.random() * 0.3);
       fv.copy(e.vel).multiplyScalar(0.7).addScaledVector(e.dir, 32 * big); fv.y += 2.5;
-      smoke.emit(fp.copy(e.p).addScaledVector(e.dir, 1.5), fv, touch ? 5 : 4.5, 3 * s, (touch ? 23 : 19) * s, 0.52 + Math.random() * 0.14, mine ? 0.92 : 0.85, PUFF.gun, 0.7);
+      smoke.emit(fp.copy(e.p).addScaledVector(e.dir, 1.5), fv, touch ? 7 : 4.5, (touch ? 4.5 : 3) * s, (touch ? 36 : 19) * s, 0.52 + Math.random() * 0.14, mine ? (touch ? 0.95 : 0.92) : 0.85, PUFF.gun, touch ? 1.1 : 0.7);
       if (!touch) {
         fv.copy(e.vel).multiplyScalar(0.95).addScaledVector(e.dir, 10 * big).add(sp.set(Math.random() - 0.5, Math.random() * 0.6, Math.random() - 0.5).multiplyScalar(5));
         smoke.emit(fp.copy(e.p).addScaledVector(e.dir, 3), fv, 5.5, 4 * s, 25 * s, 0.6 + Math.random() * 0.14, 0.8, PUFF.bank, 1);

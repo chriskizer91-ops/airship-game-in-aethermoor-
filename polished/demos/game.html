@@ -277,10 +277,12 @@
   .tag.locked { border-color: #ffd36a; box-shadow: 0 0 10px rgba(255, 200, 90, 0.6); }
   .tag.captain { background: rgba(26, 18, 8, 0.82); border-color: #ffd36a; }
   .tag.captain b { color: #ffd36a; }
-  /* a raider off screen readying her broadside: her tag and its arrow flash red, and say "Broadside!" (main.js) */
+  /* a raider off screen readying her broadside: her tag and its arrow flash red, and say "Broadside!" in place of her
+     bars (main.js) */
   .tag .bs { display: none; grid-column: 1 / -1; font-size: 12px; font-weight: 600; color: #fff; text-align: center; }
   .tag.warn { z-index: 1; opacity: 1; background: rgba(150, 18, 12, 0.92); border-color: #ff4636; animation: tag-warn 0.22s ease-in-out infinite alternate; }
   .tag.warn .bs { display: block; }
+  .tag.warn .meter { display: none; } /* (in place of her bars, so the tag is no taller and fits between the panels) */
   .tag.warn b, .tag.warn .d { color: #ffe2d8; }
   .tag.warn .arrow { color: #ff3a28; scale: 1.5; filter: drop-shadow(0 0 4px #ff2a10); animation: arrow-warn 0.22s ease-in-out infinite alternate; }
   @keyframes tag-warn { from { background-color: rgba(190, 24, 14, 0.95); border-color: #ffd0c0; box-shadow: 0 0 16px rgba(255, 50, 30, 0.95); }
@@ -381,9 +383,12 @@
     .port-top h1 { font-size: 26px; }
     .port-top { gap: 8px; }
     #btn-skies { font-size: 13px; padding: 6px 10px; }
-    #port-panel { top: 47vh; left: var(--gutter); right: var(--gutter); width: auto; bottom: calc(var(--bottom) + 74px); padding-top: 8px; }
-    #port-panel[data-tab='upgrades'] { top: 26vh; } /* (her upgrades take more room: the ship shows smaller above them) */
-    #port-panel.buying { top: 30vh; } /* (and a ship you don't own: how she sails, above the Buy button) */
+    /* (the panel as tall as what's in it, from just above the ships along the bottom, so her ship has the room above
+       it, as big as it fits (port.js): up to the bottom half of the screen for her ship's tab, more for her upgrades
+       and for a ship you don't own (how she sails, above the Buy button), where the ship shows smaller above) */
+    #port-panel { top: auto; left: var(--gutter); right: var(--gutter); width: auto; bottom: calc(var(--bottom) + 74px); max-height: calc(53vh - var(--bottom) - 74px); padding-top: 8px; }
+    #port-panel[data-tab='upgrades'] { max-height: calc(74vh - var(--bottom) - 74px); }
+    #port-panel.buying { max-height: calc(70vh - var(--bottom) - 74px); }
     #btn-skies span { display: none; } /* (just the skies' name: the top line never wraps) */
     .mod { padding: 7px 0; }
     #port-ships { left: 50%; translate: -50% 0; }
@@ -460,20 +465,27 @@
     #title-rank { margin: -4px 0 2px; font-size: 13.5px; }
     #skies .first { font-size: 10.5px; padding: 0 6px; }
     .port-top h1 { font-size: 24px; }
-    #port-panel { width: min(340px, 46vw); top: calc(var(--top) + 50px); padding-top: 6px; }
-    #pp-name { font-size: 22px; }
+    /* (on the right, as tall as what's in it; the ships along the bottom on the left, even on a narrow one) */
+    #port-panel { left: auto; right: var(--gutter); width: min(372px, 50vw); top: calc(var(--top) + 50px); bottom: auto; max-height: calc(100% - var(--top) - 50px - var(--bottom)); padding-top: 4px; }
+    #port-panel.buying, #port-panel[data-tab='upgrades'] { max-height: calc(100% - var(--top) - 50px - var(--bottom)); }
+    #port-ships { left: var(--gutter); translate: none; max-width: calc(50vw - var(--gutter) - 16px); }
+    #pp-name { font-size: 21px; }
+    #port .cls { font-size: 11.5px; }
     #port-ships button { padding: 5px 8px 4px; }
     #port-ships button b { font-size: 14px; }
-    .sail-out { gap: 2px; margin-top: 4px; padding: 6px 0; }
-    .sail-out .big { padding: 10px 14px; font-size: 17px; }
+    .sail-out { gap: 2px; margin-top: 4px; padding: 5px 0 6px; }
+    .sail-out .big { padding: 8px 14px; font-size: 17px; }
     #pp-need { display: none; } /* (the shards are at the top, and the Buy button fills with gold towards her price) */
     #btn-sail.alt { padding: 2px 8px; }
-    /* (so the panel shows all of how she sails, or two of her upgrades, above the button: her stats before her blurb,
-       and the tabs and upgrades a little tighter) */
+    /* (so the panel shows all of how she sails and her blurb, or two of her upgrades, above the button: her stats
+       before her blurb, without their heading (the tab says it), and the tabs, stats and upgrades a little tighter) */
     #pp-ship-part { display: flex; flex-direction: column; }
-    #pp-blurb { order: 1; }
-    #pp-tabs { margin: 6px 0 0; }
-    #pp-tabs button { min-height: 34px; padding: 4px 10px; }
+    #pp-ship-part h3 { display: none; }
+    #pp-blurb { order: 1; margin: 5px 0 0; font-size: 12.5px; line-height: 1.3; }
+    #pp-stats { margin-top: 3px; }
+    .stat { margin: 2px 0; font-size: 12.5px; }
+    #pp-tabs { margin: 5px 0 0; }
+    #pp-tabs button { min-height: 30px; padding: 3px 10px; }
     #port-panel[data-tab='upgrades'] #pp-cls { display: none; } /* (her class and guns are on the ship's tab) */
     .mod { padding: 6px 0; }
     .mod small { line-height: 1.25; }
@@ -533,7 +545,7 @@
      don't own in port, her panel taller again (port.js knows). Upright only: a small phone held sideways keeps the
      sideways layout (above) */
   @media (max-width: 700px) and (min-height: 501px) and (max-height: 720px) {
-    #port-panel.buying { top: 25vh; }
+    #port-panel.buying { max-height: calc(75vh - var(--bottom) - 74px); }
     #title { padding-top: 12px; padding-bottom: 14px; }
     #title h1 { font-size: clamp(30px, 9vw, 38px); }
     #title .lede { display: none; }
@@ -547,10 +559,12 @@
     .title-go .big { padding: 10px 12px; font-size: 16px; }
     .title-go .plain { min-height: 44px; padding: 8px 14px; font-size: 15px; }
   }
-  /* a small phone held sideways with its browser's bars showing: no opening line either, so Set sail still shows */
+  /* a small phone held sideways with its browser's bars showing: no opening line either, so Set sail still shows; and in
+     port no blurb, so how she sails fits above the button */
   @media (max-height: 340px) {
     #title .lede { display: none; }
     #title-rank { margin: 4px 0 0; }
+    #pp-blurb { display: none; }
   }
   /* a laptop window not so tall (a 1366 by 768 laptop's browser, or smaller): the banner's words a little smaller, so it
      keeps between the toast and the crosshair even when it takes two lines */
@@ -562,6 +576,8 @@
   /* a laptop window short and narrow at once: the upright phone's top, the short one's middle */
   @media (max-width: 700px) and (max-height: 500px) {
     #btn-pause { top: var(--top); left: auto; right: calc(var(--gutter) + var(--map-w) + 8px); translate: none; }
+    #port-ships button { padding: 5px 6px 4px; }
+    #port-ships button b { font-size: 13px; }
   }
   /* the tabs, wherever the panel is short (a phone either way). The Upgrades tab shows the upgrades first (no heading:
      the tab says it), then crystal power, so they're there without scrolling */

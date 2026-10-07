@@ -151,6 +151,88 @@ function raiderShip(T) {
   };
 }
 
+// The title screen's raiders (title.js) sail far off, so each is her far model in one piece, drawn in one go (a phone
+// draws the title first, and each raider's dozen or so materials would cost it a dozen draws). Each corner of her takes
+// the colour her own material gives it there: the material's colour, times its painting under that corner (for the tiled
+// planks, deck and bands, their average colour), times its own colour (the pennants and crystals have their own), and
+// glows as it does (the lamplight, the crystals, the sails' warmth). Her cut-out parts (the painted rails) keep only the
+// triangles that are mostly painted, and her sails glow (SAIL_GLOW, of their own colour) as canvas does with the low
+// sun behind it: the title looks toward the sun, so it's their shaded side that shows. The paintings are read once, small
+const SAIL_GLOW = 0.5;
+const LIN = Array.from({ length: 256 }, (_, i) => { const c = i / 255; return c < 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; }); // (a byte of a painting, as light)
+const paintings = new Map(); // (a texture's pixels, read once, and the average colour of what's painted)
+function painting(tex) {
+  let p = paintings.get(tex);
+  if (!p) {
+    const img = tex.image, w = Math.min(512, img.width), h = Math.min(512, img.height), c = document.createElement('canvas'); c.width = w; c.height = h;
+    const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(img, 0, 0, w, h);
+    const d = g.getImageData(0, 0, w, h).data, mean = [0, 0, 0];
+    let n = 0;
+    for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 115) { mean[0] += LIN[d[i]]; mean[1] += LIN[d[i + 1]]; mean[2] += LIN[d[i + 2]]; n++; }
+    p = { w, h, d, mean: mean.map((v) => v / Math.max(1, n)), tiled: tex.wrapS === THREE.RepeatWrapping };
+    paintings.set(tex, p);
+  }
+  return p;
+}
+// a painting's colour (linear) and how opaque it is at a corner's place on it (uv), into out; its average if it's tiled,
+// or where it isn't painted
+function paintAt(tex, uv, i, out) {
+  const p = painting(tex);
+  out[3] = 1;
+  if (!p.tiled && uv) {
+    const x = Math.min(p.w - 1, Math.max(0, Math.floor(uv.getX(i) * p.w))), y = Math.min(p.h - 1, Math.max(0, Math.floor((1 - uv.getY(i)) * p.h))), k = (y * p.w + x) * 4;
+    out[3] = p.d[k + 3] / 255;
+    if (out[3] > 0.45) { out[0] = LIN[p.d[k]]; out[1] = LIN[p.d[k + 1]]; out[2] = LIN[p.d[k + 2]]; return out; }
+  }
+  out[0] = p.mean[0]; out[1] = p.mean[1]; out[2] = p.mean[2];
+  return out;
+}
+function onePiece(body) {
+  body.updateMatrixWorld(true);
+  const inv = body.matrixWorld.clone().invert(), m = new THREE.Matrix4(), nm = new THREE.Matrix3(), v = new THREE.Vector3(), c = new THREE.Color(), e = new THREE.Color(), px = [0, 0, 0, 1];
+  const pos = [], nor = [], col = [], glow = [], idx = [];
+  body.traverse((o) => {
+    if (!o.isMesh) return;
+    const g = o.geometry, M = o.material, P = g.attributes.position, N = g.attributes.normal, UV = g.attributes.uv, C = M.vertexColors ? g.attributes.color : null, I = g.index;
+    m.multiplyMatrices(inv, o.matrixWorld); nm.getNormalMatrix(m);
+    const base = pos.length / 3, alpha = new Float32Array(P.count).fill(1);
+    for (let i = 0; i < P.count; i++) {
+      v.fromBufferAttribute(P, i).applyMatrix4(m); pos.push(v.x, v.y, v.z);
+      if (N) v.fromBufferAttribute(N, i).applyMatrix3(nm).normalize(); else v.set(0, 1, 0);
+      nor.push(v.x, v.y, v.z);
+      c.copy(M.color);
+      if (M.map) { paintAt(M.map, UV, i, px); c.r *= px[0]; c.g *= px[1]; c.b *= px[2]; alpha[i] = px[3]; }
+      if (C) { c.r *= C.getX(i); c.g *= C.getY(i); c.b *= C.getZ(i); }
+      e.copy(M.emissive).multiplyScalar(M.emissiveIntensity);
+      if (M.emissiveMap) { paintAt(M.emissiveMap, UV, i, px); e.r *= px[0]; e.g *= px[1]; e.b *= px[2]; }
+      if (o.name === 'canvas') { e.r += c.r * SAIL_GLOW; e.g += c.g * SAIL_GLOW; e.b += c.b * SAIL_GLOW; }
+      col.push(c.r, c.g, c.b); glow.push(e.r, e.g, e.b);
+    }
+    const n = I ? I.count : P.count, at = (k) => (I ? I.getX(k) : k);
+    for (let t = 0; t + 2 < n; t += 3) {
+      const a = at(t), b = at(t + 1), d = at(t + 2);
+      if (M.alphaTest && (alpha[a] + alpha[b] + alpha[d]) / 3 < M.alphaTest) continue;
+      idx.push(base + a, base + b, base + d);
+    }
+  });
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); geo.setAttribute('aGlow', new THREE.Float32BufferAttribute(glow, 3));
+  geo.setIndex(idx); geo.computeBoundingSphere();
+  return geo;
+}
+let farMaterial = null;
+function onePieceMaterial() {
+  if (farMaterial) return farMaterial;
+  const M = farMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.75, metalness: 0.15, side: THREE.DoubleSide });
+  M.onBeforeCompile = (sh) => {
+    sh.vertexShader = 'attribute vec3 aGlow;\nvarying vec3 vGlow;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvGlow = aGlow;');
+    sh.fragmentShader = 'varying vec3 vGlow;\n' + sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vGlow;');
+  };
+  M.customProgramCacheKey = () => 'raider-one-piece';
+  return M;
+}
+
 // `skies()` gives the current skies' settings (progress.js); `fx` draws the gun ports' glow (fx.js). On a laptop each
 // class's masts are cut out of its model as it's built, so they can fall when she's blown apart (a phone skips that)
 export function makeRaiders(scene, art, bolts, skies, fx) {
@@ -352,7 +434,14 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
   function clear() { for (const r of list) { r.gone = r.cleared = true; drop(r); } list.length = 0; }
   // build a class's models ahead of time (a captain's, before her wave), so nothing is built mid-fight
   const prepare = (id, captain = false) => { template(id, captain); };
-  // a raider's ship and nothing more, for the title screen to fly across its sky: not one of the raiders, never fighting
-  const model = (id) => raiderShip(template(id, false));
+  // a raider's ship and nothing more, for the title screen to fly across its sky far off: not one of the raiders, never
+  // fighting. Her far model in one piece (made the first time it's wanted, and shared by every one of her class there)
+  const pieces = {};
+  function model(id) {
+    const Tm = template(id, false), root = new THREE.Group(), body = new THREE.Mesh(pieces[id] ??= onePiece(Tm.far.body), onePieceMaterial());
+    body.name = 'raider far, in one piece'; root.add(body);
+    const move = shipMotion(Tm.R, body, []);
+    return { root, body, recipe: Tm.R, length: Tm.R.length, level: 'far', update: (dt, opts) => { move(dt, opts); } };
+  }
   return { list, escaped, spawn, spawnWave, update, hitBy, clear, prepare, model, templates: T, setAI: (on) => { ai = on; }, setDetail: (k) => { detailAt = k; }, get detailAt() { return detailAt; } };
 }

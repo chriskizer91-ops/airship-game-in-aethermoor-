@@ -125,7 +125,7 @@ async function main() {
   const built = new Map(), zones = new Map();
   const shipFor = (R) => { if (!built.has(R.id)) { const s = buildShip(R, 'full', art); s.glow.material.uniforms.uScale.value = camera.userData.pixelScale ?? 500; built.set(R.id, s); } return built.get(R.id); };
   const port = makePort({ renderer, env: dayLight, progress, shipFor, touch, onSail: (id) => sail(id), onMode: (m) => enter(m) });
-  const title = makeTitle({ renderer, scene, world, lights, art, raiders, shipFor, progress, dayLight: () => dayLight });
+  const title = makeTitle({ renderer, scene, world, lights, art, raiders, shipFor, progress, dayLight: () => dayLight, touch });
   // a phone can drop the drawing context after a long time in the background (or a laptop's graphics can restart).
   // three.js puts back the ships, the map and the shadows by itself, but not the pictures drawn once at start-up: the
   // sky's light on the brass (the afternoon's, and the title's sunset) and the cloud pattern. Pause, and draw those
@@ -486,12 +486,19 @@ async function main() {
   // (your ship's panel, the compass, the pause button, the map and the score, and on a laptop the guns' label under
   // the compass) and along the bottom (the touch buttons, the guns' label on a phone, the hint, the keys). Measured as
   // a voyage starts, and when the window, the panels or the card between waves change
+  // And where the card between waves is, while it's up (bounties keep clear of it): measured where it ends up, as it
+  // may still be rising into place (its rising moves it with translate, which offsets leave out; it's centred with
+  // translate too)
   const EDGE = { top: [], bottom: [] }, TOP_IDS = ['ship', 'compass', 'btn-pause', 'minimap', 'score'], BOTTOM_IDS = ['touch-buttons', 'battery', 'touch-hint', 'help', 'btn-help'];
+  const CALM_AT = { on: false, l: 0, r: 0, t: 0, b: 0, top: false };
   function layout() {
     if (mode !== 'voyage') return;
     const boxes = (ids) => ids.filter((id) => !$(id).classList.contains('gone')).map((id) => $(id).getBoundingClientRect()).filter((b) => b.width && b.height).map((b) => ({ l: b.left, r: b.right, t: b.top, b: b.bottom }));
     EDGE.top = boxes(TOP_IDS); EDGE.bottom = boxes(BOTTOM_IDS).filter((b) => b.t > view.h * 0.4);
     EDGE.top.push(...boxes(['battery']).filter((b) => b.b < view.h * 0.4)); // (the guns' label, wherever it is)
+    const c = $('calm');
+    CALM_AT.on = !c.hidden && c.offsetWidth > 0;
+    if (CALM_AT.on) Object.assign(CALM_AT, { l: c.offsetLeft - c.offsetWidth / 2, r: c.offsetLeft + c.offsetWidth / 2, t: c.offsetTop, b: c.offsetTop + c.offsetHeight, top: c.offsetTop + c.offsetHeight / 2 < view.h / 2 });
   }
   addEventListener('resize', resize);
   applyPicture(); applyHands(); fx.shake = settings.data.shake;
@@ -559,14 +566,16 @@ async function main() {
     row._dt.animate(ROW, 300); row._bar.animate(BAR, 300);
   }
   const proj = new THREE.Vector3(), placed = [], byY = (a, b) => a._y - b._y;
-  // a tag's height in pixels, and with its "Broadside!" line (and a pixel to spare): measured on the first tags shown
-  // (the fonts decide them), until then a fair guess
-  const TAG = { h: 42, warn: 60, measured: false, warned: false };
+  // a tag's height in pixels, and saying "Broadside!" in place of its bars (and a pixel to spare): measured on the first
+  // tags shown (the fonts decide them), until then a fair guess
+  const TAG = { h: 42, warn: 44, measured: false, warned: false };
   // a tag pinned at the screen's edge sits by its bottom middle at (x, y), 52 px in from the sides: not over the panels
-  // along the top (with its arrow, 56 px above that) or the bottom (layout()), for any panel within half the widest
-  // tag (a treasure ship's, far off) of it
-  const TAG_HALF = 52, TAG_UP = 56, TAG_REACH = 86;
-  function edgeTop(x) { let t = 6; for (const b of EDGE.top) if (x > b.l - TAG_REACH && x < b.r + TAG_REACH && b.b + 4 > t) t = b.b + 4; return t + TAG_UP; }
+  // along the top (with its arrow: up px above that, its height and the arrow's reach over its top, more for a tag
+  // saying "Broadside!", whose arrow is bigger) or the bottom (layout()), for any panel within half the widest tag (a
+  // treasure ship's, far off) of it
+  const TAG_HALF = 52, TAG_REACH = 86, ARROW = 18, ARROW_WARN = 22;
+  const tagUp = (warn) => (warn ? TAG.warn + ARROW_WARN : TAG.h + ARROW);
+  function edgeTop(x, up) { let t = 6; for (const b of EDGE.top) if (x > b.l - TAG_REACH && x < b.r + TAG_REACH && b.b + 4 > t) t = b.b + 4; return t + up; }
   function edgeBottom(x) { let y = view.h - 6; for (const b of EDGE.bottom) if (x > b.l - TAG_REACH && x < b.r + TAG_REACH && b.t - 4 < y) y = b.t - 4; return y; }
   // each raider's tag: over it, or at the edge of the screen pointing to it (flashing red as she readies a broadside);
   // its distance and health ten times a second
@@ -587,13 +596,21 @@ async function main() {
       const behind = proj.z > 1;
       let x = proj.x * W2 * (behind ? -1 : 1), y = -proj.y * H2 * (behind ? -1 : 1);
       // (off screen: pinned where the line to her meets the edge, then kept between the panels at the top and bottom)
-      const ax = W2 - TAG_HALF, k = Math.max(Math.abs(x) / ax, y < 0 ? -y / (H2 - TAG_UP - 6) : y / (H2 - 6));
+      const ax = W2 - TAG_HALF, k = Math.max(Math.abs(x) / ax, y < 0 ? -y / (H2 - tagUp(false) - 6) : y / (H2 - 6));
       const edge = behind || k > 1;
-      if (edge) { x /= Math.max(k, 1e-6); y /= Math.max(k, 1e-6); const top = edgeTop(W2 + x) - H2, bottom = edgeBottom(W2 + x) - H2; y = Math.max(top, Math.min(bottom, y)); }
-      if (el._edge !== edge) { el._edge = edge; el.classList.toggle('edge', edge); }
       // off screen, her glowing gun ports can't be seen (on a phone a raider alongside usually is): while she readies a
       // broadside, her tag at the edge flashes red, and says so
       const warn = edge && !!r.charge.b;
+      if (edge) {
+        x /= Math.max(k, 1e-6); y /= Math.max(k, 1e-6);
+        // (where the panels at the top and bottom leave no room for her tag and its arrow between them, as down the
+        // right of a phone held sideways, it slides in towards the middle until they do)
+        const up = tagUp(warn);
+        let top = edgeTop(W2 + x, up), bottom = edgeBottom(W2 + x);
+        for (let n = 0; top > bottom && n < 24 && Math.abs(x) > 16; n++) { x -= Math.sign(x) * 16; top = edgeTop(W2 + x, up); bottom = edgeBottom(W2 + x); }
+        y = Math.max(top - H2, Math.min(bottom - H2, y));
+      }
+      if (el._edge !== edge) { el._edge = edge; el.classList.toggle('edge', edge); }
       if (el._warn !== warn) { el._warn = warn; el.classList.toggle('warn', warn); if (warn && !TAG.warned && el.offsetHeight) { TAG.warned = true; TAG.warn = el.offsetHeight + 1; } }
       if (el._locked !== (r === locked)) { el._locked = r === locked; el.classList.toggle('locked', el._locked); }
       el._x = W2 + x; el._y = H2 + y; placed.push(el);
@@ -608,7 +625,8 @@ async function main() {
       }
     }
     // tags that would land on top of each other are stacked instead: each sits on its bottom edge, so one is pushed
-    // down by its own height (a tag saying "Broadside!" is taller), and the warning is always drawn on top (game.html)
+    // down by its own height (one saying "Broadside!" may be a little taller), and the warning is always drawn on top
+    // (game.html)
     placed.sort(byY);
     for (let i = 0; i < placed.length; i++) {
       const a = placed[i], h = a._warn ? TAG.warn : TAG.h;
@@ -643,6 +661,7 @@ async function main() {
     b.label.textContent = r.captain ? 'Captain\'s bounty' : r.role === 'prize' ? 'Treasure' : '';
     b.num.textContent = fmt(total);
     b.el.classList.toggle('rich', r.captain || r.role === 'prize'); b.el.hidden = false;
+    b.w = b.el.offsetWidth; b.h = b.el.offsetHeight; // (once, as it's shown: for keeping clear of the card between waves)
   }
   function bounties(dt) {
     for (const b of BOUNTIES) {
@@ -651,12 +670,42 @@ async function main() {
       const k = b.t / BOUNTY_LIFE;
       proj.copy(b.at).project(camera);
       if (proj.z > 1) { b.el.style.opacity = '0'; continue; }
-      const x = (proj.x + 1) * view.w / 2, y = (1 - proj.y) * view.h / 2 - b.rise * k + b.dy;
-      b.el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) translate(-50%, -50%) scale(${(1 + 0.3 * (1 - k)).toFixed(3)})`;
+      const x = (proj.x + 1) * view.w / 2, s = 1 + 0.3 * (1 - k);
+      let y = (1 - proj.y) * view.h / 2 - b.rise * k + b.dy;
+      // the card between waves up (or rising: the wave's last raider has just gone down), and the bounty where it is or
+      // will be: it shows just under the card instead (above it, where the card is at the bottom)
+      if (W.state === 'choose' && CALM_AT.on) {
+        const hw = (b.w * s) / 2 + 6, hh = (b.h * s) / 2 + 6, C = CALM_AT;
+        if (x + hw > C.l && x - hw < C.r && y + hh > C.t && y - hh < C.b) y = C.top ? C.b + hh : C.t - hh;
+      }
+      b.el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) translate(-50%, -50%) scale(${s.toFixed(3)})`;
       b.el.style.opacity = (k < 0.08 ? k / 0.08 : k > 0.7 ? (1 - k) / 0.3 : 1).toFixed(2);
     }
   }
   function hideBounties() { for (const b of BOUNTIES) { b.el.hidden = true; b.t = BOUNTY_LIFE; } }
+
+  // where the big map's names go, w by h pixels at f pixels high: each in the middle of its region, unless that lands it
+  // on (or within half its height of) a name placed already, from the top down; then it moves down (or up) out of
+  // the way. Kept in from the map's edges. (Made only when the map's size changes, or the fonts have come in)
+  const NAMES_AT = { w: 0, h: 0, fonts: '', at: [] };
+  function names(w, h, f) {
+    Object.assign(NAMES_AT, { w, h, fonts: document.fonts?.status, at: [] });
+    const gap = f / 2, pad = f / 3;
+    for (const R of [...REGIONS].sort((a, b) => a.v - b.v)) {
+      const name = R.name.replace(/^The /, ''), bw = mctx.measureText(name).width + mctx.lineWidth, bh = f * 1.1;
+      const L = { name, x: THREE.MathUtils.clamp(R.u * w, bw / 2 + pad, w - bw / 2 - pad), y: R.v * h, w: bw, h: bh };
+      for (let pass = 0; pass < 4; pass++) {
+        let moved = false;
+        for (const o of NAMES_AT.at) {
+          if (Math.abs(L.x - o.x) >= (L.w + o.w) / 2 + gap || Math.abs(L.y - o.y) >= (L.h + o.h) / 2 + gap) continue;
+          L.y = L.y >= o.y ? o.y + (L.h + o.h) / 2 + gap : o.y - (L.h + o.h) / 2 - gap; moved = true;
+        }
+        if (!moved) break;
+      }
+      L.y = THREE.MathUtils.clamp(L.y, bh / 2 + pad, h - bh / 2 - pad);
+      NAMES_AT.at.push(L);
+    }
+  }
 
   function hud(dt, battery) {
     hudTimer -= dt;
@@ -737,12 +786,14 @@ async function main() {
       mctx.fillStyle = '#e2bd67'; mctx.lineWidth = Math.max(1.5, s / 4);
       mctx.beginPath(); mctx.moveTo(0, -s * 1.3); mctx.lineTo(s * 0.8, s); mctx.lineTo(0, s * 0.45); mctx.lineTo(-s * 0.8, s); mctx.closePath(); mctx.fill(); mctx.stroke();
       mctx.restore();
-      // the big map names the regions (never smaller than 11 of the page's pixels, to read on a phone)
+      // the big map names the regions (never smaller than 11 of the page's pixels, to read on a phone), each clear of
+      // the others (names), placed again when the map's size changes
       if (mini.classList.contains('big')) {
         const f = Math.round(Math.max(W2 / 46, 11 * dpr));
         mctx.font = `700 ${f}px Cinzel, Georgia, serif`; mctx.textAlign = 'center'; mctx.textBaseline = 'middle'; mctx.lineJoin = 'round';
         mctx.lineWidth = f / 4; mctx.strokeStyle = 'rgba(20, 10, 24, 0.85)'; mctx.fillStyle = '#ecdcb8';
-        for (const R of REGIONS) { const name = R.name.replace(/^The /, ''); mctx.strokeText(name, R.u * W2, R.v * H2); mctx.fillText(name, R.u * W2, R.v * H2); }
+        if (NAMES_AT.w !== W2 || NAMES_AT.h !== H2 || NAMES_AT.fonts !== document.fonts?.status) names(W2, H2, f);
+        for (const L of NAMES_AT.at) { mctx.strokeText(L.name, L.x, L.y); mctx.fillText(L.name, L.x, L.y); }
       }
     }
   }
@@ -831,6 +882,8 @@ async function main() {
     progress, port, title, sail, endVoyage, pause, sailOn, wind: WIND, get mode() { return mode; }, get paused() { return paused; },
     fly: (id) => sail(id, true), // a voyage in any ship, owned or not (for tests)
     words: { side: sideWords, wind: () => windWords() }, layout, edge: EDGE, // (directions in words, and the panels the edge tags keep clear of)
+    get mapNames() { return NAMES_AT.at; }, // (the big map's names as placed, in its own pixels)
+    placeTags: () => tags(true), // (the raiders' tags placed again as things stand, without a step of the game)
     get hits() { return V.hits; }, get downed() { return V.downed; }, get locked() { return locked; },
     // how much wider a Surge has made the view, in degrees (for tests)
     get surgeView() { return surgeFov.x; },

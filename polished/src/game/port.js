@@ -88,7 +88,12 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
     refresh();
   }
   // where the ship sits on screen: clear of the panels
-  // (the same three layouts as the page: a laptop, a phone upright (narrow), a phone sideways or any short window)
+  // (the same three layouts as the page: a laptop, a phone upright (narrow), a phone sideways or any short window. On a
+  // phone held upright her panel is as tall as what's in it, so she has the room above its top: read from the page
+  // after anything in the panel changes, or the window does, not every frame)
+  let panelTop = null;
+  const remeasure = () => { panelTop = null; };
+  document.fonts?.addEventListener?.('loadingdone', remeasure); // (the words take their own room once their fonts are in)
   function place() {
     const w = innerWidth, h = innerHeight, narrow = w <= 700, short = h <= 500, fov = THREE.MathUtils.degToRad(camera.fov / 2);
     let cx = w / 2, cy = h / 2, vw = w, vh = h;
@@ -96,8 +101,8 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
       if (narrow && !short) { vh = h * 0.36; cy = h * 0.2; } // (above the title, clear of it)
       else if (short) { vw = w * 0.34; cx = w * 0.8; vh = h * 0.8; } // (right of the title card)
       else { vw = w * 0.5; cx = w * 0.72; }
-    } else if (narrow && !short) { vh = h * (panel.dataset.tab === 'upgrades' ? 0.26 : panel.classList.contains('buying') ? (h <= 720 ? 0.25 : 0.3) : 0.47) - 60; cy = 60 + vh / 2; }
-    else { const pw = short ? Math.min(340, w * 0.46) : 380; vw = w - pw - 40; cx = vw / 2; vh = h - (short ? 110 : 140); cy = 54 + vh / 2; }
+    } else if (narrow && !short) { panelTop ??= panel.getBoundingClientRect().top; vh = Math.max(h * 0.2, panelTop - 64); cy = 58 + vh / 2; }
+    else { const pw = short ? Math.min(372, w * 0.5) : 380; vw = w - pw - 40; cx = vw / 2; vh = h - (short ? 110 : 140); cy = 54 + vh / 2; }
     const t = Math.tan(fov), fit = Math.min(t * (vh / h), t * camera.aspect * (vw / w));
     const dist = (frame.radius / fit) * 1.02, el = 0.2;
     camera.position.set(0, frame.cy + Math.sin(el) * dist, Math.cos(el) * dist);
@@ -149,7 +154,7 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
   });
   // the tabs (on a phone): the ship, or her upgrades
   const panel = $('port-panel');
-  const tab = (t) => { panel.dataset.tab = t; $('pp-tab-ship').setAttribute('aria-selected', String(t === 'ship')); $('pp-tab-upgrades').setAttribute('aria-selected', String(t === 'upgrades')); panel.scrollTop = 0; };
+  const tab = (t) => { panel.dataset.tab = t; $('pp-tab-ship').setAttribute('aria-selected', String(t === 'ship')); $('pp-tab-upgrades').setAttribute('aria-selected', String(t === 'upgrades')); panel.scrollTop = 0; remeasure(); };
   $('pp-tab-ship').addEventListener('click', () => tab('ship'));
   $('pp-tab-upgrades').addEventListener('click', () => tab('upgrades'));
   $('pp-power').addEventListener('input', (e) => {
@@ -200,6 +205,7 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
   const gunWords = (st) => [st.bow && `${st.bow} in the bow`, st.side && `${st.side} each side`, st.stern && `${st.stern} in the stern`].filter(Boolean).join(', ');
 
   function refresh() {
+    remeasure();
     const d = progress.data, cfg = d.ships[viewing], R = SHIPS.find((s) => s.id === viewing), st = STATS[viewing];
     const fresh = progress.newCaptain, F = SHIPS.find((s) => s.id === d.flying);
     for (const b of skiesEl.children) {
@@ -280,6 +286,6 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
     ship.glow.material.uniforms.uScale.value = renderer.domElement.height / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
   }
   function render() { place(); renderer.render(scene, camera); camera.clearViewOffset(); }
-  function resize() { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+  function resize() { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); remeasure(); }
   return { scene, camera, show, setMode, update, render, resize, refresh, setShadow, tab, get mode() { return mode; }, set mode(m) { mode = m; }, get spin() { return spin; } };
 }
