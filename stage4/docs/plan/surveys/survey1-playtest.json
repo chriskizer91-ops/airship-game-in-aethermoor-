@@ -1,0 +1,355 @@
+{
+ "screenshots": [
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/laptop-01-title.png",
+   "what": "Laptop title. Lovely composition, but it's the port's dark void, not the sky. The blackletter T reads as W ('Wo port')."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/laptop-02-port-skiff.png",
+   "what": "Laptop port, Skiff owned. Beautiful berth and model. Stats in jargon ('19\u00b0/s', 'Firepower 41/s'); at 1x the digits read wrong (24 m/s looks like 84)."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/laptop-03-port-frigate.png",
+   "what": "Laptop port, Frigate not owned. The gold button still says 'Set sail in the Zephyr', Buy is a small grey slab, and the panel is half empty."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/laptop-04-set-sail.png",
+   "what": "Laptop, just after setting sail: the painted map and port city are gorgeous. The key panel takes the lower-left; the wind '\u2190 \u22121%' is cryptic."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/laptop-05-wave1-banner.png",
+   "what": "Laptop, wave 1 banner (held visible). This random start is over thick cloud: the screen is nearly all white and the banner's second line can't be read."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/laptop-06-battle.png",
+   "what": "Laptop battle in the Brig, captain's Frigate locked at ~190 m, two Cutters (one off screen). Shots barely visible, hits read as glitter, and the region name and banner (held on by the harness) sit over the target."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/laptop-07-between-waves.png",
+   "what": "Laptop card between waves. It covers the sinking Cutter and her shards while the toast says to fly through them. 'Wave 3 beaten' reads as 'Wave z beaten', '75' as '7S'."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/laptop-08-pause.png",
+   "what": "Laptop pause card: plain, with no settings and no sound option."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/laptop-09-going-down.png",
+   "what": "Laptop, the Captain's ship going down: a big grey smoke blob over the crosshair and sparse fire. No boats, despite 'All hands to the boats'."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/laptop-10-went-down.png",
+   "what": "Laptop 'went down' card: one plain secondary 'To port' button and no recap. An edge tag sits over the compass."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/laptop-11-big-map.png",
+   "what": "Laptop big map: blurry (the canvas isn't resized), no labels or close button, and HUD panels poke out round it."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/upright-01-title.png",
+   "what": "Upright phone title: fits the screen and reads well. The berth's ring cuts through 'Skies of'."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/upright-02-port-skiff.png",
+   "what": "Upright phone port: the panel shows only stats; the sticky Set sail button hides Crystal power and all the upgrades."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/upright-03-port-frigate.png",
+   "what": "Upright phone port, Frigate not owned: same confusing 'Set sail in the Zephyr' under a grey Buy button."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/upright-03b-port-skiff-scrolled.png",
+   "what": "Upright phone port scrolled to the upgrades (nothing tells you the panel scrolls); every button greyed at \u25c6 0."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/upright-04-set-sail.png",
+   "what": "Upright phone sail-away banner. The second line is on bright haze; the ship panel is big; the pause button is 38x34."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/upright-05-wave1-banner.png",
+   "what": "Upright phone wave 1: 'a Skiff, to the east' plus a small edge tag at 1.7 km is the only guide. The one-line touch hint is all the help a phone gets."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/upright-06-battle.png",
+   "what": "Upright phone battle: region name over the ship panel, banner crossed by the captain's tag, the behind-you Cutter's tag hidden under the Fire button, hint and gun label unreadable over white cloud."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/upright-06b-skiff-battle.png",
+   "what": "Upright phone Skiff vs Skiff (what a new player sees): the locked raider at 123 m is a ~25 px speck, smaller than its tag."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/upright-07-between-waves.png",
+   "what": "Upright phone between waves: the toast covers the pause button, ship panel and minimap; the card covers the wreck and shards; 'Wave z beaten', '7S', '2SS'."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/upright-08-pause.png",
+   "what": "Upright phone pause card: fine, but there's no 'how to fly' and no sound option."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/upright-09-going-down.png",
+   "what": "Upright phone going down: the banner reads well; the smoke blob covers the middle; touch buttons stay lit."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/upright-10-went-down.png",
+   "what": "Upright phone 'went down' card: the only action is a plain small button, and an edge tag sits over the compass and minimap."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/upright-11-big-map.png",
+   "what": "Upright phone big map: only 360 px wide, blurry, no labels; the HUD shows round it."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/sideways-01-title.png",
+   "what": "Sideways phone title, BROKEN: the heading starts 91 px above the screen and can't be scrolled to, 'To port' is below the fold, and the ship is drawn behind the skies list."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/sideways-02-port-skiff.png",
+   "what": "Sideways phone port: works but cramped; the panel shows to 'Hull', then Set sail covers the rest."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/sideways-03-port-frigate.png",
+   "what": "Sideways phone port, Frigate not owned: Buy and 'You need' push the stats under Set sail."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/sideways-04-set-sail.png",
+   "what": "Sideways phone voyage start: laptop-sized ship panel (53% of the height), the touch hint printed through it, the banner over the crosshair, a white-out cloud view."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/sideways-05-wave1-banner.png",
+   "what": "Sideways phone wave 1 banner: its second line runs across the ship panel and the crosshair."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/sideways-06-battle.png",
+   "what": "Sideways phone battle pile-up: the locked Frigate is buried under the region name and banner; the Cutter's tag overlaps the score; another tag sits at the bottom edge."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/sideways-06b-skiff-battle.png",
+   "what": "Sideways phone Skiff fight: the locked Skiff is hidden under the banner; the second Skiff's tag sits under the Sail buttons."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/sideways-07-between-waves.png",
+   "what": "Sideways phone between waves: the card fills the middle half of the screen over your own ship; toast and region name collide."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/sideways-08-pause.png",
+   "what": "Sideways phone pause card."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/sideways-09-going-down.png",
+   "what": "Sideways phone going down: the 50 px banner runs across the ship panel and score. A red edge glow does show here."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/sideways-10-went-down.png",
+   "what": "Sideways phone 'went down' card, with a tag on the compass."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/sideways-11-big-map.png",
+   "what": "Sideways phone big map: runs ~127 px off the bottom (your own marker hidden), covers Fire, blurry."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/crops/card.png",
+   "what": "Enlarged laptop card text: 'Wave z beaten', '\u25c6 7S for the wave \u00b7 \u25c6 2SS'."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/crops/frigate-stats.png",
+   "what": "Enlarged laptop port: '2,200' reads as '8,800' at 1x."
+  },
+  {
+   "path": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/crops/compass.png",
+   "what": "Enlarged laptop compass and gun label: blackletter compass letters, and 'Bow guns \u00b7 2 guns' reads as '8 guns'."
+  }
+ ],
+ "first_impressions": "How the survey was done: scripts in /tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/. shoot.mjs takes the screenshots (it pins CSS animations at 1.4 s so banners and toasts can be caught; because each scene calls fly(), some shots show a 'sets sail' banner later than real play would). measure.mjs measures layout boxes and overlaps (results in measure.log). I also ran tools/sim-fight.mjs: a perfect-aim Skiff beats waves 1-3 in 35, 60 and 56 s, earning \u25c6 203.\n\nThe first five minutes for a new player:\n- 0:00. 'Raising the sails\u2026' on dark navy, with no progress shown.\n- Title screen. Gold blackletter title, a one-line story, three skies (Crosswinds already chosen), 'To port'. The Skiff turns on a brass-rimmed berth in a plum void. It's handsome but silent, and it says 'garage', not 'airships over Aethermoor'. On a sideways phone it's broken: the heading starts above the screen and 'To port' is below the fold.\n- Port, about 0:20. \u25c6 0, the Zephyr 'Sailing', every upgrade greyed out. Tap the Tempest to dream and the big gold button still reads 'Set sail in the Zephyr', which confuses. Stats are numbers with units ('19\u00b0/s', 'Firepower 41/s'). On a laptop at 1x the digits misread (2,200 looks like 8,800).\n- Set sail, about 0:30. A hard cut to the ship over Chris's painted map. When the start spot is clear it is breathtaking (the port city below, the Hearthsea, islands). On a cloudy start it is a white-out. A banner says 'The Zephyr sets sail \u00b7 Crosswinds \u00b7 the wind from the north-east'. The laptop gets a big key panel; the phone gets one line of hint.\n- About 0:35. 'Raiders, wave 1: a Skiff, to the east'. A small red tag at the screen edge, 1.7 km away. The player has to work out that 'east' means 'turn right'. Then about 20 s of silent approach.\n- Contact, about 1:00. The raider is a speck about 25 px across. On a phone the right thumb has to drag to aim and then move to Fire. The lock-on ring turns red. The shots are thin and hard to see, and hits look like glitter. No sound, no hit marker, and the tag bar shrinks a little.\n- Raider down, about 1:30 to 2:00. A toast says 'fly through the shards', and at the same moment a card drops over the middle of the screen, covering the wreck and the shards. It reads 'Wave z beaten \u00b7 \u25c6 2S\u2026'. Sail on. Wave 2 brings two Skiffs; somewhere around wave 3 or 4 the region name flashes over the fight.\n\nWhere it falls flat:\n- Silence. There is no audio at all.\n- The fighting has no punch: no gun smoke, no thunder, no splinters, and kills have no moment.\n- Phone HUD collisions (worst sideways) and misread numbers.\n- Directions are given by compass when the player thinks left and right.\n- The voyage ends on a bare card with one small button and no recap or 'sail again'.\n\nWhat's lovely and must be kept:\n- Chris's painted map seen from altitude, and the port city island.\n- The ship models in port: brass, lanterns, glowing crystal columns, lit gun ports, the berth with its warm key light and cool rim light.\n- The plum, cream and gold panel look.\n- The captain's black-sailed raider with its gold tag, which reads instantly.\n- Columns of smoke from sinking ships.\n- The region-name and banner ceremony (it just needs placing).\n- Edge tags with distances.\n- Lock-on that aims ahead of the target.\n- The choice between sailing on or banking the shards, with a countdown.",
+ "issues": [
+  {
+   "id": "sideways-title-cut",
+   "where": "Title screen, phone sideways 844x390",
+   "severity": "high",
+   "what": "#title (demos/game.html:51) is a grid with align-content:center and overflow-y:auto. Its content is 505 px tall in a 390 px screen, so it overflows at both ends: the h1 starts 91 px above the top and can't be scrolled to, and 'To port' sits at y=427, below the fold. Port.js place() draws the ship behind the skies list.",
+   "suggestion": "Use 'align-content: safe center' on #title (or margin-block:auto on .title-card). Add a short-screen block, @media (max-height: 500px): title h1 40px on one line; .lede 13px (or hidden); #skies as grid-template-columns: repeat(3,1fr) with 12px lines; #btn-to-port beside the h2. In port.js place() (line 84), when innerHeight < 500 on the title: vw = w*0.36, cx = w*0.82.",
+   "screenshot": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/sideways-01-title.png"
+  },
+  {
+   "id": "sideways-hud",
+   "where": "Voyage HUD, phone sideways 844x390",
+   "severity": "high",
+   "what": "The narrow rules key on max-width:700px, so a sideways phone gets the laptop HUD. Measured: the ship panel is 193x208 (53% of the height). #touch-hint (bottom: var(--bottom)+190px) prints through it at y=159. The banner covers the crosshair (banner x aim overlap). Region, toast and banner overlap the panel and the score. Edge tags land under the Sail buttons.",
+   "suggestion": "Add @media (max-height: 500px) in demos/game.html:\n- #ship: name 20px; #readout as one row or hidden; #health meters 46px with no numbers.\n- #minimap 120px; #score 11px under it.\n- #banner: top 14%, title 28px, line 12px.\n- #region: below the compass at 18px (top: calc(var(--top)+44px)).\n- #touch-hint at bottom left (bottom: calc(var(--bottom)+8px)).\n- #touch-buttons: bottom calc(var(--bottom)+4px).\n- #calm: top 18%, card padding 8px, h2 24px.\nAlso apply the tag safe area from 'phone-overlaps'.",
+   "screenshot": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/sideways-06-battle.png"
+  },
+  {
+   "id": "digit-legibility",
+   "where": "All HUD numbers, port prices and stats, cards; worst on a 1x laptop but 5/S and 3/z also on phones",
+   "severity": "high",
+   "what": "The numbers the player reads most are misread:\n- Jacquard 12's 3 reads as 'z' ('Wave z beaten', 'Sail on (24)').\n- Pixelify Sans' 5 reads as 'S' ('\u25c6 7S for the wave \u00b7 \u25c6 2SS').\n- At 1x, Pixelify's 2 reads as 8 ('2 guns' looks like 8, '2,200' like 8,800, '24 m/s' like 84).",
+   "suggestion": "Add digit-only @font-face rules under both family names with unicode-range: U+0030-0039 (and %), pointing at a tiny lining-figure pixel subset (a 2-4 KB OFL subset, e.g. from Silkscreen or VT323, inlined by tools/build.mjs the way FONT_DISPLAY and FONT_BODY are). Every number in the game then changes with no JS edits. Keep HUD numbers at 13px or more (the tags use 11px).",
+   "screenshot": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/crops/card.png"
+  },
+  {
+   "id": "phone-overlaps",
+   "where": "Voyage HUD, phone upright 390x844 and 360x640",
+   "severity": "high",
+   "what": "Measured overlaps:\n- #region (top 22%, y=186) lands on the ship panel (bottom 200).\n- #toast (top: var(--top)+46px) covers the pause button, the ship panel and the minimap; it's nowrap, so long toasts ('Raider captain's Frigate sinking, crystals dead: fly through the shards', ~500 px) run off both sides.\n- Edge tags pinned to the bottom edge hide under Fire and Sail; pinned to the top they sit on the compass and minimap.\n- The banner at top 33% collides with tags near the horizon.",
+   "suggestion": "CSS, narrow screens:\n- #region { top: calc(var(--top) + 214px); font-size: 24px }\n- #toast { top: auto; bottom: calc(var(--bottom) + 236px); white-space: normal; max-width: 92vw; text-align: center }\n\nmain.js tags() (line 299): replace the symmetric ax/ay with an inset box measured in resize():\n- top = the lowest bottom edge of #ship, #minimap and #score, plus 28\n- bottom = (touch ? the top edge of #touch-buttons, #battery and #touch-hint : the top edge of #help) \u2212 12\n- 56 px each side\nClamp edge tags inside that box.\n\nAlso: put #banner above #tags (z-index) and give it a soft dark backing; hide the region name while W.state==='fight' and show it when the fight ends.",
+   "screenshot": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/upright-06-battle.png"
+  },
+  {
+   "id": "phone-aim-fire",
+   "where": "Voyage controls, phone (both orientations)",
+   "severity": "high",
+   "what": "The right thumb has to drag-aim and also hold Fire, so you can't correct your aim while firing. The lock cone is tight: tol = max(0.05 rad, ...) in main.js:145, about 30 px on a 390 px screen, so a weaving Skiff (25 px at 120 m) slips out of lock as soon as you lift to press Fire.",
+   "suggestion": "input.js: in hold('#btn-fire') (line 198), add a pointermove listener on #btn-fire that, while touchFire is on, adds (dx, dy)*1.6 to s.look, the same as the canvas drag. Press Fire, then slide to aim.\n\nmain.js placeCamera (lines 139-147):\n- on touch, tol = max(0.09, atan(L*1.1/along))\n- keep the previous `locked` raider while its angle is under 2.2\u00d7tol (a sticky lock)\n- while fire is held on touch, ease cam.yaw and pitch toward the locked raider's direction (k = 1-exp(-dt*2))\n\nMake raider tags and the lock ring 20% larger on touch.",
+   "screenshot": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/upright-06b-skiff-battle.png"
+  },
+  {
+   "id": "weak-combat-feedback",
+   "where": "Voyage battle, all sizes",
+   "severity": "high",
+   "what": "The fight looks floaty:\n- Bolts are 0.22 m streaks capped at 14 m (guns.js:67,113) and are barely visible.\n- Muzzle flashes and hit bursts are soft additive dots that read as bokeh or glitter.\n- There is no gun smoke, no debris, no hit mark on the crosshair and no damage shown.\n- After 7 s of broadsides, the captain's Frigate was at 90% with nothing visible on it.\n- A kill is just a burst and a toast.",
+   "suggestion": "guns.js:\n- Pass the smoke system into makeBolts. In fire() (lines 90-98), give each gun 2-3 pale puffs at the muzzle (3 m growing to 9 m, life 3 s, drifting at 0.3\u00d7 the ship's speed), so a broadside leaves a wall of gun smoke.\n- Raise the bolt length cap from 14 to 24 m and the broadside head size from 4.5 to 7 (lines 113, 121).\n- Give sparks optional gravity (line 111) for splinters.\n\nmain.js hitTest (lines 162-168):\n- Flash an X on #aim for 120 ms, coloured by part.\n- Pulse the target tag's meter.\n- Add 6-10 splinters: brown for hull, cream flakes for sails, blue-white for crystals.\n\nYour own broadside: cam.shake = 0.12.\n\nKills (waves(), line 189):\n- burst power 3 and a ring of smoke\n- 0.25 s of slow motion (scale dt in frame())\n- '+\u25c6 38' floating up from the wreck",
+   "screenshot": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/laptop-06-battle.png"
+  },
+  {
+   "id": "calm-card-blocks",
+   "where": "Card between waves, all sizes (sideways: 200 of 390 px tall)",
+   "severity": "medium",
+   "what": "#calm is placed mid-screen (top 40%; 30% on narrow) at the moment the last raider dies. It covers the wreck and the shards the toast tells you to fly through. On a laptop with the mouse locked you need Esc to click it; Enter works but nothing says so. The score panel says 'Wave 4' while the card says 'Wave 3 beaten'.",
+   "suggestion": "Dock #calm at the bottom centre (bottom: calc(var(--bottom)+12px)) as a compact strip: 'Wave 3 beaten \u00b7 \u25c6 75 \u00b7 \u25c6 255 aboard \u00b7 Next: a Cutter and a Skiff', with the two buttons.\n\nIn main.js waves() (lines 218-227), show it 2.5 s after the last kill so the kill gets its moment and the shards pull in. Count the shard numbers up. On laptops label the button 'Sail on (Enter)'.",
+   "screenshot": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/upright-07-between-waves.png"
+  },
+  {
+   "id": "port-unowned-button",
+   "where": "Port, a ship not owned, all sizes",
+   "severity": "medium",
+   "what": "Looking at the Tempest (not owned), the big gold button still says 'Set sail in the Zephyr', while 'Buy the Tempest for \u25c6 2,200' is a small grey slab. A first-time player reads the gold button as 'sail this ship'.",
+   "suggestion": "In port.js refresh() (lines 184-211), when !owned:\n- the sticky #btn-sail becomes the Buy button: 'Buy the Tempest \u00b7 \u25c6 2,200'\n- when you can't afford it, show a gold progress fill: '\u25c6 40 of 2,200, bring down raiders to earn more'\n- below it, a plain link 'or sail in the Zephyr'\n- hide #pp-buy\n\nIn the stat bars, mark where your current ship sits so the comparison is visible.",
+   "screenshot": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/upright-03-port-frigate.png"
+  },
+  {
+   "id": "port-phone-scroll",
+   "where": "Port, phone upright and sideways",
+   "severity": "medium",
+   "what": "#port-panel holds 765 px of content in a 371 px box (312 px sideways). The sticky Set sail button covers 'Crystal power' and all four upgrades, and nothing hints that the panel scrolls. The racing-garage upgrade loop is hidden on the device Chris uses most.",
+   "suggestion": "On narrow or short screens, split the panel into two tabs: 'Ship' (blurb and stats) and 'Upgrades' (crystal power and the four upgrades). Show a gold dot on 'Upgrades' when one is affordable (check d.shards >= modCost). Or shrink the stats to a 5-row mini grid and show a peek strip 'Upgrades \u25be' above Set sail. Put the ship selector right under the ship view.",
+   "screenshot": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/upright-02-port-skiff.png"
+  },
+  {
+   "id": "big-map",
+   "where": "Big map, all sizes (sideways worst)",
+   "severity": "medium",
+   "what": "The big map is the corner canvas blown up: its pixel size is set only in resize() (main.js:272), so it's blurry. It has no region names, legend or close button, and the HUD panels poke out round it. Sideways it is 517 px tall on a 390 px screen: your own marker is off the bottom and it covers Fire. Upright it's only 360 px wide.",
+   "suggestion": "Add a sizeMini() that re-reads the box and sets mini.width/height. Call it from the minimap click (main.js:262), from the 'm' key (line 378) and from resize().\n\nCSS: #minimap.big { width: min(92vw, 900px, calc((100vh - var(--top) - 70px) * 1.5)) }, plus a dim backdrop div and a 'Close map (M)' button.\n\nIn hud() (lines 358-368), when big:\n- draw the region names from world.js NAMES at their GRID cell centres\n- draw the shards as gold dots and the raiders larger\n- draw a dashed line from the ship to the nearest raider",
+   "screenshot": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/sideways-11-big-map.png"
+  },
+  {
+   "id": "end-card",
+   "where": "Ship went down / back to port, all sizes",
+   "severity": "medium",
+   "what": "The voyage ends on 'The Tradewind went down. Your crew got her home with half\u2026' and one small plain 'To port' button. There's no recap, no new-best moment and no 'sail again', so the main 'one more go' moment falls flat.",
+   "suggestion": "In waves() (W.sunk branch, main.js:199-203) and endVoyage() (103-111), show a recap card:\n- waves beaten\n- raiders downed, as class icons\n- shards gathered \u2192 banked, counted up into the port total\n- 'New best: wave 4!' when d.best rises\n\nButtons: 'Sail again' (the big gold style; it calls sail(d.flying)) and 'To port' (plain). Play 'defeat' or 'victory' with it.",
+   "screenshot": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/upright-10-went-down.png"
+  },
+  {
+   "id": "cloud-whiteout",
+   "where": "Voyage, depends on the random start; seen on laptop and sideways",
+   "severity": "medium",
+   "what": "The ship starts at 680 m and the cloud deck is at 430 m. The camera looks across the deck at grazing angles, where it shows at 94% opacity (world.js deck shader), so on cloudy start points the screen is nearly all white and the painted map disappears. Gold and cream text over it can't be read: the battery label, the touch hint and the banner's second line.",
+   "suggestion": "world.js deck fragment: multiply the alpha by mix(0.55, 1.0, smoothstep(0.08, 0.35, abs(normalize(vW - cameraPosition).y))), so the far ground tints through.\n\nIn sail() (main.js:80), try 6 random start points and keep the one with the least cloud cover (port cover() to JS).\n\nGive #battery, #touch-hint and #banner-line a dark pill: background rgba(14,8,22,0.55), padding 2px 8px, radius 6px.",
+   "screenshot": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/laptop-05-wave1-banner.png"
+  },
+  {
+   "id": "phone-help-missing",
+   "where": "Voyage, phone",
+   "severity": "medium",
+   "what": "#help is mouse-only, so a phone player gets one line ('Left thumb: steer and climb \u00b7 drag on the right: aim'). Lock-on, which guns fire where, broadsides and the Surge are never explained.\n\nBug: main.js:265 hides the hint 4 s after the first pointerdown on the canvas, and that canvas is also the title and port turntable. Spinning the ship in port removes the hint before the first voyage.",
+   "suggestion": "Start the hint timer only when mode==='voyage'.\n\nAdd a first-voyage coach, stored as progress.data.coached, driven from hud():\n1. 'Steer toward the red tag with your left thumb'\n2. when a raider is within 600 m: 'Drag on the right to put the ring on her'\n3. when locked: 'Hold Fire. Look to her side for a broadside'\n\nAdd a 'How to fly' button to the pause card that shows the touch controls (and the keys on a laptop).",
+   "screenshot": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/upright-05-wave1-banner.png"
+  },
+  {
+   "id": "relative-directions",
+   "where": "Wave banner, compass and wind readout, all sizes",
+   "severity": "medium",
+   "what": "The waves are announced by compass ('a Skiff, to the east'), which a new player can't map to the screen. The wind reads '\u2193 \u221212%'. The compass letters are blackletter: 'NE' reads as '\u2133\u212d', and its digits are old-style ('193' looks odd).",
+   "suggestion": "main.js:214: describe the bearing relative to the heading: 'dead ahead', 'ahead on your right', 'off your left side', 'behind you'. Keep the compass word in brackets.\n\nWind: on wide screens use words, 'Head wind: 12% slower' or 'Wind behind: 10% faster'; on phones, an icon with 'head' or 'tail'.\n\n#compass (demos/game.html:143): use the body font.\n\nWhen no raider is on screen, show a small gold chevron at the screen centre pointing toward the nearest one.",
+   "screenshot": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/crops/compass.png"
+  },
+  {
+   "id": "small-raiders",
+   "where": "Voyage battle, phone most of all",
+   "severity": "medium",
+   "what": "At fighting range the raiders are small (a Skiff at 120 m is about 25 px on a phone) and their tag is bigger than the ship. Apart from the ring turning red, nothing marks the locked target's body, so early fights feel distant.",
+   "suggestion": "In tags(), project the locked raider's bow and stern and draw four corner brackets round it (a #lockbox div, scaled to the projected length) that pulse when hit.\n\nIn raiders.js raiderArt() (line 285), add a faint red rim glow (fresnel emissive) to raider canvas when far.\n\nSlightly lower and closer chase camera while firing the bow guns (cam.dist*0.85).",
+   "screenshot": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/upright-06b-skiff-battle.png"
+  },
+  {
+   "id": "title-void",
+   "where": "Title screen, all sizes",
+   "severity": "medium",
+   "what": "The title reuses the port's dark void and berth, so the first thing Chris sees says 'garage', not 'airships over Aethermoor'. On an upright phone the berth ring cuts through the title text.",
+   "suggestion": "Draw the title over the real world scene instead: the player's ship flying a slow orbit at about 700 m over the Hearthsea with the low sun, two rust-sailed raiders crossing far off, and the panel on the left as now. Keep the void and berth for the port only.\n\nIn port.js place() for narrow screens, move the ship up (cy = h*0.2, vh = h*0.34) so the ring clears the title.",
+   "screenshot": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/upright-01-title.png"
+  },
+  {
+   "id": "going-down-flat",
+   "where": "Your ship going down, all sizes",
+   "severity": "medium",
+   "what": "Your ship going down is one grey smoke blob over the crosshair with sparse sparks and a roll. 'All hands to the boats' appears but there are no boats. The touch buttons stay fully lit.",
+   "suggestion": "During the 4 s of W.lost:\n- pull the camera back and orbit (cam.dist*1.7, yaw drift 0.3 rad/s)\n- run fire sparks along the deck\n- drop 2-4 small lifeboats with lanterns away from the hull (instanced like pickups.js)\n- dim the touch controls: body.sinking .touch-only { opacity: .3; pointer-events: none }\n- play 'defeat'",
+   "screenshot": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/upright-09-going-down.png"
+  },
+  {
+   "id": "laptop-help-always",
+   "where": "Voyage, laptop",
+   "severity": "medium",
+   "what": "The key panel (338x225 px) covers the lower-left of every voyage until H is pressed, including the battle view.",
+   "suggestion": "Count voyages in progress.data.voyages and show the panel only on the first two. Fold it to the 'Keys (H)' chip when the first wave's banner appears.",
+   "screenshot": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/laptop-06-battle.png"
+  },
+  {
+   "id": "port-jargon",
+   "where": "Port stats and upgrades, all sizes",
+   "severity": "low",
+   "what": "The stats read '19\u00b0/s', '24 m/s', 'Firepower 41/s' and '1 bow, 1 a side, 0 stern', and the upgrade lines are lists of percentages. Chris reads plain words.",
+   "suggestion": "Change STAT_ROWS in port.js (lines 161-164):\n- turning: 'a full circle in 19 s'\n- climbing: 'climbs 24 m a second'\n- firepower: the bar plus 'light', 'fair' or 'heavy'\n\nWrite the guns as 'Guns: 1 in the bow, 1 each side'. Give each upgrade one plain line ('Thicker planks: tougher, a little slower') with the exact numbers in smaller text.",
+   "screenshot": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/laptop-02-port-skiff.png"
+  },
+  {
+   "id": "dev-note-blurb",
+   "where": "Port, Brig selected",
+   "severity": "low",
+   "what": "The Brig's blurb shown to players is 'The all-rounder, built from Chris's own pictures of it.' (src/ships/index.js:19). That's a maker's note inside the game.",
+   "suggestion": "Change it to 'The all-rounder: steady, well-gunned and hard to sink.' (the ships demo page can keep its own note).",
+   "screenshot": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/laptop-02-port-skiff.png"
+  },
+  {
+   "id": "pause-button-small",
+   "where": "Voyage, all sizes",
+   "severity": "low",
+   "what": "#btn-pause is 38x34 CSS px, below the usual 44 px for a thumb, and it overlaps the compass at every size (measured: 'compass x btn-pause').",
+   "suggestion": "Make it 44x44 with a 6px gap. On phones, move it to the left of the minimap (top: var(--top); right: calc(var(--gutter) + 140px)).",
+   "screenshot": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/upright-04-set-sail.png"
+  },
+  {
+   "id": "blackletter-buttons",
+   "where": "Title, port and cards, all sizes",
+   "severity": "low",
+   "what": "Jacquard 12's capital T reads as W on buttons and names ('Wo port', 'Wempest', 'Wradewind'), and its digits are old-style (see digit-legibility).",
+   "suggestion": "Keep Jacquard for big titles and ship names. Use the body font for action buttons ('To port', 'Sail on', 'Resume') and for anything with numbers. Or check with Chris whether the T reads to him.",
+   "screenshot": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/laptop-01-title.png"
+  },
+  {
+   "id": "toast-wording",
+   "where": "Toasts, all sizes",
+   "severity": "low",
+   "what": "'Raider Cutter going down: fly through the shards' and 'Raider captain's Frigate sinking, crystals dead: fly through the shards' are long and stiff, and they overflow a phone because #toast is nowrap.",
+   "suggestion": "Shorter wording in main.js:193: 'Cutter down! Fly through her shards', 'Her crystals are dead: she's sinking', 'She strikes her colours!'. Allow wrapping (see phone-overlaps).",
+   "screenshot": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/upright-07-between-waves.png"
+  },
+  {
+   "id": "slow-first-contact",
+   "where": "First wave, all sizes",
+   "severity": "low",
+   "what": "Wave 1 spawns 1.5-1.9 km ahead (raiders.js:377) after a silent 5 s calm, so a new player spends about 20 s sailing toward a tag before anything happens. The sim's perfect Captain beats wave 1 in 35 s, but most of that is the approach.",
+   "suggestion": "For W.n === 0, spawn at 800-1000 m. Give the approach a moment: 'alert' and the start of the battle music, plus a spyglass zoom (briefly narrow camera.fov to 25 on the nearest raider, 1.2 s, then ease back).",
+   "screenshot": "/tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/playtest/shots/upright-05-wave1-banner.png"
+  }
+ ]
+}

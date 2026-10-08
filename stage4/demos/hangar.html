@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ships of Aethermoor</title>
+<style>
+  /* The six ships over the clouds at sunset. Same colours as the Magpie page: plum panels with a cream
+     edge, gold for names; the game's fonts (Cinzel for titles and names, Fira Sans for the rest). Everything is
+     inside this one file, so it works with no internet. */
+  @font-face { font-family: 'Cinzel'; src: url(/*FONT_CINZEL*/) format('woff2'); font-weight: 400 900; font-display: swap; }
+  @font-face { font-family: 'Fira Sans'; src: url(/*FONT_FIRA_400*/) format('woff2'); font-weight: 400; font-display: swap; }
+  @font-face { font-family: 'Fira Sans'; src: url(/*FONT_FIRA_500*/) format('woff2'); font-weight: 500; font-display: swap; }
+  @font-face { font-family: 'Fira Sans'; src: url(/*FONT_FIRA_600*/) format('woff2'); font-weight: 600 700; font-display: swap; }
+  :root {
+    color-scheme: dark;
+    --night: #0d0a1a;
+    --panel: rgba(24, 12, 30, 0.88);
+    --plum: #3a1631;
+    --cream: #ecdcb8;
+    --ink: #f3ead8;
+    --dim: #c3b4cf;
+    --gold: #e2bd67;
+    --display: 'Cinzel', 'Georgia', serif;
+    --body: 'Fira Sans', 'Segoe UI', system-ui, sans-serif;
+    --gutter: max(16px, env(safe-area-inset-left, 0px));
+  }
+  /* one deliberate look: the night-and-sunset world of the game, the same in either theme */
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; margin: 0; background: var(--night); color: var(--ink); overflow: hidden; }
+  body { font: 15px/1.4 var(--body); font-variant-numeric: lining-nums tabular-nums; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+  #stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; opacity: 0; transition: opacity 0.8s; }
+  body.ready #stage { opacity: 1; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  #title { position: fixed; top: calc(12px + env(safe-area-inset-top, 0px)); left: var(--gutter); right: var(--gutter); pointer-events: none;
+    text-shadow: 0 2px 0 #000, 0 0 18px rgba(0, 0, 0, 0.85); }
+  #title h1 { margin: 0; font: 600 clamp(24px, 4vw, 40px)/1.05 var(--display); color: var(--cream); }
+  #title p { margin: 4px 0 0 2px; font-size: 13px; color: var(--gold); letter-spacing: 0.08em; text-transform: uppercase; }
+
+  #dock { position: fixed; left: var(--gutter); right: var(--gutter); bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    display: grid; gap: 8px; justify-items: center; pointer-events: none; }
+  #dock > * { pointer-events: auto; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: 100%; }
+  .seg { display: inline-flex; flex-wrap: wrap; gap: 3px; padding: 3px; background: var(--panel); border: 1px solid rgba(236, 220, 184, 0.5); border-radius: 8px; }
+  .seg button { padding: 6px 11px; min-height: 36px; background: none; border: 0; border-radius: 6px; font-size: 14px; }
+  .seg button[aria-pressed='true'] { background: var(--plum); color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); }
+  #ships button { display: grid; justify-items: center; line-height: 1; gap: 3px; padding: 7px 12px 6px; }
+  #ships button b { font: 600 17px/1 var(--display); color: inherit; }
+  #ships button small { font-size: 11px; color: var(--dim); letter-spacing: 0.04em; text-transform: uppercase; }
+  #ships button[aria-pressed='true'] small { color: var(--cream); }
+
+  #card { position: fixed; top: calc(60px + env(safe-area-inset-top, 0px)); right: var(--gutter); width: min(300px, 46vw); padding: 10px 14px 12px;
+    background: linear-gradient(180deg, rgba(58, 22, 49, 0.93), rgba(20, 9, 26, 0.93)); border: 2px solid var(--cream); border-radius: 8px;
+    box-shadow: inset 0 0 0 3px var(--plum), 0 10px 30px rgba(0, 0, 0, 0.55); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+  #card h2 { margin: 0; font: 600 25px/1.1 var(--display); color: var(--gold); }
+  #card .cls { font-size: 12px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.07em; }
+  #card p { margin: 6px 0 8px; font-size: 13.5px; }
+  #card dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 0; font-size: 13px; font-variant-numeric: tabular-nums; }
+  #card dt { color: var(--dim); }
+  #card dd { margin: 0; color: var(--cream); }
+  .bar { display: inline-block; height: 7px; margin-right: 6px; vertical-align: 1px; border-radius: 3px; background: var(--gold); }
+  #tri { font-size: 12.5px; color: var(--ink); text-shadow: 0 1px 0 #000, 0 0 10px #000; text-align: center; font-variant-numeric: tabular-nums; }
+  #hint { margin: 0; font-size: 12.5px; color: #e9e0f2; text-shadow: 0 1px 0 #000, 0 0 10px #000; text-align: center; }
+  #btn-card { position: fixed; top: calc(14px + env(safe-area-inset-top, 0px)); right: var(--gutter); }
+  .chip { padding: 6px 11px; min-height: 34px; background: var(--panel); border: 1px solid rgba(236, 220, 184, 0.55); border-radius: 6px; font-size: 14px; }
+
+  #loading { position: fixed; inset: 0; display: grid; place-items: center; pointer-events: none; font: 500 24px var(--display); color: var(--dim); transition: opacity 0.6s; }
+  body.ready #loading { opacity: 0; }
+  #error { position: fixed; inset: auto 16px 16px; padding: 12px; background: #3a0d18; border: 1px solid #ff7a8a; border-radius: 6px; }
+
+  @media (max-width: 640px) {
+    #title h1 { font-size: 24px; }
+    #title p { font-size: 11.5px; }
+    #card { top: calc(108px + env(safe-area-inset-top, 0px)); left: var(--gutter); right: var(--gutter); width: auto; padding: 8px 12px 10px; }
+    #ships { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; scrollbar-width: none; }
+    #card h2 { font-size: 21px; }
+    #card p { display: none; }
+    #card dl { grid-template-columns: auto 1fr auto 1fr; }
+    #btn-card { top: calc(64px + env(safe-area-inset-top, 0px)); }
+    #ships button { padding: 6px 8px 5px; }
+    #ships button b { font-size: 15px; white-space: nowrap; }
+    #ships button { flex: 0 0 auto; }
+    .seg button { padding: 5px 9px; min-height: 34px; font-size: 13px; }
+    #hint { display: none; }
+  }
+  /* a phone held sideways (little height): the buttons on three short lines, each sliding sideways if it doesn't fit
+     (centred when it does), smaller type, the stats card shorter and starting folded away, no hint and no subtitle,
+     so the ship has the middle of the screen */
+  @media (max-height: 480px) {
+    #title h1 { font-size: 22px; }
+    #title p { display: none; }
+    #dock { gap: 4px; bottom: calc(6px + env(safe-area-inset-bottom, 0px)); }
+    #dock .row, #ships { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; justify-content: flex-start; scrollbar-width: none; }
+    #dock .row::-webkit-scrollbar, #ships::-webkit-scrollbar { display: none; }
+    #dock .row > :first-child, #ships > :first-child { margin-left: auto; }
+    #dock .row > :last-child, #ships > :last-child { margin-right: auto; }
+    .row { gap: 4px; }
+    .seg { flex: 0 0 auto; flex-wrap: nowrap; gap: 2px; padding: 2px; }
+    .seg button { padding: 4px 8px; min-height: 32px; font-size: 13px; white-space: nowrap; }
+    #ships button { flex: 0 0 auto; gap: 2px; padding: 4px 8px 3px; }
+    #ships button b { font-size: 14px; white-space: nowrap; }
+    #ships button small { font-size: 9.5px; }
+    #tri { font-size: 11.5px; }
+    #btn-card { top: calc(10px + env(safe-area-inset-top, 0px)); }
+    #card { top: calc(50px + env(safe-area-inset-top, 0px)); left: auto; right: var(--gutter); width: min(340px, 50vw); padding: 6px 10px 8px; }
+    #card h2 { font-size: 19px; }
+    #card p { display: none; }
+    #card dl { grid-template-columns: auto 1fr auto 1fr; font-size: 12px; }
+    #hint { display: none; }
+  }
+</style>
+</head>
+<body>
+<canvas id="stage"></canvas>
+<p id="loading">Rigging the ships…</p>
+<header id="title"><h1>Ships of Aethermoor</h1><p>Above the clouds at sunset</p></header>
+<button id="btn-card" class="chip" type="button" aria-expanded="true">Hide stats</button>
+<section id="card" aria-live="polite">
+  <h2 id="card-name"></h2>
+  <div class="cls" id="card-cls"></div>
+  <p id="card-blurb"></p>
+  <dl id="card-stats"></dl>
+</section>
+<div id="dock">
+  <div class="seg" id="ships" role="group" aria-label="Ship"></div>
+  <div class="row">
+    <div class="seg" id="views" role="group" aria-label="View">
+      <button type="button" data-view="turn" aria-pressed="true">Turn</button>
+      <button type="button" data-view="side">Side</button>
+      <button type="button" data-view="front">Front</button>
+      <button type="button" data-view="back">Back</button>
+      <button type="button" data-view="top">Top</button>
+      <button type="button" data-view="deck">Deck</button>
+    </div>
+    <div class="seg" id="levels" role="group" aria-label="Detail">
+      <button type="button" data-level="full" aria-pressed="true">Full</button>
+      <button type="button" data-level="middle">Middle</button>
+      <button type="button" data-level="far">Far</button>
+    </div>
+    <div class="seg" id="wear" role="group" aria-label="Battle scars">
+      <button type="button" data-wear="new" aria-pressed="true">New</button>
+      <button type="button" data-wear="battered">Battered</button>
+      <button type="button" data-wear="wrecked">Wrecked</button>
+    </div>
+  </div>
+  <div class="row">
+    <div class="seg" id="livery" role="group" aria-label="Colours">
+      <button type="button" data-livery="yours" aria-pressed="true">Yours</button>
+      <button type="button" data-livery="crew">Raider</button>
+      <button type="button" data-livery="captain">Captain</button>
+      <button type="button" data-livery="treasure">Treasure</button>
+    </div>
+    <div class="seg" id="sails" role="group" aria-label="Sails">
+      <button type="button" data-fold="0" aria-pressed="true">Sails set</button>
+      <button type="button" data-fold="1">Sails in</button>
+    </div>
+    <div class="seg" id="guns" role="group" aria-label="Guns">
+      <button type="button" data-guns="shut" aria-pressed="true">Ports shut</button>
+      <button type="button" data-guns="out">Guns out</button>
+      <button type="button" data-guns="fire">Fire!</button>
+    </div>
+  </div>
+  <div id="tri"></div>
+  <p id="hint">Drag to turn · pinch or scroll to zoom · Middle and Far: how ships look further off · Battered and Wrecked: after a fight · Raider, Captain and Treasure: the raiders' colours · Fire! runs her guns out and fires them</p>
+</div>
+<p id="error" hidden></p>
+<!--SCRIPT-->
+</body>
+</html>
