@@ -1,7 +1,8 @@
-// raiders.js: the raiders, the Captain's enemies for now. They fly the Captain's four classes (Skiff, Cutter, Brig,
-// Frigate) and the two only raiders sail (Galleon, Man-o'-war), built by the same code at the middle and far settings
-// of the detail dial, and they fly by the same rules (flight.js), a little slower. Raiders are easy to tell apart:
-// rust-red sails, darker planks and crimson pennants with a black hoist (their liveries: src/ship/livery.js).
+// raiders.js: the raiders, the Captain's enemies for now. They fly the Captain's classes (Skiff, Cutter, Brig,
+// Frigate, and the giants, the Galleon and the Man-o'-war, only once the Captain owns that giant: waveAt), built by the
+// same code at the middle and far settings of the detail dial, and they fly by the same rules (flight.js), a little
+// slower. Raiders are easy to tell apart: rust-red sails, darker planks and crimson pennants with a black hoist (their
+// liveries: src/ship/livery.js).
 //   Skiffs and Cutters chase: attack runs, bow-first, peeling away side-on when close.
 //   Brigs, Frigates and the Man-o'-war fight broadside: they come alongside a few hundred metres off and fire whole
 //   sides. The Man-o'-war is a fortress: two decks of twelve guns a side, slow to turn and slower to climb. Her five
@@ -9,8 +10,9 @@
 //   A treasure ship sails by, runs once she's chased, covering her escape with her stern guns, and strikes her colours
 //   when her sails are gone or her hull is down to a quarter. Left too far behind, she gets away. The Galleon always
 //   sails as one; any other class can too (spawn's `treasure`, or the ships a wave's `treasure` names), in the treasure
-//   ship's colours: wine-red sails edged in gold, gilded brass that glints, and chests of gold on her deck, laden with
-//   three times her class's bounty.
+//   ship's colours: wine-red sails edged in gold, gilded brass that glints, and chests of gold on her deck, her hold
+//   worth a Galleon's, and she sails laden, a little slower than her class. Until the Captain owns a Galleon, the
+//   treasure ship is a treasure Brig.
 // They come in waves, smallest first, and every fifth wave is led by a raider captain: tougher, harder-hitting and
 // quicker to reload, and worth four times the shards. Her ship looks the leader's: black sails edged in crimson,
 // blackened iron, crimson crystals, red eyes at her bow and a great swallow-tailed banner. How sharp the raiders are
@@ -28,7 +30,7 @@ import { makeLook, dress } from '../ship/dress.js';
 import { liveryArt, liveryOpts, wearLivery, DEBRIS } from '../ship/livery.js';
 import { FLEET, STATS } from '../ships/index.js';
 import { makeFlyer } from './flight.js';
-import { makeGunnery, intercept } from './guns.js';
+import { makeGunnery, intercept, HEAVY } from './guns.js';
 import { hitZones, firstHit } from './damage.js';
 import { CLOUD_Y } from './world.js';
 
@@ -44,37 +46,61 @@ export const CAPTAIN = { toughness: 2, damage: 1.2, reload: 0.9, bounty: 4 };
 // the colours of what a shot knocks off her (fx.js): her planks, and her sails (rust-red for the crews, black for
 // their captains, wine-red for a treasure ship)
 export const LOOKS = { crew: DEBRIS.crew, captain: DEBRIS.captain, treasure: DEBRIS.treasure };
-// the big ships' heavy guns take their crews longer to reload
-const HEAVY = { galleon: 1.15, manowar: 1.3 };
-// Crystal Shards for bringing one down (before the skies' and the wave's bonus); a treasure ship of a class that isn't
-// one already is laden with three times her class's (a Galleon's bounty is a treasure ship's)
-export const BOUNTY = { skiff: 15, cutter: 30, brig: 60, frigate: 100, galleon: 300, manowar: 400 }, TREASURE = { bounty: 3 };
+// Crystal Shards for bringing one down (before the skies' and the wave's bonus); a treasure ship's hold is worth a
+// Galleon's, whatever class she is (a treasure Brig plays the Galleon's part until the Captain owns one), and laden
+// with it she sails at this share of her class's top speed, so even a Skiff can run her down
+export const BOUNTY = { skiff: 15, cutter: 30, brig: 60, frigate: 100, galleon: 300, manowar: 400 }, TREASURE = { bounty: BOUNTY.galleon, laden: 0.85 };
 const ROLE = { skiff: 'chaser', cutter: 'chaser', brig: 'broadside', frigate: 'broadside', galleon: 'prize', manowar: 'broadside' };
 // whether ship i of a wave sails as a treasure ship (she runs, and strikes her colours): every Galleon, even one that's
 // the wave's captain, and the ships the wave's `treasure` names (but not its captain, who fights); and whether a wave
-// brings one (main.js: its banner, its sound)
+// brings one, and how many (main.js: its banner, its sound)
 export const treasureShip = (wave, i) => ROLE[wave.ids[i]] === 'prize' || (i !== wave.captain && !!wave.treasure?.includes(i));
 export const hasTreasure = (wave) => wave.ids.some((id, i) => treasureShip(wave, i));
+export const treasureCount = (wave) => wave.ids.filter((id, i) => treasureShip(wave, i)).length;
+// The waves, smallest first. The giants sail in them only once the Captain owns that class (Chris: giant raiders only
+// once you own one, whichever ship you take out that voyage; `giants` says which she owns: progress.js). Until then each
+// has a stand-in (STAND_IN): for a Galleon, a treasure Brig, a rich merchant laden with shards who runs as a Galleon
+// does; for a Man-o'-war, a raider captain's Frigate, leading the escorts the Man-o'-war would have had
 export const WAVES = [['skiff'], ['skiff', 'skiff'], ['cutter'], ['cutter', 'skiff'], ['brig'], ['galleon', 'cutter'], ['frigate'],
   ['frigate', 'cutter', 'cutter'], ['brig', 'brig', 'skiff', 'skiff'], ['frigate', 'brig', 'cutter', 'cutter', 'skiff'],
   ['galleon', 'frigate', 'cutter'], ['manowar', 'cutter', 'cutter'], ['frigate', 'frigate', 'brig'], ['galleon', 'galleon', 'frigate', 'cutter'],
   ['manowar', 'frigate', 'brig', 'cutter']];
-// wave n (from 0): which ships, the biggest first, and whether it's led by a captain (every fifth wave: the biggest
-// ship but a Man-o'-war, which needs no captain); Maelstrom skies add `extra` Skiffs or Cutters from the third wave on.
-// `storms` (the skies', progress.js) says whether it brings a storm; a storm wave, and every third, comes out of a bank
-// of cloud (main.js)
+export const STAND_IN = { galleon: [{ id: 'brig', treasure: true }], manowar: [{ id: 'frigate', captain: true }] };
+// After the fifteenth, three to six raiders at random from POOL (a giant not yet owned sails as her one-ship stand-in:
+// a treasure Brig, or a Frigate), with at most one Man-o'-war and two Galleons at once. Once owned, the giants grow
+// common: from wave 16 each one owned comes once more in the pool every fourth wave, up to four times as often
+const POOL = ['skiff', 'skiff', 'cutter', 'cutter', 'cutter', 'brig', 'brig', 'frigate', 'frigate', 'galleon', 'manowar'];
+const ALONE = { galleon: { id: 'brig', treasure: true }, manowar: { id: 'frigate' } }, MOST = { galleon: 2, manowar: 1 };
+// wave n (from 0): which ships, the biggest first; which of them sail as treasure ships besides the Galleons
+// (`treasure`, their places), and which is led by a raider captain (`captain`, her place, or -1): every fifth wave's
+// biggest ship that fights (not a Man-o'-war, which needs no captain, nor a treasure ship; a Galleon only if the wave
+// has nothing else, and she still runs), or a Man-o'-war's stand-in, her raider captain's Frigate.
+// Maelstrom skies add `extra` Skiffs or Cutters from the third wave on. `storms` (the skies', progress.js) says whether
+// it brings a storm; a storm wave, and every third, comes out of a bank of cloud (main.js)
 const SIZE = { skiff: 0, cutter: 1, brig: 2, frigate: 3, galleon: 4, manowar: 5 };
-export function waveAt(n, extra = 0, storms = null) {
-  const pool = ['skiff', 'skiff', 'cutter', 'cutter', 'cutter', 'brig', 'brig', 'frigate', 'frigate', 'galleon', 'manowar'];
-  let ids = [...(WAVES[n] ?? [])];
-  if (!ids.length) {
-    ids = Array.from({ length: Math.min(6, 3 + ((n - WAVES.length) >> 1)) }, () => pool[Math.floor(Math.random() * pool.length)]);
-    ids = ids.filter((id, i) => id !== 'manowar' || ids.indexOf('manowar') === i); // one Man-o'-war at a time
+export function waveAt(n, extra = 0, storms = null, giants = null) {
+  const owns = (id) => !STAND_IN[id] || !!giants?.[id];
+  let list;
+  if (WAVES[n]) list = WAVES[n].flatMap((id) => (owns(id) ? [{ id }] : STAND_IN[id].map((e) => ({ ...e }))));
+  else {
+    const pool = [...POOL], more = Math.min(3, Math.floor((n - WAVES.length) / 4) + 1), count = { galleon: 0, manowar: 0 };
+    for (const id in STAND_IN) if (owns(id)) for (let k = 0; k < more; k++) pool.push(id);
+    list = Array.from({ length: Math.min(6, 3 + ((n - WAVES.length) >> 1)) }, () => {
+      let id = pool[Math.floor(Math.random() * pool.length)];
+      if (MOST[id] && count[id]++ >= MOST[id]) id = POOL[Math.floor(Math.random() * 9)]; // (too many of her: one of the rest)
+      return owns(id) ? { id } : { ...ALONE[id] };
+    });
   }
-  if (n >= 2) for (let i = 0; i < extra && ids.length < 6; i++) ids.push(n % 2 ? 'cutter' : 'skiff');
-  ids.sort((a, b) => SIZE[b] - SIZE[a]);
+  if (n >= 2) for (let i = 0; i < extra && list.length < 6; i++) list.push({ id: n % 2 ? 'cutter' : 'skiff' });
+  list.sort((a, b) => SIZE[b.id] - SIZE[a.id]);
+  let captain = list.findIndex((e) => e.captain);
+  if (captain < 0 && (n + 1) % 5 === 0) {
+    captain = list.findIndex((e) => e.id !== 'manowar' && !e.treasure && ROLE[e.id] !== 'prize');
+    if (captain < 0) captain = list.findIndex((e) => e.id === 'galleon');
+  }
+  const treasure = list.flatMap((e, i) => (e.treasure ? [i] : []));
   const storm = !!storms && (storms.waves.includes(n + 1) || (n >= WAVES.length && Math.random() < storms.after));
-  return { ids, captain: (n + 1) % 5 === 0 ? ids.findIndex((id) => id !== 'manowar') : -1, storm, bank: storm || (n + 1) % 3 === 0 };
+  return { ids: list.map((e) => e.id), captain, treasure, storm, bank: storm || (n + 1) % 3 === 0 };
 }
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -274,8 +300,8 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
     const S = skies(), Tm = template(id, look), edge = (k) => (captain ? 1 + (CAPTAIN[k] - 1) * S.captain : 1), tough = S.toughness * edge('toughness');
     const ship = raiderShip(Tm), st = STATS[id];
     const stats = { ...st, hull: Math.round(st.hull * tough), sails: Math.round(st.sails * tough), crystals: Math.round(st.crystals * tough) };
-    const f = makeFlyer(ship, stats, { pos, heading }, { speed: S.pace });
     const role = treasure && !captain ? 'prize' : ROLE[id];
+    const f = makeFlyer(ship, stats, { pos, heading }, { speed: S.pace * (role === 'prize' ? TREASURE.laden : 1) }); // (a treasure ship sails laden)
     f.sail = 0.85; f.speed = f.H.vmax * 0.6;
     // where the Captain's guns aim at her: her hull's middle, or a treasure ship's fore sails (shoot them to catch her)
     f.aimY = Tm.zones.aim.y;
@@ -289,7 +315,7 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
     scene.add(ship.root);
     const gun = makeGunnery(ship, { reload: RAIDER.slow * S.reload * (HEAVY[id] ?? 1) * edge('reload'), damage: S.damage * edge('damage') }, f);
     const r = { id, R: Tm.R, name: `Raider ${captain ? 'captain\'s ' + Tm.R.cls : Tm.R.cls}`, captain, ship, f, gun, zones: Tm.zones, role, frozen,
-      bounty: BOUNTY[id] * (captain ? CAPTAIN.bounty : role === 'prize' && ROLE[id] !== 'prize' ? TREASURE.bounty : 1), aim: RAIDER.aim * S.aim, looks: LOOKS[look], livery: look, weak: id === 'manowar',
+      bounty: captain ? BOUNTY[id] * CAPTAIN.bounty : role === 'prize' ? TREASURE.bounty : BOUNTY[id], aim: RAIDER.aim * S.aim, looks: LOOKS[look], livery: look, weak: id === 'manowar',
       mode: 'attack', timer: 0, side: 1, alt: (Math.random() - 0.5) * (role === 'chaser' ? 50 : 20), counted: false, gone: false,
       course: heading, fleeing: false, weave: Math.random() * 6,
       // whether she can see the Captain (not hidden in cloud far from her), where she last saw her (null: never yet),

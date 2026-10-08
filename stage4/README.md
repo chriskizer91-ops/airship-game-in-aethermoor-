@@ -9,7 +9,7 @@ repository's main folders is left exactly as it was, so other versions can carry
 on its own: its own pages, tools and notes.
 
 It started as a copy of the game at commit `1887984` (the port, the three skies, Crystal Shards, and the Galleon and
-the Man-o'-war as raiders).
+the Man-o'-war as raiders; since stage 4 they're the Captain's late-game ships too).
 
 Picking this up in a new session? Start with `docs/HANDOFF.md`.
 
@@ -23,6 +23,7 @@ node tools/check.mjs    # plays the game in a hidden browser (about 12 minutes h
 node tools/check.mjs --quick   # only the game page at laptop size, while working ("all good (quick)")
 node tools/check.mjs --ships   # only the ships demo, a couple of minutes ("all good (the ships demo only)")
 node tools/sim-fight.mjs brig 5 cross   # the simulated Captain, for tuning the fights
+node tools/sim-fight.mjs manowar 6 cross 10 --runs 4   # the Man-o'-war against waves 10 to 15, four voyages (--owns, --mods, --power too)
 ```
 
 `tools/ship-art.mjs` and `tools/map-art.mjs` read Chris's pictures from the repository's `art/` folder, without

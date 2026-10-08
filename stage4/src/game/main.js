@@ -26,7 +26,7 @@
 import * as THREE from 'three';
 import { loadShipArt } from '../ship/materials.js';
 import { buildShip } from '../ship/build.js';
-import { SHIPS, FLEET } from '../ships/index.js';
+import { SHIPS, FLEET, GIANTS } from '../ships/index.js';
 import { makeWorld, regionAt, REGIONS, SUN, HAZE, MAP, THINNING, DAY } from './world.js';
 import { makeSky } from './sky.js';
 import { makeInput } from './input.js';
@@ -36,7 +36,7 @@ import { makeFx } from './fx.js';
 import { makeWrecks } from './wrecks.js';
 import { makeSurge } from './surge.js';
 import * as events from './events.js';
-import { makeRaiders, waveAt, hasTreasure } from './raiders.js';
+import { makeRaiders, waveAt, hasTreasure, treasureShip, treasureCount } from './raiders.js';
 import { makeProgress, SKIES } from './progress.js';
 import { loadout } from './mods.js';
 import { makePickups } from './pickups.js';
@@ -195,6 +195,7 @@ async function main() {
     title.leave(); // (the afternoon again, before her ship is put in the sky)
     const first = progress.newCaptain;
     const R = SHIPS.find((s) => s.id === id), ship = shipFor(R), L = loadout(id, d.ships[id]);
+    for (const g of GIANTS) giants[g] = !!d.ships[g]?.owned; // (the giants she owns sail among the raiders this voyage)
     // (she starts 2.5 km out, heading in, in clear air: tried round the circle until neither she nor the camera behind
     // her is in one of the big clouds, so a voyage never opens blind)
     const at = { pos: new THREE.Vector3(), heading: 0 };
@@ -268,7 +269,9 @@ async function main() {
   // ---------- the camera: behind the ship, swung round it by the mouse or a drag ----------
   const cam = { yaw: 0, pitch: 0.2, dist: 40, zoom: 1, look: new THREE.Vector3() };
   let viewFov = 55; // the view's width (degrees) before a Surge, slow motion and the guns' punch: wider on a phone held upright
-  const camDistFor = (R) => R.length * 1.35 + 16;
+  // (how far behind her the view sits: further for a bigger ship, and a little further again past 40 m, so a Galleon or
+  // a Man-o'-war sits wholly in the lower part of the view, her stern in sight, with the raiders clear above her masts)
+  const camDistFor = (R) => R.length * 1.35 + 16 + Math.max(0, R.length - 40) * 0.4;
   // a Surge widens the view by `fov` degrees, with a jolt: a spring that overshoots a little, peaking about 0.15 s in
   // (with no overshoot for players whose device asks for less motion). The spring is worked out in steps of at most
   // `step` seconds, so it moves the same on a phone running slowly as on a fast laptop (in one big step it would fly off)
@@ -368,13 +371,24 @@ async function main() {
   }
 
   // ---------- the raiders come in waves; between them, sail on or go home ----------
-  function describe(ids) {
-    const count = {};
-    for (const id of ids) count[id] = (count[id] ?? 0) + 1;
-    const plural = (c) => (c === 'Man-o\'-war' ? 'Men-o\'-war' : `${c}s`);
-    const parts = Object.entries(count).map(([id, n]) => { const c = FLEET.find((s) => s.id === id).cls; return `${NUMBER[n]} ${n > 1 ? plural(c) : c}`; });
+  // a wave in words: its raider captain's ship first, then its treasure ships, then the rest, biggest first ("a raider
+  // captain's Frigate, a treasure Brig, two Frigates and a Cutter")
+  function describe(wave) {
+    const groups = new Map(), plural = (c) => (c === 'Man-o\'-war' ? 'Men-o\'-war' : `${c}s`);
+    const add = (key, order, one, many) => { const g = groups.get(key) ?? { order, n: 0, one, many }; g.n++; groups.set(key, g); };
+    wave.ids.forEach((id, i) => {
+      const c = FLEET.find((s) => s.id === id).cls;
+      if (i === wave.captain) add('captain', -1000, `a raider captain's ${c}`, '');
+      else if (treasureShip(wave, i)) add('treasure:' + id, i - 100, `treasure ${c}`, `treasure ${plural(c)}`);
+      else add(id, i, c, plural(c));
+    });
+    const parts = [...groups.values()].sort((a, b) => a.order - b.order).map((g) => (g.many === '' ? g.one : `${NUMBER[g.n]} ${g.n > 1 ? g.many : g.one}`));
     return parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}` : parts[0];
   }
+  // which giants the Captain owns: only those sail among the raiders (raiders.js waveAt). Read as a voyage starts (she
+  // can't buy one at sea)
+  const giants = { galleon: false, manowar: false };
+  const nextWave = (n) => waveAt(n, skies().extra, skies().storms, giants);
   const NUM = new Intl.NumberFormat('en'), fmt = (n) => NUM.format(Math.round(n)); // (one formatter, made once: a phone is slow to make them)
   const DOWN = payload('raider:down'), SPILL = payload('shards:spill');
   function waves(dt, gone) {
@@ -407,16 +421,17 @@ async function main() {
     if (W.state !== 'fight') { player.repair(dt * 0.12); looks.repair(player.ship, dt); } // between fights the crew patch her up (and her scars)
     if (W.state === 'calm') {
       if ((W.timer -= dt) <= 0) {
-        const wave = W.next ?? waveAt(W.n, skies().extra, skies().storms), a = raiders.spawnWave(wave, player);
+        const wave = W.next ?? nextWave(W.n), a = raiders.spawnWave(wave, player);
         W.next = null;
         // a storm wave: the storm rolls in (its wind blowing from it); a storm wave, and every third, comes out of a
         // bank of cloud on the raiders' way in, 500 to 800 m ahead of them
         if (wave.storm) sky.startStorm(); else sky.clearWeather();
         if (wave.bank) bankFor(raiders.list, player.pos);
-        // (a treasure ship's wave: a Galleon's, or one with a treasure ship of another class)
-        const prize = hasTreasure(wave);
-        const title = prize ? `Wave ${W.n + 1}: a treasure ship` : wave.captain >= 0 ? `Wave ${W.n + 1}: a raider captain` : wave.ids.includes('manowar') ? `Wave ${W.n + 1}: a Man-o'-war` : `Raiders, wave ${W.n + 1}`;
-        banner(title, `${describe(wave.ids)}, ${sideWords(a - player.heading)} · ${windWords()}${prize ? ' · shoot her sails to catch her' : ''}`);
+        // (a treasure ship's wave: a Galleon's, or one with a treasure ship of another class, a treasure Brig before
+        // the Captain owns a Galleon)
+        const prize = hasTreasure(wave), rich = treasureCount(wave);
+        const title = prize ? `Wave ${W.n + 1}: ${rich > 1 ? `${NUMBER[rich]} treasure ships` : 'a treasure ship'}` : wave.captain >= 0 ? `Wave ${W.n + 1}: a raider captain` : wave.ids.includes('manowar') ? `Wave ${W.n + 1}: a Man-o'-war` : `Raiders, wave ${W.n + 1}`;
+        banner(title, `${describe(wave)}, ${sideWords(a - player.heading)} · ${windWords()}${prize ? (rich > 1 ? ' · shoot their sails to catch them' : ' · shoot her sails to catch her') : ''}`);
         W.state = 'fight';
         if (W.n === 0 && !$('help').hidden) toggleHelp(); // (the keys fold away as the first wave comes)
         const E = payload('wave:start');
@@ -435,7 +450,7 @@ async function main() {
         const E = payload('wave:cleared'); E.n = W.n; E.bonus = bonus; emit('wave:cleared');
         W.state = 'choose'; W.choose = 25;
         $('calm-title').textContent = `Wave ${W.n} beaten`;
-        const next = waveAt(W.n, skies().extra, skies().storms);
+        const next = nextWave(W.n);
         W.next = next;
         // the weather: a storm wave next shows its storm on the horizon now (ahead of her, more or less), and says so on
         // the card; otherwise this wave's storm (if it had one) clears. The bank of cloud the wave came out of goes
@@ -448,7 +463,7 @@ async function main() {
         // a captain's ship (and a treasure ship) is built now, while the card is up, not as the wave appears (a stutter
         // on a phone)
         raiders.prepareWave(next);
-        $('calm-line').innerHTML = `◆ <b id="calm-bonus">0</b> for the wave · ◆ ${fmt(V.shards)} aboard. Next: ${next.captain >= 0 ? 'a raider captain, with ' : ''}${describe(next.ids)}.${storm}`;
+        $('calm-line').innerHTML = `◆ <b id="calm-bonus">0</b> for the wave · ◆ ${fmt(V.shards)} aboard. Next: ${describe(next)}.${storm}`;
         // (shown at once, for the game; it rises into view after the slow motion, and its bonus counts up as it does)
         $('calm').classList.toggle('late', last); calmUp(true);
         W.bonus = bonus; W.bonusShown = -1; W.bonusAt = performance.now() / 1000 + (last ? 1.4 : 0.1);
@@ -972,6 +987,7 @@ async function main() {
     ready: true, get player() { return player; }, get gunnery() { return gunnery; }, cam, input, raiders, bolts, pickups, renderer, camera, scene, world, sun, waves: W, voyage: V,
     fx, events, wrecks, surge, looks, wakes, get lastArc() { return lastArc; }, get time() { return time; }, audio, sound, settings,
     progress, port, title, sail, endVoyage, pause, sailOn, wind: WIND, sky, waveAt, SKIES, get mode() { return mode; }, get paused() { return paused; },
+    giants, describe, // (which giants sail among the raiders this voyage, and a wave in words)
     fly: (id) => sail(id, true), // a voyage in any ship, owned or not (for tests)
     words: { side: sideWords, wind: () => windWords() }, layout, edge: EDGE, // (directions in words, and the panels the edge tags keep clear of)
     get mapNames() { return NAMES_AT.at; }, // (the big map's names as placed, in its own pixels)

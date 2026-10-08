@@ -55,8 +55,8 @@ ship-to-ship fighting first).
 **Open points from stage 3's gate** are written up as the first package of stage 4, `docs/plan/specs/D0-touchups.md`:
 raider glows not scaling with the screen, a storm front that looks like a flat mountain, stacked tags hiding their own
 raider, scars and fire too faint at fight distance, faint far-off wakes, the sideways ships demo, and a full check that
-now takes about 25 minutes. Also: `docs/ships.md` still says the Galleon and the Man-o'-war are only ever raiders,
-which stays true until package D1 makes them the Captain's ships (D1 should update it).
+now takes about 25 minutes. (`docs/ships.md` used to say the Galleon and the Man-o'-war are only ever raiders: D1 made
+them the Captain's ships too, and updated it.)
 
 ## Chris's decisions
 
@@ -84,7 +84,13 @@ which were made from this repository only):
    check's slowest part was the ships demo drawing a second-long frame the whole time: its frames are now held while
    it's checked (`__hangar.hold/step/draw`), and `node tools/check.mjs --ships` checks it alone.
 1. **D1-fleet**: the Galleon and the Man-o'-war as the Captain's late-game ships; giant raiders only once owned; the
-   treasure Brig; the wave table reworked; balance.
+   treasure Brig; the wave table reworked; balance. Built October 8 (`docs/game.md`, "The Galleon and the Man-o'-war"
+   and "The waves"; `docs/ships.md`). The port sells them after the Frigate (◆ 12,000 and ◆ 30,000; upgrade steps 7 and
+   10 times the Skiff's), its six ships in two rows of three on a phone. The Captain's big two are better found than a
+   raider's (`HELM` in `src/game/mods.js`: quicker helm, heavier plating, no heavy-gun reload), and the view stands
+   further back from them. `waveAt(n, extra, storms, giants)` gives each giant a stand-in until it's owned (a treasure
+   Brig; a raider captain's Frigate), and every treasure ship's hold is worth a Galleon's ◆ 300.
+   `tools/sim-fight.mjs` takes `--owns`, `--mods`, `--power` and `--runs`.
 2. **D2a-fights-tactics**: shot types, dodging broadsides (the red danger fan), raking fire, the crew patching her.
 3. **D2b-fights-foes**: raiders with nerve, named captains, wave arrivals, the Man-o'-war's fortress battle, a line of
    battle, choosing the road between waves.

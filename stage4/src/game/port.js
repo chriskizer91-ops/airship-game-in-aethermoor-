@@ -91,8 +91,10 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
   // (the same three layouts as the page: a laptop, a phone upright (narrow), a phone sideways or any short window. On a
   // phone held upright her panel is as tall as what's in it, so she has the room above its top: read from the page
   // after anything in the panel changes, or the window does, not every frame)
-  let panelTop = null;
-  const remeasure = () => { panelTop = null; };
+  // (and on a laptop or a phone held sideways, she stands clear above the ships along the bottom: on a narrow window
+  // their buttons take two rows. Measured the same way)
+  let panelTop = null, rowTop = null;
+  const remeasure = () => { panelTop = null; rowTop = null; };
   document.fonts?.addEventListener?.('loadingdone', remeasure); // (the words take their own room once their fonts are in)
   function place() {
     const w = innerWidth, h = innerHeight, narrow = w <= 700, short = h <= 500, fov = THREE.MathUtils.degToRad(camera.fov / 2);
@@ -102,7 +104,11 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
       else if (short) { vw = w * 0.34; cx = w * 0.8; vh = h * 0.8; } // (right of the title card)
       else { vw = w * 0.5; cx = w * 0.72; }
     } else if (narrow && !short) { panelTop ??= panel.getBoundingClientRect().top; vh = Math.max(h * 0.2, panelTop - 64); cy = 58 + vh / 2; }
-    else { const pw = short ? Math.min(372, w * 0.5) : 380; vw = w - pw - 40; cx = vw / 2; vh = h - (short ? 110 : 140); cy = 54 + vh / 2; }
+    else {
+      const pw = short ? Math.min(372, w * 0.5) : 380; vw = w - pw - 40; cx = vw / 2;
+      rowTop ??= shipsEl.getBoundingClientRect().top || h;
+      vh = Math.min(h - (short ? 110 : 140), rowTop - (short ? 4 : 8) - 54); cy = 54 + vh / 2;
+    }
     const t = Math.tan(fov), fit = Math.min(t * (vh / h), t * camera.aspect * (vw / w));
     const dist = (frame.radius / fit) * 1.02, el = 0.2;
     camera.position.set(0, frame.cy + Math.sin(el) * dist, Math.cos(el) * dist);
@@ -189,15 +195,22 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
       reload: (st.side > 1 ? KINDS.broadside.reload : KINDS.chaser.reload) * L.guns.reload,
     };
   };
+  const atBest = (p) => ({ power: p, mods: { armour: p > 0 ? 3 : 0, canvas: 3, drill: 3, crystals: 3 } });
   for (const R of SHIPS) for (const p of [-2, 2]) {
-    const f = figures(R.id, { power: p, mods: { armour: p > 0 ? 3 : 0, canvas: 3, drill: 3, crystals: 3 } });
+    const f = figures(R.id, atBest(p));
     for (const k in best) best[k] = Math.max(best[k], f[k]);
   }
-  // each in plain words: turning as the time for a full circle, climbing as metres a second, firepower in words
-  const WEIGHT = ['light', 'fair', 'heavy', 'very heavy'];
+  // a bar's length for a figure: its share of the best any ship can be. The hull and firepower run from a Skiff's to a
+  // Man-o'-war's, thirty times as much, so their bars go by the square root of that share: a Skiff's still shows, and
+  // a bigger figure always has a longer bar (the number, or the word, says exactly how much)
+  const ROOT = { hull: true, firepower: true };
+  const share = (k, v) => (ROOT[k] ? Math.sqrt(v / best[k]) : v / best[k]);
+  // each in plain words: turning as the time for a full circle, climbing as metres a second, firepower in words, read
+  // against a Frigate at her best (very heavy): past half as much again, the big two's are fearsome
+  const WEIGHT = ['light', 'fair', 'heavy', 'very heavy', 'very heavy', 'very heavy', 'fearsome'], HEAVIEST = figures('frigate', atBest(2)).firepower;
   const STAT_ROWS = [
     ['speed', 'Top speed', (v) => `${fmt(v)} km/h`], ['turn', 'Turning', (v) => `a full circle in ${Math.round(360 / v)} s`], ['climb', 'Climbing', (v) => `${v.toFixed(0)} m a second`],
-    ['hull', 'Hull', fmt], ['firepower', 'Firepower', (v) => WEIGHT[Math.min(3, Math.floor((v / best.firepower) * 4))]],
+    ['hull', 'Hull', fmt], ['firepower', 'Firepower', (v) => WEIGHT[Math.min(6, Math.floor((v / HEAVIEST) * 4))]],
   ];
   const statsEl = $('pp-stats');
   statsEl.innerHTML = STAT_ROWS.map(([k, label]) => `<div class="stat" data-stat="${k}"><span>${label}</span><span class="bar"><i class="now"></i><i class="base"></i><i class="mine" hidden></i></span><b></b></div>`).join('');
@@ -245,12 +258,12 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
     // (looking at another ship: a white mark on each bar where the ship you sail now is, to compare)
     const mine = viewing !== d.flying ? figures(d.flying, d.ships[d.flying]) : null;
     for (const [k, , show] of STAT_ROWS) {
-      const row = statsEl.querySelector(`[data-stat="${k}"]`), a = base[k] / best[k], n = now[k] / best[k];
+      const row = statsEl.querySelector(`[data-stat="${k}"]`), a = share(k, base[k]), n = share(k, now[k]);
       // pale: what's kept either way; past it, gold for what the upgrades add, red for what they cost
       const [nowBar, baseBar, mark] = row.querySelectorAll('i');
       baseBar.style.width = `${Math.min(a, n) * 100}%`; nowBar.style.width = `${Math.max(a, n) * 100}%`;
       nowBar.classList.toggle('less', n < a - 1e-6);
-      mark.hidden = !mine; if (mine) mark.style.left = `calc(${Math.min(1, mine[k] / best[k]) * 100}% - 1px)`;
+      mark.hidden = !mine; if (mine) mark.style.left = `calc(${Math.min(1, share(k, mine[k])) * 100}% - 1px)`;
       row.querySelector('b').textContent = show(now[k]);
     }
     const p = $('pp-power'); p.value = String(cfg.power);

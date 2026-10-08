@@ -1,9 +1,9 @@
 // progress.js: what the Captain has earned and owns, kept between visits: Crystal Shards (Aethermoor's money), the
-// ships bought, each ship's upgrades and crystal power setting, which skies (difficulty) were chosen, the best wave
-// reached, and how many voyages are behind the Captain (none: a new Captain, whom the title screen helps along, starting
-// on Fair Winds, the skies marked best for a first voyage; a save already made keeps the skies it chose). Kept
-// in the browser on this device, and, when the game is opened on claude.ai, also in the page's own private store for
-// this person, so it follows them between devices.
+// ships bought (any of the six: the Galleon and the Man-o'-war late in the game), each ship's upgrades and crystal
+// power setting, which skies (difficulty) were chosen, the best wave reached, and how many voyages are behind the
+// Captain (none: a new Captain, whom the title screen helps along, starting on Fair Winds, the skies marked best for a
+// first voyage; a save already made keeps the skies it chose). Kept in the browser on this device, and, when the game
+// is opened on claude.ai, also in the page's own private store for this person, so it follows them between devices.
 // the three skies: how well the raiders aim, how quickly they reload, how hard they hit, how much they take, how fast
 // they fly, how many more of them come, what shards pay, and how much of a raider captain's edge over her crew she has
 // (raiders.js: on Fair Winds none, as she's the first big fight a new Captain meets, in a Skiff; only her bounty is
@@ -17,10 +17,12 @@ export const SKIES = {
   mael: { name: 'Maelstrom', line: 'Raiders hunt in bigger packs, hit harder and aim truer. Shards pay over half as much again.', aim: 0.8, reload: 0.92, damage: 1.15, toughness: 1.15, pace: 0.96, extra: 1, shards: 1.6, captain: 1,
     storms: { waves: [4, 8, 12], after: 0.4 }, sight: 350 },
 };
-export const PRICES = { skiff: 0, cutter: 300, brig: 900, frigate: 2200 };
+// what each ship costs in port: the first four as the Captain climbs, and the Galleon and the Man-o'-war as her
+// late-game goals, after many voyages (tools/sim-fight.mjs; docs/game.md "The port")
+export const PRICES = { skiff: 0, cutter: 300, brig: 900, frigate: 2200, galleon: 12000, manowar: 30000 };
 
 const KEY = 'skies-of-aethermoor/save-1';
-const IDS = ['skiff', 'cutter', 'brig', 'frigate'];
+const IDS = ['skiff', 'cutter', 'brig', 'frigate', 'galleon', 'manowar']; // (a save from before the big two were sold gains them, not owned: merge)
 // what the claude.ai store answers when it will never take a write on this page (others, like busy or out of reach, pass)
 const STOP = ['invalid_argument', 'not_granted', 'revoked', 'capability_disabled', 'capability_removed', 'transform_error'];
 const HELD = 600e3; // how long a voyage stays on this device's own list after the store took it (see adopt)

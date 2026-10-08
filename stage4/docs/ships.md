@@ -37,12 +37,12 @@ What every ship has, like the Magpie:
 
 ## The raiders' colours
 
-Raiders fly the same four ships as the Captain, and the Galleon and the Man-o'-war too, so they're told apart by colour: rust-red sails, darker planks, and crimson pennants with a black hoist, against the Captain's cream sails and plum and gold. In the game each raider also has a tag over it with its class, its distance and its three health bars, and a red wake of Aether behind her (the Captain's is gold).
+Raiders fly the same ships as the Captain (the Galleon and the Man-o'-war only once the Captain owns one: see below), so they're told apart by colour: rust-red sails, darker planks, and crimson pennants with a black hoist, against the Captain's cream sails and plum and gold. In the game each raider also has a tag over it with its class, its distance and its three health bars, and a red wake of Aether behind her (the Captain's is gold).
 
 Two raiders have colours of their own (October 7), and any ship can wear them (`src/ship/livery.js`):
 
 - **A raider captain's ship** looks the leader: black sails edged in crimson, blackened iron fittings (her brass bands stay gold, as trim), crystals and sparks that burn crimson, red lanterns, two red eyes glowing either side of her bow, gold pennants, and a great black-and-crimson swallow-tailed banner on a staff above her tallest mast. Her wake is crimson.
-- **A treasure ship** is a rich merchant laden with shards: wine-red sails edged in gold, gilded brass that glints and twinkles all over her, gold pennants with a wine-red hoist, and open chests heaped with gold on her deck in place of her cargo; the glints on her moving metal (the spikes at her yards' tips) move with it. Her wake glitters gold. Any class can sail as one, worth three times her class's shards (a Galleon's bounty already is a treasure ship's).
+- **A treasure ship** is a rich merchant laden with shards: wine-red sails edged in gold, gilded brass that glints and twinkles all over her, gold pennants with a wine-red hoist, and open chests heaped with gold on her deck in place of her cargo; the glints on her moving metal (the spikes at her yards' tips) move with it. Her wake glitters gold. Any class can sail as one, and whatever her class her hold is worth a Galleon's ◆ 300 (before the bonuses); laden with it, she sails at 85% of her class's top speed. Until the Captain owns a Galleon, the treasure ship is a treasure Brig.
 
 The **Man-o'-war**, as a raider, shows her five crystal columns as the weak points they are: they glow brighter than any other ship's and beat like a heart.
 
@@ -107,7 +107,9 @@ How the game turns damage into slower sailing, worse turning and sinking is in `
 
 ## The six ships
 
-**The player is the Captain** (Chris, October 6). The Captain moves up through the first four ships: Skiff, then Cutter, Brig and Frigate, bought in port with Crystal Shards (◆ 300, 900 and 2,200; `docs/game.md`). The Galleon and the Man-o'-war are only ever enemies: a rich prize and a fortress.
+**The player is the Captain** (Chris, October 6). The Captain moves up through the ships: Skiff, then Cutter, Brig and Frigate, bought in port with Crystal Shards (◆ 300, 900 and 2,200; `docs/game.md`), and **late in the game the Galleon and the Man-o'-war** (◆ 12,000 and ◆ 30,000; Chris, October 6: until then they were only ever raiders).
+
+**Giant raiders only once you own one** (Chris, October 6). Raiders sail Galleons only once the Captain owns the Galleon, and Men-o'-war only once she owns the Man-o'-war, whichever ship she takes out that voyage. Until then the treasure ship is a **treasure Brig** (a merchant Brig in a treasure ship's colours, laden with shards), and a raider captain's Frigate leads the Man-o'-war's waves in her place (`docs/game.md`, "The waves").
 
 **Every ship has a name** (Chris, October 6). These are proposals for Chris to keep or change. They're all winds and weather, growing with the ship, and none of them comes from the Magpie page or other games' lore:
 
@@ -131,14 +133,16 @@ The names stay off the ships themselves, so the models can be reused in other ga
 | Galleon | 60 m | 4,000 | 1,500 | 1,600 | 4 | 3 | 3 | 1 | 2 | 16 | 120 |
 | Man-o'-war | 90 m | 7,000 | 2,400 | 2,600 | 3 | 2 | 1 | 4 | 2 | 24 | 250 |
 
+**The Captain's own big two are better found** than a raider's (October 8, so they're mighty to fly and fun on a phone): her crew turn them a fifth quicker (the Galleon) and over a third quicker (the Man-o'-war), and climb them 15% and 40% quicker; her shipwrights plate their hulls heavier and her crystal-cutters set their crystals deeper (hull 6,400 and crystals 2,560 on the Galleon, against a raider's 4,000 and 1,600; 9,100 and 3,380 on the Man-o'-war, against 7,000 and 2,600: a big ship is a big target, her crystals heaped high on her deck, and every raider's shots find her); and her gunners work their heavy guns as fast as any (a raider crew takes 15% and 30% longer to reload). The table above is the ships as built, as raiders sail them.
+
 What each one looks like, so its pictures match its stats:
 
 - **Skiff (8 m).** About the Magpie's size: the Magpie is about 6 m long, three or four people from bow to stern. Open deck, one small crystal cluster of three crystals, and one pair of wing sails. One bow gun on a swivel at the prow, and one small gun on the rail on each side. It out-turns and out-climbs everything, and it's quick enough to run from a fight it can't win. It's the player's first ship.
 - **Cutter (15 m).** Long, low and narrow, with a sharp prow. Two pairs of wing sails swept back like a swallow's. A small crystal cluster. One row of three gun ports a side, plus one gun at the bow and one at the stern. The fastest ship, but thin-skinned.
 - **Brig (25 m).** Two crystal clusters, one fore and one aft, and two pairs of wing sails. A raised deck at the stern. One row of six gun ports a side, two bow guns and one stern gun. The all-rounder.
 - **Frigate (40 m).** Long and sleek. Three crystal clusters and three pairs of wing sails: a lot of sail for its size, which is why it's fast. One long row of ten gun ports a side, and two guns at each end. The hunter.
-- **Galleon (60 m).** Tall and wide, with a high stern castle full of windows and big cargo hatches. Four crystal clusters but little sail for its weight. Two rows of eight gun ports a side, one bow gun, and two stern guns for covering its escape. Slow, and a rich prize.
-- **Man-o'-war (90 m).** Huge and armour-plated, with five crystal clusters, three pairs of short, heavy wing sails, and two rows of twelve gun ports a side. Four bow guns and two stern guns. A flying fortress that barely climbs.
+- **Galleon (60 m).** Tall and wide, with a high stern castle full of windows and big cargo hatches. Four crystal clusters but little sail for its weight. Two rows of eight gun ports a side, one bow gun, and two stern guns for covering its escape. Slow, and as a raider a rich prize; the Captain's is a broadside like a storm.
+- **Man-o'-war (90 m).** Huge and armour-plated, with five crystal clusters, three pairs of short, heavy wing sails, and two rows of twelve gun ports a side. Four bow guns and two stern guns. A flying fortress that barely climbs (the Captain's crew get more out of her).
 
 What the models show:
 

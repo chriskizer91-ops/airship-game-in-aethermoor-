@@ -13,6 +13,9 @@ export { RIPPLE };
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 // Bigger ships carry bigger guns: each shot's weight is scaled by the ship's class
 export const GUN_WEIGHT = { skiff: 0.8, cutter: 0.9, brig: 1, frigate: 1.1, galleon: 1.15, manowar: 1.25 };
+// and the big two's heavy guns take a raider crew longer to reload (times as long; the Captain's crew are quicker:
+// mods.js HELM)
+export const HEAVY = { galleon: 1.15, manowar: 1.3 };
 // Long-focus chasers are fast, light and accurate; short-focus broadsides are heavy, slower and spread a little
 export const KINDS = {
   chaser: { speed: 430, damage: 28, reload: 1.1, yaw: 0.62, pitch: 0.26, spread: 0.002, life: 3.2, size: 1 },

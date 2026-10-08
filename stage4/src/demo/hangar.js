@@ -1,4 +1,4 @@
-// hangar.js: the demo page. All six ships (the Captain's four, and the Galleon and Man-o'-war that raiders sail), one
+// hangar.js: the demo page. All six ships the Captain can sail (the Galleon and the Man-o'-war late in the game), one
 // at a time or all together, above a sea of cloud at sunset with peaks breaking through, the way Chris's painting of
 // the Brig shows it. Drag to turn round a ship,
 // pinch to zoom; switch ships, views and the detail dial at the bottom, and how she looks after a fight: New, Battered
@@ -355,7 +355,7 @@ async function main() {
     const R = SHIPS.find((s) => s.id === state.ship), St = STATS[R.id];
     if (state.all) {
       $('card-name').textContent = 'The fleet'; $('card-cls').textContent = SHIPS.map((S) => S.cls).join(' · ');
-      $('card-blurb').textContent = 'The four ships the Captain moves up through, and the two only raiders sail, at the same scale.';
+      $('card-blurb').textContent = 'The six ships the Captain moves up through, from the little Skiff to the Man-o\'-war, at the same scale.';
       $('card-stats').innerHTML = SHIPS.map((S) => `<dt>${S.name}</dt><dd>${S.cls}, ${S.length} m</dd>`).join('');
       return;
     }
