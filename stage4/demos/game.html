@@ -108,6 +108,7 @@
     overscroll-behavior: contain; touch-action: pan-y; }
   #pp-name { margin: 0; font: 700 26px/1.1 var(--display); color: var(--gold); }
   #port .cls { margin: 2px 0 0; font-size: 12px; color: var(--dim); }
+  #pp-cls span { white-space: nowrap; }
   #pp-blurb { margin: 6px 0; font-size: 13.5px; color: var(--cream); }
   /* the tabs: on a phone the panel shows the ship or her upgrades (a gold dot: an upgrade you can buy) */
   #pp-tabs { display: none; gap: 4px; margin: 8px 0 2px; }
@@ -143,6 +144,7 @@
   #btn-buy:disabled { filter: none; color: var(--cream); background: rgba(58, 22, 49, 0.9); border-color: rgba(236, 220, 184, 0.5); cursor: default; }
   #btn-buy:disabled::before { content: ''; position: absolute; inset: 0 auto 0 0; width: var(--got, 0%); background: linear-gradient(#a8873f, #6e5426); opacity: 0.75; }
   #btn-buy span { position: relative; }
+  #btn-buy .price { white-space: nowrap; } /* (the price in one piece: "◆" never left at the end of a line) */
   #pp-need { margin: 0; font-size: 12.5px; color: var(--dim); }
   #pp-need:empty { display: none; }
   #btn-sail.alt { width: auto; padding: 6px 10px; font: 500 14px/1.2 var(--body); color: var(--cream); background: none; border: 0; box-shadow: none; text-decoration: underline; text-underline-offset: 3px; }
@@ -302,6 +304,9 @@
   .tag.lost { opacity: 0.6; border-style: dashed; }
   .tag.lost .lost { display: block; }
   .tag.lost .meter { display: none; }
+  /* (under a banner while it shows, a wave's say: faded away, so both can be read: main.js) */
+  .tag { transition: opacity 0.25s; }
+  #tags .tag.hush { opacity: 0; }
   .tag.lost.warn .lost { display: none; }
   /* the red at the screen's edge when you're hit, leaning to the side the shot came from (--hx, --hy: -1 to 1) */
   #hurt { position: fixed; inset: 0; pointer-events: none; opacity: 0;
@@ -400,9 +405,11 @@
     /* (the panel as tall as what's in it, from just above the ships along the bottom, so her ship has the room above
        it, as big as it fits (port.js): up to the bottom half of the screen for her ship's tab, more for her upgrades
        and for a ship you don't own (how she sails, above the Buy button), where the ship shows smaller above) */
-    #port-panel { top: auto; left: var(--gutter); right: var(--gutter); width: auto; bottom: calc(var(--bottom) + var(--ships-h)); max-height: calc(53vh - var(--bottom) - var(--ships-h)); padding-top: 8px; }
+    #port-panel { top: auto; left: var(--gutter); right: var(--gutter); width: auto; bottom: calc(var(--bottom) + var(--ships-h)); max-height: calc(56vh - var(--bottom) - var(--ships-h)); padding-top: 8px; }
     #port-panel[data-tab='upgrades'] { max-height: calc(74vh - var(--bottom) - var(--ships-h)); }
     #port-panel.buying { max-height: calc(70vh - var(--bottom) - var(--ships-h)); }
+    /* (your own ship's tab: no heading over how she sails, as the tab says it, so all of it shows above Set sail) */
+    #port-panel:not(.buying) #pp-ship-part h3 { display: none; }
     #btn-skies span { display: none; } /* (just the skies' name: the top line never wraps) */
     .mod { padding: 7px 0; }
     #port-ships { left: 50%; translate: -50% 0; grid-auto-flow: row; grid-template-columns: repeat(3, 1fr); width: min(calc(100% - 2 * var(--gutter)), 400px); max-width: none; }
@@ -557,12 +564,23 @@
     #settings .big { padding: 8px 22px; font-size: 16px; }
     #howto dl { grid-template-columns: auto 1fr auto 1fr; gap: 4px 10px; font-size: 13px; margin: 8px 0; }
   }
+  /* a phone held upright: the Buy button's words on one line, down to a phone 320 px across */
+  @media (max-width: 700px) and (min-height: 501px) {
+    #btn-buy { padding-left: 12px; padding-right: 12px; font-size: min(19px, 4.7vw); }
+  }
   /* a small phone held upright: the title's panel tighter (no opening line), so her ship shows above it; a ship you
-     don't own in port, her panel taller again (port.js knows). Upright only: a small phone held sideways keeps the
-     sideways layout (above) */
+     don't own in port, her panel taller again (port.js knows), with no line under the Buy button (the shards are at the
+     top, and the button fills with gold towards her price), so her ship still stands clear above it. Upright only: a
+     small phone held sideways keeps the sideways layout (above) */
   @media (max-width: 700px) and (min-height: 501px) and (max-height: 720px) {
-    #port-panel { max-height: calc(57vh - var(--bottom) - var(--ships-h)); } /* (a little more of the screen, as the ships take two rows) */
-    #port-panel.buying { max-height: calc(79vh - var(--bottom) - var(--ships-h)); }
+    #port-panel { max-height: calc(61vh - var(--bottom) - var(--ships-h)); } /* (a little more of the screen, as the ships take two rows) */
+    #port-panel.buying { max-height: calc(75vh - var(--bottom) - var(--ships-h)); }
+    #pp-need { display: none; }
+    /* (the ship's tab a little tighter, so the first of how she sails shows above Set sail, even under the Skiff's long blurb) */
+    #pp-tabs { margin: 6px 0 0; }
+    #pp-tabs button { min-height: 34px; padding: 4px 10px; }
+    #pp-blurb { margin: 4px 0; }
+    .stat { margin: 3px 0; }
     #title { padding-top: 12px; padding-bottom: 14px; }
     #title h1 { font-size: clamp(30px, 9vw, 38px); }
     #title .lede { display: none; }
@@ -608,6 +626,8 @@
     #port-ships button { padding: 5px 4px 4px; }
     #port-ships button b { font-size: 12px; }
     .sail-out .big { font-size: 15.5px; padding: 8px 10px; }
+    #btn-buy { letter-spacing: 0; }
+    #btn-buy .the { display: none; } /* ("Buy Thunderhead · ◆ 30,000": her name is just above, and so it fits on one line) */
   }
   /* the tabs, wherever the panel is short (a phone either way). The Upgrades tab shows the upgrades first (no heading:
      the tab says it), then crystal power, so they're there without scrolling */

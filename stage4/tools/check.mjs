@@ -21,7 +21,8 @@
 //                     port guns kicked back in changing it again and her starboard guns not, and from above (her wood
 //                     only) her lids swinging out from her side, not into her; her four colours (hers, a raider's, a
 //                     captain's, a treasure ship's) all with the same shaders, the captain's black iron and banner, the
-//                     treasure ship's glints; pictures of each (and a raider Man-o'-war on the laptop); on the phone, all
+//                     treasure ship's glints; pictures of each (and a raider Man-o'-war on the laptop); the fleet's stats
+//                     card listing all six with no line broken in two (on the phone's narrow card too); on the phone, all
 //                     six at full detail shown in each colours in turn holding two sets of ships at most
 //   dist/game.html    the title screen and the port: a brand-new Captain finds Fair Winds chosen; a ship that can't be
 //                     afforded, then buying the Cutter and armour and setting the crystal power (the stats changing);
@@ -34,11 +35,16 @@
 //                     crew on Crosswinds, no tougher on Fair Winds); giant raiders only once owned: owning neither, a
 //                     treasure Brig (her hold ◆ 300) in wave 6 and a raider captain's Frigate and two Cutters in wave
 //                     12, the card before each and its banner saying so, and no giant in wave 15;
-//                     owning the Galleon, a treasure Galleon in wave 6 but no Man-o'-war in 12; owning both, a
+//                     owning the Galleon, a treasure Galleon in wave 6 but no Man-o'-war in 12; owning only the
+//                     Man-o'-war, a treasure Brig in wave 6 and the Man-o'-war in 12 and 15; owning both, a
 //                     Man-o'-war in waves 12 and 15 (15's captain another ship); every wave to the 40th, 20 times over,
-//                     with no giant not owned, and owned, the giants growing common late on; the Galleon and the
-//                     Man-o'-war bought with the port's buttons (◆ 12,000 and 30,000, upgrades from ◆ 420 and 600, a
-//                     full circle in 36 and 40 s) and sailed: all of her on the screen behind her and a raider 1.6 km
+//                     with no giant not owned (each giant on her own too), never two treasure ships in a wave drawn at
+//                     random, and owned, the Man-o'-war growing common late on but the treasure ships not (in under half
+//                     of the late waves, whatever's owned); the Man-o'-war sold only once the Galleon is owned (her
+//                     button saying so, and buying nothing even pressed); the Galleon and the
+//                     Man-o'-war bought with the port's buttons (◆ 12,000 and 30,000, the Buy button on one line, the
+//                     line under it and the port's note saying what owning her brings, firepower very heavy and
+//                     fearsome, upgrades from ◆ 420 and 600, a full circle in 36 and 40 s) and sailed: all of her on the screen behind her and a raider 1.6 km
 //                     ahead above her masts, her port broadside (16 and 24 guns, both decks) labelled, locked on,
 //                     rippling within 0.6 s, heeling her, kicking the view (0.5 to 4 m), hitting and reloading in
 //                     2.6 s, with pictures (and on the phone with taps); a treasure ship shot until she strikes, and
@@ -168,7 +174,10 @@
 //                     the card between waves comes up keeping clear of it. The port at the four phone sizes, a
 //                     narrow one held sideways (640 by 360) and the smallest (568 by 320): its top line on one line,
 //                     its panel clear of the top line and of the ships; each of the six ships' buttons all inside the
-//                     ships' rows; a ship not owned showing all her stats above her Buy button; two upgrades or more
+//                     ships' rows; every ship not owned (the Frigate, the Galleon and the Man-o'-war, before the
+//                     Galleon and after) showing all her stats above her Buy button, its words on one line, and held
+//                     upright her ship all above the panel; your own ship's tab showing all five stats above Set sail
+//                     and its fade (two on a small phone held upright); two upgrades or more
 //                     above Set sail (one under 360 px tall); each of the six ships' blurbs (owned or not) all above the button's
 //                     fade; and held upright, the panel no taller than what's in it
 //                     the title screen: Aethermoor itself at sunset (not the port's void), her ship flying 700 m up
@@ -361,6 +370,19 @@ for (const name of quick ? [] : ['laptop', 'phone']) {
     await drawn(page);
     await shot(page, `${name}-${id}-${view}`);
   }
+  // the fleet's stats card (All six, with the stats out): every line of it whole, no word broken in two ("Man-o'-" and
+  // "war", or "60" and "m"), on the phone's narrow card too
+  const fleetCard = await page.evaluate(() => {
+    const $ = (id) => document.getElementById(id), shut = $('card').hidden;
+    window.__hangar.select('all'); if (shut) $('btn-card').click();
+    const lines = (el) => { const rg = document.createRange(); rg.selectNodeContents(el); return new Set([...rg.getClientRects()].map((b) => Math.round(b.top))).size; };
+    const broken = [$('card-cls'), ...document.querySelectorAll('#card-stats dt, #card-stats dd')].filter((el) => lines(el) > 1).map((el) => el.textContent);
+    const out = { cls: $('card-cls').textContent, rows: document.querySelectorAll('#card-stats dt').length, broken };
+    if (shut) $('btn-card').click();
+    return out;
+  });
+  console.log(`${name}: the fleet's card "${fleetCard.cls}", ${fleetCard.rows} ships, ${fleetCard.broken.length ? `BROKEN OVER TWO LINES: ${fleetCard.broken.join(', ')}` : 'every line whole'}`);
+  if (fleetCard.broken.length || fleetCard.rows !== 6) problems.push(`${name}: the ships demo's fleet card should list all six with no line broken in two: ${JSON.stringify(fleetCard)}`);
   // her scars (src/ship/dress.js): the Brig New, Battered and Wrecked, pictured. Battered changes the picture of her
   // hull (a share of the pixels in the box round it on the screen), sets her looks, and draws in as many goes with no
   // new shaders; Wrecked burns
@@ -718,8 +740,11 @@ function bountyProblems(B, where) {
 }
 // the title screen at one size (w x h), for a Captain back from the sea with shards to spend and the Frigate's name
 // the Galleon and the Man-o'-war bought and sailed with the port's own buttons (`press`: a click on a laptop, a tap on a
-// phone): each one's Buy button and price, her plain-words turning (the Captain's helm: quicker than a raider's), her
-// first upgrade step's price; set sail in her; the view behind her with all of her on the screen (her stern too) and a
+// phone): first the Man-o'-war, sold only to a Captain who owns the Galleon: her Buy button says so and buys nothing,
+// even pressed; then each one's Buy button and price, on one line (the price never broken from its "◆"), the line under
+// it saying what owning her brings, her plain-words turning (the Captain's helm: quicker than a raider's) and firepower
+// (the Galleon's very heavy, the Man-o'-war's fearsome), her first upgrade step's price, and the port's note as she's
+// bought; set sail in her; the view behind her with all of her on the screen (her stern too) and a
 // raider coming in 1.6 km ahead clear above her mast heads; her port broadside at a raider 420 m off: its label and gun
 // count (both decks), locked on, rippling bow to stern within 0.6 s (the first gun at once), heeling her to starboard,
 // kicking the view back (but not wildly), hitting, and reloading in the Captain's 2.6 s; pictures at sea and of the
@@ -734,11 +759,23 @@ async function bigTwoAt(page, name, press) {
     g.port.setMode('port'); g.port.refresh();
     return was;
   });
+  await press('#port-ships [data-ship="manowar"]');
+  res.locked = await page.evaluate(() => {
+    const g = window.__game, d = g.progress.data, b = document.getElementById('btn-buy'), had = d.shards;
+    const out = { buy: b.textContent, disabled: b.disabled, need: document.getElementById('pp-need').textContent };
+    b.disabled = false; b.click(); g.port.refresh(); // (the button's own guard, were it ever pressed)
+    out.bought = d.ships.manowar.owned || d.shards !== had;
+    return out;
+  });
   for (const [id, wave, price, step] of [['galleon', 5, 12000, 420], ['manowar', 11, 30000, 600]]) {
     await press(`#port-ships [data-ship="${id}"]`);
-    const shown = await page.evaluate(() => ({ buy: document.getElementById('btn-buy').textContent, turn: document.querySelector('[data-stat="turn"] b').textContent, fire: document.querySelector('[data-stat="firepower"] b').textContent, shards: window.__game.progress.data.shards }));
+    const shown = await page.evaluate(() => {
+      const b = document.getElementById('btn-buy'), rg = document.createRange(); rg.selectNodeContents(b.firstElementChild);
+      return { buy: b.textContent, lines: new Set([...rg.getClientRects()].map((r) => Math.round(r.top))).size, need: document.getElementById('pp-need').textContent,
+        turn: document.querySelector('[data-stat="turn"] b').textContent, fire: document.querySelector('[data-stat="firepower"] b').textContent, shards: window.__game.progress.data.shards };
+    });
     await press('#btn-buy');
-    const bought = await page.evaluate(() => { const d = window.__game.progress.data; return { flying: d.flying, shards: d.shards, step: document.querySelector('.mod[data-mod="armour"] button').textContent }; });
+    const bought = await page.evaluate(() => { const d = window.__game.progress.data; return { flying: d.flying, shards: d.shards, step: document.querySelector('.mod[data-mod="armour"] button').textContent, note: document.getElementById('port-note').textContent }; });
     if (name !== 'laptop') await press('#pp-tab-ship'); // (on a phone, the button to sail is under either tab)
     await press('#btn-sail');
     const sea = await page.evaluate(([id, wave]) => {
@@ -795,12 +832,17 @@ async function bigTwoAt(page, name, press) {
 const drawnAtSea = (page) => page.waitForFunction(() => !document.getElementById('veil').getAnimations().length, null, { timeout: 60000 }).catch(() => {})
   .then(() => page.evaluate(() => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => ok())))));
 // what's wrong with the big two bought and sailed (bigTwoAt), in words for the log
-function bigTwoProblems(res, name) {
-  const words = [], GUNS = { galleon: 16, manowar: 24 }, NAMES = { galleon: 'Doldrums', manowar: 'Thunderhead' }, TURN = { galleon: 36, manowar: 40 };
+function bigTwoProblems({ locked, ...res }, name) {
+  const words = [], GUNS = { galleon: 16, manowar: 24 }, NAMES = { galleon: 'Doldrums', manowar: 'Thunderhead' }, TURN = { galleon: 36, manowar: 40 }, FIRE = { galleon: 'very heavy', manowar: 'fearsome' };
+  const OWNING = { galleon: 'Once she\'s yours, the treasure ships you meet are Galleons.', manowar: 'Once she\'s yours, raiders sail Men-o\'-war too.' };
+  const NOTE = { galleon: 'The Doldrums is yours: from now on, the treasure ships are Galleons', manowar: 'The Thunderhead is yours: from now on, raiders sail Men-o\'-war too' };
+  words.push(`before the Galleon, the Thunderhead's button "${locked.buy}" (${locked.disabled ? 'not to be pressed' : 'PRESSABLE'}, "${locked.need}"), ${locked.bought ? 'BOUGHT' : 'buying nothing'} even pressed`);
+  if (locked.buy !== 'Buy the Doldrums first' || !locked.disabled || locked.bought || !locked.need.startsWith('The port sells her once you own the Doldrums.')) problems.push(`${name}: the Man-o'-war should be sold only once the Galleon is owned, her Buy button saying so and buying nothing: ${JSON.stringify(locked)}`);
   for (const [id, r] of Object.entries(res)) {
-    words.push(`the ${NAMES[id]}: "${r.buy}", ${r.paid === r.want.price ? 'bought' : `PAID ${r.paid}`}, "${r.turn}", firepower ${r.fire}, upgrades from ${r.step}; at sea in the ${r.ship} (${r.raiders}), the view ${r.dist} m back, her on the screen from ${r.x.join(' to ')} across and ${r.y.join(' to ')} up, a raider 1.6 km ahead at ${r.far}; "${r.label} · ${r.count}" ${r.locked ? 'locked on' : 'NOT LOCKED'}, ${r.fired} guns in ${r.span} s (the first at ${r.first} s), heeling ${r.heel} rad, the view kicked back ${r.kick} m, reloading in ${r.reload} s, hitting ${r.hit.join('+') || 'NOTHING'}`);
+    words.push(`the ${NAMES[id]}: "${r.buy}" on ${r.lines} line(s) ("${r.need}"), ${r.paid === r.want.price ? 'bought' : `PAID ${r.paid}`} ("${r.note}"), "${r.turn}", firepower ${r.fire}, upgrades from ${r.step}; at sea in the ${r.ship} (${r.raiders}), the view ${r.dist} m back, her on the screen from ${r.x.join(' to ')} across and ${r.y.join(' to ')} up, a raider 1.6 km ahead at ${r.far}; "${r.label} · ${r.count}" ${r.locked ? 'locked on' : 'NOT LOCKED'}, ${r.fired} guns in ${r.span} s (the first at ${r.first} s), heeling ${r.heel} rad, the view kicked back ${r.kick} m, reloading in ${r.reload} s, hitting ${r.hit.join('+') || 'NOTHING'}`);
     if (r.buy !== `Buy the ${NAMES[id]} · ◆ ${r.want.price.toLocaleString('en')}` || r.paid !== r.want.price || r.flying !== id || r.step !== `◆ ${r.want.step}`) problems.push(`${name}: the ${NAMES[id]} should be bought for ◆ ${r.want.price.toLocaleString('en')} with her Buy button, her upgrades from ◆ ${r.want.step}: ${JSON.stringify(r)}`);
     if (r.turn !== `a full circle in ${TURN[id]} s`) problems.push(`${name}: the Captain's ${NAMES[id]} should turn a full circle in ${TURN[id]} s (her helm): "${r.turn}"`);
+    if (r.lines !== 1 || r.need !== OWNING[id] || r.note !== NOTE[id] || r.fire !== FIRE[id]) problems.push(`${name}: the ${NAMES[id]}'s Buy button should be on one line, the line under it and the port's note as she's bought should say what owning her brings, and her firepower should read "${FIRE[id]}": ${JSON.stringify({ lines: r.lines, need: r.need, note: r.note, fire: r.fire })}`);
     if (r.mode !== 'voyage' || r.ship !== id || !r.raiders.includes(id)) problems.push(`${name}: Set sail should take the ${NAMES[id]} to sea, and owning her, she should meet her own class among the raiders: ${JSON.stringify(r)}`);
     if (r.x[0] < -1 || r.x[1] > 1 || r.y[0] < -1 || r.y[1] > 1 || !(r.far > r.y[1] + 0.05)) problems.push(`${name}: the view behind the ${NAMES[id]} should show all of her, her stern too, with a raider ahead clear above her masts: ${JSON.stringify({ x: r.x, y: r.y, far: r.far })}`);
     if (r.label !== 'Port broadside' || r.count !== `${GUNS[id]} guns` || !r.locked) problems.push(`${name}: the ${NAMES[id]}'s port broadside should say "${GUNS[id]} guns" and lock on: ${JSON.stringify(r)}`);
@@ -1113,6 +1155,52 @@ function tagProblems(T, where) {
   if (close.panels || close.hull || close.edge) problems.push(`${where}: a raider close ahead with her masts high in the view should have her tag clear of the panels along the top (and of her hull): ${JSON.stringify({ size: T.size, close })}`);
   const ok = (x) => x.overlap || x.covered || x.panels ? 'NOT CLEAR' : 'clear';
   return `two raiders' tags far off stacked ${ok(two)} of each other and both ships, three ${ok(three)} of each other, the ships and the panels, and a close one's ${close.panels || close.hull ? 'ON THE PANELS OR HER HULL' : 'clear of the panels'}`;
+}
+// tags at the screen's edge all on it by their own widths, from their very first frame: the widest a wave brings (a
+// treasure Galleon's, a raider captain's Frigate's, a treasure Brig's, a Man-o'-war's), off either side. And a wave's
+// banner, coming in with its raiders' tags right where it is (on the horizon): the tags under it faded right away (none
+// to be seen through it, unless one says "Broadside!"), the rest still showing, and all of them back once it fades
+const tagEdges = (page) => page.evaluate(TAG_EDGES);
+const TAG_EDGES = async () => {
+  const g = window.__game; g.fly('brig'); const P = g.player; g.waves.timer = 1e9; g.raiders.setAI(false); g.raiders.clear(); P.pos.set(1500, 900, -800); P.heading = 0; P.speed = 0; P.sail = 0;
+  g.cam.yaw = 0; g.cam.pitch = 0.1; g.step(0.1, {});
+  const off = [], across = { x: Math.cos(P.heading), y: 0, z: -Math.sin(P.heading) };
+  for (const [id, captain, treasure] of [['galleon', false, true], ['frigate', true, false], ['brig', false, true], ['manowar', false, false]]) for (const side of [-1, 1]) {
+    g.raiders.clear();
+    const r = g.raiders.spawn(id, P.pos.clone().addScaledVector(across, side * 600).addScaledVector(P.forward(), 300), 0, true, captain, treasure);
+    g.step(1 / 60, {});
+    const b = r.tag.getBoundingClientRect(), edge = r.tag.classList.contains('edge');
+    if (!edge || b.left < 0 || b.right > innerWidth) off.push(`${r.tag.querySelector('b').textContent}: ${Math.round(b.left)} to ${Math.round(b.right)}${edge ? '' : ' (not at the edge)'}`);
+  }
+  // (wave 15 as it comes in ahead, five raiders strong, the five then set 1.4 km off across the banner's middle, where
+  // a wave's raiders come in, so their tags land on it wherever the wave happened to come from)
+  g.raiders.clear(); g.cam.yaw = 0; g.cam.pitch = 0.1;
+  Object.assign(g.waves, { n: 14, state: 'calm', timer: 0.05, next: { ids: ['manowar', 'frigate', 'frigate', 'brig', 'cutter'], captain: 1, treasure: [], storm: false, bank: false } });
+  g.step(0.1, {});
+  const bn = document.getElementById('banner').getBoundingClientRect(), cam = g.camera, v = new (P.pos.constructor)();
+  g.raiders.list.forEach((r, i) => {
+    v.set(((bn.left + (bn.right - bn.left) * (0.15 + 0.175 * i)) / innerWidth) * 2 - 1, 1 - ((bn.top + bn.bottom) / 2 / innerHeight) * 2, 0.5).unproject(cam).sub(cam.position).normalize();
+    r.f.pos.copy(cam.position).addScaledVector(v, 1400); r.f.pos.y -= r.R.length * 0.45 + 3; r.ship.root.position.copy(r.f.pos);
+  });
+  g.step(1 / 60, {}); g.placeTags();
+  // (under it: overlapping it by more than 2 px each way; clear of it: apart from it; a tag just touching its edge counts as neither)
+  const look = () => g.raiders.list.map((r) => {
+    const t = r.tag, b = t.getBoundingClientRect(), was = t.style.transition; t.style.transition = 'none';
+    const o = +getComputedStyle(t).opacity; t.style.transition = was;
+    const ox = Math.min(b.right, bn.right) - Math.max(b.left, bn.left), oy = Math.min(b.bottom, bn.bottom) - Math.max(b.top, bn.top);
+    return { under: ox > 2 && oy > 2, clear: ox < -1 || oy < -1, shows: o > 0.05 };
+  });
+  const now = look(), banner = { under: now.filter((t) => t.under).length, seen: now.filter((t) => t.under && t.shows).length, clear: now.filter((t) => t.clear).length, hidden: now.filter((t) => t.clear && !t.shows).length };
+  await new Promise((ok) => setTimeout(ok, 3900)); g.placeTags(); // (the tags under it come back 0.7 s before it goes, 4.4 s on)
+  banner.after = look().filter((t) => t.shows).length; banner.n = now.length;
+  g.raiders.clear(); Object.assign(g.waves, { state: 'calm', timer: 1e9, next: null });
+  return { size: `${innerWidth}x${innerHeight}`, off, banner };
+};
+function tagEdgeProblems(T, where) {
+  const B = T.banner;
+  if (T.off.length) problems.push(`${where}: a raider's tag at the screen's edge should be all on the screen: ${T.off.join(', ')}`);
+  if (!B.under || B.seen || B.hidden || B.after !== B.n) problems.push(`${where}: as a wave comes in, its raiders' tags under its banner should fade away (and only those), and all come back once it fades: ${JSON.stringify(T)}`);
+  return `the widest tags at the edge ${T.off.length ? `CUT OFF: ${T.off.join(', ')}` : 'all on the screen'}; wave 15's banner over ${B.under} of its ${B.n} tags, ${B.seen ? `${B.seen} SEEN THROUGH IT` : 'faded'}, ${B.after} back after it`;
 }
 // the storm on its way (world.js stormWall): the sky alone, looking level towards it. Down each column of the screen,
 // its crest is where the sky turns lighter going down (the lit tops of the billows against the darkened sky): found in
@@ -1514,7 +1602,9 @@ if (!demoOnly) {
     // giant raiders only once the Captain owns one (Chris), whichever ship she sails: owning neither, wave 6's treasure
     // ship is a treasure Brig (worth a Galleon's ◆ 300) and wave 12's Man-o'-war a raider captain's Frigate leading the
     // two Cutters, and the card before each and its banner say so; owning the Galleon, wave 6 brings one (but
-    // wave 12 no Man-o'-war yet); owning both, waves 12 and 15 bring the Man-o'-war (wave 15's captain sailing another)
+    // wave 12 no Man-o'-war yet); owning both, waves 12 and 15 bring the Man-o'-war (wave 15's captain sailing another);
+    // and each giant on its own: owning only the Man-o'-war (an old save's, as the port sells her only after the
+    // Galleon), wave 6 still brings a treasure Brig, and wave 12 the Man-o'-war
     const sailed = () => g.raiders.list.map((r) => r.id + (r.role === 'prize' ? ' (treasure)' : '') + (r.captain ? ' (captain)' : '')).join(' ');
     const waveOf = (n) => { Object.assign(g.waves, { n, state: 'calm', timer: 0.1, next: null }); g.raiders.clear(); g.step(0.2, {}); return sailed(); };
     const banner = () => `${document.getElementById('banner-title').textContent}: ${document.getElementById('banner-line').textContent}`;
@@ -1522,7 +1612,7 @@ if (!demoOnly) {
     const cardAfter = (n) => { g.raiders.clear(); Object.assign(g.waves, { n: n - 1, state: 'fight', next: null }); g.step(0.05, {}); const t = document.getElementById('calm-line').textContent; g.sailOn(); return t.slice(t.indexOf('Next:')); };
     const owning = (galleon, manowar) => { Object.assign(g.progress.data.ships.galleon, { owned: galleon }); Object.assign(g.progress.data.ships.manowar, { owned: manowar }); P = voyage('brig'); P.pos.set(0, 800, 3000); };
     const giants = {};
-    for (const [key, gal, mow] of [['none', false, false], ['galleon', true, false], ['both', true, true]]) {
+    for (const [key, gal, mow] of [['none', false, false], ['galleon', true, false], ['manowar', false, true], ['both', true, true]]) {
       owning(gal, mow);
       const G = giants[key] = { card6: cardAfter(5), wave6: waveOf(5), banner6: banner() };
       G.bounty6 = g.raiders.list.find((r) => r.role === 'prize')?.bounty ?? 0;
@@ -1531,18 +1621,26 @@ if (!demoOnly) {
     owning(false, false);
     const wave6 = giants.none.wave6, wave12 = giants.both.wave12, wave15 = giants.both.wave15;
     // and every wave to the fortieth, twenty times over (the waves after the fifteenth are drawn at random): no giant
-    // the Captain doesn't own; and owned, the giants growing common in the late waves
+    // the Captain doesn't own, and never more than one treasure ship in a wave drawn at random; owned, the Man-o'-war
+    // growing common in the late waves (in more of them), and the treasure ships not: a late wave brings one about as
+    // often (in under half of them) whichever giants the Captain owns, so late waves stay fights
     const sweep = (own, from, to, times) => {
-      const seen = { galleon: 0, manowar: 0, treasureBrig: 0, ships: 0 };
+      const seen = { galleon: 0, manowar: 0, treasureBrig: 0, ships: 0, waves: 0, withMow: 0, withPrize: 0, twoPrizes: 0 };
       for (let k = 0; k < times; k++) for (let n = from; n < to; n++) {
-        const w = g.waveAt(n, 1, null, own); seen.ships += w.ids.length;
+        const w = g.waveAt(n, 1, null, own), prizes = w.ids.filter((id, i) => g.treasureShip(w, i)).length; seen.ships += w.ids.length; seen.waves++;
         w.ids.forEach((id, i) => { if (id in seen) seen[id]++; if (id === 'brig' && w.treasure.includes(i)) seen.treasureBrig++; });
+        if (w.ids.includes('manowar')) seen.withMow++;
+        if (prizes) seen.withPrize++;
+        if (prizes > 1 && n >= 15) seen.twoPrizes++;
       }
       return seen;
     };
-    const gate = { none: sweep(null, 0, 40, 20), galleon: sweep({ galleon: true }, 0, 40, 20), both: sweep({ galleon: true, manowar: true }, 0, 40, 20) };
-    const early = sweep({ galleon: true, manowar: true }, 15, 19, 100), late = sweep({ galleon: true, manowar: true }, 28, 32, 100);
-    gate.common = { early: +((early.galleon + early.manowar) / early.ships).toFixed(2), late: +((late.galleon + late.manowar) / late.ships).toFixed(2) };
+    const gate = { none: sweep(null, 0, 40, 20), galleon: sweep({ galleon: true }, 0, 40, 20), manowar: sweep({ manowar: true }, 0, 40, 20), both: sweep({ galleon: true, manowar: true }, 0, 40, 20) };
+    const early = sweep({ galleon: true, manowar: true }, 15, 19, 200), late = sweep({ galleon: true, manowar: true }, 28, 32, 200);
+    const lateNone = sweep(null, 20, 30, 100), lateGalleon = sweep({ galleon: true }, 20, 30, 100);
+    gate.common = { early: +(early.withMow / early.waves).toFixed(2), late: +(late.withMow / late.waves).toFixed(2) };
+    gate.prizes = { none: +(lateNone.withPrize / lateNone.waves).toFixed(2), galleon: +(lateGalleon.withPrize / lateGalleon.waves).toFixed(2), both: +(late.withPrize / late.waves).toFixed(2),
+      two: lateNone.twoPrizes + lateGalleon.twoPrizes + late.twoPrizes + early.twoPrizes };
     // a treasure ship: shoot her sails and she strikes her colours; let her run far enough and she gets away. (No bank
     // of cloud is left from wave 15's arrival: placed at random, it could hide her from the guns)
     g.raiders.clear(); g.world.clear(); g.waves.timer = 1e9; still(P); P.pos.set(0, 900, 0); P.heading = 0;
@@ -1626,10 +1724,10 @@ if (!demoOnly) {
   if (!captain.startsWith('brig')) problems.push(`wave 5 should be led by a Brig captain: ${captain}`);
   console.log(`a raider captain's Brig is ${tougher.cross} times as tough as her crew's on Crosswinds, ${tougher.fair} times on Fair Winds`);
   if (tougher.cross !== 2 || tougher.fair !== 1) problems.push(`a raider captain should be twice as tough as her crew on Crosswinds, and no tougher on Fair Winds: ${JSON.stringify(tougher)}`);
-  for (const [key, G] of Object.entries(giants)) console.log(`owning ${key === 'none' ? 'no giant' : key === 'galleon' ? 'the Galleon' : 'both giants'}: wave 6 ${G.wave6} (${G.card6} "${G.banner6}", her hold ◆ ${G.bounty6}); wave 12 ${G.wave12} (${G.card12} "${G.banner12}"); wave 15 ${G.wave15}`);
-  console.log(`every wave to the 40th, 20 times: owning no giant ${gate.none.galleon} Galleons, ${gate.none.manowar} Men-o'-war, ${gate.none.treasureBrig} treasure Brigs; owning the Galleon ${gate.galleon.galleon} Galleons, ${gate.galleon.manowar} Men-o'-war; owning both ${gate.both.galleon} and ${gate.both.manowar}; owned, ${Math.round(gate.common.early * 100)}% of the raiders are giants in waves 16 to 19, ${Math.round(gate.common.late * 100)}% in waves 29 to 32`);
+  for (const [key, G] of Object.entries(giants)) console.log(`owning ${{ none: 'no giant', galleon: 'the Galleon', manowar: 'only the Man-o\'-war', both: 'both giants' }[key]}: wave 6 ${G.wave6} (${G.card6} "${G.banner6}", her hold ◆ ${G.bounty6}); wave 12 ${G.wave12} (${G.card12} "${G.banner12}"); wave 15 ${G.wave15}`);
+  console.log(`every wave to the 40th, 20 times: owning no giant ${gate.none.galleon} Galleons, ${gate.none.manowar} Men-o'-war, ${gate.none.treasureBrig} treasure Brigs; owning the Galleon ${gate.galleon.galleon} Galleons, ${gate.galleon.manowar} Men-o'-war; owning only the Man-o'-war ${gate.manowar.galleon} Galleons, ${gate.manowar.manowar} Men-o'-war, ${gate.manowar.treasureBrig} treasure Brigs; owning both ${gate.both.galleon} and ${gate.both.manowar}; owned, a Man-o'-war in ${Math.round(gate.common.early * 100)}% of waves 16 to 19, ${Math.round(gate.common.late * 100)}% of waves 29 to 32; a treasure ship in ${Math.round(gate.prizes.none * 100)}% of waves 21 to 30 owning no giant, ${Math.round(gate.prizes.galleon * 100)}% owning the Galleon, ${Math.round(gate.prizes.both * 100)}% of 29 to 32 owning both; ${gate.prizes.two} waves drawn at random with two`);
   console.log(`a treasure ship shot in her sails: ${struck.why ? `strikes her colours after ${struck.t} s` : 'DID NOT STRIKE'}; one running far: ${away.escaped ? `got away after ${away.after} s` : 'STILL THERE'}`);
-  const N = giants.none, GA = giants.galleon, B2 = giants.both;
+  const N = giants.none, GA = giants.galleon, MO = giants.manowar, B2 = giants.both;
   if (N.wave6 !== 'brig (treasure) cutter' || N.bounty6 !== 300 || N.card6 !== 'Next: a treasure Brig and a Cutter.' || !N.banner6.startsWith('Wave 6: a treasure ship: a treasure Brig and a Cutter,') || !N.banner6.includes('shoot her sails')) problems.push(`owning no Galleon, wave 6 should bring a treasure Brig worth ◆ 300, said so on the card before it and its banner: ${JSON.stringify(N)}`);
   if (N.wave12 !== 'frigate (captain) cutter cutter' || N.card12 !== 'Next: a raider captain\'s Frigate and two Cutters.' || !N.banner12.startsWith('Wave 12: a raider captain: a raider captain\'s Frigate and two Cutters,')) problems.push(`owning no Man-o'-war, wave 12 should bring a raider captain's Frigate and two Cutters, and say so: ${JSON.stringify(N)}`);
   if (N.wave15.includes('manowar') || N.wave15.includes('galleon') || (N.wave15.match(/\(captain\)/g) ?? []).length !== 1) problems.push(`owning no giant, wave 15 should bring no giant, and one captain: ${N.wave15}`);
@@ -1637,8 +1735,10 @@ if (!demoOnly) {
   if (!wave6.includes('brig (treasure)')) problems.push(`wave 6 should bring a treasure ship: ${wave6}`);
   if (B2.wave12 !== 'manowar cutter cutter' || B2.card12 !== 'Next: a Man-o\'-war and two Cutters.' || !B2.banner12.startsWith('Wave 12: a Man-o\'-war:')) problems.push(`owning the Man-o'-war, wave 12 should bring one, and say so: ${JSON.stringify(B2)}`);
   if (!wave15.includes('manowar') || wave15.includes('manowar (captain)') || !wave15.includes('(captain)')) problems.push(`owning the Man-o'-war, wave 15 should have one and a captain who isn't her: ${wave15}`);
-  if (gate.none.galleon || gate.none.manowar || !gate.none.treasureBrig || gate.galleon.manowar || !gate.galleon.galleon || !gate.both.galleon || !gate.both.manowar) problems.push(`giant raiders should sail only once the Captain owns that giant (and a treasure Brig before the Galleon): ${JSON.stringify(gate)}`);
-  if (!(gate.common.late > gate.common.early * 1.25)) problems.push(`owned, the giants should grow common in the late waves: ${JSON.stringify(gate.common)}`);
+  if (MO.wave6 !== 'brig (treasure) cutter' || MO.card6 !== 'Next: a treasure Brig and a Cutter.' || MO.wave12 !== 'manowar cutter cutter' || MO.wave15.includes('galleon') || !MO.wave15.includes('manowar')) problems.push(`owning only the Man-o'-war, wave 6 should still bring a treasure Brig, and waves 12 and 15 the Man-o'-war: ${JSON.stringify(MO)}`);
+  if (gate.none.galleon || gate.none.manowar || !gate.none.treasureBrig || gate.galleon.manowar || !gate.galleon.galleon || !gate.both.galleon || !gate.both.manowar || gate.manowar.galleon || !gate.manowar.manowar || !gate.manowar.treasureBrig) problems.push(`giant raiders should sail only once the Captain owns that giant, each on its own (and a treasure Brig before the Galleon): ${JSON.stringify(gate)}`);
+  if (!(gate.common.late > gate.common.early * 1.25)) problems.push(`owned, the Man-o'-war should grow common in the late waves: ${JSON.stringify(gate.common)}`);
+  if (gate.prizes.two || !(gate.prizes.galleon < 0.5) || !(gate.prizes.both < 0.5) || !(gate.prizes.none < 0.5)) problems.push(`a wave drawn at random should bring at most one treasure ship, and late waves one in under half of them whichever giants the Captain owns: ${JSON.stringify(gate.prizes)}`);
   if (struck.why !== 'struck') problems.push(`a treasure ship shot in her sails didn't strike: ${JSON.stringify(struck)}`);
   console.log(`wrecks sinking: a struck treasure ship from 906 m through the cloud deck at ${struck.sank.deck} s, gone at ${struck.sank.gone} s; a raider whose crystals died at 740 m (${crystalsDead.why}) through at ${crystalsDead.deck} s, gone at ${crystalsDead.gone} s`);
   for (const [what, x, most] of [['a struck treasure ship from 906 m', struck.sank, 16], ['a raider whose crystals died at 740 m', crystalsDead, 14]]) {
@@ -1996,7 +2096,7 @@ if (!demoOnly) {
   // ---------- reading a fight from afar: raiders' glows, scars and fire, far wakes, stacked tags, the storm on its way ----------
   {
     const ga = await glowScales(page); await sized(page, 1200, 760, 'laptop'); const gb = await glowsAgain(page); await sized(page, 1280, 800, 'laptop');
-    console.log(`reading a fight from afar: ${glowProblems(ga, gb, 'laptop')}; ${fireProblems(await fireAt(page), 'laptop')}; ${wakeProblems(await wakesFar(page), 'laptop', { screen: 60, pixels: 300 })}; ${hiddenWakeProblems(await hiddenWake(page), 'laptop')}; ${tagProblems(await tagsAt(page), 'laptop')}`);
+    console.log(`reading a fight from afar: ${glowProblems(ga, gb, 'laptop')}; ${fireProblems(await fireAt(page), 'laptop')}; ${wakeProblems(await wakesFar(page), 'laptop', { screen: 60, pixels: 300 })}; ${hiddenWakeProblems(await hiddenWake(page), 'laptop')}; ${tagProblems(await tagsAt(page), 'laptop')}; ${tagEdgeProblems(await tagEdges(page), 'laptop')}`);
     const SW = await stormWall(page);
     console.log(`the storm on its way: a wall of cloud whose crest shows in ${Math.round(SW.found * 100)}% of the view, heaped ${SW.heaped} px high and low, its tops at ${SW.top} against its foot at ${SW.foot}, its crests moving ${SW.moved} px in two minutes, lumpy all along (${SW.lumps} px), and looking due north its crest stepping at most ${SW.seam.join(' / ')} px from one column to the next`);
     if (!(SW.found >= 0.7) || !(SW.heaped >= 20) || !(SW.top >= SW.foot * 1.5) || !(SW.moved >= 3) || !(SW.lumps >= 1.35)) problems.push(`the storm on its way should be a billowing wall of cloud (its crest lit against the sky, heaped, lumpy all along, lighter on top than at its foot, and moving): ${JSON.stringify(SW)}`);
@@ -3328,14 +3428,17 @@ if (!quick && !demoOnly) {
   // raiders' tags far off (the gate's case: the lower one used to be pushed down over her Brig), and the glows again
   await sized(page, 390, 844, 'phone');
   const pga = await glowScales(page); await sized(page, 667, 375, 'phone'); const pgb = await glowsAgain(page);
-  const sidewaysTags = tagProblems(await tagsAt(page), 'phone 667x375');
+  const sidewaysTags = `${tagProblems(await tagsAt(page), 'phone 667x375')}; ${tagEdgeProblems(await tagEdges(page), 'phone 667x375')}`;
   await sized(page, 844, 390, 'phone'); const wideTags = tagProblems(await tagsAt(page), 'phone 844x390');
   await sized(page, 390, 844, 'phone');
-  console.log(`phone, reading a fight from afar: ${glowProblems(pga, pgb, 'phone')}; ${fireProblems(await fireAt(page), 'phone')}; ${wakeProblems(await wakesFar(page), 'phone', { screen: 35, pixels: 100 })}; ${hiddenWakeProblems(await hiddenWake(page), 'phone')}; upright, ${tagProblems(await tagsAt(page), 'phone 390x844')}; held sideways, ${sidewaysTags} (and at 844 by 390, ${wideTags})`);
+  console.log(`phone, reading a fight from afar: ${glowProblems(pga, pgb, 'phone')}; ${fireProblems(await fireAt(page), 'phone')}; ${wakeProblems(await wakesFar(page), 'phone', { screen: 35, pixels: 100 })}; ${hiddenWakeProblems(await hiddenWake(page), 'phone')}; upright, ${tagProblems(await tagsAt(page), 'phone 390x844')}; ${tagEdgeProblems(await tagEdges(page), 'phone 390x844')}; held sideways, ${sidewaysTags} (and at 844 by 390, ${wideTags})`);
   // the port at the same four sizes, a narrow phone held sideways (640 by 360) and the smallest (568 by 320, an iPhone
   // SE's first one): its top line on one line, even with ◆ 12,345, and its panel clear of the top line and of the ships
-  // along the bottom; every one of the six ships' buttons all inside the ships' rows (none cut off at an end); a ship you
-  // can't afford yet showing all of how she sails above her Buy button; her Upgrades tab showing two upgrades or more
+  // along the bottom; every one of the six ships' buttons all inside the ships' rows (none cut off at an end); every
+  // ship you can't buy yet (the Frigate, the Galleon and the Man-o'-war, short of shards, and the Man-o'-war before the
+  // Galleon) showing all of how she sails above her Buy button, its words on one line, and on a phone held upright her
+  // ship all above the panel's top; your own ship's tab showing all of how she sails above Set sail and its fade (at
+  // least two of them on a small phone held upright, where her ship needs the room); her Upgrades tab showing two upgrades or more
   // above Set sail (one on a screen under 360 px tall, as with the browser's bars showing); each of the six ships'
   // blurbs (owned or not) all above the button's fade, not tucked under it; and on a phone held upright, the panel no taller than what's
   // in it, so her ship has the room above it (no empty band under the button)
@@ -3345,8 +3448,24 @@ if (!quick && !demoOnly) {
     const P = await page.evaluate(() => {
       const g = window.__game, $ = (id) => document.getElementById(id), d = g.progress.data, r = (id) => $(id).getBoundingClientRect();
       if (g.mode === 'voyage') g.endVoyage(0); else g.port.setMode('port');
-      d.shards = 1999; d.ships.frigate.owned = false; $('port-ships').querySelector('[data-ship="frigate"]').click();
-      const buy = r('btn-buy'), stats = [...document.querySelectorAll('.stat')].filter((s) => s.getBoundingClientRect().bottom <= buy.top + 1).length;
+      const was0 = { flying: d.flying, galleon: d.ships.galleon.owned, manowar: d.ships.manowar.owned };
+      const above = (el) => [...document.querySelectorAll('.stat')].filter((s) => s.getBoundingClientRect().bottom <= el.top + 1).length;
+      const lines = (el) => { const rg = document.createRange(); rg.selectNodeContents(el); return new Set([...rg.getClientRects()].map((b) => Math.round(b.top))).size; };
+      let stats = 5; const buying = [], behind = [], owned = [];
+      d.shards = 1999; d.ships.manowar.owned = false;
+      for (const [id, gal] of [['frigate', false], ['galleon', false], ['manowar', false], ['manowar', true]]) {
+        d.ships.frigate.owned = id !== 'frigate'; d.ships.galleon.owned = gal; d.flying = id === 'frigate' ? 'skiff' : 'frigate';
+        $('port-ships').querySelector(`[data-ship="${id}"]`).click();
+        const n = above(r('btn-buy')), l = lines($('btn-buy').firstElementChild), sb = g.port.shipBox(), pt = r('port-panel').top;
+        stats = Math.min(stats, n); buying.push(`${id}${gal ? ' (Galleon owned)' : ''} ${n}/5${l > 1 ? ` ON ${l} LINES` : ''}`);
+        if (l > 1) behind.push(`${id}'s Buy button on ${l} lines`);
+        if (innerWidth <= 700 && innerHeight > 500 && sb.b > pt) behind.push(`${id}${gal ? ' (Galleon owned)' : ''}'s ship ${Math.round(sb.b - pt)} px behind the panel`);
+      }
+      for (const id of ['skiff', 'frigate', 'galleon', 'manowar']) {
+        d.ships[id].owned = true; d.flying = id; $('port-ships').querySelector(`[data-ship="${id}"]`).click(); $('pp-tab-ship').click();
+        owned.push(above(document.querySelector('.sail-out').getBoundingClientRect()));
+      }
+      Object.assign(d.ships.galleon, { owned: was0.galleon }); Object.assign(d.ships.manowar, { owned: was0.manowar }); d.ships.frigate.owned = false; d.flying = was0.flying === 'frigate' ? 'skiff' : was0.flying; // (the Frigate left unowned, for the pictures below)
       d.shards = 12345; d.flying = 'skiff'; $('port-ships').querySelector('[data-ship="skiff"]').click();
       const top = ['port-shards', 'btn-skies', 'btn-settings-port'].map(r), line = Math.max(...top.map((b) => b.height)), right = Math.round(Math.max(...top.map((b) => b.right)));
       $('pp-tab-upgrades').click();
@@ -3365,10 +3484,13 @@ if (!quick && !demoOnly) {
       const row = r('port-ships'), cut = [...$('port-ships').querySelectorAll('button')].filter((b) => { const x = b.getBoundingClientRect(); return x.left < row.left - 0.5 || x.right > row.right + 0.5 || x.top < row.top - 0.5 || x.bottom > row.bottom + 0.5; }).map((b) => b.dataset.ship);
       for (const id in was.owned) d.ships[id].owned = was.owned[id];
       d.flying = was.flying; $('port-ships').querySelector(`[data-ship="${was.flying}"]`).click();
-      return { stats, line: Math.round(line), right, w: innerWidth, mods, tucked, empty, laps: [...laps], cut };
+      return { stats, buying, behind, owned, line: Math.round(line), right, w: innerWidth, mods, tucked, empty, laps: [...laps], cut };
     });
-    ports.push(`${w}x${h}: ${P.stats} of 5 stats and ${P.mods} upgrade${P.mods === 1 ? '' : 's'} in view, the top line ${P.line} px tall, ${P.cut.length ? `SHIPS CUT OFF: ${P.cut.join(', ')}` : 'all six ships in their rows'}, ${P.tucked.length ? `BLURBS UNDER THE FADE: ${P.tucked.join(', ')}` : 'every blurb clear of the fade'}${P.empty.length ? `, EMPTY UNDER THE BUTTON: ${P.empty.join(', ')}` : ''}${P.laps.length ? `, THE PANEL ON ${P.laps.join(', ')}` : ''}`);
+    const ownedLeast = w <= 700 && h > 500 && h <= 720 ? 2 : 5;
+    ports.push(`${w}x${h}: ${P.stats} of 5 stats over Buy (${P.buying.join(', ')}), ${P.owned.join('/')} of 5 over Set sail in her own ship (Skiff/Frigate/Galleon/Man-o'-war)${P.behind.length ? `, ${P.behind.join(', ').toUpperCase()}` : ''}, and ${P.mods} upgrade${P.mods === 1 ? '' : 's'} in view, the top line ${P.line} px tall, ${P.cut.length ? `SHIPS CUT OFF: ${P.cut.join(', ')}` : 'all six ships in their rows'}, ${P.tucked.length ? `BLURBS UNDER THE FADE: ${P.tucked.join(', ')}` : 'every blurb clear of the fade'}${P.empty.length ? `, EMPTY UNDER THE BUTTON: ${P.empty.join(', ')}` : ''}${P.laps.length ? `, THE PANEL ON ${P.laps.join(', ')}` : ''}`);
     if (P.stats < 5 || P.mods < (h < 360 ? 1 : 2) || P.line > 44 || P.right > P.w) problems.push(`phone ${w}x${h}: the port should show all of how a ship not owned sails above her Buy button, ${h < 360 ? 'an upgrade' : 'two upgrades or more'} on her Upgrades tab, and its top line on one line: ${JSON.stringify(P)}`);
+    if (P.behind.length) problems.push(`phone ${w}x${h}: in port a ship not owned should have her Buy button on one line and (upright) all of her ship above the panel: ${P.behind.join(', ')}`);
+    if (Math.min(...P.owned) < ownedLeast) problems.push(`phone ${w}x${h}: your own ship's tab should show ${ownedLeast === 5 ? 'all of how she sails' : 'at least two of how she sails'} above Set sail and its fade: ${P.owned.join('/')} of 5 (Skiff/Frigate/Galleon/Man-o'-war)`);
     if (P.cut.length) problems.push(`phone ${w}x${h}: in port every ship's button should be all inside the ships' row, not cut off at its end: ${P.cut.join(', ')}`);
     if (P.laps.length) problems.push(`phone ${w}x${h}: in port the panel lands on ${P.laps.join(', ')}`);
     if (P.tucked.length) problems.push(`phone ${w}x${h}: in port a ship's blurb should be all above the button's fade, not tucked under it: ${P.tucked.join(', ')}`);

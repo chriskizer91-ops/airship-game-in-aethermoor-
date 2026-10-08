@@ -263,6 +263,9 @@ async function main() {
     if (e.on && time - hidNote > 25) { hidNote = time; toast('Hidden in the cloud: far-off raiders lose you'); }
     else if (!e.on && e.why === 'guns' && time - gaveAway > 12) { gaveAway = time; toast('Your guns gave you away'); }
   });
+  // a giant bought: what she brings to the sky, said as she's bought (Chris: giant raiders only once you own one)
+  const BOUGHT = { galleon: 'from now on, the treasure ships are Galleons', manowar: 'from now on, raiders sail Men-o\'-war too' };
+  events.on('port:buy', (e) => { if (BOUGHT[e.ship]) note(`The ${SHIPS.find((s) => s.id === e.ship).name} is yours: ${BOUGHT[e.ship]}`); });
   // newer progress came from the store: say so when this device had its own (a new browser just shows it)
   progress.onLoad((d, had, kept) => { if (had) note(kept ? 'Your other device\'s progress is here, plus the shards you won here' : 'Your progress from your other device is here'); });
 
@@ -596,7 +599,7 @@ async function main() {
   const shardCount = { shown: 0, from: 0, to: 0, t: 1, n: -1 }; // the shard count shown, counting up to what's in the hold (n: the whole number written)
   const flash = (el) => { el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); };
   // the banner, and where it is on the screen and until when (real time, in ms) it shows, so a bounty keeps clear of it
-  const bannerAt = { left: 0, right: 0, top: 0, bottom: 0, until: 0 };
+  const bannerAt = { left: 0, right: 0, top: 0, bottom: 0, until: 0 }, BANNER_BACK = 700; // (the tags under it come back as it fades: ms before it's gone)
   function banner(title, line) {
     $('region').classList.remove('on'); // (they share a place: the banner wins)
     const el = $('banner'); $('banner-title').textContent = title; $('banner-line').textContent = line; flash(el);
@@ -653,11 +656,12 @@ async function main() {
   // a tag's height in pixels, and saying "Broadside!" in place of its bars (and a pixel to spare): measured on the first
   // tags shown (the fonts decide them), until then a fair guess
   const TAG = { h: 42, warn: 44, measured: false, warned: false };
-  // a tag pinned at the screen's edge sits by its bottom middle at (x, y), 52 px in from the sides: not over the panels
-  // along the top (with its arrow: up px above that, its height and the arrow's reach over its top, more for a tag
-  // saying "Broadside!", whose arrow is bigger) or the bottom (layout()), for any panel within half the widest tag (a
-  // treasure ship's, far off) of it
-  const TAG_HALF = 52, TAG_REACH = 86, ARROW = 18, ARROW_WARN = 22;
+  // a tag pinned at the screen's edge sits by its bottom middle at (x, y), all of it on the screen by its own width (at
+  // least 52 px in from the sides, until it's been measured): not over the panels along the top (with its arrow: up px
+  // above that, its height and the arrow's reach over its top, more for a tag saying "Broadside!", whose arrow is
+  // bigger) or the bottom (layout()), for any panel within half the widest tag (a treasure ship's, far off) of it
+  const TAG_HALF = 52, TAG_EDGE = 6, TAG_REACH = 86, ARROW = 18, ARROW_WARN = 22;
+  const edgeX = (el, W2) => W2 - Math.max(TAG_HALF, el._hw + TAG_EDGE); // (the furthest from the middle its bottom middle goes)
   const tagUp = (warn) => (warn ? TAG.warn + ARROW_WARN : TAG.h + ARROW);
   function edgeTop(x, up) { let t = 6; for (const b of EDGE.top) if (x > b.l - TAG_REACH && x < b.r + TAG_REACH && b.b + 4 > t) t = b.b + 4; return t + up; }
   function edgeBottom(x) { let y = view.h - 6; for (const b of EDGE.bottom) if (x > b.l - TAG_REACH && x < b.r + TAG_REACH && b.t - 4 < y) y = b.t - 4; return y; }
@@ -764,7 +768,7 @@ async function main() {
       const behind = proj.z > 1;
       let x = proj.x * W2 * (behind ? -1 : 1), y = -proj.y * H2 * (behind ? -1 : 1);
       // (off screen: pinned where the line to her meets the edge, then kept between the panels at the top and bottom)
-      const ax = W2 - TAG_HALF, k = Math.max(Math.abs(x) / ax, y < 0 ? -y / (H2 - tagUp(false) - 6) : y / (H2 - 6));
+      const ax = edgeX(el, W2), k = Math.max(Math.abs(x) / ax, y < 0 ? -y / (H2 - tagUp(false) - 6) : y / (H2 - 6));
       const edge = behind || k > 1;
       // off screen, her glowing gun ports can't be seen (on a phone a raider alongside usually is): while she readies a
       // broadside, her tag at the edge flashes red, and says so
@@ -798,8 +802,14 @@ async function main() {
         for (let i = 0; i < 3; i++) setWidth(el._m[i], r.f.frac(PARTS[i]));
       }
     }
-    // (each tag's width, measured again whenever its words change: all of them at once, so the page is laid out once)
-    for (let i = 0; i < placed.length; i++) { const el = placed[i]; if (el._measure) { el._measure = false; const w = el.offsetWidth; if (w) el._hw = w / 2; } }
+    // (each tag's width, measured again whenever its words change: all of them at once, so the page is laid out once.
+    // One at the edge that came out wider than it was taken to be, a new one say, is brought in so all of it shows)
+    for (let i = 0; i < placed.length; i++) {
+      const el = placed[i];
+      if (!el._measure) continue;
+      el._measure = false; const w = el.offsetWidth; if (w) el._hw = w / 2;
+      if (el._edge) { const ax = edgeX(el, W2); el._x = W2 + Math.max(-ax, Math.min(ax, el._x - W2)); }
+    }
     // tags that would land on another tag, or on a raider's ship, find somewhere clear instead. Those at the edge of the
     // screen are stacked along it: from the bottom up, the higher of two is pushed up by the lower one's height (one
     // saying "Broadside!" may be a little taller); then from the top down, one pushed up past the highest it may be (into
@@ -810,12 +820,12 @@ async function main() {
     edges.sort(byY);
     for (let i = edges.length - 2; i >= 0; i--) {
       const a = edges[i];
-      for (let j = edges.length - 1; j > i; j--) { const b = edges[j], h = b._warn ? TAG.warn : TAG.h; if (Math.abs(a._x - b._x) < 84 && b._y - a._y < h) a._y = b._y - h; }
+      for (let j = edges.length - 1; j > i; j--) { const b = edges[j], h = b._warn ? TAG.warn : TAG.h; if (Math.abs(a._x - b._x) < a._hw + b._hw && b._y - a._y < h) a._y = b._y - h; }
     }
     for (let i = 0; i < edges.length; i++) {
       const a = edges[i], h = a._warn ? TAG.warn : TAG.h;
       a._y = Math.max(a._y, a._top);
-      for (let j = 0; j < i; j++) { const b = edges[j]; if (Math.abs(a._x - b._x) < 84) a._y = Math.max(a._y, b._y + h); }
+      for (let j = 0; j < i; j++) { const b = edges[j]; if (Math.abs(a._x - b._x) < a._hw + b._hw) a._y = Math.max(a._y, b._y + h); }
       a._y = Math.min(a._y, edgeBottom(a._x));
     }
     // those over their ships, from the highest on the screen down, each in the first clear place (placeOver): the
@@ -836,9 +846,15 @@ async function main() {
       else { a._gx += (tx - a._gx) * ease; a._gy += (ty - a._gy) * ease; if (Math.abs(tx - a._gx) < 0.5 && Math.abs(ty - a._gy) < 0.5) { a._gx = tx; a._gy = ty; } }
       a._x = a._nx + a._gx; a._y = a._ny + a._gy;
     }
+    // (while a banner shows, a wave's say, the tags that would be under it fade away, so both can be read: a wave's
+    // raiders come in on the horizon, right where its banner is. They come back as it fades. One saying "Broadside!"
+    // always shows)
+    const hush = performance.now() < bannerAt.until - BANNER_BACK;
     for (let i = 0; i < placed.length; i++) {
       const a = placed[i], x = Math.round(a._x * 2) / 2, y = Math.round(a._y * 2) / 2;
       if (a._px !== x || a._py !== y) { a._px = x; a._py = y; a.style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`; }
+      const under = hush && !a._warn && x + a._hw > bannerAt.left && x - a._hw < bannerAt.right && y > bannerAt.top && y - TAG.h < bannerAt.bottom;
+      if (a._hush !== under) { a._hush = under; a.classList.toggle('hush', under); }
     }
   }
   // ---------- bounties ----------
@@ -1090,7 +1106,7 @@ async function main() {
   window.__game = {
     ready: true, get player() { return player; }, get gunnery() { return gunnery; }, cam, input, raiders, bolts, pickups, renderer, camera, scene, world, sun, waves: W, voyage: V,
     fx, events, wrecks, surge, looks, wakes, get lastArc() { return lastArc; }, get time() { return time; }, audio, sound, settings,
-    progress, port, title, sail, endVoyage, pause, sailOn, wind: WIND, sky, waveAt, SKIES, get mode() { return mode; }, get paused() { return paused; },
+    progress, port, title, sail, endVoyage, pause, sailOn, wind: WIND, sky, waveAt, treasureShip, SKIES, get mode() { return mode; }, get paused() { return paused; },
     giants, describe, // (which giants sail among the raiders this voyage, and a wave in words)
     fly: (id) => sail(id, true), // a voyage in any ship, owned or not (for tests)
     words: { side: sideWords, wind: () => windWords() }, layout, edge: EDGE, // (directions in words, and the panels the edge tags keep clear of)

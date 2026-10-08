@@ -67,10 +67,12 @@ export const WAVES = [['skiff'], ['skiff', 'skiff'], ['cutter'], ['cutter', 'ski
   ['manowar', 'frigate', 'brig', 'cutter']];
 export const STAND_IN = { galleon: [{ id: 'brig', treasure: true }], manowar: [{ id: 'frigate', captain: true }] };
 // After the fifteenth, three to six raiders at random from POOL (a giant not yet owned sails as her one-ship stand-in:
-// a treasure Brig, or a Frigate), with at most one Man-o'-war and two Galleons at once. Once owned, the giants grow
-// common: from wave 16 each one owned comes once more in the pool every fourth wave, up to four times as often
+// a treasure Brig, or a Frigate), with at most one Man-o'-war and one treasure ship at once (every Galleon is one).
+// Once owned, the Man-o'-war grows common: from wave 16 she comes once more in the pool every fourth wave, up to four
+// times as often. The treasure ship doesn't: a Galleon or a treasure Brig comes as often whichever the Captain owns,
+// so late waves stay fights, with now and then a prize to chase, not chases (COMMON)
 const POOL = ['skiff', 'skiff', 'cutter', 'cutter', 'cutter', 'brig', 'brig', 'frigate', 'frigate', 'galleon', 'manowar'];
-const ALONE = { galleon: { id: 'brig', treasure: true }, manowar: { id: 'frigate' } }, MOST = { galleon: 2, manowar: 1 };
+const ALONE = { galleon: { id: 'brig', treasure: true }, manowar: { id: 'frigate' } }, MOST = { galleon: 1, manowar: 1 }, COMMON = ['manowar'];
 // wave n (from 0): which ships, the biggest first; which of them sail as treasure ships besides the Galleons
 // (`treasure`, their places), and which is led by a raider captain (`captain`, her place, or -1): every fifth wave's
 // biggest ship that fights (not a Man-o'-war, which needs no captain, nor a treasure ship; a Galleon only if the wave
@@ -84,7 +86,7 @@ export function waveAt(n, extra = 0, storms = null, giants = null) {
   if (WAVES[n]) list = WAVES[n].flatMap((id) => (owns(id) ? [{ id }] : STAND_IN[id].map((e) => ({ ...e }))));
   else {
     const pool = [...POOL], more = Math.min(3, Math.floor((n - WAVES.length) / 4) + 1), count = { galleon: 0, manowar: 0 };
-    for (const id in STAND_IN) if (owns(id)) for (let k = 0; k < more; k++) pool.push(id);
+    for (const id of COMMON) if (owns(id)) for (let k = 0; k < more; k++) pool.push(id);
     list = Array.from({ length: Math.min(6, 3 + ((n - WAVES.length) >> 1)) }, () => {
       let id = pool[Math.floor(Math.random() * pool.length)];
       if (MOST[id] && count[id]++ >= MOST[id]) id = POOL[Math.floor(Math.random() * 9)]; // (too many of her: one of the rest)

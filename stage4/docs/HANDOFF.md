@@ -96,7 +96,12 @@ which were made from this repository only):
    raider's (`HELM` in `src/game/mods.js`: quicker helm, heavier plating, no heavy-gun reload), and the view stands
    further back from them. `waveAt(n, extra, storms, giants)` gives each giant a stand-in until it's owned (a treasure
    Brig; a raider captain's Frigate), and every treasure ship's hold is worth a Galleon's ◆ 300.
-   `tools/sim-fight.mjs` takes `--owns`, `--mods`, `--power` and `--runs`.
+   `tools/sim-fight.mjs` takes `--owns`, `--mods`, `--power` and `--runs`. Fixed after review: the port sells the
+   Man-o'-war only once the Galleon is owned (`NEEDS` in `progress.js`); a wave drawn at random brings at most one
+   treasure ship, and only the Man-o'-war grows common once owned (`COMMON` in `raiders.js`); the Buy button keeps to
+   one line on a phone; an owned ship's five bars show above Set sail held upright, and a ship you look at to buy stays
+   above the panel; the firepower words tell the big two apart; a giant's line under Buy and a note as she's bought;
+   edge tags kept on the screen by their own widths, and tags under a wave's banner fade while it shows.
 2. **D2a-fights-tactics**: shot types, dodging broadsides (the red danger fan), raking fire, the crew patching her.
 3. **D2b-fights-foes**: raiders with nerve, named captains, wave arrivals, the Man-o'-war's fortress battle, a line of
    battle, choosing the road between waves.

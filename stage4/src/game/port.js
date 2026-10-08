@@ -4,7 +4,8 @@
 //   Title: the game's name, the three skies (difficulty) to choose from, and a big "Set sail" (straight out to sea in
 //   your ship: a new Captain has nothing to buy yet), with "To port" beside it. A new Captain is told which skies
 //   suit a first voyage; one who has been to sea sees the shards waiting to be spent.
-//   Port: pick which ship to sail, buy ships and upgrades with Crystal Shards, and set where the crystals' power goes.
+//   Port: pick which ship to sail, buy ships (the Man-o'-war only once the Galleon is owned) and upgrades with Crystal
+//   Shards, and set where the crystals' power goes.
 //   Looking at a ship you don't own, the big gold button buys her (filling up as you earn towards her price), and
 //   setting sail in your own ship is a plain line under it. On a phone the panel has two tabs: the ship, and her
 //   upgrades (with a gold dot when there's one you can buy).
@@ -12,7 +13,7 @@ import * as THREE from 'three';
 import { SHIPS, STATS } from '../ships/index.js';
 import { handling } from './flight.js';
 import { KINDS, GUN_WEIGHT } from './guns.js';
-import { SKIES, PRICES } from './progress.js';
+import { SKIES, PRICES, NEEDS } from './progress.js';
 import { MODS, STEPS, POWER, modCost, loadout } from './mods.js';
 import { emit, payload } from './events.js';
 
@@ -103,7 +104,7 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
       if (narrow && !short) { vh = h * 0.36; cy = h * 0.2; } // (above the title, clear of it)
       else if (short) { vw = w * 0.34; cx = w * 0.8; vh = h * 0.8; } // (right of the title card)
       else { vw = w * 0.5; cx = w * 0.72; }
-    } else if (narrow && !short) { panelTop ??= panel.getBoundingClientRect().top; vh = Math.max(h * 0.2, panelTop - 64); cy = 58 + vh / 2; }
+    } else if (narrow && !short) { panelTop ??= panel.getBoundingClientRect().top; vh = Math.max(40, panelTop - 64); cy = 58 + vh / 2; } // (all of her above the panel's top)
     else {
       const pw = short ? Math.min(372, w * 0.5) : 380; vw = w - pw - 40; cx = vw / 2;
       rowTop ??= shipsEl.getBoundingClientRect().top || h;
@@ -152,9 +153,14 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
     });
     shipsEl.append(b);
   }
+  // a giant not yet owned: the line under her Buy button says what owning her brings (Chris: giant raiders only once
+  // you own one); main.js says it again as she's bought
+  const GIANT = { galleon: 'Once she\'s yours, the treasure ships you meet are Galleons.', manowar: 'Once she\'s yours, raiders sail Men-o\'-war too.' };
+  // the ship to own before this one is sold (the Galleon, before the Man-o'-war: NEEDS), or null
+  const needs = (id) => (NEEDS[id] && !progress.data.ships[NEEDS[id]].owned ? SHIPS.find((s) => s.id === NEEDS[id]) : null);
   $('btn-buy').addEventListener('click', () => {
     const d = progress.data, price = PRICES[viewing];
-    if (d.ships[viewing].owned || d.shards < price) return;
+    if (d.ships[viewing].owned || d.shards < price || needs(viewing)) return;
     d.shards -= price; d.ships[viewing].owned = true; d.flying = viewing; progress.save(); refresh();
     payload('port:buy').ship = viewing; emit('port:buy');
   });
@@ -206,16 +212,22 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
   const ROOT = { hull: true, firepower: true };
   const share = (k, v) => (ROOT[k] ? Math.sqrt(v / best[k]) : v / best[k]);
   // each in plain words: turning as the time for a full circle, climbing as metres a second, firepower in words, read
-  // against a Frigate at her best (very heavy): past half as much again, the big two's are fearsome
-  const WEIGHT = ['light', 'fair', 'heavy', 'very heavy', 'very heavy', 'very heavy', 'fearsome'], HEAVIEST = figures('frigate', atBest(2)).firepower;
+  // against a Frigate at her best (very heavy): a tenth more than hers is fearsome (the Man-o'-war as built, and a
+  // Galleon with her guns and crystals upgraded), so the big two read apart
+  const HEAVIEST = figures('frigate', atBest(2)).firepower;
+  const weight = (v) => { const k = v / HEAVIEST; return k < 0.25 ? 'light' : k < 0.5 ? 'fair' : k < 0.75 ? 'heavy' : k <= 1.1 ? 'very heavy' : 'fearsome'; };
   const STAT_ROWS = [
     ['speed', 'Top speed', (v) => `${fmt(v)} km/h`], ['turn', 'Turning', (v) => `a full circle in ${Math.round(360 / v)} s`], ['climb', 'Climbing', (v) => `${v.toFixed(0)} m a second`],
-    ['hull', 'Hull', fmt], ['firepower', 'Firepower', (v) => WEIGHT[Math.min(6, Math.floor((v / HEAVIEST) * 4))]],
+    ['hull', 'Hull', fmt], ['firepower', 'Firepower', weight],
   ];
   const statsEl = $('pp-stats');
   statsEl.innerHTML = STAT_ROWS.map(([k, label]) => `<div class="stat" data-stat="${k}"><span>${label}</span><span class="bar"><i class="now"></i><i class="base"></i><i class="mine" hidden></i></span><b></b></div>`).join('');
-  // the guns, in words: "1 in the bow, 3 each side, 1 in the stern"
-  const gunWords = (st) => [st.bow && `${st.bow} in the bow`, st.side && `${st.side} each side`, st.stern && `${st.stern} in the stern`].filter(Boolean).join(', ');
+  // her class line: "Brig · 30 m · Guns: 1 in the bow, 3 each side, 1 in the stern", each piece kept whole, so a narrow
+  // panel breaks it only between them (never "Man-o'-" and "war", or "in the" and "stern")
+  const clsLine = (R, st) => {
+    const guns = [st.bow && `${st.bow} in the bow`, st.side && `${st.side} each side`, st.stern && `${st.stern} in the stern`].filter(Boolean);
+    return `<span>${R.cls} · ${R.length} m</span> · ${guns.map((w, i) => `<span>${i ? '' : 'Guns: '}${w}</span>`).join(', ')}`;
+  };
 
   function refresh() {
     remeasure();
@@ -239,19 +251,22 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
       b.setAttribute('aria-pressed', String(id === viewing));
       b.querySelector('em').textContent = id === d.flying ? 'Sailing' : own ? 'Yours' : `◆ ${fmt(PRICES[id])}`;
     }
-    $('pp-name').textContent = R.name; $('pp-cls').textContent = `${R.cls} · ${R.length} m · Guns: ${gunWords(st)}`;
+    $('pp-name').textContent = R.name; $('pp-cls').innerHTML = clsLine(R, st);
     $('pp-blurb').textContent = st.blurb;
     const owned = cfg.owned;
     $('pp-buy').hidden = owned; $('pp-own').hidden = !owned; $('pp-tabs').hidden = !owned;
     panel.classList.toggle('buying', !owned); // (on a phone upright her panel is taller, so how she sails shows above the Buy button)
     if (!owned && panel.dataset.tab !== 'ship') tab('ship');
-    // a ship you don't own: the big button buys her, and fills with gold as you earn towards her price
-    const price = PRICES[viewing], short = !owned && d.shards < price, b = $('btn-buy');
+    // a ship you don't own: the big button buys her, and fills with gold as you earn towards her price (its price kept
+    // in one piece, never broken over two lines). One sold only once another is owned says so, and doesn't fill
+    const price = PRICES[viewing], first = !owned && needs(viewing), short = !owned && d.shards < price, b = $('btn-buy');
     if (!owned) {
-      b.firstElementChild.textContent = `Buy the ${R.name} · ◆ ${fmt(price)}`; b.disabled = short;
-      b.style.setProperty('--got', `${Math.round(Math.min(1, d.shards / Math.max(1, price)) * 100)}%`);
+      if (first) b.firstElementChild.textContent = `Buy the ${first.name} first`;
+      else b.firstElementChild.innerHTML = `Buy<span class="the"> the</span> ${R.name} <span class="price">· ◆ ${fmt(price)}</span>`;
+      b.disabled = short || !!first;
+      b.style.setProperty('--got', `${first ? 0 : Math.round(Math.min(1, d.shards / Math.max(1, price)) * 100)}%`);
     }
-    $('pp-need').textContent = short ? `You have ◆ ${fmt(d.shards)}. Bring down raiders to earn the rest.` : '';
+    $('pp-need').textContent = [first ? `The port sells her once you own the ${first.name}.` : short ? `You have ◆ ${fmt(d.shards)}. Bring down raiders to earn the rest.` : '', owned ? '' : GIANT[viewing] ?? ''].filter(Boolean).join(' ');
     const sail = $('btn-sail');
     sail.classList.toggle('alt', !owned); sail.textContent = owned ? `Set sail in the ${F.name}` : `or set sail in the ${F.name}`;
     const base = figures(viewing, { power: 0, mods: { armour: 0, canvas: 0, drill: 0, crystals: 0 } }), now = figures(viewing, cfg);
@@ -299,6 +314,18 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
     ship.glow.material.uniforms.uScale.value = renderer.domElement.height / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
   }
   function render() { place(); renderer.render(scene, camera); camera.clearViewOffset(); }
+  // (for the checks: the ship's box on the screen as she's drawn, in the page's pixels: the corners of her bounds)
+  function shipBox() {
+    place(); ship.root.updateMatrixWorld(true); camera.updateMatrixWorld();
+    const b = ship.bounds, v = new THREE.Vector3(), box = { l: Infinity, r: -Infinity, t: Infinity, b: -Infinity };
+    for (let i = 0; i < 8; i++) {
+      v.set(i & 1 ? b.max.x : b.min.x, i & 2 ? b.max.y : b.min.y, i & 4 ? b.max.z : b.min.z).applyMatrix4(ship.root.matrixWorld).project(camera);
+      const x = (v.x + 1) / 2 * innerWidth, y = (1 - v.y) / 2 * innerHeight;
+      box.l = Math.min(box.l, x); box.r = Math.max(box.r, x); box.t = Math.min(box.t, y); box.b = Math.max(box.b, y);
+    }
+    camera.clearViewOffset();
+    return box;
+  }
   function resize() { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); remeasure(); }
-  return { scene, camera, show, setMode, update, render, resize, refresh, setShadow, tab, get mode() { return mode; }, set mode(m) { mode = m; }, get spin() { return spin; } };
+  return { scene, camera, show, setMode, update, render, resize, refresh, setShadow, tab, shipBox, get mode() { return mode; }, set mode(m) { mode = m; }, get spin() { return spin; } };
 }

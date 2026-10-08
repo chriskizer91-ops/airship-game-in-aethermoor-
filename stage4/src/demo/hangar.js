@@ -378,10 +378,13 @@ async function main() {
   });
   function updateCard() {
     const R = SHIPS.find((s) => s.id === state.ship), St = STATS[R.id];
+    // (the fleet: each class and how long she is, every one on a line of its own, so a phone's narrow card never breaks
+    // "Man-o'-war" or "60 m" in two; her name is on her button below)
+    $('card-stats').classList.toggle('fleet', state.all);
     if (state.all) {
-      $('card-name').textContent = 'The fleet'; $('card-cls').textContent = SHIPS.map((S) => S.cls).join(' · ');
-      $('card-blurb').textContent = 'The six ships the Captain moves up through, from the little Skiff to the Man-o\'-war, at the same scale.';
-      $('card-stats').innerHTML = SHIPS.map((S) => `<dt>${S.name}</dt><dd>${S.cls}, ${S.length} m</dd>`).join('');
+      $('card-name').textContent = 'The fleet'; $('card-cls').textContent = 'Six ships at the same scale';
+      $('card-blurb').textContent = 'The six ships the Captain moves up through, from the little Skiff to the Man-o\'-war.';
+      $('card-stats').innerHTML = SHIPS.map((S) => `<dt>${S.cls}</dt><dd>${S.length} m long</dd>`).join('');
       return;
     }
     // (in a raider's colours she's no longer the Captain's ship, so she goes by what she is)

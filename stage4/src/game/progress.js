@@ -20,6 +20,9 @@ export const SKIES = {
 // what each ship costs in port: the first four as the Captain climbs, and the Galleon and the Man-o'-war as her
 // late-game goals, after many voyages (tools/sim-fight.mjs; docs/game.md "The port")
 export const PRICES = { skiff: 0, cutter: 300, brig: 900, frigate: 2200, galleon: 12000, manowar: 30000 };
+// a ship the port sells only to a Captain who owns another first: the Man-o'-war after the Galleon. (Owning her alone,
+// the treasure ships would still be treasure Brigs, and a laden Brig outruns a Man-o'-war: raiders.js)
+export const NEEDS = { manowar: 'galleon' };
 
 const KEY = 'skies-of-aethermoor/save-1';
 const IDS = ['skiff', 'cutter', 'brig', 'frigate', 'galleon', 'manowar']; // (a save from before the big two were sold gains them, not owned: merge)

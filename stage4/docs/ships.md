@@ -107,9 +107,9 @@ How the game turns damage into slower sailing, worse turning and sinking is in `
 
 ## The six ships
 
-**The player is the Captain** (Chris, October 6). The Captain moves up through the ships: Skiff, then Cutter, Brig and Frigate, bought in port with Crystal Shards (◆ 300, 900 and 2,200; `docs/game.md`), and **late in the game the Galleon and the Man-o'-war** (◆ 12,000 and ◆ 30,000; Chris, October 6: until then they were only ever raiders).
+**The player is the Captain** (Chris, October 6). The Captain moves up through the ships: Skiff, then Cutter, Brig and Frigate, bought in port with Crystal Shards (◆ 300, 900 and 2,200; `docs/game.md`), and **late in the game the Galleon and the Man-o'-war** (◆ 12,000 and ◆ 30,000; Chris, October 6: until then they were only ever raiders). The port sells the Man-o'-war only once the Captain owns the Galleon.
 
-**Giant raiders only once you own one** (Chris, October 6). Raiders sail Galleons only once the Captain owns the Galleon, and Men-o'-war only once she owns the Man-o'-war, whichever ship she takes out that voyage. Until then the treasure ship is a **treasure Brig** (a merchant Brig in a treasure ship's colours, laden with shards), and a raider captain's Frigate leads the Man-o'-war's waves in her place (`docs/game.md`, "The waves").
+**Giant raiders only once you own one** (Chris, October 6). Raiders sail Galleons only once the Captain owns the Galleon, and Men-o'-war only once she owns the Man-o'-war, whichever ship she takes out that voyage. Until then the treasure ship is a **treasure Brig** (a merchant Brig in a treasure ship's colours, laden with shards), and a raider captain's Frigate leads the Man-o'-war's waves in her place (`docs/game.md`, "The waves"). Once owned, the Man-o'-war grows common in the late waves; a treasure ship (a Galleon once owned) comes no more often than before, at most one in a wave.
 
 **Every ship has a name** (Chris, October 6). These are proposals for Chris to keep or change. They're all winds and weather, growing with the ship, and none of them comes from the Magpie page or other games' lore:
 
