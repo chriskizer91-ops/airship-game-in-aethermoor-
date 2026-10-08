@@ -78,7 +78,11 @@ Man-o'-war are only ever raiders: that changed). In short:
 Five packages, each with a spec in `docs/plan/specs/` (the specs point to the design surveys in `docs/plan/surveys/`,
 which were made from this repository only):
 
-0. **D0-touchups**: stage 3's open points (see "Where it stands").
+0. **D0-touchups**: stage 3's open points (see "Where it stands"). Built October 8 (`docs/game.md`, "Touch-ups",
+   October 8). The raider glows already followed the screen's scale every frame (the gate misread the code); they now
+   take it as each class is built and as the window changes too, so even a raider's first frame is right. The full
+   check's slowest part was the ships demo drawing a second-long frame the whole time: its frames are now held while
+   it's checked (`__hangar.hold/step/draw`), and `node tools/check.mjs --ships` checks it alone.
 1. **D1-fleet**: the Galleon and the Man-o'-war as the Captain's late-game ships; giant raiders only once owned; the
    treasure Brig; the wave table reworked; balance.
 2. **D2a-fights-tactics**: shot types, dodging broadsides (the red danger fan), raking fire, the crew patching her.
@@ -91,7 +95,7 @@ Run them in that order (each builds on the last), with the gate's `shots` asking
 upright-phone and sideways-phone sizes.
 
 **First steps in a new session:** `npm install` in the repository's main folder; `cd polished && node tools/build.mjs &&
-node tools/check.mjs` and see it end "all good" (about 25 minutes); read `docs/plan/chris-decisions.md` and the five
+node tools/check.mjs` and see it end "all good" (about 12 minutes since D0; it was 25); read `docs/plan/chris-decisions.md` and the five
 specs; ask Chris whether anything has changed since October 7; then run stage 4.
 
 ## How the work has been run
@@ -116,7 +120,9 @@ specs; ask Chris whether anything has changed since October 7; then run stage 4.
 ## Things learned the hard way
 
 - **This machine has 4 CPUs**: a workflow runs 2 agents at a time, and the full check (`node tools/check.mjs`) takes
-  about 25 minutes in software rendering (`--quick` a few minutes). A stage of four packages took 6 to 15 hours
+  about 12 minutes in software rendering since D0 (it was 25; `--quick` about 6, `--ships` under 3). In software a
+  frame takes a second or more, so a check that waits on frames it doesn't look at wastes minutes: hold or skip them
+  (the ships demo's `hold`, `undrawn` in the check). A stage of four packages took 6 to 15 hours
   (stage 3 took about 15).
 - **The container can restart** and stop a running workflow. The files survive. In the same session, resume with
   `resumeFromRunId` (finished agents replay from cache); in a new session, run the stage again with only the packages

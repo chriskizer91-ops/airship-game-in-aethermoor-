@@ -216,6 +216,8 @@ async function main() {
     // far enough back that the whole ship fits across the screen, which matters on a tall phone
     const hfov = 2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * camera.aspect);
     state.dist = Math.max(f.r * (state.all ? 1.35 : 1.25), (f.r * (state.all ? 0.66 : 0.56)) / Math.tan(hfov / 2));
+    const fit = fitHeight(shown, state.target, state.dist);
+    state.dist = fit.dist; state.middle = f.c; state.target.y -= fit.dy; // (and the middle of her box kept, for the checks)
     state.minDist = (state.all ? f.r * 0.25 : f.r * 0.35); state.maxDist = f.r * 3;
     // the sun's shadow covers what is shown
     const r = f.r * 0.75;
@@ -225,6 +227,57 @@ async function main() {
     sun.position.copy(f.c).addScaledVector(SUN.clone().setY(0.55).normalize(), r * 3);
     fill.position.copy(f.c).add(new THREE.Vector3(30, 20, 40));
     updateCard(); updateTri(); setView(state.view, true);
+  }
+
+  // and far enough back that she shows whole up and down, from every side as she turns: her keel and ram tip above the
+  // buttons at the bottom (on a phone held sideways they take half the height), her mast heads on the screen. Tried
+  // with a sample of her own corners (about 4,000, spread over all her pieces), seen from a little above as she turns,
+  // the view's middle being the middle of the room between the title and the buttons (room). Where she only fits looked
+  // at a little lower down (her tall masts reaching up past the title's line, her hull clear of the buttons), the view
+  // is turned that way (`dy`: how far down from the middle of her box, in metres) before she's moved further off
+  function fitHeight(list, c, dist) {
+    const F = free(), lo = -((F.bottom - F.top) / F.h) * 0.99, hi = ((F.top + F.bottom) / F.h) * 0.99, t = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2);
+    const pts = [], v = new THREE.Vector3(), meshes = [];
+    for (const s of list) s.body.traverse((o) => { if (o.isMesh && o.visible) meshes.push(o); });
+    const step = Math.max(1, Math.ceil(meshes.reduce((n, o) => n + o.geometry.attributes.position.count, 0) / 4000));
+    // (and each piece's furthest corners, low and high, every 45 degrees round her, and her lowest and highest: the
+    // keel, the ram's tip and the mast heads are never missed by the sample)
+    const far = new Float32Array(18), at = new Float32Array(54), cs = Array.from({ length: 8 }, (_, k) => [Math.cos(k * Math.PI / 4), Math.sin(k * Math.PI / 4)]);
+    for (const o of meshes) {
+      const P = o.geometry.attributes.position;
+      far.fill(-Infinity);
+      for (let i = 0; i < P.count; i++) {
+        v.fromBufferAttribute(P, i).applyMatrix4(o.matrixWorld).sub(c);
+        if (i % step === 0) pts.push(v.x, v.y, v.z);
+        for (let k = 0; k < 18; k++) {
+          const e = k < 16 ? v.x * cs[k >> 1][0] + v.z * cs[k >> 1][1] + (k & 1 ? 0.5 : -0.5) * v.y : k === 16 ? -v.y : v.y;
+          if (e > far[k]) { far[k] = e; at[k * 3] = v.x; at[k * 3 + 1] = v.y; at[k * 3 + 2] = v.z; }
+        }
+      }
+      for (let k = 0; k < 18; k++) if (far[k] > -Infinity) pts.push(at[k * 3], at[k * 3 + 1], at[k * 3 + 2]);
+    }
+    const p = Math.min(0.5, Math.max(0.2, state.pitch)), cp = Math.cos(p), sp = Math.sin(p);
+    // (how far up and down the screen she reaches from every side, at distance D, looked at dy metres lower)
+    const span = (D, dy) => {
+      let a = Infinity, b = -Infinity;
+      for (let k = 0; k < 16; k++) {
+        const sy = Math.sin(k * Math.PI / 8), cy = Math.cos(k * Math.PI / 8);
+        for (let i = 0; i < pts.length; i += 3) {
+          const u = pts[i] * sy + pts[i + 2] * cy, y = pts[i + 1] + dy, z = D - u * cp - y * sp, ndc = (y * cp - u * sp) / (Math.max(z, 1e-3) * t);
+          if (ndc < a) a = ndc; if (ndc > b) b = ndc;
+        }
+      }
+      return [a, b];
+    };
+    for (let i = 0; i < 40; i++, dist *= 1.04) {
+      let [a, b] = span(dist, 0);
+      if (a >= lo && b <= hi) return { dist, dy: 0 };
+      if (b - a > hi - lo) continue;
+      const dy = ((lo + hi) / 2 - (a + b) / 2) * dist * t / cp;
+      [a, b] = span(dist, dy);
+      if (a >= lo && b <= hi) return { dist, dy };
+    }
+    return { dist, dy: 0 };
   }
 
   // ---------- the camera: drag round the ship, pinch or scroll to zoom; views snap it ----------
@@ -335,12 +388,16 @@ async function main() {
     state.glowScale = scale;
     room();
   }
+  // (the room between the title and the buttons, in pixels down the screen)
+  function free() {
+    const d = $('dock').getBoundingClientRect(), t = $('title').getBoundingClientRect(), h = innerHeight;
+    return { top: t.height ? t.bottom : 0, bottom: d.height ? d.top : h, h };
+  }
   // the ship framed in the sky between the title and the buttons at the bottom (three rows of them on a laptop), not
   // behind them: the view's middle moved up to the middle of that space. The stats card stops short of the buttons
   // (scrolling if it must, on a small phone held sideways)
   function room() {
-    const d = $('dock').getBoundingClientRect(), t = $('title').getBoundingClientRect(), h = innerHeight;
-    const top = t.height ? t.bottom : 0, bottom = d.height ? d.top : h, off = Math.max(0, Math.round(h / 2 - (top + bottom) / 2));
+    const { top, bottom, h } = free(), off = Math.max(0, Math.round(h / 2 - (top + bottom) / 2));
     if (off > 1) camera.setViewOffset(innerWidth, h, 0, off, innerWidth, h); else camera.clearViewOffset();
     const card = $('card'), room = Math.max(90, Math.floor(bottom - 8 - (parseFloat(getComputedStyle(card).top) || 0))) + 'px';
     if (card.style.maxHeight !== room) card.style.maxHeight = room;
@@ -352,9 +409,16 @@ async function main() {
   if (innerWidth < 640 || innerHeight < 480) { $('card').hidden = true; $('btn-card').textContent = 'Stats'; $('btn-card').setAttribute('aria-expanded', 'false'); }
   resize(); mark(); show();
   const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let last = performance.now(), time = 0, roomT = 0;
+  let last = performance.now(), time = 0, roomT = 0, held = false;
+  // each frame: the view eased, her sails and guns, her scars' fires, the clouds' clock, then drawn. (For the checks,
+  // the page's own frames can be held, and the demo moved on and drawn only when asked: hold, step, draw)
   function frame(now) {
-    const dt = Math.min(0.05, (now - last) / 1000); last = now; time += dt;
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (!held) { advance(dt); renderer.render(scene, camera); }
+    requestAnimationFrame(frame);
+  }
+  function advance(dt) {
+    time += dt;
     state.idle += dt;
     if ((roomT -= dt) <= 0) { roomT = 1; room(); } // (once a second: the buttons may have moved, or been hidden for pictures)
     if (state.view === 'turn' && state.idle > 2.5 && pointers.size === 0 && !calm) state.yaw += dt * 0.12;
@@ -363,9 +427,7 @@ async function main() {
       let dy = state.aim.yaw - state.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
       state.yaw += dy * k; state.pitch += (state.aim.pitch - state.pitch) * k; state.dist += (state.aim.dist - state.dist) * k;
     }
-    const cp = Math.cos(state.pitch);
-    camera.position.set(Math.sin(state.yaw) * cp, Math.sin(state.pitch), Math.cos(state.yaw) * cp).multiplyScalar(state.dist).add(state.target);
-    camera.lookAt(state.target);
+    place();
     // her sails and guns, eased to what's asked (the lids open bow first; Fire! waits for the guns to be out)
     rig.fold += (rig.wantFold - rig.fold) * (1 - Math.exp(-dt * 2));
     rig.open = rig.wantOpen > rig.open ? Math.min(rig.wantOpen, rig.open + dt * 1.4) : Math.max(rig.wantOpen, rig.open - dt * 0.9);
@@ -383,8 +445,12 @@ async function main() {
     clouds.material.uniforms.uTime.value = time;
     WTIME.value = time;
     art.M.crystal.emissiveIntensity = 1.05 + Math.sin(time * 2.4) * 0.15;
-    renderer.render(scene, camera);
-    requestAnimationFrame(frame);
+  }
+  // the camera where the view says, looking at the ship
+  function place() {
+    const cp = Math.cos(state.pitch);
+    camera.position.set(Math.sin(state.yaw) * cp, Math.sin(state.pitch), Math.cos(state.yaw) * cp).multiplyScalar(state.dist).add(state.target);
+    camera.lookAt(state.target); camera.updateMatrixWorld();
   }
   requestAnimationFrame(frame);
   document.body.classList.add('ready');
@@ -409,6 +475,14 @@ async function main() {
       press('sails', $('sails').children[rig.wantFold >= 0.5 ? 1 : 0]); press('guns', $('guns').children[rig.wantOpen > 0 ? 1 : 0]);
     },
     get time() { return WTIME.value; }, ripple: RIPPLE, foldPoint,
+    // the camera placed at once where the view says (without waiting for a frame), and the room between the title and
+    // the buttons
+    place, free,
+    // the page's own frames held (or let go), the demo moved on by `seconds` in frames of `dt` without drawing, and
+    // drawn once now: a software-drawn frame takes a second or more, so the checks draw only the frames they look at
+    hold(on = true) { held = on; },
+    step(seconds, dt = 0.05) { for (let t = 0; t < seconds - 1e-9; t += dt) advance(dt); },
+    draw() { room(); place(); renderer.render(scene, camera); },
   };
 }
 

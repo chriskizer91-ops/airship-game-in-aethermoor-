@@ -11,7 +11,9 @@
 //                     Battered and Wrecked (on the laptop and the phone): Battered changing over 4% of her hull's picture,
 //                     setting her scars, with no more draws or shaders; Wrecked burning; a hole by the mast cut in its own
 //                     wing only, not the one across the mast; held sideways on a phone, the buttons in 55% of the height
-//                     and the stats starting folded, clear of them when brought out; Sails in folding her wing tips
+//                     and the stats starting folded, clear of them when brought out, and the Brig turned every 30
+//                     degrees in the Turn view all in sight (her keel and ram tip above the buttons, her mast heads on
+//                     the screen); Sails in folding her wing tips
 //                     2.5 m aft or more and Fire! firing her guns, with no more draws or shaders; as drawn, side-on,
 //                     her lids opening and guns running out changing over a fifth of the picture along her ports, her
 //                     port guns kicked back in changing it again and her starboard guns not, and from above (her wood
@@ -44,7 +46,10 @@
 //                     a shot passing 10 m off one near miss, doing no harm; a raider's ports glowing at least 0.45 s
 //                     before her broadside, and her tag flashing "Broadside!" while she's off screen (not on screen; on
 //                     the phone too, stacked clear of another raider's tag at that edge, and holding still while the
-//                     game is paused); a raider shot down mid-broadside firing no more; a Man-o'-war's four batteries all
+//                     game is paused); two raiders' tags far off, one just over the other, stacked upward, clear of
+//                     each other and neither pushed down over the ship it names (laptop, and a phone held sideways); a
+//                     raider's glows drawn at the screen's scale as the Captain's are, from her first frame and once the
+//                     window changes size (laptop, and a phone turned sideways); a raider shot down mid-broadside firing no more; a Man-o'-war's four batteries all
 //                     rippling at once; a busy fight (a Frigate against three raiders for 15 s, two blown apart) fitting
 //                     its sparks' and smoke's budgets, a step under a millisecond, a blast throwing 90 sparks or more;
 //                     back to port from the pause menu ending the pause; on the phone, smaller budgets, a buzz for a
@@ -71,7 +76,9 @@
 //                     all keeping their marks (the first ones where they struck); between waves the Captain's holes
 //                     patched and her embers out; the next wave her smoke from her open wound, not her patches, and the
 //                     old patches keeping their size as the crew start again; spotless in port, and as good as new the
-//                     next voyage; 16 flames at most on a phone
+//                     next voyage; 16 flames at most on a phone; read from afar (laptop and phone): a raider Frigate
+//                     holed to a fifth 200 m from the camera, her flames changing 0.6% of her box on the screen or more
+//                     and her holes, far off, drawn to change 1.35 times the pixels they would close up
 //                     ships that move like they're alive: a Frigate's wings folded with her sails in, spread with them
 //                     set, snapped open in a Surge (a tip 3 m aft or more); her pennants following her speed; her lids
 //                     shut in calm; her port side fired in calm bursting its lids open with its first gun, that gun run
@@ -81,7 +88,9 @@
 //                     and out again once loaded; a raider Brig readying a broadside with her lids open on that side; a
 //                     shot through a raider's folded wing holing it within 0.6 m of where it went through; five wakes in
 //                     one draw, hers gold and as long as 1.5 s of her flight, soft (under a tenth of the pixels they
-//                     change burnt out to white-gold), a raider's 1.4 km off still glowing; a captain's and a treasure
+//                     change burnt out to white-gold), a raider's 1.4 km off still glowing; a Cutter's wake 1.3 km off
+//                     covering 2.2 times the flight of one 300 m off, and a clear streak on the screen (on a laptop 60
+//                     px long and 300 pixels or more, on a phone 35 px and 100); a captain's and a treasure
 //                     Brig's colours with no new shaders, the treasure Brig's glints on metal that moves moving with it;
 //                     a wave with a treasure Brig told as a treasure ship's (her sails to shoot, its sound), her running
 //                     and worth three times a crew Brig; a Galleon captain coming in close (1,050 to 1,450 m) across the
@@ -90,7 +99,10 @@
 //                     storms, clouds and a sky with depth: the cloud floor worked out in JavaScript agreeing with the
 //                     card's own picture (within 0.03 at 64 places); storms on waves 8 and 13 on Crosswinds, 4, 8 and
 //                     12 on the Maelstrom, none on Fair Winds, and banks of cloud on every third wave and storm waves;
-//                     the card before a storm wave saying it's coming, the storm showing on the horizon; wave 4 on the
+//                     the card before a storm wave saying it's coming, the storm showing on the horizon as a billowing
+//                     wall of cloud (the sky alone, looked at level: its crest lit against the sky down 70% of the
+//                     columns or more, heaped 20 px high and low, its tops half as bright again as its foot, moving 3
+//                     px or more in two minutes); wave 4 on the
 //                     Maelstrom storming (rain, thicker cloud, the wind 16% or more, two lightning strikes or more in
 //                     30 s, gusts, all told), drawing at most two more goes than a clear sky, and clearing within 25 s
 //                     once beaten; wave 3's bank of cloud drawn just where the game reckons it is (the clouds it hides
@@ -155,15 +167,20 @@
 //                     small and low over the horizon (clearly far off), her ship clear of the title's card, and the
 //                     card fitting the screen; dragging her round in port; on a phone, its frames costing no more than
 //                     a voyage's and drawn in fewer goes, and pictures of it upright and sideways
-// Run: node tools/build.mjs && node tools/check.mjs [--quick] [folder]
+// Run: node tools/build.mjs && node tools/check.mjs [--quick | --ships] [folder]
 //   --quick: only the game page at laptop size (for checking during work; the full run is the one that counts)
+//   --ships: only the ships demo (dist/hangar.html), on the laptop and the phone, upright and sideways
+// The ships demo's own frames are held while it's checked, and it's drawn only for the pictures and pixels looked at:
+// drawn in software, each of its frames takes a second or more, and every picture waited behind several. For the same
+// reason the sky at sea is left undrawn while the real keys, mouse and touches are tried (they answer the same). It
+// says at the end how long it took.
 import { chromium } from 'playwright';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { createHash } from 'node:crypto';
 
 const root = new URL('..', import.meta.url).pathname;
-const quick = process.argv.includes('--quick');
+const quick = process.argv.includes('--quick'), demoOnly = process.argv.includes('--ships'), began = Date.now();
 const out = process.argv.slice(2).find((a) => !a.startsWith('--')) ?? root + 'shots';
 mkdirSync(out, { recursive: true });
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
@@ -182,7 +199,20 @@ async function open(file, name, ready) {
   return page;
 }
 const shot = (page, path) => page.screenshot({ path: `${out}/${path}.png`, timeout: 120000 });
+// the ships demo moved on a moment and drawn once: its own frames are held for the checks (a frame drawn in software
+// takes a second or more, and a picture or a look at the pixels waited behind several), so only what's looked at is drawn
+const drawn = (page) => page.evaluate(() => { const H = window.__hangar; H.step(0.1); H.draw(); });
+const hangar = async (name) => { const page = await open('hangar', name, () => window.__hangar?.ready || !document.getElementById('error').hidden); await page.evaluate(() => window.__hangar?.hold()); return page; };
 const wait = (page, fn, arg, what) => page.waitForFunction(fn, arg, { timeout: 60000, polling: 100 }).catch(() => problems.push(`${what}: didn't happen`));
+// the world at sea left undrawn while the real keys, mouse and touches are tried (or drawn again): the controls answer
+// the same with nothing drawn, and a frame drawn in software takes a second or more, which every key, click, turn of
+// the wheel and touch waited behind (20 turns of the wheel took a minute)
+const undrawn = (page, on) => page.evaluate((on) => { window.__game.scene.visible = !on; }, on);
+// the game's window at a new size, once the game has heard of it (drawn in software, a frame can take a while)
+const sized = async (page, w, h, where) => {
+  await page.setViewportSize({ width: w, height: h });
+  await page.waitForFunction(([w, h]) => Math.abs(window.__game.camera.aspect - w / h) < 1e-6, [w, h], { timeout: 30000 }).catch(() => problems.push(`${where} ${w}x${h}: the game never heard the window change size`));
+};
 
 // ---------- Chris's music and instruments, exactly as he gave them ----------
 {
@@ -289,7 +319,7 @@ const wait = (page, fn, arg, what) => page.waitForFunction(fn, arg, { timeout: 6
 
 // ---------- the hangar ----------
 for (const name of quick ? [] : ['laptop', 'phone']) {
-  const page = await open('hangar', name, () => window.__hangar?.ready || !document.getElementById('error').hidden);
+  const page = await hangar(name);
   if (name === 'laptop') {
     const table = await page.evaluate((ships) => ships.map((id) => [id, ...['full', 'middle', 'far'].map((l) => window.__hangar.stats(id, l))]), fleet);
     for (const [id, ...levels] of table) {
@@ -302,14 +332,14 @@ for (const name of quick ? [] : ['laptop', 'phone']) {
     : [['brig', 'turn', 0.9, 0.3], ['skiff', 'turn', 0.9, 0.3], ['all', 'turn', 0.75, 0.32]];
   for (const [id, view, yaw, pitch] of shots) {
     await page.evaluate(([id, view, yaw, pitch]) => { window.__hangar.select(id); window.__hangar.view(view, yaw, pitch); }, [id, view, yaw, pitch]);
-    await page.waitForTimeout(1200);
+    await drawn(page);
     await shot(page, `${name}-${id}-${view}`);
   }
   // her scars (src/ship/dress.js): the Brig New, Battered and Wrecked, pictured. Battered changes the picture of her
   // hull (a share of the pixels in the box round it on the screen), sets her looks, and draws in as many goes with no
   // new shaders; Wrecked burns
   await page.evaluate(() => { const H = window.__hangar; H.select('brig'); H.level('full'); H.view('side', Math.PI / 2, 0.04); });
-  await page.waitForTimeout(1200);
+  await drawn(page);
   const worn = await page.evaluate(() => {
     const H = window.__hangar, r = H.renderer, c = r.domElement, k = document.createElement('canvas'), x = k.getContext('2d', { willReadFrequently: true });
     k.width = c.width; k.height = c.height;
@@ -328,7 +358,7 @@ for (const name of quick ? [] : ['laptop', 'phone']) {
   });
   for (const look of ['new', 'battered', 'wrecked']) {
     await page.evaluate((look) => window.__hangar.wear(look), look);
-    await page.waitForTimeout(900);
+    await drawn(page);
     await shot(page, `${name}-brig-${look}`);
   }
   const burning = await page.evaluate(() => window.__hangar.flames.count);
@@ -341,7 +371,7 @@ for (const name of quick ? [] : ['laptop', 'phone']) {
   // nothing there (each side kicks its own guns). Then from above, with only her wood shown so nothing hides her lids,
   // her port lids opened: they swing out from her side (the picture changes outboard of their hinges), not into her
   await page.evaluate(() => { const H = window.__hangar; H.select('brig'); H.level('full'); H.wear('new'); H.livery('yours'); H.view('side', Math.PI / 2, 0.04); });
-  await page.waitForTimeout(1200);
+  await drawn(page);
   const lidWork = () => {
     const H = window.__hangar, r = H.renderer, c = r.domElement, k = document.createElement('canvas'), x = k.getContext('2d', { willReadFrequently: true });
     k.width = c.width; k.height = c.height;
@@ -372,7 +402,7 @@ for (const name of quick ? [] : ['laptop', 'phone']) {
     return { lids: changed(shut, open, band), port: changed(open, port, band), starboard: changed(open, starboard, band) };
   });
   await page.evaluate(() => window.__hangar.view('top', Math.PI / 2, 1.45));
-  await page.waitForTimeout(1200);
+  await drawn(page);
   Object.assign(guns, await page.evaluate(() => {
     const { H, S, U, V, grab, changed, boxOf, P, RG, lids } = window.lidWork();
     let hx = 0, hy = 0, z0 = Infinity, z1 = -Infinity;
@@ -391,8 +421,9 @@ for (const name of quick ? [] : ['laptop', 'phone']) {
   // a big hole in her top port wing right by the mast (six hundredths of the way out along its yard, as big as a hole
   // grows): seen from astern it's cut in that wing only, not in the starboard wing across the mast (under a metre off)
   if (name === 'laptop') {
-    await page.evaluate(() => { const H = window.__hangar; H.select('brig'); H.level('full'); H.wear('new'); H.view('back', Math.PI, 0.3, 34); });
-    await page.waitForTimeout(1500);
+    // (close, looking at the middle of her box: her top wings by the mast fill the view)
+    await page.evaluate(() => { const H = window.__hangar; H.select('brig'); H.level('full'); H.wear('new'); H.view('back', Math.PI, 0.3, 34); H.state.target.copy(H.state.middle); });
+    await drawn(page);
     const luff = await page.evaluate(() => {
       const H = window.__hangar, r = H.renderer, c = r.domElement, k = document.createElement('canvas'), x = k.getContext('2d', { willReadFrequently: true });
       k.width = c.width; k.height = c.height;
@@ -419,7 +450,7 @@ for (const name of quick ? [] : ['laptop', 'phone']) {
   // with the same shaders: the captain's black iron and her banner, the treasure ship's glints. Pictures of the Brig
   // folded with her guns out, as a raider captain and as a treasure ship (and on a laptop, a raider Man-o'-war)
   await page.evaluate(() => { const H = window.__hangar; H.select('brig'); H.level('full'); H.wear('new'); H.livery('yours'); H.view('turn', 2.6, 0.35); });
-  await page.waitForTimeout(900);
+  await drawn(page);
   const alive = await page.evaluate(() => {
     const H = window.__hangar, r = H.renderer, c = r.domElement, k = document.createElement('canvas'), x = k.getContext('2d', { willReadFrequently: true }), out = {};
     k.width = c.width; k.height = c.height;
@@ -445,7 +476,7 @@ for (const name of quick ? [] : ['laptop', 'phone']) {
   });
   for (const [look, livery, rig, id] of [['folded', 'yours', { fold: 1, open: 2 }, 'brig'], ['captain', 'captain', { fold: 0.2, open: 2 }, 'brig'], ['treasure', 'treasure', { fold: 0, open: 0 }, 'brig'], ...(name === 'laptop' ? [['raider', 'crew', { fold: 0, open: 2 }, 'manowar']] : [])]) {
     await page.evaluate(([livery, rig, id]) => { const H = window.__hangar; H.select(id); H.level(id === 'manowar' ? 'middle' : 'full'); H.livery(livery); H.rig(rig); H.view('turn', 0.9, 0.28); }, [livery, rig, id]);
-    await page.waitForTimeout(1300);
+    await drawn(page);
     await shot(page, `${name}-${id}-${look}`);
   }
   await page.evaluate(() => { const H = window.__hangar; H.select('brig'); H.livery('yours'); H.rig({ fold: 0, open: 0 }); });
@@ -476,9 +507,9 @@ for (const name of quick ? [] : ['laptop', 'phone']) {
 // the ships demo on a phone held sideways: its buttons on short lines, all on the screen and taking no more than 55% of
 // its height, so the ship shows above them; the stats folded away at first, and clear of the buttons once brought out
 if (!quick) {
-  const page = await open('hangar', 'sideways', () => window.__hangar?.ready || !document.getElementById('error').hidden);
+  const page = await hangar('sideways');
   await page.evaluate(() => { const H = window.__hangar; H.select('brig'); H.level('full'); H.wear('battered'); H.view('turn', 0.9, 0.3); });
-  await page.waitForTimeout(1500);
+  await drawn(page);
   const lay = await page.evaluate(() => {
     const b = document.getElementById('dock').getBoundingClientRect(), dock = { top: Math.round(b.top), bottom: Math.round(b.bottom), left: Math.round(b.left), right: Math.round(b.right) };
     return { dock, share: +(b.height / innerHeight).toFixed(2), folded: document.getElementById('card').hidden, w: innerWidth, h: innerHeight };
@@ -489,9 +520,29 @@ if (!quick) {
     const c = document.getElementById('card').getBoundingClientRect(), d = document.getElementById('dock').getBoundingClientRect();
     return { bottom: Math.round(c.bottom), dock: Math.round(d.top), shown: !document.getElementById('card').hidden };
   });
-  await page.waitForTimeout(300);
+  await drawn(page);
   await shot(page, 'sideways-brig-stats');
-  console.log(`the ships demo on a phone held sideways (${lay.w} by ${lay.h}): its buttons take ${Math.round(lay.share * 100)}% of the height (${lay.dock.top} to ${lay.dock.bottom} px), the stats ${lay.folded ? 'folded away' : 'OUT'} at first and ending at ${card.bottom} px once brought out, above the buttons at ${card.dock} px`);
+  // and as she turns in the Turn view (every 30 degrees round her), all of her shows: her keel and ram tip above the
+  // buttons, her mast heads on the screen (every corner of her pieces, as drawn: the lowest and highest on the screen)
+  await page.evaluate(() => document.getElementById('btn-card').click());
+  const turned = await page.evaluate(() => {
+    const H = window.__hangar, S = H.shown[0], V = H.camera.position.constructor, v = new V(), dock = document.getElementById('dock').getBoundingClientRect().top, out = { dock: Math.round(dock), low: -Infinity, high: Infinity, at: 0 };
+    for (let k = 0; k < 12; k++) {
+      H.view('turn', k * Math.PI / 6, 0.3); H.step(0.05); H.place();
+      let low = -Infinity, high = Infinity;
+      S.body.traverse((o) => {
+        if (!o.isMesh || !o.visible) return;
+        const P = o.geometry.attributes.position;
+        for (let i = 0; i < P.count; i++) { const y = (1 - v.fromBufferAttribute(P, i).applyMatrix4(o.matrixWorld).project(H.camera).y) / 2 * innerHeight; low = Math.max(low, y); high = Math.min(high, y); }
+      });
+      if (low > out.low) { out.low = Math.round(low); out.at = k * 30; }
+      out.high = Math.min(out.high, Math.round(high));
+    }
+    H.view('turn', 0.9, 0.3); H.draw();
+    return out;
+  });
+  console.log(`the ships demo on a phone held sideways (${lay.w} by ${lay.h}): its buttons take ${Math.round(lay.share * 100)}% of the height (${lay.dock.top} to ${lay.dock.bottom} px), the stats ${lay.folded ? 'folded away' : 'OUT'} at first and ending at ${card.bottom} px once brought out, above the buttons at ${card.dock} px; turning, the Brig reaches down to ${turned.low} px (turned ${turned.at}°), above the buttons at ${turned.dock} px, and up to ${turned.high} px`);
+  if (!(turned.low <= turned.dock) || turned.high < 0) problems.push(`the ships demo on a phone held sideways should show all of the ship as she turns, her keel and ram above the buttons and her mast heads on the screen: ${JSON.stringify(turned)}`);
   if (!(lay.share <= 0.55) || lay.dock.top < 0 || lay.dock.bottom > lay.h || lay.dock.left < 0 || lay.dock.right > lay.w) problems.push(`the ships demo's buttons on a phone held sideways should fit on the screen in 55% of its height: ${JSON.stringify(lay)}`);
   if (!lay.folded || !card.shown || card.bottom > card.dock) problems.push(`the ships demo's stats on a phone held sideways should start folded away, and come out clear of the buttons: ${JSON.stringify({ lay, card })}`);
   await page.close();
@@ -741,8 +792,153 @@ function battle(ids = ['frigate', 'cutter']) {
   }
   g.raiders.setAI(false);
 }
+// ---------- reading a fight from afar ----------
+// a raider's glows (her crystals, lanterns, muzzles and weak points) at the screen's own scale, as the Captain's are:
+// one spawned this moment (no step of the game yet), and after the window changes size (none either)
+const glowScales = (page) => page.evaluate(() => {
+  const g = window.__game; g.fly('brig'); const P = g.player; g.waves.timer = 1e9; g.raiders.setAI(false); g.raiders.clear();
+  const r = g.raiders.spawn('manowar', P.pos.clone().addScaledVector(P.forward(), 400), P.heading + 1.4, true), all = [];
+  r.ship.body.traverse((o) => { if (o.name === 'glow' || o.name === 'embers') all.push(o.material.uniforms.uScale.value); });
+  window.__glowRaider = r;
+  return { px: +g.camera.userData.pixelScale.toFixed(1), player: +P.ship.glow.material.uniforms.uScale.value.toFixed(1), raider: [...new Set(all.map((v) => +v.toFixed(1)))] };
+});
+const glowsAgain = (page) => page.evaluate(() => {
+  const g = window.__game, r = window.__glowRaider, all = [];
+  r.ship.body.traverse((o) => { if (o.name === 'glow' || o.name === 'embers') all.push(o.material.uniforms.uScale.value); });
+  g.raiders.clear(); window.__glowRaider = null;
+  return { px: +g.camera.userData.pixelScale.toFixed(1), raider: [...new Set(all.map((v) => +v.toFixed(1)))] };
+});
+function glowProblems(a, b, where) {
+  if (a.raider.length !== 1 || a.raider[0] !== a.px || a.player !== a.px || b.raider.length !== 1 || b.raider[0] !== b.px || b.px === a.px) problems.push(`${where}: a raider's glows should be drawn at the screen's scale as the Captain's are, from her first frame and after the window changes size: ${JSON.stringify({ a, b })}`);
+  return `a raider's glows at ${a.raider.join('/')} (the screen's ${a.px}, the Captain's ${a.player}), and ${b.raider.join('/')} once the window changed (${b.px})`;
+}
+// scars and fire at fight distance (src/ship/flames.js, looks.js, dress.js): a raider Frigate 150 m ahead (200 m from the
+// camera), side-on, six shots in her side facing the camera and her hull down to a fifth: her flames change the pixels
+// of a good share of her box on the screen (0.6% or more: they used to change a twentieth of that), and her holes, far
+// off, are drawn bigger than close up (changing at least 1.35 times the pixels)
+const fireAt = (page) => page.evaluate(FIRE_AT);
+const FIRE_AT = () => {
+  const g = window.__game; g.fly('brig'); const P = g.player; g.waves.timer = 1e9; g.raiders.setAI(false); g.raiders.clear(); P.pos.set(1500, 900, -800); P.heading = 0.4; P.speed = 0; P.sail = 0;
+  const V = P.pos.constructor, at = P.pos.clone().addScaledVector(P.forward(), 150); at.y += 25;
+  const r = g.raiders.spawn('frigate', at, P.heading + Math.PI / 2, true);
+  g.raiders.spawn('skiff', P.pos.clone().add({ x: 0, y: -300, z: 0 }).addScaledVector(P.forward(), -3000), 0, true); // (one far behind, so the wave isn't over)
+  g.waves.state = 'fight'; g.cam.yaw = 0; g.cam.pitch = 0.05; g.step(0.1, {});
+  // six shots into her side facing the camera, from bow to stern, and her hull down to a fifth
+  const S = r.ship, hull = S.hull, M = S.body.matrixWorld, ax = new V(1, 0, 0).transformDirection(M), side = Math.sign(g.camera.position.clone().sub(r.f.pos).dot(ax)) || 1;
+  for (let i = 0; i < 6; i++) {
+    const z = hull.zs + (hull.zb - hull.zs) * (0.15 + 0.7 * (i + 0.5) / 6), q = hull.at(z, 0.35 + 0.15 * (i % 2), side), p = new V(q[0], q[1], z).applyMatrix4(M), d = new V(-side, -0.1, 0).transformDirection(M);
+    g.looks.hit(S, 'hull', p.addScaledVector(d, -1), d, 30, 1.35);
+  }
+  r.f.health.hull = r.f.full.hull * 0.2; g.step(1.5, {});
+  const W = S.wear, rr = g.renderer, cv = rr.domElement, k = document.createElement('canvas'), x = k.getContext('2d', { willReadFrequently: true }); k.width = cv.width; k.height = cv.height;
+  const grab = () => { rr.render(g.scene, g.camera); x.drawImage(cv, 0, 0); return x.getImageData(0, 0, k.width, k.height).data; };
+  // (her box on the screen, reaching up to where her flames reach)
+  S.root.updateMatrixWorld(true);
+  const b = S.hull, lo = [Infinity, Infinity], hi = [-Infinity, -Infinity], v = new V();
+  for (let i = 0; i < 8; i++) { v.set(i & 1 ? 8 : -8, i & 2 ? 22 : b.keel((b.zs + b.zb) / 2) - 1, i & 4 ? b.zb : b.zs).applyMatrix4(M).project(g.camera); lo[0] = Math.min(lo[0], v.x); lo[1] = Math.min(lo[1], v.y); hi[0] = Math.max(hi[0], v.x); hi[1] = Math.max(hi[1], v.y); }
+  const B = [Math.max(0, Math.floor((lo[0] + 1) / 2 * k.width)), Math.min(k.width, Math.ceil((hi[0] + 1) / 2 * k.width)), Math.max(0, Math.floor((1 - hi[1]) / 2 * k.height)), Math.min(k.height, Math.ceil((1 - lo[1]) / 2 * k.height))];
+  const changed = (a, c) => { let n = 0; for (let y = B[2]; y < B[3]; y++) for (let xx = B[0]; xx < B[1]; xx++) { const i = (y * k.width + xx) * 4; if (Math.max(Math.abs(a[i] - c[i]), Math.abs(a[i + 1] - c[i + 1]), Math.abs(a[i + 2] - c[i + 2])) > 24) n++; } return n; };
+  const all = grab(); g.looks.flames.mesh.visible = false;
+  const noFire = grab(), read = W.read;
+  W.read = 0; W.write(); const near = grab();
+  const kept = W.scars.map((s) => s.on); W.scars.forEach((s) => { s.on = false; }); W.write(); const clean = grab();
+  W.scars.forEach((s, i) => { s.on = kept[i]; }); W.read = read; W.write(); g.looks.flames.mesh.visible = true;
+  const box = (B[1] - B[0]) * (B[3] - B[2]);
+  const out = { box, fires: W.fires, flames: changed(all, noFire), far: changed(noFire, clean), near: changed(near, clean), read: +(read ?? 0).toFixed(2), dist: Math.round(g.camera.position.distanceTo(r.f.pos)), level: S.level };
+  g.raiders.clear(); g.waves.state = 'calm';
+  return out;
+};
+function fireProblems(F, where) {
+  if (F.fires !== 2 || F.level !== 'middle' || !(F.flames >= F.box * 0.006) || !(F.far >= F.near * 1.35) || !(F.read > 0.9)) problems.push(`${where}: a raider holed below a quarter, 200 m off, should burn and show her holes clearly (flames over 0.6% of her box, holes far off 1.35 times as big as close up): ${JSON.stringify(F)}`);
+  return `a raider holed to a fifth ${F.dist} m off: ${F.fires} flames changing ${F.flames} pixels of her ${F.box} (${(F.flames / F.box * 100).toFixed(1)}%), her holes ${F.far} pixels far off against ${F.near} close up`;
+}
+// far-off wakes (wakes.js): two Cutters crossing ahead at the same speed, 300 m and 1.3 km off, after 7 s: the far one's
+// wake covers 2.2 times as much of her flight (its points spread further apart far off), and on the screen it's a clear
+// streak (`least`: how long, in the page's pixels, and how many of them it changes)
+const wakesFar = (page) => page.evaluate(WAKES_FAR);
+const WAKES_FAR = () => {
+  const g = window.__game; g.fly('brig'); const P = g.player; g.waves.timer = 1e9; g.raiders.setAI(false); g.raiders.clear(); g.wakes.clear(); P.pos.set(1500, 900, -800); P.heading = 0.4; P.speed = 0; P.sail = 0;
+  const V = P.pos.constructor, f = P.forward(), s = new V(Math.cos(P.heading), 0, -Math.sin(P.heading));
+  // two Cutters crossing ahead at the same speed, one 300 m off and one 1.3 km off, flying straight
+  const rs = [300, 1300].map((d, i) => { const r = g.raiders.spawn('cutter', P.pos.clone().addScaledVector(f, d).addScaledVector(s, -60 - i * 200).add({ x: 0, y: -20 - i * 40, z: 0 }), P.heading + Math.PI / 2, false); r.f.sail = 0.85; r.f.speed = 30; return r; });
+  g.cam.yaw = 0; g.cam.pitch = 0.05;
+  for (let t = 0; t < 7; t += 0.05) { for (const r of rs) { r.f.speed = 30; r.f.sail = 0.85; } g.step(0.05, { sail: -1 }); }
+  const [a, b] = rs.map((r) => g.wakes.of(r.f)), span = (w) => +(w.length / 30).toFixed(2);
+  // the far one's trail on the screen: from her stern back to its tail (in the page's pixels), and the pixels it changes
+  const rr = g.renderer, cv = rr.domElement, k = document.createElement('canvas'), x = k.getContext('2d', { willReadFrequently: true }); k.width = cv.width; k.height = cv.height;
+  const grab = () => { rr.render(g.scene, g.camera); x.drawImage(cv, 0, 0); return x.getImageData(0, 0, k.width, k.height).data; };
+  const on = grab(); g.wakes.mesh.visible = false; const off = grab(); g.wakes.mesh.visible = true;
+  const head = rs[1].f.pos.clone().project(g.camera), dir = rs[1].f.velocity.clone().normalize(), tail = rs[1].f.pos.clone().addScaledVector(dir, -b.length).project(g.camera);
+  const hx = (head.x + 1) / 2 * k.width, hy = (1 - head.y) / 2 * k.height, tx = (tail.x + 1) / 2 * k.width, ty = (1 - tail.y) / 2 * k.height;
+  const x0 = Math.max(0, Math.floor(Math.min(hx, tx) - 30)), x1 = Math.min(k.width, Math.ceil(Math.max(hx, tx) + 30)), y0 = Math.max(0, Math.floor(Math.min(hy, ty) - 30)), y1 = Math.min(k.height, Math.ceil(Math.max(hy, ty) + 30));
+  let px = 0;
+  for (let y = y0; y < y1; y++) for (let xx = x0; xx < x1; xx++) { const i = (y * k.width + xx) * 4; if (Math.max(Math.abs(on[i] - off[i]), Math.abs(on[i + 1] - off[i + 1]), Math.abs(on[i + 2] - off[i + 2])) > 16) px++; }
+  const dpr = k.width / innerWidth;
+  const out = { near: span(a), far: span(b), at: [0, 1].map((i) => Math.round(rs[i].f.pos.distanceTo(g.camera.position))), screen: Math.round(Math.hypot(hx - tx, hy - ty) / dpr), pixels: Math.round(px / dpr / dpr) };
+  g.raiders.clear(); g.wakes.clear();
+  return out;
+};
+function wakeProblems(W, where, least) {
+  if (!(W.far >= W.near * 2.2) || !(W.screen >= least.screen) || !(W.pixels >= least.pixels)) problems.push(`${where}: a raider's wake far off should be a clear streak showing which way she goes (covering 2.2 times the flight of a near one's, ${least.screen} px long and ${least.pixels} pixels or more): ${JSON.stringify(W)}`);
+  return `a Cutter's wake ${W.at[0]} m off covers ${W.near} s of her flight, ${W.at[1]} m off ${W.far} s, ${W.screen} px long on the screen, changing ${W.pixels} pixels`;
+}
+// stacked tags (main.js tags()): two raider Brigs far off ahead (1.25 and 1.38 km), one just over the other on the
+// screen: their tags stacked clear of each other with the higher one pushed up, neither pushed down over the ship it
+// names (each tag's bottom at most 2 px under its place just over her ship), both over their ships, not at the edge
+const tagsAt = (page) => page.evaluate(TAGS_AT);
+const TAGS_AT = () => {
+  const g = window.__game; g.fly('brig'); const P = g.player; g.waves.timer = 1e9; g.raiders.setAI(false); g.raiders.clear(); P.pos.set(1500, 900, -800); P.heading = 0.4; P.speed = 0; P.sail = 0;
+  g.cam.yaw = 0; g.cam.pitch = 0.1; g.cam.zoom = 1; g.step(0.1, {});
+  // two Brigs far off ahead, the further one a little higher and to one side: on the screen, one just over the other
+  const f = P.forward(), s = { x: Math.cos(P.heading), y: 0, z: -Math.sin(P.heading) };
+  const near = g.raiders.spawn('brig', P.pos.clone().addScaledVector(f, 1250).add({ x: 0, y: 40, z: 0 }), P.heading + 1.4, true);
+  const far = g.raiders.spawn('brig', P.pos.clone().addScaledVector(f, 1380).addScaledVector(s, 12).add({ x: 0, y: 60, z: 0 }), P.heading + 1.4, true);
+  g.step(0.1, {}); g.placeTags(); g.placeTags();
+  const V = P.pos.constructor, at = (r) => { const v = r.f.pos.clone(); v.y += r.R.length * 0.45 + 3; v.project(g.camera); return { x: (v.x + 1) / 2 * innerWidth, y: (1 - v.y) / 2 * innerHeight }; };
+  const out = { size: `${innerWidth}x${innerHeight}` };
+  for (const [k, r] of [['near', near], ['far', far]]) { const b = r.tag.getBoundingClientRect(), a = at(r); out[k] = { bottom: Math.round(b.bottom), over: Math.round(a.y), x: Math.round(a.x), left: Math.round(b.left), right: Math.round(b.right), top: Math.round(b.top), edge: r.tag.classList.contains('edge') }; }
+  const a = near.tag.getBoundingClientRect(), b = far.tag.getBoundingClientRect();
+  out.overlap = Math.round(Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)));
+  // (how far each tag sits below the place just over her ship: never down over her)
+  out.down = Math.max(out.near.bottom - out.near.over, out.far.bottom - out.far.over);
+  g.raiders.clear();
+  return out;
+};
+function tagProblems(T, where) {
+  if (T.overlap || T.down > 2 || T.near.edge || T.far.edge) problems.push(`${where}: two raiders' tags far off, one just over the other, should stack upward, clear of each other, never down over the ship each names: ${JSON.stringify(T)}`);
+  return `two raiders' tags far off ${T.overlap ? 'OVERLAPPING' : 'stacked clear'}, the lower ${T.down > 2 ? `PUSHED DOWN ${T.down} px over her ship` : 'just over her ship'} and the higher pushed up ${T.far.over - T.far.bottom} px`;
+}
+// the storm on its way (world.js stormWall): the sky alone, looking level towards it. Down each column of the screen,
+// its crest is where the sky turns lighter going down (the lit tops of the billows against the darkened sky): found in
+// 70% of the columns or more, heaped (its crest rising and falling 20 px or more across the view), lit on top (its
+// tops half as bright again as its foot at the horizon), and moving (the crests 3 px or more different two minutes on)
+const stormWall = (page) => page.evaluate(() => {
+  const g = window.__game; g.fly('brig'); const P = g.player; g.waves.timer = 1e9; g.raiders.setAI(false); g.raiders.clear(); P.pos.set(1500, 900, -800); P.heading = 0.4;
+  g.sky.front(P.heading); g.cam.yaw = 0; g.cam.pitch = 0; g.step(12, {}, 1 / 30);
+  const M = g.world.mood, sky = g.world.group.children[0], rr = g.renderer, cv = rr.domElement, k = document.createElement('canvas'), x = k.getContext('2d', { willReadFrequently: true });
+  k.width = cv.width; k.height = cv.height;
+  const cam = g.camera.clone(); cam.position.copy(P.pos); cam.position.y += 20; cam.lookAt(cam.position.clone().add({ x: Math.sin(P.heading), y: 0, z: Math.cos(P.heading) })); cam.updateMatrixWorld();
+  const grab = () => { rr.render(sky, cam); x.drawImage(cv, 0, 0); return x.getImageData(0, 0, k.width, k.height).data; };
+  const W = k.width, H = k.height, mid = Math.round(H / 2), up = Math.round(H / 2 * Math.tan(0.3) / Math.tan(cam.fov * Math.PI / 360));
+  const lum = (d, xx, y) => { const i = (y * W + xx) * 4; return (0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]) / 255; };
+  const profile = (d) => {
+    const crest = [], edge = [], top = [], foot = [];
+    for (let xx = 2; xx < W - 2; xx += 4) {
+      let best = -1, by = mid;
+      for (let y = mid - up; y < mid - 4; y++) { const j = lum(d, xx, y + 3) - lum(d, xx, y - 3); if (j > best) { best = j; by = y; } }
+      crest.push(by); edge.push(best); top.push(lum(d, xx, Math.min(mid - 1, by + 5))); foot.push(lum(d, xx, mid - 2));
+    }
+    return { crest, edge, top, foot };
+  };
+  M.uFront.value = 1; const a = profile(grab());
+  g.world.time.value += 120; const b = profile(grab());
+  const mean = (v) => v.reduce((q, w) => q + w, 0) / v.length, cs = [...a.crest].sort((p, q) => p - q), dpr = W / innerWidth;
+  g.sky.reset();
+  return { found: +(a.edge.filter((e) => e > 0.06).length / a.edge.length).toFixed(2), heaped: Math.round((cs[Math.floor(cs.length * 0.9)] - cs[Math.floor(cs.length * 0.1)]) / dpr),
+    top: +mean(a.top).toFixed(2), foot: +mean(a.foot).toFixed(2), moved: +(mean(a.crest.map((c, i) => Math.abs(c - b.crest[i]))) / dpr).toFixed(1) };
+});
 const mode = (page) => page.evaluate(() => window.__game.mode);
-{
+if (!demoOnly) {
   const page = await open('game', 'laptop', gameReady);
   // every piece of the game's news must be told somewhere as these checks play: count them (the page reloads once, so
   // they're counted before it and again after)
@@ -1098,8 +1294,9 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
     const wave12 = g.raiders.list.map((r) => r.id).join(' ');
     Object.assign(g.waves, { n: 14, state: 'calm', timer: 0.1, next: null }); g.raiders.clear(); g.step(0.2, {});
     const wave15 = g.raiders.list.map((r) => r.id + (r.captain ? ' (captain)' : '')).join(' ');
-    // a treasure ship: shoot her sails and she strikes her colours; let her run far enough and she gets away
-    g.raiders.clear(); g.waves.timer = 1e9; still(P); P.pos.set(0, 900, 0); P.heading = 0;
+    // a treasure ship: shoot her sails and she strikes her colours; let her run far enough and she gets away. (No bank
+    // of cloud is left from wave 15's arrival: placed at random, it could hide her from the guns)
+    g.raiders.clear(); g.world.clear(); g.waves.timer = 1e9; still(P); P.pos.set(0, 900, 0); P.heading = 0;
     const prize = g.raiders.spawn('galleon', P.pos.clone().add({ x: 0, y: 6, z: 380 }), Math.PI / 2, true);
     let t = 0, canvas = 0; const offS = g.events.on('hit', (e) => { if (e.part === 'sails') canvas = Math.max(canvas, g.fx.stats().debris.canvas); });
     while (t < 90 && !prize.f.down) { aimAt(P, prize.f.pos.clone().add({ x: 0, y: 12, z: 0 })); g.step(0.5, { fire: true }); t += 0.5; }
@@ -1534,6 +1731,14 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   if (!GC.title?.includes('a treasure ship') || !GC.prize || !GC.captain || GC.livery !== 'captain' || GC.role !== 'prize' || !(GC.d > 1050 && GC.d < 1450) || !(GC.across > 0.9)) problems.push(`a Galleon captain runs, so she should come in close, across the Captain's path: ${JSON.stringify(GC)}`);
   if (LF.blowout.told !== 1 || LF.blowout.crys.join() !== '1,0,1,1,1' || !(Math.sign(LF.blowout.dip) === LF.blowout.side && Math.abs(LF.blowout.dip) > 0.005)) problems.push(`a Man-o'-war's column given out should blow out once, go dark, and dip her at that end: ${JSON.stringify(LF.blowout)}`);
 
+  // ---------- reading a fight from afar: raiders' glows, scars and fire, far wakes, stacked tags, the storm on its way ----------
+  {
+    const ga = await glowScales(page); await sized(page, 1200, 760, 'laptop'); const gb = await glowsAgain(page); await sized(page, 1280, 800, 'laptop');
+    console.log(`reading a fight from afar: ${glowProblems(ga, gb, 'laptop')}; ${fireProblems(await fireAt(page), 'laptop')}; ${wakeProblems(await wakesFar(page), 'laptop', { screen: 60, pixels: 300 })}; ${tagProblems(await tagsAt(page), 'laptop')}`);
+    const SW = await stormWall(page);
+    console.log(`the storm on its way: a wall of cloud whose crest shows in ${Math.round(SW.found * 100)}% of the view, heaped ${SW.heaped} px high and low, its tops at ${SW.top} against its foot at ${SW.foot}, its crests moving ${SW.moved} px in two minutes`);
+    if (!(SW.found >= 0.7) || !(SW.heaped >= 20) || !(SW.top >= SW.foot * 1.5) || !(SW.moved >= 3)) problems.push(`the storm on its way should be a billowing wall of cloud (its crest lit against the sky, heaped, lighter on top than at its foot, and moving): ${JSON.stringify(SW)}`);
+  }
   // ---------- storms, clouds you fly through and hide in, and a sky with depth (sky.js, weather.js, world.js) ----------
   // The cloud floor worked out in JavaScript (where a ship can hide) agrees with the graphics card's own picture at 64
   // places (the card reading the baked picture at its finest): on average within 0.03. Which waves storm: none on Fair
@@ -2380,6 +2585,7 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
 
   // the real keys and mouse, at sea in the Brig
   await page.evaluate(() => { const g = window.__game; g.fly('brig'); g.waves.timer = 1e9; g.raiders.setAI(false); g.cam.yaw = 0; });
+  await undrawn(page, true);
   const s0 = await page.evaluate(() => window.__game.player.sail);
   await page.keyboard.down('w'); await page.keyboard.down('d');
   await wait(page, (s0) => window.__game.player.sail > s0 + 0.01 && window.__game.player.turn > 0.02, s0, 'W and D set more sail and turn');
@@ -2565,7 +2771,8 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   });
   console.log(`what the sound costs here: ${cost.perVolley} ms a volley (${cost.volleys} volleys, with their hits), ${cost.perFrame} ms a frame (${cost.frames} frames)`);
   if (cost.perVolley > 2 || cost.perFrame > 0.25) problems.push(`the sound costs too much: ${JSON.stringify(cost)}`);
-  // a battle to look at: a raider captain's Frigate and two Cutters against the Brig
+  // a battle to look at: a raider captain's Frigate and two Cutters against the Brig (drawn again)
+  await undrawn(page, false);
   await page.evaluate(battle, ['frigate', 'cutter', 'cutter']);
   await page.waitForTimeout(2500);
   await shot(page, 'laptop-battle');
@@ -2627,7 +2834,7 @@ const mode = (page) => page.evaluate(() => window.__game.mode);
   if (untold.length) problems.push(`these events were never told while the game was played: ${untold.join(', ')}`);
   await page.close();
 }
-if (!quick) {
+if (!quick && !demoOnly) {
   const page = await open('game', 'phone', gameReady);
   await page.evaluate(() => { const p = window.__game.progress; p.reset(); p.data.skies = 'cross'; });
   const start = await page.evaluate(() => ({ touch: document.body.classList.contains('touch') }));
@@ -2674,6 +2881,7 @@ if (!quick) {
   await page.tap('#btn-sail');
   if (await mode(page) !== 'voyage') problems.push('phone: "Set sail" does not set sail');
   await page.evaluate(() => { const g = window.__game; g.waves.timer = 1e9; g.raiders.setAI(false); });
+  await undrawn(page, true);
   // a thumb held on the left and pushed right steers; one held on Sail + sets sail; one on Fire fires; Surge surges
   const cdp = await page.context().newCDPSession(page);
   const touch = (type, ...pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts.map(([x, y], id) => ({ x, y, id })) });
@@ -2755,7 +2963,8 @@ if (!quick) {
     navigator.vibrate = (p) => { calls.push(p); return true; };
     // (a true shot from close by: the Skiff is small)
     let hit = false; const off = g.events.on('hit', (e) => { if (e.target === 'player') hit = true; });
-    P.repair(1); const at = P.aimAt().clone(), from = at.clone().add({ x: 40, y: 0, z: 0 });
+    // (held still for it: flying across its path at her speed, a small ship could slip past a shot aimed where she was)
+    P.repair(1); P.speed = 0; P.sail = 0; P.vy = 0; P.velocity.set(0, 0, 0); const at = P.aimAt().clone(), from = at.clone().add({ x: 40, y: 0, z: 0 });
     g.bolts.fire(from, at.clone().sub(from).normalize(), 'chaser', 'raider', null, 1); g.step(0.4, {}); off();
     const buzzed = calls.includes(30);
     // a raider blown apart gives a longer buzz; a treasure ship striking her colours gives up quietly, with none
@@ -2774,6 +2983,7 @@ if (!quick) {
   if (phoneFx.can && phoneFx.hit && !phoneFx.buzzed) problems.push('phone: a hit on the ship doesn\'t buzz the phone');
   if (phoneFx.can && !phoneFx.kill) problems.push('phone: a raider blown apart doesn\'t buzz the phone');
   if (phoneFx.gaveUp.why !== 'struck' || (phoneFx.can && phoneFx.gaveUp.buzzes)) problems.push(`phone: a treasure ship striking her colours shouldn't buzz the phone: ${JSON.stringify(phoneFx.gaveUp)}`);
+  await undrawn(page, false); // (drawn again: the worst case counts its draws)
   // the worst case for a phone: a Man-o'-war blown apart beside two other wrecks (a Frigate and a Brig), in a fight.
   // The sparks and smoke never run out of room, the debris's batches are big enough (hardly a piece cut short: at most
   // one in twenty of each kind), and a step of the game stays quick
@@ -2849,6 +3059,13 @@ if (!quick) {
     layouts.push(`${w}x${h}: ${layoutProblems(await layoutAt(page, HUD, PANELS, w === 360), `phone ${w}x${h}`)}; a bounty ${bountyProblems(await bountyCard(page), `phone ${w}x${h}`)}`);
   }
   console.log(`phone layouts: ${layouts.join('; ')}`);
+  // reading a fight from afar on a phone: upright, a raider's glows, scars and fire and a far wake; held sideways, two
+  // raiders' tags far off (the gate's case: the lower one used to be pushed down over her Brig), and the glows again
+  await sized(page, 390, 844, 'phone');
+  const pga = await glowScales(page); await sized(page, 667, 375, 'phone'); const pgb = await glowsAgain(page);
+  const sidewaysTags = tagProblems(await tagsAt(page), 'phone 667x375');
+  await sized(page, 390, 844, 'phone');
+  console.log(`phone, reading a fight from afar: ${glowProblems(pga, pgb, 'phone')}; ${fireProblems(await fireAt(page), 'phone')}; ${wakeProblems(await wakesFar(page), 'phone', { screen: 35, pixels: 100 })}; held sideways, ${sidewaysTags}`);
   // the port at the same four sizes, a narrow phone held sideways (640 by 360) and the smallest (568 by 320, an iPhone
   // SE's first one): its top line on one line, even with ◆ 12,345, and its panel clear of the top line and of the ships
   // along the bottom; every ship's button all inside the ships' row (none cut off at its end); a ship you can't afford
@@ -2961,5 +3178,6 @@ if (!quick) {
 }
 
 await browser.close();
+console.log(`the check took ${((Date.now() - began) / 60000).toFixed(1)} minutes`);
 if (problems.length) { console.log('PROBLEMS:\n' + [...new Set(problems)].join('\n')); process.exit(1); }
-console.log(quick ? 'all good (quick)' : 'all good');
+console.log(quick ? 'all good (quick)' : demoOnly ? 'all good (the ships demo only)' : 'all good');

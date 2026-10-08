@@ -135,13 +135,47 @@ const SKY_GLSL = `
   }`;
 // the towering clouds standing round the horizon: their skyline (skyline(), made once) read with the direction round
 // the sky, lit like the cloud floor on the sun's side and shaded away from it, darker at their feet, hazed into the
-// sky a little; on a storm's side taller, and slate dark. (Only the bottom of the sky shows them)
+// sky a little; on a storm's side slate dark, behind the storm's own wall. (Only the bottom of the sky shows them)
+// And a storm on its way (uFront, on its side of the sky): a wall of storm cloud over that horizon, billowing. Its top
+// is heaped billows of three sizes round the sky (most about 9 degrees high, the tallest half as tall again), each
+// swelling and sinking slowly as the whole wall drifts along; each billow is lit on top and round its shoulder (warmer
+// towards the sun) and falls into dark slate at its base, the creases between billows darker, with the cloud pattern
+// churning upward in it and darker shafts of rain hanging from it, hazed a little into the sky at its foot. It tapers
+// away at the edges of the storm's side. Worked out only on that side, low in the sky
 const TOWERS_GLSL = `
   uniform float uTowers; uniform vec3 uDeckLit; uniform vec3 uDeckShade; uniform sampler2D uSkyline;
+  float billow(float u, float t, float seed) {
+    float c = floor(u), f = fract(u) * 2.0 - 1.0, h = fract(sin(c * 12.9898 + seed * 78.233) * 43758.5453);
+    return sqrt(max(0.0, 1.0 - f * f)) * (0.4 + 0.6 * h) * (0.8 + 0.2 * sin(t * 0.05 + h * 6.2832));
+  }
+  vec3 stormWall(vec3 d, vec3 c, vec3 sun, float t, float side) {
+    float A = atan(d.x, d.z) * 0.159155 + t * 0.00028, grow = smoothstep(0.0, 0.6, side);
+    float big = max(billow(A * 11.0, t, 1.0), 0.8 * billow(A * 11.0 + 0.5, t, 2.0));
+    float mid = max(billow(A * 29.0, t, 3.0), 0.8 * billow(A * 29.0 + 0.5, t, 4.0));
+    float edge = cloudAt(vec2(A * 3.0, 0.71));
+    float top = grow * (0.04 + 0.16 * big + 0.04 * mid + 0.04 * (edge - 0.5));
+    if (d.y > top + 0.01) return c;
+    float k = clamp(d.y / max(top, 1e-3), 0.0, 1.0), y = d.y * 1.1 - t * 0.0006;
+    // (the cloud pattern as heaped cloud: lit where it thins upward, shaded where it thickens)
+    float n0 = cloudAt(vec2(A * 4.0, y)), n1 = cloudAt(vec2(A * 4.0, y + 0.01)), m = cloudAt(vec2(A * 11.0 + 0.4, y * 2.7));
+    float heap = clamp(0.5 + (n0 - n1) * 7.0 + (m - 0.5) * 0.6, 0.0, 1.0);
+    float lit = max(dot(normalize(d.xz), sun.xz) / max(length(sun.xz), 1e-3), 0.0);
+    float rain = smoothstep(0.5, 0.78, cloudAt(vec2(A * 13.0, 0.31))) * (1.0 - smoothstep(0.05, 0.5, k));
+    float shoulder = smoothstep(0.55, 0.97, k) * (0.55 + 0.45 * big);
+    float shade = (0.05 + 0.6 * k * k + 0.4 * shoulder) * (0.4 + 0.95 * heap) * (0.6 + 0.4 * big) * (1.0 - 0.5 * rain);
+    vec3 dark = uStormCol * 0.22, light = mix(uStormCol * 1.8, uDeckLit, 0.45 + 0.3 * lit);
+    vec3 wc = mix(dark, light, clamp(shade, 0.0, 1.0));
+    #ifdef SKY_SPACE
+    wc = sqrt(wc);
+    #endif
+    wc = mix(wc, c, 0.15 * (1.0 - smoothstep(0.0, 0.25, k)));
+    float inside = 1.0 - smoothstep(top - 0.005, top + 0.002, d.y + 0.008 * (m - 0.5));
+    return mix(c, wc, inside * step(-0.03, d.y) * smoothstep(0.0, 0.3, side));
+  }
   vec3 towers(vec3 d, vec3 c, vec3 sun, float t) {
     float side = stormSide(d.xz);
     vec2 sk = texture2D(uSkyline, vec2(atan(d.x, d.z) * 0.159155 + 0.5 + t * 0.0001, 0.5)).rg * 0.15;
-    float top = 0.003 + 0.045 * side + sk.x + sk.y * side;
+    float top = 0.003 + sk.x;
     float k = (1.0 - smoothstep(top - 0.014, top + 0.002, d.y)) * step(-0.03, d.y) * uTowers;
     float lit = max(dot(d.xz, sun.xz), 0.0) / max(length(sun.xz), 1e-3);
     vec3 tc = mix(uDeckShade, uDeckLit, 0.25 + 0.75 * lit * lit) * (0.82 + 0.18 * smoothstep(-0.01, top, d.y));
@@ -149,11 +183,12 @@ const TOWERS_GLSL = `
     #ifdef SKY_SPACE
     tc = sqrt(tc); // (the cloud colours are light, as the cloud floor's; the sky is drawn as it's seen: near enough)
     #endif
-    return mix(c, mix(tc, c, 0.3), k);
+    c = mix(c, mix(tc, c, 0.3), k);
+    return side > 0.004 && d.y < 0.2 ? stormWall(d, c, sun, t, side) : c;
   }`;
 // the skyline, once round the sky (1,024 steps): each tower a dome, 36 round the sky, every other one set back and
 // smaller, as tall as a blurred read of the cloud pattern says there, from low swells to towers 5 degrees high, with
-// small domes riding on their shoulders. Red: how high they reach; green: the domes alone, which a storm's side lifts
+// small domes riding on their shoulders. Red: how high they reach; green: the domes alone
 function skyline() {
   const N = 1024, px = new Uint8Array(N * 4), blur = (u, v, w) => { let s = 0; for (let i = -3; i <= 3; i++) s += cloudPicture(u + (i * w) / 3, v); return s / 7; };
   const arch = (x) => { const c = (x - Math.floor(x)) * 2 - 1; return Math.sqrt(Math.max(0, 1 - c * c)); };

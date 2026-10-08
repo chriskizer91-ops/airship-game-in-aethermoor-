@@ -40,7 +40,8 @@ export const SCARS = 12, HOLES = 10, CLUSTERS = 8;
 //   uHole   her sails' holes: where and how big; negative once patched. uHoleWing: which of her wings each is on (a
 //           hole near the mast cuts its own wing only, not the one across the mast or the tier below)
 //   uWear   x: soot and grime over the hull (0 to 1); y: how far her sails have frayed; z: how hard they flap (1 is a
-//           sound sail); w: unused
+//           sound sail); w: how far off she is, 0 close to 1 across a fight (src/game/looks.js): her open holes are
+//           drawn bigger and their soot darker, so they read at that distance
 //   uCrys   how bright each crystal cluster still is (1 whole, 0 dark); uCrack: how cracked (0 to 1)
 //   uSpark  the sputter of failing crystals: 1 steady, lower as they gutter (the same for her glows and lamps)
 //   uFold   x: how far her wings are folded back (0 spread, 1 folded; -0.1 snapped open in a Surge); y: their shiver
@@ -140,20 +141,22 @@ float wN(vec3 x) { vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
              mix(mix(wH(i + vec3(0.0, 0.0, 1.0)), wH(i + vec3(1.0, 0.0, 1.0)), f.x), mix(wH(i + vec3(0.0, 1.0, 1.0)), wH(i + vec3(1.0, 1.0, 1.0)), f.x), f.y), f.z); }
 `;
 // the hull, deck, plates and bands. Each scar: soot out to about twice its size, a black hole in its middle ringed with
-// pale splintered wood, embers glowing round it while it's hot. Patched: fresh planks in a square where the hole was,
-// with dark seams and nail heads round it, and the soot faded. Soot is matte (and dulls brass)
+// pale splintered wood, embers glowing round it while it's hot; far off (uWear.w) the hole is over half as big again,
+// its soot reaching further and darker. Patched: fresh planks in a square where the hole was, with dark seams and nail
+// heads round it, and the soot faded. Soot is matte (and dulls brass)
 const HULL_FRAG = `
   float wSoot = 0.0, wHole = 0.0, wRim = 0.0, wEmber = 0.0, wFresh = 0.0, wSeam = 0.0, wn = 0.5;
   if (uScar[0].w != 0.0 || uWear.x > 0.0) {
     wn = wN(vLocal * 2.3) * 0.65 + wN(vLocal * 6.1) * 0.35;
+    float wFar = uWear.w, wHr = 0.3 + 0.07 * wFar;
     for (int i = 0; i < ${SCARS}; i++) {
       vec4 s = uScar[i];
       if (s.w == 0.0) break;
-      float r = abs(s.w), e = length(vLocal - s.xyz) / r, d = e + (wn - 0.5) * 0.9, h = e + (wn - 0.5) * 0.3;
+      float r = abs(s.w) * (s.w > 0.0 ? 1.0 + 0.3 * wFar : 1.0), e = length(vLocal - s.xyz) / r, d = e + (wn - 0.5) * 0.9, h = e + (wn - 0.5) * 0.3;
       if (s.w > 0.0) {
         wSoot = max(wSoot, 1.0 - smoothstep(0.55, 2.1, d));
-        wHole = max(wHole, 1.0 - smoothstep(0.3, 0.34, h));
-        wRim = max(wRim, (1.0 - smoothstep(0.36, 0.46, h)) * smoothstep(0.3, 0.34, h));
+        wHole = max(wHole, 1.0 - smoothstep(wHr, wHr + 0.04, h));
+        wRim = max(wRim, (1.0 - smoothstep(wHr + 0.06, wHr + 0.16, h)) * smoothstep(wHr, wHr + 0.04, h));
         wEmber = max(wEmber, uHeat[i] * sqrt(uHeat[i]) * (1.0 - smoothstep(0.3, 1.0, d)));
       } else {
         vec3 q = abs(vLocal - s.xyz) / r;
@@ -163,8 +166,8 @@ const HULL_FRAG = `
         wSeam = max(wSeam, (1.0 - smoothstep(0.43, 0.47, b)) * smoothstep(0.37, 0.4, b));
       }
     }
-    wSoot = max(wSoot, uWear.x * smoothstep(0.5, 0.85, wn));
-    diffuseColor.rgb *= mix(1.0, 0.15, wSoot);
+    wSoot = max(wSoot, uWear.x * smoothstep(0.45, 0.78, wn));
+    diffuseColor.rgb *= mix(1.0, 0.15 - 0.08 * wFar, wSoot);
     diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.4, 0.25, 0.11), wRim * 0.75);
     diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.01, 0.007, 0.005), wHole);
     diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.3, 0.16, 0.07) * (0.8 + 0.4 * wn) * (0.75 + 0.25 * step(0.1, fract(vLocal.y * 3.6 + vLocal.x * 3.6))), wFresh);
@@ -177,8 +180,9 @@ const HULL_GLOW = `
   totalEmissiveRadiance *= 1.0 - 0.9 * max(max(wSoot, wHole), wFresh);
   totalEmissiveRadiance += vec3(1.0, 0.22, 0.04) * wEmber * (0.65 + 0.35 * sin(uWTime * 9.0 + wn * 25.0)) * 1.4 * (1.0 - 0.6 * wHole);`;
 // the sails: frayed from the free edge (vEdge 0 there) as they're torn, charred brown along the frays; each hole ragged
-// and scorched round its edge, on its own wing (vWing: which one this is); each patch a darker square of new canvas,
-// laid in the sail's own plane, its edge stitched. A sound sail (unless it's striped) skips all of it: next to no cost
+// and scorched round its edge, on its own wing (vWing: which one this is), and far off (uWear.w) bigger, with a wider
+// scorch; each patch a darker square of new canvas, laid in the sail's own plane, its edge stitched. A sound sail
+// (unless it's striped) skips all of it: next to no cost
 const SAIL_FRAG = `
   float wChar = 0.0, wPatch = 0.0, wStitch = 0.0, wn = 0.5;
   if (uWear.y > 0.0 || uHole[0].w != 0.0 || uStripe.w > 0.0) wn = wN(vLocal * 3.1) * 0.6 + wN(vLocal * 9.0) * 0.4;
@@ -195,9 +199,9 @@ const SAIL_FRAG = `
       if (uHoleWing[i] >= 0.0 && abs(uHoleWing[i] - vWing) > 0.5) continue;
       vec3 q = vLocal - h.xyz;
       if (h.w > 0.0) {
-        float d = length(q) / h.w + (wn - 0.5) * 0.8;
-        if (d < 0.5) discard;
-        wChar = max(wChar, 1.0 - smoothstep(0.5, 0.78, d));
+        float d = length(q) / h.w + (wn - 0.5) * 0.8, cut = 0.5 + 0.18 * uWear.w;
+        if (d < cut) discard;
+        wChar = max(wChar, 1.0 - smoothstep(cut, cut + 0.28 + 0.12 * uWear.w, d));
       } else {
         float r = -h.w, px = dot(q, ax) / r, py = dot(q, ay) / r, b = max(abs(px), abs(py)), e = abs(px) > abs(py) ? py : px;
         if (abs(dot(q, N)) < r * 1.2) {
@@ -436,7 +440,7 @@ export function makeWear(ship) {
   const W = {
     U: ship.U, ship, scars: Array.from({ length: SCARS }, S), holes: Array.from({ length: HOLES }, S),
     clusters: ship.recipe.clusters.length, dmg: new Float32Array(CLUSTERS), crys: new Float32Array(CLUSTERS).fill(1), crack: new Float32Array(CLUSTERS),
-    grime: 0, fray: 0, flap: 1, spark: 1, list: 0,
+    grime: 0, fray: 0, flap: 1, spark: 1, list: 0, read: 0,
     // (for the game: her flames this frame, the first one's place in the batch and their tips in the world; how hot her
     // hottest open scar is; her hull's share when the crew began patching her; her own beat for sputtering; her beam)
     fires: 0, firstFlame: 0, tips: new Float32Array(SCARS * 3), hot: 0, from: -1, mending: 0, seed: Math.random() * 100, half: ship.hull.half((ship.hull.zs + ship.hull.zb) / 2),
@@ -486,7 +490,7 @@ export function makeWear(ship) {
       k = 0;
       for (const h of W.holes) if (h.on && h.r > 0.01) { ho[k * 4] = h.x; ho[k * 4 + 1] = h.y; ho[k * 4 + 2] = h.z; ho[k * 4 + 3] = h.patched ? -h.r : h.r; hw[k] = h.wing; k++; }
       for (; k < HOLES; k++) { ho[k * 4 + 3] = 0; hw[k] = -1; }
-      U.uWear.value.set(W.grime, W.fray, W.flap, 0);
+      U.uWear.value.set(W.grime, W.fray, W.flap, W.read);
       U.uCrys.value.set(W.crys); U.uCrack.value.set(W.crack); U.uSpark.value = W.spark;
     },
   };

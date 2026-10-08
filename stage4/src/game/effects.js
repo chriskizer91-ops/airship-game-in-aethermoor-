@@ -307,9 +307,11 @@ export function smokeFrom(flyer, fx, dt) {
   if (fires && !scar) { const i = (Math.random() * fires) | 0; at.set(W.tips[i * 3], W.tips[i * 3 + 1], W.tips[i * 3 + 2]); }
   else if (scar) at.set(scar.x + scar.nx * 0.3, scar.y + scar.ny * 0.3, scar.z + scar.nz * 0.3).applyMatrix4(body.matrixWorld);
   else at.set((Math.random() - 0.5) * L * 0.08, 0.6, (Math.random() - 0.4) * L * 0.5).applyMatrix4(body.matrixWorld);
-  drift.copy(flyer.velocity).multiplyScalar(0.15); drift.x += (Math.random() - 0.5) * 2; drift.y += 2 + Math.random() * 2; drift.z += (Math.random() - 0.5) * 2;
+  // (a burning ship's smoke climbs faster, so its column stands up over her sails and reads from across a fight, or
+  // from behind her)
+  drift.copy(flyer.velocity).multiplyScalar(0.15); drift.x += (Math.random() - 0.5) * 2; drift.y += 2 + burning * 2 + Math.random() * 2; drift.z += (Math.random() - 0.5) * 2;
   const k = 0.75 + Math.random() * 0.5; // (each puff its own size and shade, and a burning ship's lit from below)
-  fx.smoke.emit(at, drift, 2.5 + burning * 3, (L * 0.05 + 0.6) * k, (L * (0.22 + burning * 0.3) + 3) * k, Math.max(0, 0.6 - burning * 0.5 + (Math.random() - 0.5) * 0.12), 0.3 + burning * 0.35, PUFF.pour, 1.5,
+  fx.smoke.emit(at, drift, 2.5 + burning * 3, (L * 0.05 + 0.6) * k, (L * (0.22 + burning * 0.3) + 3) * k, Math.max(0, 0.6 - burning * 0.5 + (Math.random() - 0.5) * 0.12), 0.3 + burning * 0.4, PUFF.pour, 1.5 + burning * 1.5,
     burning > 0.6 ? (burning - 0.5) * Math.random() : 0);
   if (burning > 0.5 && Math.random() < burning * (fires ? 0.5 : 1)) fx.spark(at, rise.copy(drift).setY(drift.y + 3), 0.6 + Math.random() * 0.5, 1.2 + L * 0.06, Math.random() < 0.5 ? 0xff7a2a : 0xffc04a);
 }

@@ -147,11 +147,9 @@ function raiderShip(T) {
       for (const g of glows) g.material.uniforms.uTime.value = t;
       for (const e of embers) e.material.uniforms.uTime.value = t;
     },
-    detail(level, pixelScale) {
-      mid.visible = level === 'middle'; far.visible = level === 'far'; this.level = level;
-      for (const g of glows) g.material.uniforms.uScale.value = pixelScale;
-      for (const e of embers) e.material.uniforms.uScale.value = pixelScale;
-    },
+    detail(level) { mid.visible = level === 'middle'; far.visible = level === 'far'; this.level = level; },
+    // her glows and embers drawn at the screen's scale (its pixels at a metre: main.js), as the Captain's are
+    scale(px) { for (const g of glows) g.material.uniforms.uScale.value = px; for (const e of embers) e.material.uniforms.uScale.value = px; },
   };
 }
 
@@ -256,9 +254,15 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
       const mid = wearLivery(buildShip(R, 'middle', arts[look], o), look), far = wearLivery(buildShip(R, 'far', arts[look], o), look);
       // (her far model's masts are cut out too, only to be left out of it as her middle model's fall)
       T[key] = { R, mid, far, look, zones: hitZones(mid), masts: falling ? { ...cutMasts(R, mid), farKeep: cutMasts(R, far).keep } : null };
+      glowsOf(mid.body, scale); glowsOf(far.body, scale);
     }
     return T[key];
   }
+  // the screen's scale (its pixels at a metre, for the glows: main.js keeps it as the window changes), given to every
+  // class's models as they're built, so a raider's crystals, lanterns, muzzles and weak points glow at the size the
+  // Captain's do from her very first frame, on any screen
+  let scale = 500;
+  const glowsOf = (body, px) => body.traverse((o) => { if (o.name === 'glow' || o.name === 'embers') o.material.uniforms.uScale.value = px; });
   for (const R of FLEET) template(R.id);
   const list = [], escaped = [];
   let ai = true, foeNow = null; // (the ship they're fighting this frame, for working out each gun's aim)
@@ -441,7 +445,7 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
       const D = r.f.down;
       if (D) { D.y0 ??= r.f.pos.y; if (D.t > 40 || r.f.pos.y < Math.max(15, Math.min(CLOUD_Y - 140, D.y0 - 150))) r.gone = true; }
       const size = (r.R.length / Math.max(1, camera.position.distanceTo(r.f.pos))) * toScreen;
-      r.ship.detail(size < detailAt ? 'far' : 'middle', camera.userData.pixelScale ?? 500);
+      r.ship.detail(size < detailAt ? 'far' : 'middle');
     }
     for (let i = list.length - 1; i >= 0; i--) if (list[i].gone) { drop(list[i]); list.splice(i, 1); }
     return downed;
@@ -477,5 +481,13 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
   }
   // (for the check: how many paintings the title's raiders were coloured from, and how many still hold their pixels)
   const read = () => ({ read: paintings.size, held: [...paintings.values()].filter((p) => p.d).length });
-  return { list, escaped, spawn, spawnWave, update, hitBy, clear, prepare, prepareWave, model, paintings: read, templates: T, setAI: (on) => { ai = on; }, setDetail: (k) => { detailAt = k; }, get detailAt() { return detailAt; } };
+  // the screen's scale changed (main.js, as the window changes): every class's models, and every raider in the sky
+  function setScale(px) {
+    if (!(px > 0) || px === scale) return;
+    scale = px;
+    for (const k in T) { glowsOf(T[k].mid.body, px); glowsOf(T[k].far.body, px); }
+    for (const r of list) r.ship.scale(px);
+  }
+  return { list, escaped, spawn, spawnWave, update, hitBy, clear, prepare, prepareWave, model, paintings: read, templates: T, setScale, get scale() { return scale; },
+    setAI: (on) => { ai = on; }, setDetail: (k) => { detailAt = k; }, get detailAt() { return detailAt; } };
 }

@@ -6,8 +6,11 @@
 //                   damage it takes
 //   as she weakens  her hull gets sooty and streaked; her torn sails fray from their free edges and flap harder; below
 //                   a third of her crystals they all sputter; badly holed, she lists towards the side that took the most
-//   below a quarter flames burst from her two worst wounds (three below an eighth), streaming back as she flies; going
-//   of her hull     down holed, she burns all along her scars (src/ship/flames.js: one draw for the whole sky)
+//   below a quarter flames burst from her two worst wounds (three below an eighth), streaming back as she flies, each
+//   of her hull     with a glow over it so it reads from across a fight; going down holed, she burns all along her scars
+//                   (src/ship/flames.js: one draw for the whole sky)
+//   far off         her holes grow bigger and their soot darker the further she is from the camera (from 30 to 110 m),
+//                   so a raider across a fight (or the Captain's own ship, seen from behind) still shows her wounds
 //   between waves   the crew patch her up: the fires go out and the embers cool, each hole in her sails is sewn over
 //                   with a square of new canvas, each hole in her planks becomes a square of fresh planks and its soot
 //                   fades, and her crystals' cracks fade as they mend. Raiders never patch theirs
@@ -38,6 +41,9 @@ import { on, emit, payload } from './events.js';
 // the hull's share below which she burns (two flames), and three; how far she lists, at most (radians: a raider, and
 // the Captain's, less, so her guns' tilt hardly changes); how long a sail's hole takes to be sewn over (seconds)
 export const SCAR = { hull: 1.4, sail: 1.0, cool: 0.2, smoulder: 0.15, burn: 0.25, burnMore: 0.12, list: 0.07, listCaptain: 0.04, sew: 4 };
+// how her scars read far off: from `near` to `far` metres from the camera her holes grow to their biggest (dress.js);
+// and the glow over each flame (its size, a share of the flame's height: a laptop, a phone)
+export const READ = { near: 30, far: 110, glow: [1.6, 1.3] };
 // her life: how fast her wings follow her sails (eased, a share a second), and snap open in a Surge; how long they take
 // to fold going down (seconds); how fast her lids open as she clears for action and close again (the lids' scale, 0 to
 // 2, a second; snapping open to fire), how long after the Captain fires between waves they stay open (seconds); how near
@@ -47,7 +53,7 @@ export const LIFE = { fold: 2, snap: 8, sink: 2, open: 1.4, fast: 7, close: 0.9,
 
 const ease = (dt, rate) => 1 - Math.exp(-dt * rate); // (how far to ease towards something this frame, at `rate` a second)
 
-export function makeLooks({ scene, touch = false, fx = null }) {
+export function makeLooks({ scene, touch = false, fx = null, camera = null }) {
   const flames = makeFlames(touch ? 16 : 28); scene.add(flames.mesh);
   let player = null; // the Captain (flight.js)
   // (the flames are drawn once with none in them as a voyage starts, so their shader is ready before the first fire:
@@ -56,7 +62,8 @@ export function makeLooks({ scene, touch = false, fx = null }) {
   const wearOf = (ship) => (ship.wear ??= life(makeWear(ship)));
   // (her life's own numbers, beside her scars: her wings, her lids, each battery's volleys seen, her columns blown out)
   const life = (W) => Object.assign(W, { fold: 0, open: [0, 0], fired: [-1e4, -1e4], volleys: [0, 0, 0, 0], blown: new Uint8Array(8), trim: 0, mark: 0, puff: 0 });
-  const inv = new THREE.Matrix4(), la = new THREE.Vector3(), ld = new THREE.Vector3(), lp = new THREE.Vector3(), ln = new THREE.Vector3(), cp = new THREE.Vector3(), cv = new THREE.Vector3();
+  const inv = new THREE.Matrix4(), la = new THREE.Vector3(), ld = new THREE.Vector3(), lp = new THREE.Vector3(), ln = new THREE.Vector3(), cp = new THREE.Vector3(), cv = new THREE.Vector3(), gp = new THREE.Vector3();
+  const glowK = READ.glow[touch ? 1 : 0];
   const BLOW = payload('blowout');
   const api = { cleared: false, marked: null }; // (main.js: whether the Captain's ship is in a fight; the raider her guns are locked on)
 
@@ -90,6 +97,13 @@ export function makeLooks({ scene, touch = false, fx = null }) {
     // the fires: from her worst scars, badly holed; all of them, going down holed (not a ship that gave up)
     const fires = down ? (down.why === 'hull' ? 6 : 0) : hullF < SCAR.burnMore ? 3 : hullF < SCAR.burn ? 2 : 0;
     W.fires = shipFlames(flames, W, fires, f.velocity);
+    // (a flickering glow over each, in the sparks' batch: no draw of its own)
+    if (fx) for (let i = 0; i < W.fires; i++) {
+      const j = W.firstFlame + i, fl = 0.85 + 0.15 * Math.sin(time * 17 + i * 2.3 + W.seed);
+      fx.glowAt(flames.at(j, 0.5, gp), 1.3, 0.55 * fl, 0.12, flames.height(j) * glowK * fl);
+    }
+    // (how far off she is, for her scars to read: dress.js)
+    W.read = camera ? smooth(READ.near, READ.far, camera.position.distanceTo(f.pos)) : 0;
     let hot = 0, sx = 0, sr = 0;
     W.mending = Math.max(0, W.mending - dt); // (the crew at work on her: her scars cool right down)
     for (const s of W.scars) {

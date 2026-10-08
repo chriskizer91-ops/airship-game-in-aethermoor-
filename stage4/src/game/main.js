@@ -104,7 +104,7 @@ async function main() {
   const fx = makeFx({ scene, camera, touch }), bolts = makeBolts(scene, fx), pickups = makePickups(scene);
   const wrecks = makeWrecks({ fx, tear: world.tear, scene }), surge = makeSurge({ scene, fx });
   const raiders = makeRaiders(scene, art, bolts, skies, fx);
-  const looks = makeLooks({ scene, touch, fx }); // (every ship's scars, her life and her flames: looks.js)
+  const looks = makeLooks({ scene, touch, fx, camera }); // (every ship's scars, her life and her flames: looks.js)
   const sky = makeSky({ world, lights, scene, renderer, touch, fx }); // (the sky at sea and its weather: sky.js)
   const wakes = makeWakes(scene, { touch }); // (every ship's wake of Aether, in one draw)
   // the Settings card's changes, at once: the sound; the picture; the camera shake; Fire on the left (a phone)
@@ -546,6 +546,7 @@ async function main() {
     camera.aspect = w / h; camera.fov = viewFov = w < h ? 68 : 55; camera.updateProjectionMatrix();
     camera.userData.pixelScale = renderer.domElement.height / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
     for (const s of built.values()) s.glow.material.uniforms.uScale.value = camera.userData.pixelScale;
+    raiders.setScale(camera.userData.pixelScale); // (and the raiders' glows, the same)
     port.resize(); title.resize(); layout();
     if (mini.classList.contains('big')) placeMapClose();
   }
@@ -670,12 +671,16 @@ async function main() {
       // off screen, her glowing gun ports can't be seen (on a phone a raider alongside usually is): while she readies a
       // broadside, her tag at the edge flashes red, and says so
       const warn = edge && !!r.charge.b;
+      // (and the highest it may be pushed to make room for another, below: an edge tag, just under the panels along the
+      // top; one over her ship, just on the screen)
+      let top = TAG.h + 6;
       if (edge) {
         x /= Math.max(k, 1e-6); y /= Math.max(k, 1e-6);
         // (where the panels at the top and bottom leave no room for her tag and its arrow between them, as down the
         // right of a phone held sideways, it slides in towards the middle until they do)
         const up = tagUp(warn);
-        let top = edgeTop(W2 + x, up), bottom = edgeBottom(W2 + x);
+        top = edgeTop(W2 + x, up);
+        let bottom = edgeBottom(W2 + x);
         for (let n = 0; top > bottom && n < 24 && Math.abs(x) > 16; n++) { x -= Math.sign(x) * 16; top = edgeTop(W2 + x, up); bottom = edgeBottom(W2 + x); }
         y = Math.max(top - H2, Math.min(bottom - H2, y));
       }
@@ -683,7 +688,7 @@ async function main() {
       if (el._warn !== warn) { el._warn = warn; el.classList.toggle('warn', warn); if (warn && !TAG.warned && el.offsetHeight) { TAG.warned = true; TAG.warn = el.offsetHeight + 1; } }
       if (el._locked !== (r === locked)) { el._locked = r === locked; el.classList.toggle('locked', el._locked); }
       if (el._lost !== r.lost) { el._lost = r.lost; el.classList.toggle('lost', r.lost); }
-      el._x = W2 + x; el._y = H2 + y; placed.push(el);
+      el._x = W2 + x; el._y = H2 + y; el._top = top; placed.push(el);
       const turn = Math.round(Math.atan2(x, -y) * 50) / 50;
       if (edge && el._turn !== turn) { el._turn = turn; el._arrow.style.transform = `rotate(${turn}rad)`; }
       if (slow || el._fresh) {
@@ -694,20 +699,23 @@ async function main() {
         for (let i = 0; i < 3; i++) setWidth(el._m[i], r.f.frac(PARTS[i]));
       }
     }
-    // tags that would land on top of each other are stacked instead: each sits on its bottom edge, so one is pushed
-    // down by its own height (one saying "Broadside!" may be a little taller), and the warning is always drawn on top
-    // (game.html)
+    // tags that would land on top of each other are stacked instead. Each sits on its bottom edge just over her ship,
+    // so from the bottom up, the higher of two is pushed up by the lower one's height (one saying "Broadside!" may be a
+    // little taller): the lower one is never pushed down over the very ship it names (two raiders far off, one just
+    // over the other). The warning is always drawn on top (game.html)
     placed.sort(byY);
+    for (let i = placed.length - 2; i >= 0; i--) {
+      const a = placed[i];
+      for (let j = placed.length - 1; j > i; j--) { const b = placed[j], h = b._warn ? TAG.warn : TAG.h; if (Math.abs(a._x - b._x) < 84 && b._y - a._y < h) a._y = b._y - h; }
+    }
+    // then from the top down: a tag pushed up past the highest it may be (an edge tag into the panels along the top, or
+    // any off the screen) comes back down, and any stacked under it move down to make room (but an edge tag never on to
+    // the panels along the bottom)
     for (let i = 0; i < placed.length; i++) {
       const a = placed[i], h = a._warn ? TAG.warn : TAG.h;
-      for (let j = 0; j < i; j++) { const b = placed[j]; if (Math.abs(a._x - b._x) < 84 && a._y - b._y < h) a._y = b._y + h; }
-    }
-    // then from the bottom up: an edge tag pushed down past the panels along the bottom goes back above them, and any
-    // stacked over it move up to make room
-    for (let i = placed.length - 1; i >= 0; i--) {
-      const a = placed[i];
+      a._y = Math.max(a._y, a._top);
+      for (let j = 0; j < i; j++) { const b = placed[j]; if (Math.abs(a._x - b._x) < 84) a._y = Math.max(a._y, b._y + h); }
       if (a._edge) a._y = Math.min(a._y, edgeBottom(a._x));
-      for (let j = i + 1; j < placed.length; j++) { const b = placed[j]; if (Math.abs(a._x - b._x) < 84) a._y = Math.min(a._y, b._y - (b._warn ? TAG.warn : TAG.h)); }
     }
     for (let i = 0; i < placed.length; i++) {
       const a = placed[i], x = Math.round(a._x * 2) / 2, y = Math.round(a._y * 2) / 2;

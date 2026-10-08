@@ -19,8 +19,9 @@ From this folder (run `npm install` once here first; it keeps its own `node_modu
 
 ```
 node tools/build.mjs    # makes dist/game.html and dist/hangar.html (and their .artifact.html copies)
-node tools/check.mjs    # plays the game in a hidden browser (about 25 minutes here, with no graphics card); must end with "all good"
+node tools/check.mjs    # plays the game in a hidden browser (about 12 minutes here, with no graphics card); must end with "all good"
 node tools/check.mjs --quick   # only the game page at laptop size, while working ("all good (quick)")
+node tools/check.mjs --ships   # only the ships demo, a couple of minutes ("all good (the ships demo only)")
 node tools/sim-fight.mjs brig 5 cross   # the simulated Captain, for tuning the fights
 ```
 
