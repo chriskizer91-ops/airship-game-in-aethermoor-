@@ -21,13 +21,13 @@
 // anywhere on the page. The Settings card (settings.js: the sound, aim speed, up and down, the picture, camera shake,
 // and on a phone Fire on the left) opens from a gear on the title screen, in port and on the pause card.
 // The screen keeps tidy on every size (game.html has a place for everything): the region's name waits for a quiet
-// moment rather than landing on a fight, raiders' tags at the edge keep clear of the panels, and directions are given
-// as left and right ("ahead on your right"), the wind in words.
+// moment rather than landing on a fight, raiders' tags keep clear of the panels and of the raiders' ships far off
+// (tags()), and directions are given as left and right ("ahead on your right"), the wind in words.
 import * as THREE from 'three';
 import { loadShipArt } from '../ship/materials.js';
 import { buildShip } from '../ship/build.js';
 import { SHIPS, FLEET, GIANTS } from '../ships/index.js';
-import { makeWorld, regionAt, REGIONS, SUN, HAZE, MAP, THINNING, DAY } from './world.js';
+import { makeWorld, regionAt, REGIONS, SUN, HAZE, MAP, THINNING, DAY, billowsFor } from './world.js';
 import { makeSky } from './sky.js';
 import { makeInput } from './input.js';
 import { makeFlyer, WIND, windHelp } from './flight.js';
@@ -560,6 +560,7 @@ async function main() {
     renderer.setSize(w, h, false);
     camera.aspect = w / h; camera.fov = viewFov = w < h ? 68 : 55; camera.updateProjectionMatrix();
     camera.userData.pixelScale = renderer.domElement.height / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
+    billowsFor(THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * camera.aspect))); // (a storm's billows, as many as suit the view's width)
     for (const s of built.values()) s.glow.material.uniforms.uScale.value = camera.userData.pixelScale;
     raiders.setScale(camera.userData.pixelScale); // (and the raiders' glows, the same)
     port.resize(); title.resize(); layout();
@@ -648,7 +649,7 @@ async function main() {
     const row = H[`row-${part}`];
     row._dt.animate(ROW, 300); row._bar.animate(BAR, 300);
   }
-  const proj = new THREE.Vector3(), placed = [], byY = (a, b) => a._y - b._y;
+  const proj = new THREE.Vector3(), corner = new THREE.Vector3(), placed = [], edges = [], over = [], byY = (a, b) => a._y - b._y;
   // a tag's height in pixels, and saying "Broadside!" in place of its bars (and a pixel to spare): measured on the first
   // tags shown (the fonts decide them), until then a fair guess
   const TAG = { h: 42, warn: 44, measured: false, warned: false };
@@ -660,9 +661,91 @@ async function main() {
   const tagUp = (warn) => (warn ? TAG.warn + ARROW_WARN : TAG.h + ARROW);
   function edgeTop(x, up) { let t = 6; for (const b of EDGE.top) if (x > b.l - TAG_REACH && x < b.r + TAG_REACH && b.b + 4 > t) t = b.b + 4; return t + up; }
   function edgeBottom(x) { let y = view.h - 6; for (const b of EDGE.bottom) if (x > b.l - TAG_REACH && x < b.r + TAG_REACH && b.t - 4 < y) y = b.t - 4; return y; }
+  // a tag over a ship (its bottom middle at x, hw half as wide as it is) may reach up to just under the panels along the
+  // top over it (the compass, the guns' label...) and down to just over those along the bottom, never off the screen
+  function overTop(x, hw) { let t = 6; for (const b of EDGE.top) if (x + hw > b.l - 4 && x - hw < b.r + 4 && b.b + 4 > t) t = b.b + 4; return t; }
+  function overBottom(x, hw) { let y = view.h - 6; for (const b of EDGE.bottom) if (x + hw > b.l - 4 && x - hw < b.r + 4 && b.t - 4 < y) y = b.t - 4; return y; }
+  // a raider's ship on the screen, for the tags to keep off (into her tag: _sl, _sr, _st, _sb, in pixels, and _box; and
+  // _ship, whether tags keep off her: not when she's so big on the screen, close by, that no tag could hide her). Her
+  // box: from her ram to her stern, her keel to her mast heads, her wings' spread (as every class is built, with a little
+  // to spare). None when she's lost in cloud, behind the camera or pinned at the edge
+  function shipBox(r, el, W2, H2) {
+    const L = r.R.length, hull = r.ship.hull, M = r.ship.body.matrixWorld, top = L * 0.33 + 2.2, keel = -(L * 0.18 + 1.5), half = L * 0.22 + 1;
+    let l = Infinity, rt = -Infinity, t = Infinity, b = -Infinity;
+    for (let i = 0; i < 8; i++) {
+      corner.set(i & 1 ? half : -half, i & 2 ? top : keel, i & 4 ? hull.zb + L * 0.2 : hull.zs - L * 0.1).applyMatrix4(M).project(camera);
+      if (corner.z > 1) return;
+      const sx = (corner.x + 1) * W2, sy = (1 - corner.y) * H2;
+      if (sx < l) l = sx; if (sx > rt) rt = sx; if (sy < t) t = sy; if (sy > b) b = sy;
+    }
+    el._sl = l; el._sr = rt; el._st = t; el._sb = b; el._box = true;
+    el._ship = rt - l < 4 * el._hw && b - t < 2 * TAG.h;
+  }
+  // what's in the way of tag a with its bottom middle at (x, y): a tag already placed (those at the edge, and the first
+  // `overN` of those over ships) or a raider's ship (unless `ships` is false). Going up (dir -1): the bottom it must rise
+  // to, to clear them all; going down (dir 1), the bottom it must sink to. NaN: nothing's in the way
+  const TAG_GAP = 2;
+  let overN = 0;
+  function inWay(a, x, y, dir, ships) {
+    const hw = a._hw, h = TAG.h;
+    let to = dir < 0 ? Infinity : -Infinity, v;
+    for (let pass = 0; pass < 2; pass++) {
+      const list = pass ? over : edges, n = pass ? overN : edges.length;
+      for (let j = 0; j < n; j++) {
+        const b = list[j], bh = b._warn ? TAG.warn : TAG.h;
+        if (Math.abs(x - b._x) < hw + b._hw + TAG_GAP && y > b._y - bh - TAG_GAP && y - h < b._y + TAG_GAP) { v = dir < 0 ? b._y - bh - TAG_GAP : b._y + TAG_GAP + h; to = dir < 0 ? Math.min(to, v) : Math.max(to, v); }
+      }
+    }
+    if (ships) for (let j = 0; j < placed.length; j++) {
+      const s = placed[j];
+      if (s._ship && x + hw > s._sl - TAG_GAP && x - hw < s._sr + TAG_GAP && y > s._st - TAG_GAP && y - h < s._sb + TAG_GAP) { v = dir < 0 ? s._st - TAG_GAP : s._sb + TAG_GAP + h; to = dir < 0 ? Math.min(to, v) : Math.max(to, v); }
+    }
+    return Number.isFinite(to) ? to : NaN;
+  }
+  // tag a slid from (x, y) up (dir -1) or down (1) until nothing's in its way; NaN if it never gets clear
+  function slide(a, x, y, dir, ships = true) {
+    for (let n = 0; n < 12; n++) { const to = inWay(a, x, y, dir, ships); if (to !== to) return y; y = to; }
+    return NaN;
+  }
+  const tagFits = (a, x, y) => y === y && x - a._hw >= 4 && x + a._hw <= view.w - 4 && y - TAG.h >= overTop(x, a._hw) && y <= overBottom(x, a._hw);
+  // a tag over her ship placed: the first clear place of: just over her ship, pushed up past whatever's in the way (so a
+  // stack of tags sits over all their ships, never on one of them); a little lower, just under the panels along the top
+  // (her mast heads reaching up to them: at most 60% of a tag lower); a tag's width or two to either side, pushed up the
+  // same (a stack fanned out where it can't rise, under the panels); under her ship; and failing all of them, just
+  // under the panels over her, pushed down past the tags in the way (over what it must). A tag moved aside (to one side,
+  // or under her ship) stays where it is beside her while that's clear, and comes back over her once there's been room
+  // there for HOME seconds: so tags don't hop about as a crowd of raiders closes in
+  const FAN = [0, 1, -1, 2, -2, 3, -3], HOME = 0.8;
+  function placeOver(a) {
+    const x0 = a._nx = a._x, y0 = a._ny = a._y;
+    if (!clearAt(a, x0, y0)) { a._x = x0 + a._ox; a._y = y0 + a._oy; }
+    a._ox = a._x - x0; a._oy = a._y - y0; a._had = true;
+  }
+  // (false: where it was, beside her ship, is kept)
+  function clearAt(a, x0, y0) {
+    const step = a._hw * 2 + 6, aside = a._had && (Math.abs(a._ox) > 1 || a._oy > 1);
+    let kept = false;
+    if (aside) { const x = x0 + a._ox, w = inWay(a, x, y0 + a._oy, -1, true); kept = w !== w && tagFits(a, x, y0 + a._oy); }
+    let y = slide(a, x0, y0, -1);
+    if (tagFits(a, x0, y)) {
+      if (kept && (a._homeAt < 0 || time - a._homeAt < HOME)) { if (a._homeAt < 0) a._homeAt = time; return false; }
+      a._y = y; a._homeAt = -1; return true;
+    }
+    a._homeAt = -1;
+    if (kept) return false;
+    y = slide(a, x0, Math.max(y0, overTop(x0, a._hw) + TAG.h), 1);
+    if (y - y0 <= TAG.h * 0.6 && tagFits(a, x0, y)) { a._y = y; return true; }
+    for (let k = 1; k < FAN.length; k++) { const x = x0 + FAN[k] * step; y = slide(a, x, y0, -1); if (tagFits(a, x, y)) { a._x = x; a._y = y; return true; } }
+    if (a._box) for (let k = 0; k < 3; k++) { const x = x0 + FAN[k] * step; y = slide(a, x, a._sb + TAG_GAP + TAG.h, 1); if (tagFits(a, x, y)) { a._x = x; a._y = y; return true; } }
+    const x = Math.max(a._hw + 4, Math.min(view.w - a._hw - 4, x0));
+    y = Math.max(y0, overTop(x, a._hw) + TAG.h);
+    const down = slide(a, x, y, 1, false);
+    a._x = x; a._y = down === down ? down : y;
+    return true;
+  }
   // each raider's tag: over it, or at the edge of the screen pointing to it (flashing red as she readies a broadside);
-  // its distance and health ten times a second
-  function tags(slow) {
+  // its distance and health ten times a second. (dt: the frame's seconds, for a tag gliding to a new place)
+  function tags(slow, dt = 0) {
     const W2 = view.w / 2, H2 = view.h / 2;
     placed.length = 0;
     for (const r of raiders.list) {
@@ -670,7 +753,7 @@ async function main() {
       if (!el) {
         el = r.tag = document.createElement('div'); el.className = r.captain ? 'tag captain' : r.role === 'prize' ? 'tag captain prize' : 'tag';
         el.innerHTML = `<span class="arrow"></span><b>${r.captain ? 'Captain · ' : r.role === 'prize' ? 'Treasure · ' : ''}${r.R.cls}</b> <span class="d"></span>${PARTS.map((k) => `<span class="meter ${k}"><b></b><i></i></span>`).join('')}<span class="bs">Broadside!</span><span class="lost">Lost in the cloud</span>`;
-        el._d = el.querySelector('.d'); el._m = [...el.querySelectorAll('.meter i')].map(chip); el._arrow = el.querySelector('.arrow'); el._fresh = true;
+        el._d = el.querySelector('.d'); el._m = [...el.querySelectorAll('.meter i')].map(chip); el._arrow = el.querySelector('.arrow'); el._fresh = true; el._hw = 42; el._ox = el._oy = 0; el._had = false; el._homeAt = -1;
         H.tags.append(el); // (raiders.js takes it away with its raider)
       }
       if (r.f.down) { el.remove(); continue; }
@@ -686,8 +769,7 @@ async function main() {
       // off screen, her glowing gun ports can't be seen (on a phone a raider alongside usually is): while she readies a
       // broadside, her tag at the edge flashes red, and says so
       const warn = edge && !!r.charge.b;
-      // (and the highest it may be pushed to make room for another, below: an edge tag, just under the panels along the
-      // top; one over her ship, just on the screen)
+      // (and the highest an edge tag may be pushed to make room for another, below: just under the panels along the top)
       let top = TAG.h + 6;
       if (edge) {
         x /= Math.max(k, 1e-6); y /= Math.max(k, 1e-6);
@@ -700,37 +782,59 @@ async function main() {
         y = Math.max(top - H2, Math.min(bottom - H2, y));
       }
       if (el._edge !== edge) { el._edge = edge; el.classList.toggle('edge', edge); }
-      if (el._warn !== warn) { el._warn = warn; el.classList.toggle('warn', warn); if (warn && !TAG.warned && el.offsetHeight) { TAG.warned = true; TAG.warn = el.offsetHeight + 1; } }
+      if (el._warn !== warn) { el._warn = warn; el._measure = true; el.classList.toggle('warn', warn); if (warn && !TAG.warned && el.offsetHeight) { TAG.warned = true; TAG.warn = el.offsetHeight + 1; } }
       if (el._locked !== (r === locked)) { el._locked = r === locked; el.classList.toggle('locked', el._locked); }
-      if (el._lost !== r.lost) { el._lost = r.lost; el.classList.toggle('lost', r.lost); }
+      if (el._lost !== r.lost) { el._lost = r.lost; el._measure = true; el.classList.toggle('lost', r.lost); }
       el._x = W2 + x; el._y = H2 + y; el._top = top; placed.push(el);
+      el._box = el._ship = false; if (!edge && !r.lost) shipBox(r, el, W2, H2); // (her ship on the screen: tags keep off it)
+      if (edge) el._had = false; // (back over her ship, her tag starts afresh)
       const turn = Math.round(Math.atan2(x, -y) * 50) / 50;
       if (edge && el._turn !== turn) { el._turn = turn; el._arrow.style.transform = `rotate(${turn}rad)`; }
       if (slow || el._fresh) {
         el._fresh = false;
         const d = Math.round((r.lost ? r.seenAt : r.f.pos).distanceTo(player.pos) / 10) * 10; // (one lost in cloud: how far off she was last seen, where her tag is)
-        if (el._dist !== d) { el._dist = d; el._d.textContent = `${d} m`; }
+        if (el._dist !== d) { el._dist = d; el._d.textContent = `${d} m`; el._measure = true; }
         if (!TAG.measured && !el._warn && el.offsetHeight) { TAG.measured = true; TAG.h = el.offsetHeight + 1; }
         for (let i = 0; i < 3; i++) setWidth(el._m[i], r.f.frac(PARTS[i]));
       }
     }
-    // tags that would land on top of each other are stacked instead. Each sits on its bottom edge just over her ship,
-    // so from the bottom up, the higher of two is pushed up by the lower one's height (one saying "Broadside!" may be a
-    // little taller): the lower one is never pushed down over the very ship it names (two raiders far off, one just
-    // over the other). The warning is always drawn on top (game.html)
-    placed.sort(byY);
-    for (let i = placed.length - 2; i >= 0; i--) {
-      const a = placed[i];
-      for (let j = placed.length - 1; j > i; j--) { const b = placed[j], h = b._warn ? TAG.warn : TAG.h; if (Math.abs(a._x - b._x) < 84 && b._y - a._y < h) a._y = b._y - h; }
+    // (each tag's width, measured again whenever its words change: all of them at once, so the page is laid out once)
+    for (let i = 0; i < placed.length; i++) { const el = placed[i]; if (el._measure) { el._measure = false; const w = el.offsetWidth; if (w) el._hw = w / 2; } }
+    // tags that would land on another tag, or on a raider's ship, find somewhere clear instead. Those at the edge of the
+    // screen are stacked along it: from the bottom up, the higher of two is pushed up by the lower one's height (one
+    // saying "Broadside!" may be a little taller); then from the top down, one pushed up past the highest it may be (into
+    // the panels along the top) comes back down, and any stacked under it move down to make room (but never on to the
+    // panels along the bottom). The warning is always drawn on top (game.html)
+    edges.length = over.length = 0;
+    for (let i = 0; i < placed.length; i++) (placed[i]._edge ? edges : over).push(placed[i]);
+    edges.sort(byY);
+    for (let i = edges.length - 2; i >= 0; i--) {
+      const a = edges[i];
+      for (let j = edges.length - 1; j > i; j--) { const b = edges[j], h = b._warn ? TAG.warn : TAG.h; if (Math.abs(a._x - b._x) < 84 && b._y - a._y < h) a._y = b._y - h; }
     }
-    // then from the top down: a tag pushed up past the highest it may be (an edge tag into the panels along the top, or
-    // any off the screen) comes back down, and any stacked under it move down to make room (but an edge tag never on to
-    // the panels along the bottom)
-    for (let i = 0; i < placed.length; i++) {
-      const a = placed[i], h = a._warn ? TAG.warn : TAG.h;
+    for (let i = 0; i < edges.length; i++) {
+      const a = edges[i], h = a._warn ? TAG.warn : TAG.h;
       a._y = Math.max(a._y, a._top);
-      for (let j = 0; j < i; j++) { const b = placed[j]; if (Math.abs(a._x - b._x) < 84) a._y = Math.max(a._y, b._y + h); }
-      if (a._edge) a._y = Math.min(a._y, edgeBottom(a._x));
+      for (let j = 0; j < i; j++) { const b = edges[j]; if (Math.abs(a._x - b._x) < 84) a._y = Math.max(a._y, b._y + h); }
+      a._y = Math.min(a._y, edgeBottom(a._x));
+    }
+    // those over their ships, from the highest on the screen down, each in the first clear place (placeOver): the
+    // highest just over her ship, one that would land on it (or on her ship: two raiders far off, one just over the
+    // other) over it, so every ship of a stack shows under all its tags; one that can't rise there (under the panels
+    // along the top, the compass and the guns' label among them) beside it, or under her ship
+    over.sort(byY);
+    for (overN = 0; overN < over.length; overN++) placeOver(over[overN]);
+    // (a tag over her ship moved to a new place beside her glides there in a moment, rather than jumping: how far it is
+    // from just over her eases to where it's going, while it follows her ship as she moves. One at the edge, or just
+    // come back from it, jumps)
+    const ease = 1 - Math.exp(-dt * 16);
+    for (let i = 0; i < placed.length; i++) {
+      const a = placed[i];
+      if (a._edge) { a._glide = false; continue; }
+      const tx = a._x - a._nx, ty = a._y - a._ny;
+      if (!a._glide) { a._glide = true; a._gx = tx; a._gy = ty; }
+      else { a._gx += (tx - a._gx) * ease; a._gy += (ty - a._gy) * ease; if (Math.abs(tx - a._gx) < 0.5 && Math.abs(ty - a._gy) < 0.5) { a._gx = tx; a._gy = ty; } }
+      a._x = a._nx + a._gx; a._y = a._ny + a._gy;
     }
     for (let i = 0; i < placed.length; i++) {
       const a = placed[i], x = Math.round(a._x * 2) / 2, y = Math.round(a._y * 2) / 2;
@@ -816,7 +920,7 @@ async function main() {
     setWidth(H['reload-bar'], n ? 1 - rl / full : 0);
     const aim = locked ? (reach ? 'locked' : 'locked far') : '';
     if (H.aim._v !== aim) { H.aim._v = aim; H.aim.className = aim; }
-    tags(slow);
+    tags(slow, dt);
     bounties(dt);
     // the shard count counts up to what's in the hold (written only when the whole number shown changes)
     const C = shardCount;
@@ -991,7 +1095,7 @@ async function main() {
     fly: (id) => sail(id, true), // a voyage in any ship, owned or not (for tests)
     words: { side: sideWords, wind: () => windWords() }, layout, edge: EDGE, // (directions in words, and the panels the edge tags keep clear of)
     get mapNames() { return NAMES_AT.at; }, // (the big map's names as placed, in its own pixels)
-    placeTags: () => tags(true), // (the raiders' tags placed again as things stand, without a step of the game)
+    placeTags: () => tags(true, Infinity), // (the raiders' tags placed again as things stand, without a step of the game, none gliding)
     get hits() { return V.hits; }, get downed() { return V.downed; }, get locked() { return locked; },
     // how much wider a Surge has made the view, in degrees (for tests)
     get surgeView() { return surgeFov.x; },

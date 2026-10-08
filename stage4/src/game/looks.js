@@ -97,8 +97,9 @@ export function makeLooks({ scene, touch = false, fx = null, camera = null }) {
     // the fires: from her worst scars, badly holed; all of them, going down holed (not a ship that gave up)
     const fires = down ? (down.why === 'hull' ? 6 : 0) : hullF < SCAR.burnMore ? 3 : hullF < SCAR.burn ? 2 : 0;
     W.fires = shipFlames(flames, W, fires, f.velocity);
-    // (a flickering glow over each, in the sparks' batch: no draw of its own)
-    if (fx) for (let i = 0; i < W.fires; i++) {
+    // (a flickering glow over each, in the sparks' batch: no draw of its own; none for a raider lost in cloud, sky.js, as
+    // it would shine through the cloud and give her away)
+    if (fx && !r?.lost) for (let i = 0; i < W.fires; i++) {
       const j = W.firstFlame + i, fl = 0.85 + 0.15 * Math.sin(time * 17 + i * 2.3 + W.seed);
       fx.glowAt(flames.at(j, 0.5, gp), 1.3, 0.55 * fl, 0.12, flames.height(j) * glowK * fl);
     }

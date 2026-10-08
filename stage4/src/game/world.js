@@ -118,7 +118,14 @@ const MOOD = {
   uFront: { value: 0 }, uStormDir: { value: new THREE.Vector2(1, 0) }, uStormCol: { value: V([0.3, 0.32, 0.37]) },
   uFlash: { value: 0 }, uFlashDir: { value: new THREE.Vector2(1, 0) }, uMist: { value: 0 }, uMistCol: { value: V([0.86, 0.87, 0.9]) }, uMistSky: { value: V([0.93, 0.93, 0.95]) },
   uGlory: { value: 0 }, uShip: { value: new THREE.Vector3() }, uShipH: { value: new THREE.Vector3(0, 0, 30) }, uGlitter: { value: 1 }, uTowers: { value: 1 },
+  uBillows: { value: new THREE.Vector2(11, 29) }, // (how many big and middling billows a storm's wall has round the sky: billowsFor)
 };
+// a storm's wall sized to the view (`across`: how wide the view is, in degrees): 11 big billows round the sky on a laptop
+// or a phone held sideways, more on a narrower view (17 on a phone held upright), so a few always show across it
+export function billowsFor(across) {
+  const nb = Math.round(11 * Math.min(1.6, Math.max(1, Math.sqrt(80 / Math.max(1, across)))));
+  MOOD.uBillows.value.set(nb, Math.round(nb * 2.6));
+}
 // each colour of a look and the uniform it goes to (paired once: setLook runs every frame while the title's skies blend)
 const MOOD_KEYS = ['zen', 'mid', 'hor', 'warm', 'sunCol', 'below', 'deckLit', 'deckShade', 'deckUnder', 'puffLit', 'puffShade'].map((k) => [k, MOOD['u' + k[0].toUpperCase() + k.slice(1)]]);
 // (a storm on its way darkens its side of the sky, most of all low down: uFront)
@@ -137,23 +144,37 @@ const SKY_GLSL = `
 // the sky, lit like the cloud floor on the sun's side and shaded away from it, darker at their feet, hazed into the
 // sky a little; on a storm's side slate dark, behind the storm's own wall. (Only the bottom of the sky shows them)
 // And a storm on its way (uFront, on its side of the sky): a wall of storm cloud over that horizon, billowing. Its top
-// is heaped billows of three sizes round the sky (most about 9 degrees high, the tallest half as tall again), each
-// swelling and sinking slowly as the whole wall drifts along; each billow is lit on top and round its shoulder (warmer
-// towards the sun) and falls into dark slate at its base, the creases between billows darker, with the cloud pattern
-// churning upward in it and darker shafts of rain hanging from it, hazed a little into the sky at its foot. It tapers
-// away at the edges of the storm's side. Worked out only on that side, low in the sky
+// is heaped billows of four sizes (most about 9 degrees high, the tallest half as tall again, with smaller and smaller
+// lumps riding on every crown, like a cauliflower's), each swelling and sinking slowly as the whole wall drifts along;
+// a narrow view (a phone held upright) has more of the big ones round the sky (uBillows), so a single one never fills
+// the screen like a hill. Each billow is lit on top and round its shoulder (warmer towards the sun) and falls into dark
+// slate at its base, the creases between billows darker, with the cloud pattern churning upward in it and darker shafts
+// of rain hanging from it, hazed a little into the sky at its foot. Towards the edges of the storm's side the billows
+// drop out one by one (each by its own chance), so the wall ends in separate heaps, not a slope; and as the storm
+// comes, they rise one by one. Its directions are measured round from the storm's own (so they start again only behind
+// it, where it never shows: no seam), and worked out only on that side, low in the sky
 const TOWERS_GLSL = `
-  uniform float uTowers; uniform vec3 uDeckLit; uniform vec3 uDeckShade; uniform sampler2D uSkyline;
-  float billow(float u, float t, float seed) {
-    float c = floor(u), f = fract(u) * 2.0 - 1.0, h = fract(sin(c * 12.9898 + seed * 78.233) * 43758.5453);
-    return sqrt(max(0.0, 1.0 - f * f)) * (0.4 + 0.6 * h) * (0.8 + 0.2 * sin(t * 0.05 + h * 6.2832));
+  uniform float uTowers; uniform vec3 uDeckLit; uniform vec3 uDeckShade; uniform sampler2D uSkyline; uniform vec2 uBillows;
+  // (a billow: a dome over cell floor(u) of n round the sky, as tall as its own chance says, swelling slowly; one towards
+  // the storm's edge only there if its other chance is under how far into the storm's side its middle is)
+  float billow(float u, float n, float drift, float t, float seed, float keep) {
+    float c = floor(u), f = fract(u) * 2.0 - 1.0, h = fract(sin(mod(c, n) * 12.9898 + seed * 78.233) * 43758.5453);
+    float g = 1.0;
+    if (keep > 0.5) { float s = uFront * smoothstep(0.0, 0.9, cos(((c + 0.5) / n - drift) * 6.2832)), q = fract(h * 91.7 + 0.37) * 0.9; g = smoothstep(q, q + 0.08, smoothstep(0.0, 0.6, s)); }
+    float f2 = f * f, f4 = f2 * f2; // (round-crowned, with a soft foot: no sheer drop at its edges)
+    return pow(max(0.0, 1.0 - f2), 0.4) * (1.0 - f4 * f4) * (0.25 + 0.75 * h) * (0.8 + 0.2 * sin(t * 0.05 + h * 6.2832)) * g;
   }
   vec3 stormWall(vec3 d, vec3 c, vec3 sun, float t, float side) {
-    float A = atan(d.x, d.z) * 0.159155 + t * 0.00028, grow = smoothstep(0.0, 0.6, side);
-    float big = max(billow(A * 11.0, t, 1.0), 0.8 * billow(A * 11.0 + 0.5, t, 2.0));
-    float mid = max(billow(A * 29.0, t, 3.0), 0.8 * billow(A * 29.0 + 0.5, t, 4.0));
+    float drift = t * 0.00028, A = atan(dot(d.xz, vec2(uStormDir.y, -uStormDir.x)), dot(d.xz, uStormDir)) * 0.159155 + drift, grow = smoothstep(0.0, 0.6, side);
+    float nb = uBillows.x, nm = uBillows.y;
+    float big = max(billow(A * nb, nb, drift, t, 1.0, 1.0), 0.8 * billow(A * nb + 0.5, nb, drift, t, 2.0, 1.0));
+    float mid = max(billow(A * nm, nm, drift, t, 3.0, 1.0), 0.8 * billow(A * nm + 0.5, nm, drift, t, 4.0, 1.0));
     float edge = cloudAt(vec2(A * 3.0, 0.71));
-    float top = grow * (0.04 + 0.16 * big + 0.04 * mid + 0.04 * (edge - 0.5));
+    float top = 0.03 * grow + 0.16 * big + 0.045 * mid + 0.03 * (edge - 0.5) * grow;
+    // (the lumps on every crown, finer and finer: on the wall only, not out in the sky)
+    float on = smoothstep(0.01, 0.05, top);
+    top += on * (0.02 * max(billow(A * 71.0, 71.0, 0.0, t, 5.0, 0.0), 0.8 * billow(A * 71.0 + 0.5, 71.0, 0.0, t, 6.0, 0.0))
+      + 0.012 * max(billow(A * 163.0, 163.0, 0.0, t, 7.0, 0.0), 0.8 * billow(A * 163.0 + 0.5, 163.0, 0.0, t, 8.0, 0.0)));
     if (d.y > top + 0.01) return c;
     float k = clamp(d.y / max(top, 1e-3), 0.0, 1.0), y = d.y * 1.1 - t * 0.0006;
     // (the cloud pattern as heaped cloud: lit where it thins upward, shaded where it thickens)
@@ -184,7 +205,7 @@ const TOWERS_GLSL = `
     tc = sqrt(tc); // (the cloud colours are light, as the cloud floor's; the sky is drawn as it's seen: near enough)
     #endif
     c = mix(c, mix(tc, c, 0.3), k);
-    return side > 0.004 && d.y < 0.2 ? stormWall(d, c, sun, t, side) : c;
+    return side > 0.004 && d.y < 0.3 ? stormWall(d, c, sun, t, side) : c; // (its tallest billows reach 0.29 up)
   }`;
 // the skyline, once round the sky (1,024 steps): each tower a dome, 36 round the sky, every other one set back and
 // smaller, as tall as a blurred read of the cloud pattern says there, from low swells to towers 5 degrees high, with

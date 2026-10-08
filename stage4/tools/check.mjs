@@ -15,7 +15,7 @@
 //                     wing only, not the one across the mast; held sideways on a phone, the buttons in 55% of the height
 //                     and the stats starting folded, clear of them when brought out, and the Brig turned every 30
 //                     degrees in the Turn view all in sight (her keel and ram tip above the buttons, her mast heads on
-//                     the screen); Sails in folding her wing tips
+//                     the screen), as the page first opens and once she's picked again; Sails in folding her wing tips
 //                     2.5 m aft or more and Fire! firing her guns, with no more draws or shaders; as drawn, side-on,
 //                     her lids opening and guns running out changing over a fifth of the picture along her ports, her
 //                     port guns kicked back in changing it again and her starboard guns not, and from above (her wood
@@ -58,8 +58,10 @@
 //                     a shot passing 10 m off one near miss, doing no harm; a raider's ports glowing at least 0.45 s
 //                     before her broadside, and her tag flashing "Broadside!" while she's off screen (not on screen; on
 //                     the phone too, stacked clear of another raider's tag at that edge, and holding still while the
-//                     game is paused); two raiders' tags far off, one just over the other, stacked upward, clear of
-//                     each other and neither pushed down over the ship it names (laptop, and a phone held sideways); a
+//                     game is paused); raiders' tags far off, two or three close together on the screen, clear of each
+//                     other, of all their ships and of the panels along the top, over their ships (not at the edge), and
+//                     a close raider's with her masts high clear of the panels and of her hull (laptop, and a phone
+//                     upright and held sideways at two sizes); a
 //                     raider's glows drawn at the screen's scale as the Captain's are, from her first frame and once the
 //                     window changes size (laptop, and a phone turned sideways); a raider shot down mid-broadside firing no more; a Man-o'-war's four batteries all
 //                     rippling at once; a busy fight (a Frigate against three raiders for 15 s, two blown apart) fitting
@@ -102,7 +104,9 @@
 //                     one draw, hers gold and as long as 1.5 s of her flight, soft (under a tenth of the pixels they
 //                     change burnt out to white-gold), a raider's 1.4 km off still glowing; a Cutter's wake 1.3 km off
 //                     covering 2.2 times the flight of one 300 m off, and a clear streak on the screen (on a laptop 60
-//                     px long and 300 pixels or more, on a phone 35 px and 100); a captain's and a treasure
+//                     px long and 300 pixels or more, on a phone 35 px and 100), steady, not a row of beads; a burning
+//                     Cutter lost in the cloud floor 1 km off giving nothing away (her wake faded out, at most 30
+//                     pixels of her showing over the cloud), her wake back once she's out of it; a captain's and a treasure
 //                     Brig's colours with no new shaders, the treasure Brig's glints on metal that moves moving with it;
 //                     a wave with a treasure Brig told as a treasure ship's (her sails to shoot, its sound), her running
 //                     and her hold worth a Galleon's ◆ 300; a Galleon captain coming in close (1,050 to 1,450 m) across the
@@ -113,8 +117,9 @@
 //                     12 on the Maelstrom, none on Fair Winds, and banks of cloud on every third wave and storm waves;
 //                     the card before a storm wave saying it's coming, the storm showing on the horizon as a billowing
 //                     wall of cloud (the sky alone, looked at level: its crest lit against the sky down 70% of the
-//                     columns or more, heaped 20 px high and low, its tops half as bright again as its foot, moving 3
-//                     px or more in two minutes); wave 4 on the
+//                     columns or more, heaped 20 px high and low, lumpy all along, its tops half as bright again as its
+//                     foot, moving 3 px or more in two minutes, and with no seam looking due north, where the directions
+//                     round the sky start again: its crest stepping at most 4 px from one column to the next); wave 4 on the
 //                     Maelstrom storming (rain, thicker cloud, the wind 16% or more, two lightning strikes or more in
 //                     30 s, gusts, all told), drawing at most two more goes than a clear sky, and clearing within 25 s
 //                     once beaten; wave 3's bank of cloud drawn just where the game reckons it is (the clouds it hides
@@ -526,9 +531,29 @@ for (const name of quick ? [] : ['laptop', 'phone']) {
   await page.close();
 }
 // the ships demo on a phone held sideways: its buttons on short lines, all on the screen and taking no more than 55% of
-// its height, so the ship shows above them; the stats folded away at first, and clear of the buttons once brought out
+// its height, so the ship shows above them; the stats folded away at first, and clear of the buttons once brought out.
+// As she turns in the Turn view (every 30 degrees round her), all of her shows: her keel and ram tip above the buttons,
+// her mast heads on the screen (every corner of her pieces, as drawn: the lowest and highest on the screen), both as the
+// page first opens (nothing touched) and once she's picked again
+const turning = (page) => page.evaluate(() => {
+  const H = window.__hangar, S = H.shown[0], V = H.camera.position.constructor, v = new V(), dock = document.getElementById('dock').getBoundingClientRect().top, out = { dock: Math.round(dock), low: -Infinity, high: Infinity, at: 0, dist: +H.state.dist.toFixed(1) };
+  for (let k = 0; k < 12; k++) {
+    H.view('turn', k * Math.PI / 6, 0.3); H.step(0.05); H.place();
+    let low = -Infinity, high = Infinity;
+    S.body.traverse((o) => {
+      if (!o.isMesh || !o.visible) return;
+      const P = o.geometry.attributes.position;
+      for (let i = 0; i < P.count; i++) { const y = (1 - v.fromBufferAttribute(P, i).applyMatrix4(o.matrixWorld).project(H.camera).y) / 2 * innerHeight; low = Math.max(low, y); high = Math.min(high, y); }
+    });
+    if (low > out.low) { out.low = Math.round(low); out.at = k * 30; }
+    out.high = Math.min(out.high, Math.round(high));
+  }
+  H.view('turn', 0.9, 0.3); H.draw();
+  return out;
+});
 if (!quick) {
   const page = await hangar('sideways');
+  const first = await turning(page);
   await page.evaluate(() => { const H = window.__hangar; H.select('brig'); H.level('full'); H.wear('battered'); H.view('turn', 0.9, 0.3); });
   await drawn(page);
   const lay = await page.evaluate(() => {
@@ -543,27 +568,10 @@ if (!quick) {
   });
   await drawn(page);
   await shot(page, 'sideways-brig-stats');
-  // and as she turns in the Turn view (every 30 degrees round her), all of her shows: her keel and ram tip above the
-  // buttons, her mast heads on the screen (every corner of her pieces, as drawn: the lowest and highest on the screen)
   await page.evaluate(() => document.getElementById('btn-card').click());
-  const turned = await page.evaluate(() => {
-    const H = window.__hangar, S = H.shown[0], V = H.camera.position.constructor, v = new V(), dock = document.getElementById('dock').getBoundingClientRect().top, out = { dock: Math.round(dock), low: -Infinity, high: Infinity, at: 0 };
-    for (let k = 0; k < 12; k++) {
-      H.view('turn', k * Math.PI / 6, 0.3); H.step(0.05); H.place();
-      let low = -Infinity, high = Infinity;
-      S.body.traverse((o) => {
-        if (!o.isMesh || !o.visible) return;
-        const P = o.geometry.attributes.position;
-        for (let i = 0; i < P.count; i++) { const y = (1 - v.fromBufferAttribute(P, i).applyMatrix4(o.matrixWorld).project(H.camera).y) / 2 * innerHeight; low = Math.max(low, y); high = Math.min(high, y); }
-      });
-      if (low > out.low) { out.low = Math.round(low); out.at = k * 30; }
-      out.high = Math.min(out.high, Math.round(high));
-    }
-    H.view('turn', 0.9, 0.3); H.draw();
-    return out;
-  });
-  console.log(`the ships demo on a phone held sideways (${lay.w} by ${lay.h}): its buttons take ${Math.round(lay.share * 100)}% of the height (${lay.dock.top} to ${lay.dock.bottom} px), the stats ${lay.folded ? 'folded away' : 'OUT'} at first and ending at ${card.bottom} px once brought out, above the buttons at ${card.dock} px; turning, the Brig reaches down to ${turned.low} px (turned ${turned.at}°), above the buttons at ${turned.dock} px, and up to ${turned.high} px`);
-  if (!(turned.low <= turned.dock) || turned.high < 0) problems.push(`the ships demo on a phone held sideways should show all of the ship as she turns, her keel and ram above the buttons and her mast heads on the screen: ${JSON.stringify(turned)}`);
+  const turned = await turning(page);
+  console.log(`the ships demo on a phone held sideways (${lay.w} by ${lay.h}): its buttons take ${Math.round(lay.share * 100)}% of the height (${lay.dock.top} to ${lay.dock.bottom} px), the stats ${lay.folded ? 'folded away' : 'OUT'} at first and ending at ${card.bottom} px once brought out, above the buttons at ${card.dock} px; turning, the Brig reaches down to ${first.low} px as the page opens (turned ${first.at}°, ${first.dist} m off) and ${turned.low} px once picked again (turned ${turned.at}°, ${turned.dist} m off), above the buttons at ${turned.dock} px, and up to ${Math.min(first.high, turned.high)} px`);
+  for (const [when, T] of [['as the page opens', first], ['once she\'s picked', turned]]) if (!(T.low <= T.dock) || T.high < 0) problems.push(`the ships demo on a phone held sideways should show all of the ship as she turns (${when}), her keel and ram above the buttons and her mast heads on the screen: ${JSON.stringify(T)}`);
   if (!(lay.share <= 0.55) || lay.dock.top < 0 || lay.dock.bottom > lay.h || lay.dock.left < 0 || lay.dock.right > lay.w) problems.push(`the ships demo's buttons on a phone held sideways should fit on the screen in 55% of its height: ${JSON.stringify(lay)}`);
   if (!lay.folded || !card.shown || card.bottom > card.dock) problems.push(`the ships demo's stats on a phone held sideways should start folded away, and come out clear of the buttons: ${JSON.stringify({ lay, card })}`);
   await page.close();
@@ -966,7 +974,8 @@ function fireProblems(F, where) {
 }
 // far-off wakes (wakes.js): two Cutters crossing ahead at the same speed, 300 m and 1.3 km off, after 7 s: the far one's
 // wake covers 2.2 times as much of her flight (its points spread further apart far off), and on the screen it's a clear
-// streak (`least`: how long, in the page's pixels, and how many of them it changes)
+// streak (`least`: how long, in the page's pixels, and how many of them it changes), steady along its length (one bead
+// at most: its shimmer eases off far off)
 const wakesFar = (page) => page.evaluate(WAKES_FAR);
 const WAKES_FAR = () => {
   const g = window.__game; g.fly('brig'); const P = g.player; g.waves.timer = 1e9; g.raiders.setAI(false); g.raiders.clear(); g.wakes.clear(); P.pos.set(1500, 900, -800); P.heading = 0.4; P.speed = 0; P.sail = 0;
@@ -986,52 +995,145 @@ const WAKES_FAR = () => {
   let px = 0;
   for (let y = y0; y < y1; y++) for (let xx = x0; xx < x1; xx++) { const i = (y * k.width + xx) * 4; if (Math.max(Math.abs(on[i] - off[i]), Math.abs(on[i + 1] - off[i + 1]), Math.abs(on[i + 2] - off[i + 2])) > 16) px++; }
   const dpr = k.width / innerWidth;
-  const out = { near: span(a), far: span(b), at: [0, 1].map((i) => Math.round(rs[i].f.pos.distanceTo(g.camera.position))), screen: Math.round(Math.hypot(hx - tx, hy - ty) / dpr), pixels: Math.round(px / dpr / dpr) };
+  // (how steady it is along its length: how much it adds to the picture at points from a tenth to two thirds of the way
+  // back, each the most within 2 px of the line; a bead is a dip between two brighter stretches: a point fainter than
+  // both the points two either side of it, by 6% of the brightest. A row of beads had four)
+  const along = [];
+  for (let q = 0.1; q <= 0.67; q += 0.02) {
+    const cx = Math.round(hx + (tx - hx) * q), cy = Math.round(hy + (ty - hy) * q); let m = 0;
+    for (let yy = cy - 2; yy <= cy + 2; yy++) for (let xx = cx - 2; xx <= cx + 2; xx++) { const i = (yy * k.width + xx) * 4; m = Math.max(m, Math.abs(on[i] - off[i]) + Math.abs(on[i + 1] - off[i + 1]) + Math.abs(on[i + 2] - off[i + 2])); }
+    along.push(m);
+  }
+  const out = { near: span(a), far: span(b), at: [0, 1].map((i) => Math.round(rs[i].f.pos.distanceTo(g.camera.position))), screen: Math.round(Math.hypot(hx - tx, hy - ty) / dpr), pixels: Math.round(px / dpr / dpr),
+    beads: along.filter((v, i) => i >= 2 && i < along.length - 2 && Math.min(along[i - 2], along[i + 2]) - v > 0.06 * Math.max(...along)).length };
   g.raiders.clear(); g.wakes.clear();
   return out;
 };
 function wakeProblems(W, where, least) {
-  if (!(W.far >= W.near * 2.2) || !(W.screen >= least.screen) || !(W.pixels >= least.pixels)) problems.push(`${where}: a raider's wake far off should be a clear streak showing which way she goes (covering 2.2 times the flight of a near one's, ${least.screen} px long and ${least.pixels} pixels or more): ${JSON.stringify(W)}`);
-  return `a Cutter's wake ${W.at[0]} m off covers ${W.near} s of her flight, ${W.at[1]} m off ${W.far} s, ${W.screen} px long on the screen, changing ${W.pixels} pixels`;
+  if (!(W.far >= W.near * 2.2) || !(W.screen >= least.screen) || !(W.pixels >= least.pixels) || W.beads > 1) problems.push(`${where}: a raider's wake far off should be a clear, steady streak showing which way she goes (covering 2.2 times the flight of a near one's, ${least.screen} px long and ${least.pixels} pixels or more, not a row of beads): ${JSON.stringify(W)}`);
+  return `a Cutter's wake ${W.at[0]} m off covers ${W.near} s of her flight, ${W.at[1]} m off ${W.far} s, ${W.screen} px long on the screen, changing ${W.pixels} pixels, ${W.beads ? `${W.beads} BEADS along it` : 'steady along it'}`;
 }
-// stacked tags (main.js tags()): two raider Brigs far off ahead (1.25 and 1.38 km), one just over the other on the
-// screen: their tags stacked clear of each other with the higher one pushed up, neither pushed down over the ship it
-// names (each tag's bottom at most 2 px under its place just over her ship), both over their ships, not at the edge
+// a raider lost in the cloud floor (sky.js) gives nothing away (wakes.js, looks.js): a Cutter sailing in thick cloud
+// 1 km off, under the cloud top, the Captain high above it: once lost, her wake fades out, and of her whole presence
+// (her ship, wake, flames and their glow; burning, her hull holed to a fifth) at most 30 pixels show over the cloud
+// (her wake alone made over 600 before); out of the cloud again, her wake comes back
+const hiddenWake = (page) => page.evaluate(HIDDEN_WAKE);
+const HIDDEN_WAKE = () => {
+  const g = window.__game; g.fly('brig'); const P = g.player; g.waves.timer = 1e9; g.raiders.setAI(false); g.raiders.clear(); g.wakes.clear();
+  // (a spot where the cloud floor is thick 1 km ahead, and stays thick along the 200 m she sails in 7 s, as the cloud
+  // drifts meanwhile, and with a little less cloud than now, should the air where the Captain is thin it)
+  const V = P.pos.constructor, at = new V(), to = new V(), q = new V(), mood = g.world.mood, t0 = g.world.time.value, cover = mood.uCover.value;
+  let found = null;
+  mood.uCover.value = cover - 0.05;
+  for (let i = 0; i < 400 && !found; i++) {
+    const x = -9000 + (i % 20) * 900, z = -6000 + Math.floor(i / 20) * 600, h = (i * 0.7) % (Math.PI * 2);
+    P.pos.set(x, 700, z); P.heading = h;
+    at.copy(P.pos).addScaledVector(P.forward(), 1000).setY(415); to.copy(at).add({ x: -Math.cos(h) * 200, y: 0, z: Math.sin(h) * 200 }); // (her way: across, heading h - 90 degrees)
+    let thick = true; for (let k = 0; k <= 4 && thick; k++) for (const dt of [0, 4, 8]) thick &&= g.sky.floorAt(q.copy(at).lerp(to, k / 4), t0 + dt) > 0.85;
+    if (thick) found = { x, z, h };
+  }
+  mood.uCover.value = cover;
+  if (!found) return { found: false };
+  P.speed = 0; P.sail = 0; g.cam.yaw = 0; g.cam.pitch = 0; g.step(0.1, {});
+  const r = g.raiders.spawn('cutter', at.clone(), P.heading - Math.PI / 2, false), sail = (s) => { for (let t = 0; t < s; t += 0.05) { r.f.speed = 28; r.f.sail = 0.85; r.f.pos.y = 415; g.step(0.05, { sail: -1 }); } };
+  // (four shots in her side, and her hull down to a fifth: she burns)
+  const S = r.ship, hull = S.hull, M = S.body.matrixWorld;
+  for (let i = 0; i < 4; i++) { const z = hull.zs + (hull.zb - hull.zs) * (0.2 + 0.2 * i), q = hull.at(z, 0.4, 1), p = new V(q[0], q[1], z).applyMatrix4(M), d = new V(-1, -0.1, 0).transformDirection(M); g.looks.hit(S, 'hull', p.addScaledVector(d, -1), d, 30, 1.35); }
+  r.f.health.hull = r.f.full.hull * 0.2;
+  const look = r.f.pos.clone().sub(g.camera.position).normalize(); g.cam.pitch = -Math.asin(look.y); g.cam.yaw = Math.atan2(look.x, look.z) - P.heading;
+  sail(7);
+  const rr = g.renderer, cv = rr.domElement, k = document.createElement('canvas'), x = k.getContext('2d', { willReadFrequently: true }); k.width = cv.width; k.height = cv.height;
+  const grab = () => { rr.render(g.scene, g.camera); x.drawImage(cv, 0, 0); return x.getImageData(0, 0, k.width, k.height).data; };
+  const dpr = k.width / innerWidth, diff = (a, b) => { let n = 0; for (let i = 0; i < a.length; i += 4) if (Math.max(Math.abs(a[i] - b[i]), Math.abs(a[i + 1] - b[i + 1]), Math.abs(a[i + 2] - b[i + 2])) > 16) n++; return Math.round(n / dpr / dpr); };
+  let glows = null; g.scene.traverse((o) => { if (o.isPoints && o.renderOrder === 4 && o.material.uniforms?.uMax) glows = o; });
+  const all = [r.ship.root, g.wakes.mesh, g.looks.flames.mesh, glows];
+  const presence = () => { const a = grab(), was = all.map((o) => o.visible); all.forEach((o) => { o.visible = false; }); const b = grab(); all.forEach((o, i) => { o.visible = was[i]; }); return diff(a, b); };
+  const wakeOnly = () => { const a = grab(); g.wakes.mesh.visible = false; const b = grab(); g.wakes.mesh.visible = true; return diff(a, b); };
+  const W = g.wakes.of(r.f);
+  const out = { found: true, d: Math.round(r.f.pos.distanceTo(P.pos)), lost: r.lost, cloud: +g.sky.cloudAt(r.f.pos).toFixed(2), veil: +(W?.veil ?? -1).toFixed(2), fires: r.ship.wear.fires, wake: wakeOnly(), all: presence() };
+  // (and out of the cloud, over it and clear of the big clouds, her wake back)
+  let y = 470; for (; y < 1500; y += 30) if (g.sky.cloudAt(q.copy(r.f.pos).setY(y)) < 0.02 && g.sky.cloudAt(q.addScaledVector(r.f.forward(), 60)) < 0.02) break;
+  for (let t = 0; t < 2; t += 0.05) { r.f.speed = 28; r.f.sail = 0.85; r.f.pos.y = y; g.step(0.05, { sail: -1 }); }
+  out.out = { lost: r.lost, veil: +(g.wakes.of(r.f)?.veil ?? -1).toFixed(2) };
+  g.raiders.clear(); g.wakes.clear();
+  return out;
+};
+function hiddenWakeProblems(L, where) {
+  if (!L.found || !L.lost || !(L.veil > 0.95) || !(L.all <= 30) || L.out?.lost !== false || !(L.out.veil < 0.05)) problems.push(`${where}: a raider lost in cloud far off should give nothing away (her wake faded out, and no more than 30 pixels of her showing over the cloud), and her wake should come back once she's out of it: ${JSON.stringify(L)}`);
+  return `a burning Cutter lost in the cloud ${L.d} m off showing ${L.all} pixels over it (her wake ${L.wake}), her wake back once she's out`;
+}
+// stacked tags (main.js tags()): raiders far off ahead, close together on the screen, and one close by. Two Brigs (1.25
+// and 1.38 km), one just over the other: their tags clear of each other, both over their ships (not at the edge), and
+// neither ship under any tag (each ship's box on the screen, from every point of her model as drawn). Then a Cutter at
+// 1.2 km joins them: three tags clear of each other, of the three ships, and of the panels along the top (the compass,
+// your ship's panel, the map, the score, the guns' label...). And a Frigate 60 m ahead, her masts reaching high in the
+// view: her tag clear of the panels along the top, and of her ship's middle (where her hull is)
 const tagsAt = (page) => page.evaluate(TAGS_AT);
 const TAGS_AT = () => {
   const g = window.__game; g.fly('brig'); const P = g.player; g.waves.timer = 1e9; g.raiders.setAI(false); g.raiders.clear(); P.pos.set(1500, 900, -800); P.heading = 0.4; P.speed = 0; P.sail = 0;
-  g.cam.yaw = 0; g.cam.pitch = 0.1; g.cam.zoom = 1; g.step(0.1, {});
-  // two Brigs far off ahead, the further one a little higher and to one side: on the screen, one just over the other
-  const f = P.forward(), s = { x: Math.cos(P.heading), y: 0, z: -Math.sin(P.heading) };
-  const near = g.raiders.spawn('brig', P.pos.clone().addScaledVector(f, 1250).add({ x: 0, y: 40, z: 0 }), P.heading + 1.4, true);
-  const far = g.raiders.spawn('brig', P.pos.clone().addScaledVector(f, 1380).addScaledVector(s, 12).add({ x: 0, y: 60, z: 0 }), P.heading + 1.4, true);
-  g.step(0.1, {}); g.placeTags(); g.placeTags();
-  const V = P.pos.constructor, at = (r) => { const v = r.f.pos.clone(); v.y += r.R.length * 0.45 + 3; v.project(g.camera); return { x: (v.x + 1) / 2 * innerWidth, y: (1 - v.y) / 2 * innerHeight }; };
+  g.cam.yaw = 0; g.cam.pitch = 0.1; g.cam.zoom = 1; g.step(0.1, {}); g.layout();
+  const f = P.forward(), s = { x: Math.cos(P.heading), y: 0, z: -Math.sin(P.heading) }, V = P.pos.constructor, v = new V();
+  const spawn = (id, ahead, side, up) => g.raiders.spawn(id, P.pos.clone().addScaledVector(f, ahead).addScaledVector(s, side).add({ x: 0, y: up, z: 0 }), P.heading + 1.4, true);
+  // (a ship's box on the screen: every third point of her model as drawn, in the page's pixels)
+  const shipBox = (r) => {
+    const b = { l: Infinity, r: -Infinity, t: Infinity, b: -Infinity };
+    r.ship.body.traverse((o) => { if (!o.isMesh || !o.visible || !o.parent.visible) return; const p = o.geometry.attributes.position; for (let i = 0; i < p.count; i += 3) { v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld).project(g.camera); const x = (v.x + 1) / 2 * innerWidth, y = (1 - v.y) / 2 * innerHeight; b.l = Math.min(b.l, x); b.r = Math.max(b.r, x); b.t = Math.min(b.t, y); b.b = Math.max(b.b, y); } });
+    return b;
+  };
+  const tagBox = (r) => { const b = r.tag.getBoundingClientRect(); return { l: b.left, r: b.right, t: b.top, b: b.bottom }; };
+  const area = (a, b) => Math.round(Math.max(0, Math.min(a.r, b.r) - Math.max(a.l, b.l)) * Math.max(0, Math.min(a.b, b.b) - Math.max(a.t, b.t)));
+  const look = (rs) => {
+    g.step(0.1, {}); g.placeTags(); g.placeTags();
+    const tags = rs.map(tagBox), ships = rs.map(shipBox), round = (b) => [b.l, b.t, b.r, b.b].map(Math.round);
+    let overlap = 0, covered = 0, panels = 0;
+    tags.forEach((a, i) => { tags.forEach((b, j) => { if (j > i) overlap += area(a, b); }); ships.forEach((sb) => { covered += area(a, sb); }); g.edge.top.forEach((p) => { panels += area(a, p); }); });
+    return { tags: tags.map(round), ships: ships.map(round), overlap, covered, panels, edge: rs.filter((r) => r.tag.classList.contains('edge')).length };
+  };
   const out = { size: `${innerWidth}x${innerHeight}` };
-  for (const [k, r] of [['near', near], ['far', far]]) { const b = r.tag.getBoundingClientRect(), a = at(r); out[k] = { bottom: Math.round(b.bottom), over: Math.round(a.y), x: Math.round(a.x), left: Math.round(b.left), right: Math.round(b.right), top: Math.round(b.top), edge: r.tag.classList.contains('edge') }; }
-  const a = near.tag.getBoundingClientRect(), b = far.tag.getBoundingClientRect();
-  out.overlap = Math.round(Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)));
-  // (how far each tag sits below the place just over her ship: never down over her)
-  out.down = Math.max(out.near.bottom - out.near.over, out.far.bottom - out.far.over);
+  const near = spawn('brig', 1250, 0, 40), far = spawn('brig', 1380, 12, 60);
+  out.two = look([near, far]);
+  const cutter = spawn('cutter', 1200, -10, 30);
+  out.three = look([cutter, near, far]);
+  g.raiders.clear();
+  // (a Frigate close ahead, as high as puts the place just over her ship half a tag up into the panels along the top in
+  // the middle of the screen, but not so high that her tag would go to the edge: her mast heads high in the view)
+  const under = Math.max(72, g.edge.top.reduce((m, b) => (b.l < innerWidth / 2 + 42 && b.r > innerWidth / 2 - 42 ? Math.max(m, b.b) : m), 0) + 20);
+  let up = 0;
+  for (; up < 80; up += 0.5) { v.copy(P.pos).addScaledVector(f, 60); v.y += up + 40 * 0.45 + 3; v.project(g.camera); if ((1 - v.y) / 2 * innerHeight <= under) break; }
+  const close = spawn('frigate', 60, 0, up);
+  const c = look([close]), sb = c.ships[0], mid = { l: sb[0], r: sb[2], t: (sb[1] + sb[3]) / 2 - 4, b: (sb[1] + sb[3]) / 2 + 4 };
+  out.close = { tag: c.tags[0], ship: sb, panels: c.panels, hull: area({ l: c.tags[0][0], t: c.tags[0][1], r: c.tags[0][2], b: c.tags[0][3] }, mid), edge: c.edge };
   g.raiders.clear();
   return out;
 };
 function tagProblems(T, where) {
-  if (T.overlap || T.down > 2 || T.near.edge || T.far.edge) problems.push(`${where}: two raiders' tags far off, one just over the other, should stack upward, clear of each other, never down over the ship each names: ${JSON.stringify(T)}`);
-  return `two raiders' tags far off ${T.overlap ? 'OVERLAPPING' : 'stacked clear'}, the lower ${T.down > 2 ? `PUSHED DOWN ${T.down} px over her ship` : 'just over her ship'} and the higher pushed up ${T.far.over - T.far.bottom} px`;
+  const two = T.two, three = T.three, close = T.close;
+  if (two.overlap || two.covered || two.edge) problems.push(`${where}: two raiders' tags far off, one just over the other, should stack clear of each other, over their ships, and cover neither ship: ${JSON.stringify({ size: T.size, two })}`);
+  if (three.overlap || three.covered || three.panels || three.edge) problems.push(`${where}: three raiders' tags far off, close together, should stack clear of each other, of the ships and of the panels along the top: ${JSON.stringify({ size: T.size, three })}`);
+  if (close.panels || close.hull || close.edge) problems.push(`${where}: a raider close ahead with her masts high in the view should have her tag clear of the panels along the top (and of her hull): ${JSON.stringify({ size: T.size, close })}`);
+  const ok = (x) => x.overlap || x.covered || x.panels ? 'NOT CLEAR' : 'clear';
+  return `two raiders' tags far off stacked ${ok(two)} of each other and both ships, three ${ok(three)} of each other, the ships and the panels, and a close one's ${close.panels || close.hull ? 'ON THE PANELS OR HER HULL' : 'clear of the panels'}`;
 }
 // the storm on its way (world.js stormWall): the sky alone, looking level towards it. Down each column of the screen,
 // its crest is where the sky turns lighter going down (the lit tops of the billows against the darkened sky): found in
 // 70% of the columns or more, heaped (its crest rising and falling 20 px or more across the view), lit on top (its
-// tops half as bright again as its foot at the horizon), and moving (the crests 3 px or more different two minutes on)
+// tops half as bright again as its foot at the horizon), and moving (the crests 3 px or more different two minutes on).
+// And its outline (where the sky first changes going down each column): lumpy all along, not smooth domes (the crest
+// smoothed over 6 px stands on average 1.35 px or more off the crest smoothed over 60 px: smooth domes made about 1);
+// and seamless round the sky: looking due north with the storm coming from there (where the directions round the sky
+// start again), no column's crest more than 4 px from the next one's, at four times a few minutes apart
 const stormWall = (page) => page.evaluate(() => {
-  const g = window.__game; g.fly('brig'); const P = g.player; g.waves.timer = 1e9; g.raiders.setAI(false); g.raiders.clear(); P.pos.set(1500, 900, -800); P.heading = 0.4;
-  g.sky.front(P.heading); g.cam.yaw = 0; g.cam.pitch = 0; g.step(12, {}, 1 / 30);
+  const g = window.__game; g.fly('brig'); const P = g.player; g.waves.timer = 1e9; g.raiders.setAI(false); g.raiders.clear(); P.pos.set(1500, 900, -800);
   const M = g.world.mood, sky = g.world.group.children[0], rr = g.renderer, cv = rr.domElement, k = document.createElement('canvas'), x = k.getContext('2d', { willReadFrequently: true });
   k.width = cv.width; k.height = cv.height;
-  const cam = g.camera.clone(); cam.position.copy(P.pos); cam.position.y += 20; cam.lookAt(cam.position.clone().add({ x: Math.sin(P.heading), y: 0, z: Math.cos(P.heading) })); cam.updateMatrixWorld();
+  const W = k.width, H = k.height, mid = Math.round(H / 2), dpr = W / innerWidth;
+  let cam = null, up = 0;
+  const towards = (heading) => {
+    P.heading = heading; g.sky.reset(); g.sky.front(heading); g.cam.yaw = 0; g.cam.pitch = 0; g.step(12, {}, 1 / 30);
+    cam = g.camera.clone(); cam.position.copy(P.pos); cam.position.y += 20; cam.lookAt(cam.position.clone().add({ x: Math.sin(heading), y: 0, z: Math.cos(heading) })); cam.updateMatrixWorld();
+    up = Math.round(H / 2 * Math.tan(0.32) / Math.tan(cam.fov * Math.PI / 360)); M.uFront.value = 1;
+  };
   const grab = () => { rr.render(sky, cam); x.drawImage(cv, 0, 0); return x.getImageData(0, 0, k.width, k.height).data; };
-  const W = k.width, H = k.height, mid = Math.round(H / 2), up = Math.round(H / 2 * Math.tan(0.3) / Math.tan(cam.fov * Math.PI / 360));
   const lum = (d, xx, y) => { const i = (y * W + xx) * 4; return (0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]) / 255; };
   const profile = (d) => {
     const crest = [], edge = [], top = [], foot = [];
@@ -1042,12 +1144,20 @@ const stormWall = (page) => page.evaluate(() => {
     }
     return { crest, edge, top, foot };
   };
-  M.uFront.value = 1; const a = profile(grab());
+  // (its outline: down each column, the first row whose colour differs from the row 3 above it, in the page's pixels)
+  const outline = (d) => { const c = []; for (let xx = 0; xx < W; xx++) { let by = mid; for (let y = mid - up; y < mid; y++) { const i = (y * W + xx) * 4, j = i - 3 * W * 4; if (Math.abs(d[i] - d[j]) + Math.abs(d[i + 1] - d[j + 1]) + Math.abs(d[i + 2] - d[j + 2]) > 18) { by = y; break; } } c.push(by / dpr); } return c; };
+  const avg = (v, w) => v.map((_, i) => { let s = 0, n = 0; for (let q = Math.max(0, i - w); q <= Math.min(v.length - 1, i + w); q++) { s += v[q]; n++; } return s / n; });
+  const lumps = (c) => { const w = Math.round(30 * dpr), a = avg(c, Math.round(3 * dpr)), b = avg(c, w); let s = 0, n = 0; for (let i = w; i < c.length - w; i++) { s += Math.abs(a[i] - b[i]); n++; } return s / n; };
+  const jump = (c) => { let j = 0; for (let i = 1; i < c.length; i++) j = Math.max(j, Math.abs(c[i] - c[i - 1])); return +j.toFixed(1); };
+  towards(0.4);
+  const first = grab(), a = profile(first), lumpy = lumps(outline(first));
   g.world.time.value += 120; const b = profile(grab());
-  const mean = (v) => v.reduce((q, w) => q + w, 0) / v.length, cs = [...a.crest].sort((p, q) => p - q), dpr = W / innerWidth;
+  towards(Math.PI); const seam = [];
+  for (let n = 0; n < 4; n++) { seam.push(jump(outline(grab()))); g.world.time.value += 400; }
+  const mean = (v) => v.reduce((q, w) => q + w, 0) / v.length, cs = [...a.crest].sort((p, q) => p - q);
   g.sky.reset();
   return { found: +(a.edge.filter((e) => e > 0.06).length / a.edge.length).toFixed(2), heaped: Math.round((cs[Math.floor(cs.length * 0.9)] - cs[Math.floor(cs.length * 0.1)]) / dpr),
-    top: +mean(a.top).toFixed(2), foot: +mean(a.foot).toFixed(2), moved: +(mean(a.crest.map((c, i) => Math.abs(c - b.crest[i]))) / dpr).toFixed(1) };
+    top: +mean(a.top).toFixed(2), foot: +mean(a.foot).toFixed(2), moved: +(mean(a.crest.map((c, i) => Math.abs(c - b.crest[i]))) / dpr).toFixed(1), lumps: +lumpy.toFixed(2), seam };
 });
 const mode = (page) => page.evaluate(() => window.__game.mode);
 if (!demoOnly) {
@@ -1886,10 +1996,11 @@ if (!demoOnly) {
   // ---------- reading a fight from afar: raiders' glows, scars and fire, far wakes, stacked tags, the storm on its way ----------
   {
     const ga = await glowScales(page); await sized(page, 1200, 760, 'laptop'); const gb = await glowsAgain(page); await sized(page, 1280, 800, 'laptop');
-    console.log(`reading a fight from afar: ${glowProblems(ga, gb, 'laptop')}; ${fireProblems(await fireAt(page), 'laptop')}; ${wakeProblems(await wakesFar(page), 'laptop', { screen: 60, pixels: 300 })}; ${tagProblems(await tagsAt(page), 'laptop')}`);
+    console.log(`reading a fight from afar: ${glowProblems(ga, gb, 'laptop')}; ${fireProblems(await fireAt(page), 'laptop')}; ${wakeProblems(await wakesFar(page), 'laptop', { screen: 60, pixels: 300 })}; ${hiddenWakeProblems(await hiddenWake(page), 'laptop')}; ${tagProblems(await tagsAt(page), 'laptop')}`);
     const SW = await stormWall(page);
-    console.log(`the storm on its way: a wall of cloud whose crest shows in ${Math.round(SW.found * 100)}% of the view, heaped ${SW.heaped} px high and low, its tops at ${SW.top} against its foot at ${SW.foot}, its crests moving ${SW.moved} px in two minutes`);
-    if (!(SW.found >= 0.7) || !(SW.heaped >= 20) || !(SW.top >= SW.foot * 1.5) || !(SW.moved >= 3)) problems.push(`the storm on its way should be a billowing wall of cloud (its crest lit against the sky, heaped, lighter on top than at its foot, and moving): ${JSON.stringify(SW)}`);
+    console.log(`the storm on its way: a wall of cloud whose crest shows in ${Math.round(SW.found * 100)}% of the view, heaped ${SW.heaped} px high and low, its tops at ${SW.top} against its foot at ${SW.foot}, its crests moving ${SW.moved} px in two minutes, lumpy all along (${SW.lumps} px), and looking due north its crest stepping at most ${SW.seam.join(' / ')} px from one column to the next`);
+    if (!(SW.found >= 0.7) || !(SW.heaped >= 20) || !(SW.top >= SW.foot * 1.5) || !(SW.moved >= 3) || !(SW.lumps >= 1.35)) problems.push(`the storm on its way should be a billowing wall of cloud (its crest lit against the sky, heaped, lumpy all along, lighter on top than at its foot, and moving): ${JSON.stringify(SW)}`);
+    if (!(Math.max(...SW.seam) <= 4)) problems.push(`the storm's wall should have no seam round the sky (looking due north, where the directions round the sky start again, its crest should step at most 4 px from one column to the next): ${JSON.stringify(SW.seam)}`);
   }
   // ---------- storms, clouds you fly through and hide in, and a sky with depth (sky.js, weather.js, world.js) ----------
   // The cloud floor worked out in JavaScript (where a ship can hide) agrees with the graphics card's own picture at 64
@@ -3218,8 +3329,9 @@ if (!quick && !demoOnly) {
   await sized(page, 390, 844, 'phone');
   const pga = await glowScales(page); await sized(page, 667, 375, 'phone'); const pgb = await glowsAgain(page);
   const sidewaysTags = tagProblems(await tagsAt(page), 'phone 667x375');
+  await sized(page, 844, 390, 'phone'); const wideTags = tagProblems(await tagsAt(page), 'phone 844x390');
   await sized(page, 390, 844, 'phone');
-  console.log(`phone, reading a fight from afar: ${glowProblems(pga, pgb, 'phone')}; ${fireProblems(await fireAt(page), 'phone')}; ${wakeProblems(await wakesFar(page), 'phone', { screen: 35, pixels: 100 })}; held sideways, ${sidewaysTags}`);
+  console.log(`phone, reading a fight from afar: ${glowProblems(pga, pgb, 'phone')}; ${fireProblems(await fireAt(page), 'phone')}; ${wakeProblems(await wakesFar(page), 'phone', { screen: 35, pixels: 100 })}; ${hiddenWakeProblems(await hiddenWake(page), 'phone')}; upright, ${tagProblems(await tagsAt(page), 'phone 390x844')}; held sideways, ${sidewaysTags} (and at 844 by 390, ${wideTags})`);
   // the port at the same four sizes, a narrow phone held sideways (640 by 360) and the smallest (568 by 320, an iPhone
   // SE's first one): its top line on one line, even with ◆ 12,345, and its panel clear of the top line and of the ships
   // along the bottom; every one of the six ships' buttons all inside the ships' rows (none cut off at an end); a ship you

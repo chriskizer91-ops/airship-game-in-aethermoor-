@@ -82,7 +82,13 @@ which were made from this repository only):
    October 8). The raider glows already followed the screen's scale every frame (the gate misread the code); they now
    take it as each class is built and as the window changes too, so even a raider's first frame is right. The full
    check's slowest part was the ships demo drawing a second-long frame the whole time: its frames are now held while
-   it's checked (`__hangar.hold/step/draw`), and `node tools/check.mjs --ships` checks it alone.
+   it's checked (`__hangar.hold/step/draw`), and `node tools/check.mjs --ships` checks it alone. Fixed after review:
+   the storm wall's billows are measured round from the storm's own direction (no seam due north), lumpy with two
+   finer layers, sized to the view (`billowsFor`), and drop out one by one at the storm's edges; a raider lost in
+   cloud fades her wake and her fires' glow (`wakes.js` veil); far wakes stop shimmering into beads; tags over ships
+   are placed by `placeOver` in `main.js` (stacked over every ship of a crowd, kept off the top panels, moved aside or
+   under her ship where there's no room, gliding there, and staying while clear); the ships demo frames her with the
+   triangle-count line already filled (it's in the button dock) and keeps each shown set's fit sample.
 1. **D1-fleet**: the Galleon and the Man-o'-war as the Captain's late-game ships; giant raiders only once owned; the
    treasure Brig; the wave table reworked; balance. Built October 8 (`docs/game.md`, "The Galleon and the Man-o'-war"
    and "The waves"; `docs/ships.md`). The port sells them after the Frigate (◆ 12,000 and ◆ 30,000; upgrade steps 7 and

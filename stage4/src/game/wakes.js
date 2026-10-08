@@ -2,8 +2,10 @@
 // brighter the faster she flies: gold behind the Captain's ship, red behind a raider's (so a raider far off shows as a
 // red streak, and which way she's heading), crimson behind a raider captain's, glittering gold behind a treasure ship,
 // a broad orange one behind a Man-o'-war. Far off, a raider's wake grows longer, wider and brighter (up to three times
-// as long at 1.3 km), so even a raider that's only a speck shows which way she's going. In hard turns, steep dives and a
-// Surge, thin white vapour trails peel off the tips of the Captain's wings too.
+// as long at 1.3 km) and steadier (a solid streak, not a row of beads), so even a raider that's only a speck shows which
+// way she's going. A raider lost in cloud (sky.js) leaves no wake to give her away: hers fades out while she's lost, and
+// comes back when she shows herself. In hard turns, steep dives and a Surge, thin white vapour trails peel off the tips
+// of the Captain's wings too.
 // Every trail in the sky is one draw: a ribbon each, turned to face the camera on the graphics card and never thinner
 // than a couple of pixels however far off, its points written into one set of buffers each frame (only those in use are
 // sent). Each trail is a ring of points left behind every 0.09 s, the newest following its ship every frame, so it
@@ -16,8 +18,8 @@ import { foldPoint } from '../ship/dress.js';
 // long a gone ship's trail takes to fade (seconds), and the vapour trails' width (metres) and brightness. Far off (from
 // `near` to `far` metres from the camera) a raider's points are left `long` times as far apart again, so the same
 // points make a trail that much longer (the shader widens and brightens it with distance too: up to `wide` times the
-// thinnest and `bright` times as bright)
-export const WAKE = { every: 0.09, points: [22, 16], trails: 24, width: 0.08, minPx: [2.5, 2], fade: 1, vapour: 0.14, mist: 0.35,
+// thinnest and `bright` times as bright). A raider lost in cloud: her wake fades out (and back in) at `veil` a second
+export const WAKE = { every: 0.09, points: [22, 16], trails: 24, width: 0.08, minPx: [2.5, 2], fade: 1, vapour: 0.14, mist: 0.35, veil: 4,
   far: { near: 400, far: 1300, long: 2, wide: 1.8, bright: 1.6 } };
 // the colours, and which glitter; how much wider and brighter a kind is than a raider's: the Captain's own a little
 // narrower and half as bright (the camera looks straight down it all the time, so it's a soft shimmer behind her, not
@@ -57,9 +59,10 @@ export function makeWakes(scene, { touch = false } = {}) {
       void main() {
         // (brightest just behind her, fading out along the trail and softly to nothing at its edges, shimmering as it
         // goes; never so bright that it burns out to a flat white-gold band: it eases off towards 0.7. Far off, a few
-        // pixels wide, it's fuller across, fades more slowly along and is brighter, so it reads as a clear streak)
+        // pixels wide, it's fuller across, fades more slowly along, is brighter and hardly shimmers, so it reads as one
+        // clear streak, not a row of beads)
         float across = 1.0 - pow(abs(vM.x), 2.0 + 2.0 * vFar);
-        float a = 1.4 * pow(max(0.0, 1.0 - vM.y), 1.3 - 0.6 * vFar) * smoothstep(0.0, 0.08, vM.y) * across * across * vCol.a * (0.75 + 0.25 * sin(vM.y * 40.0 - uTime * 9.0)) * (1.0 + ${(FAR.bright - 1).toFixed(2)} * vFar);
+        float a = 1.4 * pow(max(0.0, 1.0 - vM.y), 1.3 - 0.6 * vFar) * smoothstep(0.0, 0.08, vM.y) * across * across * vCol.a * (0.75 + 0.25 * (1.0 - 0.85 * vFar) * sin(vM.y * 40.0 - uTime * 9.0)) * (1.0 + ${(FAR.bright - 1).toFixed(2)} * vFar);
         float most = 0.7 + 0.2 * vFar;
         a = most * (1.0 - exp(-a / most));
         if (vG > 0.5) a += step(0.97, wH(vec2(floor(vM.y * 70.0), floor(uTime * 12.0) + floor(vM.x * 2.0 + 2.0) * 31.0))) * 2.0 * vCol.a * (1.0 - vM.y);
@@ -73,9 +76,10 @@ export function makeWakes(scene, { touch = false } = {}) {
 
   // the trails: each a ring of points (newest first; the first follows its ship every frame), when each was left, and
   // how bright it was then
-  // (`every`: how far apart in time its points are left now, longer far off)
+  // (`every`: how far apart in time its points are left now, longer far off; `hide`: her ship lost in cloud, and
+  // `veil` how far her wake has faded out for it, 0 to 1)
   const made = () => ({ on: false, owner: null, seen: 0, kind: '', at: new THREE.Vector3(), w: 1, bright: 1, r: 1, g: 1, b: 1, glitter: 0, vapour: 0, side: 0, wing: null,
-    pts: new Float32Array(N * 3), t: new Float32Array(N), k: new Float32Array(N), n: 0, last: 0, fade: 1, glow: 0, every: WAKE.every });
+    pts: new Float32Array(N * 3), t: new Float32Array(N), k: new Float32Array(N), n: 0, last: 0, fade: 1, glow: 0, every: WAKE.every, hide: false, veil: 0 });
   const trails = Array.from({ length: T }, made), c = new THREE.Color(), p = new THREE.Vector3();
   let frame = 0, time = 0, used = 0;
 
@@ -88,7 +92,7 @@ export function makeWakes(scene, { touch = false } = {}) {
     c.set(WAKE_COLORS[vapour ? 'vapour' : kind] ?? WAKE_COLORS.raider);
     const K = WAKE_KINDS[kind];
     Object.assign(s, { on: true, owner: f, seen: frame, kind, w: vapour ? WAKE.vapour : WAKE.width * L * (K?.wide ?? 1), bright: K?.bright ?? 1, r: c.r, g: c.g, b: c.b,
-      glitter: kind === 'treasure' ? 1 : 0, vapour, n: 0, last: -1e9, fade: 1, glow: 0, wing: null, every: WAKE.every });
+      glitter: kind === 'treasure' ? 1 : 0, vapour, n: 0, last: -1e9, fade: 1, glow: 0, wing: null, every: WAKE.every, hide: false, veil: 0 });
     if (vapour) {
       for (const w of ship.wings) if (w.tip && w.side > 0 && (!s.wing || w.tip.x > s.wing.tip.x)) s.wing = w;
     } else {
@@ -117,11 +121,12 @@ export function makeWakes(scene, { touch = false } = {}) {
   }
 
   // every frame: each ship's trails followed (the Captain `player`, the raiders' list), new ones for raiders just come,
-  // the gone ones fading, and the lot written for the graphics card
+  // the gone ones fading, a lost raider's fading out (and back in once she shows herself), and the lot written for the
+  // graphics card
   function update(dt, now, camera, player, raiders) {
     frame++; time = now; uni.uTime.value = now; uni.uScale.value = camera.userData.pixelScale ?? 500;
     if (player) seen(player, 'player', true);
-    for (let i = 0; i < raiders.length; i++) { const r = raiders[i]; seen(r.f, r.wake ?? (r.wake = r.captain ? 'captain' : r.role === 'prize' ? 'treasure' : r.id === 'manowar' ? 'manowar' : 'raider')); }
+    for (let i = 0; i < raiders.length; i++) { const r = raiders[i]; seen(r.f, r.wake ?? (r.wake = r.captain ? 'captain' : r.role === 'prize' ? 'treasure' : r.id === 'manowar' ? 'manowar' : 'raider'), false, !!r.lost); }
     used = 0;
     for (let i = 0; i < T; i++) {
       const s = trails[i];
@@ -131,8 +136,9 @@ export function makeWakes(scene, { touch = false } = {}) {
       if (here) {
         const k = brightness(s, dt);
         source(s);
-        // (a raider's points further apart far off: the same points, a longer trail)
-        if (!s.vapour && s.kind !== 'player') { const d = p.distanceTo(camera.position), x = Math.min(1, Math.max(0, (d - FAR.near) / (FAR.far - FAR.near))); s.every = WAKE.every * (1 + FAR.long * x * x * (3 - 2 * x)); }
+        s.veil += ((s.hide ? 1 : 0) - s.veil) * (1 - Math.exp(-dt * WAKE.veil));
+        // (a raider's points further apart far off: the same points, a longer trail; not while she's lost in cloud)
+        if (!s.vapour && s.kind !== 'player' && !s.hide) { const d = p.distanceTo(camera.position), x = Math.min(1, Math.max(0, (d - FAR.near) / (FAR.far - FAR.near))); s.every = WAKE.every * (1 + FAR.long * x * x * (3 - 2 * x)); }
         // a new point left behind every so often (the newest moves along one), and the newest always where she is
         if (now - s.last >= s.every || !s.n) { s.pts.copyWithin(3, 0, (N - 1) * 3); s.t.copyWithin(1, 0, N - 1); s.k.copyWithin(1, 0, N - 1); s.n = Math.min(N, s.n + 1); s.last = now; }
         s.pts[0] = p.x; s.pts[1] = p.y; s.pts[2] = p.z; s.t[0] = now; s.k[0] = k;
@@ -143,18 +149,19 @@ export function makeWakes(scene, { touch = false } = {}) {
     for (const at of attrs) { const r = (at.userRange ??= { start: 0, count: 0 }); r.count = used * N * 2 * at.itemSize; at.updateRanges.length = 0; at.updateRanges.push(r); at.needsUpdate = true; }
     geo.setDrawRange(0, used * (N - 1) * 6); mesh.visible = used > 0;
   }
-  // a ship this frame: her trails (attached the first time she's seen)
-  function seen(f, kind, captain = false) {
+  // a ship this frame: her trails (attached the first time she's seen; one first seen lost in cloud, already faded out),
+  // and whether she's lost in cloud (`hide`)
+  function seen(f, kind, captain = false, hide = false) {
     let wake = false;
-    for (let i = 0; i < T; i++) { const s = trails[i]; if (s.on && s.owner === f) { s.seen = frame; if (!s.vapour) wake = true; } }
+    for (let i = 0; i < T; i++) { const s = trails[i]; if (s.on && s.owner === f) { s.seen = frame; s.hide = hide; if (!s.vapour) wake = true; } }
     if (wake) return;
-    const s = attach(f, kind); if (s) s.seen = frame;
+    const s = attach(f, kind); if (s) { s.seen = frame; s.hide = hide; s.veil = hide ? 1 : 0; }
     if (captain) for (const side of [1, -1]) { const v = attach(f, kind, side); if (v) v.seen = frame; }
   }
   // trail i's points, as two corners each (how old each is: by its time, or by its place along the trail, whichever is
   // older, so the tail always fades to nothing even just after its points were spread further apart)
   function write(i, s) {
-    const life = N * s.every, fade = Math.max(0, s.fade);
+    const life = N * s.every, fade = Math.max(0, s.fade) * (1 - s.veil);
     for (let j = 0; j < N; j++) {
       const q = Math.min(j, s.n - 1), a = q * 3, prev = Math.max(0, q - 1) * 3, next = Math.min(s.n - 1, q + 1) * 3;
       const age = j >= s.n ? 1 : Math.min(1, Math.max((time - s.t[q]) / life, j / (N - 1)));
@@ -174,8 +181,8 @@ export function makeWakes(scene, { touch = false } = {}) {
   }
   // a fresh voyage, or back to port: no trails
   function clear() { for (let i = 0; i < T; i++) { trails[i].on = false; trails[i].owner = null; blank(i); } geo.setDrawRange(0, 0); mesh.visible = false; used = 0; }
-  // for tests: how many trails, and how many points they hold; a trail's length, head to tail (metres), and its
-  // brightness now
+  // for tests: how many trails, and how many points they hold; a trail's length, head to tail (metres), its brightness
+  // now, and how far it has faded out for her being lost in cloud
   function stats() {
     let n = 0, pts = 0;
     for (const s of trails) if (s.on) { n++; pts += s.n; }
@@ -185,7 +192,7 @@ export function makeWakes(scene, { touch = false } = {}) {
     const s = trails.find((x) => x.on && x.owner === f && x.vapour === vapour);
     if (!s) return null;
     const a = s.pts, b = (s.n - 1) * 3;
-    return { length: Math.hypot(a[0] - a[b], a[1] - a[b + 1], a[2] - a[b + 2]), bright: s.k[0], points: s.n, width: s.w, kind: s.kind, color: c.setRGB(s.r, s.g, s.b).getHex() };
+    return { length: Math.hypot(a[0] - a[b], a[1] - a[b + 1], a[2] - a[b + 2]), bright: s.k[0], points: s.n, width: s.w, kind: s.kind, color: c.setRGB(s.r, s.g, s.b).getHex(), veil: s.veil };
   }
   return { mesh, update, clear, stats, of };
 }

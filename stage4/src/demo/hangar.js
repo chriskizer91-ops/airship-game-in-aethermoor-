@@ -211,14 +211,22 @@ async function main() {
       }
       holder.add(s.root); shown.push(s); scar(s);
     });
+    updateCard(); updateTri(); // (first: the triangle count's line is in the buttons' dock, and sets how tall it is)
+    framing(); setView(state.view, true);
+  }
+  // the view framed on what's shown: far enough back that the whole ship fits across the screen (which matters on a tall
+  // phone), and up and down between the title and the buttons (fitHeight), as tall as they are with every line in them
+  // filled; the sun's shadow over it. Done again if the fonts come in late and change how tall the buttons are
+  let framedFor = null;
+  function framing() {
     const f = frameFor(shown);
     state.target.copy(f.c);
-    // far enough back that the whole ship fits across the screen, which matters on a tall phone
     const hfov = 2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * camera.aspect);
     state.dist = Math.max(f.r * (state.all ? 1.35 : 1.25), (f.r * (state.all ? 0.66 : 0.56)) / Math.tan(hfov / 2));
     const fit = fitHeight(shown, state.target, state.dist);
     state.dist = fit.dist; state.middle = f.c; state.target.y -= fit.dy; // (and the middle of her box kept, for the checks)
     state.minDist = (state.all ? f.r * 0.25 : f.r * 0.35); state.maxDist = f.r * 3;
+    framedFor = free();
     // the sun's shadow covers what is shown
     const r = f.r * 0.75;
     Object.assign(sun.shadow.camera, { left: -r, right: r, top: r, bottom: -r, near: 1, far: r * 6 });
@@ -226,7 +234,6 @@ async function main() {
     sun.target.position.copy(f.c);
     sun.position.copy(f.c).addScaledVector(SUN.clone().setY(0.55).normalize(), r * 3);
     fill.position.copy(f.c).add(new THREE.Vector3(30, 20, 40));
-    updateCard(); updateTri(); setView(state.view, true);
   }
 
   // and far enough back that she shows whole up and down, from every side as she turns: her keel and ram tip above the
@@ -234,9 +241,48 @@ async function main() {
   // with a sample of her own corners (about 4,000, spread over all her pieces), seen from a little above as she turns,
   // the view's middle being the middle of the room between the title and the buttons (room). Where she only fits looked
   // at a little lower down (her tall masts reaching up past the title's line, her hull clear of the buttons), the view
-  // is turned that way (`dy`: how far down from the middle of her box, in metres) before she's moved further off
+  // is turned that way (`dy`: how far down from the middle of her box, in metres) before she's moved further off. The
+  // sample is kept for what's shown (the ships, their detail and colours, and how all six are laid out), as their shapes
+  // never change: a tap on a ship, a detail level or colours shown before, or turning the phone, only looks again. The
+  // nearest distance that fits is found by halves (the further off, the smaller she is)
+  const samples = new Map();
   function fitHeight(list, c, dist) {
     const F = free(), lo = -((F.bottom - F.top) / F.h) * 0.99, hi = ((F.top + F.bottom) / F.h) * 0.99, t = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2);
+    const key = `${list.map((s) => s.recipe.id).join()}|${state.level}|${state.livery}|${state.all && camera.aspect < 0.9}`;
+    let pts = samples.get(key);
+    if (!pts) { pts = sample(list, c); if (samples.size > 40) samples.clear(); samples.set(key, pts); }
+    const p = Math.min(0.5, Math.max(0.2, state.pitch)), cp = Math.cos(p), sp = Math.sin(p);
+    // (how far up and down the screen she reaches from every side, at distance D, looked at dy metres lower)
+    const span = (D, dy) => {
+      let a = Infinity, b = -Infinity;
+      for (let k = 0; k < 16; k++) {
+        const sy = Math.sin(k * Math.PI / 8), cy = Math.cos(k * Math.PI / 8);
+        for (let i = 0; i < pts.length; i += 3) {
+          const u = pts[i] * sy + pts[i + 2] * cy, y = pts[i + 1] + dy, z = D - u * cp - y * sp, ndc = (y * cp - u * sp) / (Math.max(z, 1e-3) * t);
+          if (ndc < a) a = ndc; if (ndc > b) b = ndc;
+        }
+      }
+      return [a, b];
+    };
+    // (at the n-th step further off, 4% a step: whether she fits, and looked at how much lower)
+    const at = (n) => {
+      const D = dist * Math.pow(1.04, n);
+      let [a, b] = span(D, 0);
+      if (a >= lo && b <= hi) return 0;
+      if (b - a > hi - lo) return null;
+      const dy = ((lo + hi) / 2 - (a + b) / 2) * D * t / cp;
+      [a, b] = span(D, dy);
+      return a >= lo && b <= hi ? dy : null;
+    };
+    let dy = at(0);
+    if (dy !== null) return { dist, dy };
+    let a = 0, b = 39, last = at(b);
+    if (last === null) return { dist: dist * Math.pow(1.04, 40), dy: 0 };
+    while (b - a > 1) { const m = (a + b) >> 1, r = at(m); if (r !== null) { b = m; last = r; } else a = m; }
+    return { dist: dist * Math.pow(1.04, b), dy: last };
+  }
+  // (a sample of what's shown, its points from c: every so many of its own corners, and each piece's furthest corners)
+  function sample(list, c) {
     const pts = [], v = new THREE.Vector3(), meshes = [];
     for (const s of list) s.body.traverse((o) => { if (o.isMesh && o.visible) meshes.push(o); });
     const step = Math.max(1, Math.ceil(meshes.reduce((n, o) => n + o.geometry.attributes.position.count, 0) / 4000));
@@ -256,28 +302,7 @@ async function main() {
       }
       for (let k = 0; k < 18; k++) if (far[k] > -Infinity) pts.push(at[k * 3], at[k * 3 + 1], at[k * 3 + 2]);
     }
-    const p = Math.min(0.5, Math.max(0.2, state.pitch)), cp = Math.cos(p), sp = Math.sin(p);
-    // (how far up and down the screen she reaches from every side, at distance D, looked at dy metres lower)
-    const span = (D, dy) => {
-      let a = Infinity, b = -Infinity;
-      for (let k = 0; k < 16; k++) {
-        const sy = Math.sin(k * Math.PI / 8), cy = Math.cos(k * Math.PI / 8);
-        for (let i = 0; i < pts.length; i += 3) {
-          const u = pts[i] * sy + pts[i + 2] * cy, y = pts[i + 1] + dy, z = D - u * cp - y * sp, ndc = (y * cp - u * sp) / (Math.max(z, 1e-3) * t);
-          if (ndc < a) a = ndc; if (ndc > b) b = ndc;
-        }
-      }
-      return [a, b];
-    };
-    for (let i = 0; i < 40; i++, dist *= 1.04) {
-      let [a, b] = span(dist, 0);
-      if (a >= lo && b <= hi) return { dist, dy: 0 };
-      if (b - a > hi - lo) continue;
-      const dy = ((lo + hi) / 2 - (a + b) / 2) * dist * t / cp;
-      [a, b] = span(dist, dy);
-      if (a >= lo && b <= hi) return { dist, dy };
-    }
-    return { dist, dy: 0 };
+    return new Float32Array(pts);
   }
 
   // ---------- the camera: drag round the ship, pinch or scroll to zoom; views snap it ----------
@@ -402,11 +427,16 @@ async function main() {
     const card = $('card'), room = Math.max(90, Math.floor(bottom - 8 - (parseFloat(getComputedStyle(card).top) || 0))) + 'px';
     if (card.style.maxHeight !== room) card.style.maxHeight = room;
   }
-  document.fonts?.ready.then(room);
+  // (the fonts in: the buttons may have grown, so the view is framed again if the room between them and the title changed)
+  const refit = () => { room(); const F = free(); if (framedFor && (Math.abs(F.top - framedFor.top) > 0.5 || Math.abs(F.bottom - framedFor.bottom) > 0.5)) { framing(); setView(state.view, true); } };
+  document.fonts?.ready.then(refit);
   addEventListener('resize', () => { resize(); show(); });
 
   // (on a phone, upright or sideways, the stats start folded away: Stats brings them out)
   if (innerWidth < 640 || innerHeight < 480) { $('card').hidden = true; $('btn-card').textContent = 'Stats'; $('btn-card').setAttribute('aria-expanded', 'false'); }
+  // (the first view framed once the page's fonts are in, as they set how tall the buttons are: on a phone held sideways
+  // they take half the height)
+  void $('dock').offsetHeight; await document.fonts?.ready;
   resize(); mark(); show();
   const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let last = performance.now(), time = 0, roomT = 0, held = false;
