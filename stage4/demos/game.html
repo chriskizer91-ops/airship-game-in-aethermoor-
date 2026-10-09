@@ -93,7 +93,8 @@
   .port-top h1 { margin: 0; font: 700 30px/1 var(--display); color: var(--gold); text-shadow: 0 2px 0 #000, 0 0 20px rgba(0, 0, 0, 0.8); }
   #port-shards { padding: 6px 12px; font-size: 17px; font-weight: 500; white-space: nowrap; }
   #btn-skies { margin-left: auto; min-height: 40px; padding: 6px 12px; font-size: 14px; white-space: nowrap; }
-  #port-note { position: fixed; top: calc(var(--top) + 54px); left: var(--gutter); max-width: calc(100% - 2 * var(--gutter)); margin: 0; padding: 6px 12px; color: var(--gold); opacity: 0; pointer-events: none; }
+  /* (the port's note: left of the panel, like the ships, so a long one never runs under it) */
+  #port-note { position: fixed; top: calc(var(--top) + 54px); left: var(--gutter); max-width: calc(100% - 2 * var(--gutter) - 396px); margin: 0; padding: 6px 12px; color: var(--gold); opacity: 0; pointer-events: none; }
   #port-note.on { animation: region 5s ease-in-out forwards; }
   /* (the six ships: in one row on a laptop, left of the panel; in two rows of three where that's too narrow: a narrow
      laptop window, and a phone either way) */
@@ -393,6 +394,7 @@
      waves, the guns' label and the touch buttons (right) and the hint (left). */
   @media (max-width: 700px) {
     :root { --map-w: 108px; --ships-h: 98px; } /* (--ships-h: the ships' two rows along the bottom, and a little room over them) */
+    #port-note { max-width: calc(100% - 2 * var(--gutter)); } /* (the panel is along the bottom here) */
     #title { align-content: end; background: linear-gradient(0deg, rgba(8, 6, 16, 0.92), rgba(8, 6, 16, 0.6) 62%, rgba(8, 6, 16, 0)); }
     #title h1 { font-size: clamp(34px, 10.5vw, 46px); }
     #skies button { padding: 8px 12px; }
@@ -491,6 +493,7 @@
     #port-panel { left: auto; right: var(--gutter); width: min(372px, 50vw); top: calc(var(--top) + 50px); bottom: auto; max-height: calc(100% - var(--top) - 50px - var(--bottom)); padding-top: 4px; }
     #port-panel.buying, #port-panel[data-tab='upgrades'] { max-height: calc(100% - var(--top) - 50px - var(--bottom)); }
     #port-ships { left: var(--gutter); translate: none; grid-auto-flow: row; grid-template-columns: repeat(3, auto); width: auto; max-width: calc(50vw - var(--gutter) - 16px); }
+    #port-note { max-width: calc(50vw - var(--gutter) - 24px); }
     #port-ships button small { display: none; } /* (two rows of names, low under her ship) */
     #pp-name { font-size: 21px; }
     #port .cls { font-size: 11.5px; }
@@ -623,6 +626,7 @@
   @media (max-width: 600px) and (max-height: 500px) {
     #port-panel { width: 47vw; }
     #port-ships { max-width: calc(53vw - var(--gutter) - 16px); }
+    #port-note { max-width: calc(53vw - var(--gutter) - 24px); }
     #port-ships button { padding: 5px 4px 4px; }
     #port-ships button b { font-size: 12px; }
     .sail-out .big { font-size: 15.5px; padding: 8px 10px; }

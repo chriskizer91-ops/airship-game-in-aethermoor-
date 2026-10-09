@@ -1,7 +1,8 @@
 // sim-fight.mjs: a rough simulated Captain, for tuning the raiders. It keeps the nearest raider in its sights and
 // fires, pointing at it (or, in a ship with broadsides, keeping it abeam; a treasure ship that runs it chases bow-on,
 // surging when she's getting out of reach), and reports how long each wave took and how low the hull got (and what
-// sank her). It plays on the game's own clock, so a few minutes of fighting take about a minute.
+// sank her, and each treasure ship caught or got away). It plays on the game's own clock, so a few minutes of fighting
+// take about a minute.
 // Run: node tools/build.mjs && node tools/sim-fight.mjs [ship] [waves] [skies] [first wave] [options]
 //   ship: skiff, cutter, brig, frigate, galleon or manowar (default brig); waves: how many to fight (4); skies: fair,
 //   cross or mael (cross); first wave: where the voyage starts (1)
@@ -33,8 +34,11 @@ for (let run = 0; run < runs; run++) {
     Object.assign(d.ships[ship], { owned: true, power, mods: { armour: mods, canvas: mods, drill: mods, crystals: mods } });
     g.fly(ship);
     g.waves.n = first - 1;
-    let t = 0, lastWave = first - 1, start = 0, minHull = 1, sank = 0;
+    let t = 0, lastWave = first - 1, start = 0, minHull = 1, sank = 0, caught = 0, away = 0;
     const last = first - 1 + waves, most = 240 * waves + 60; // (sim seconds: a fortress, or a treasure ship running, can take minutes)
+    // each treasure ship caught (her colours struck, or blown up) or got away, so a treasure wave says how it went
+    const offs = [g.events.on('raider:down', (e) => { if (e.raider.role === 'prize') { caught++; out.push(`  t=${t.toFixed(0)} the treasure ${e.raider.R.cls} ${e.why === 'struck' ? 'struck her colours' : 'went down'}`); } }),
+      g.events.on('raider:escaped', (e) => { away++; out.push(`  t=${t.toFixed(0)} the treasure ${e.raider.R.cls} got away`); })];
     out.push(`  wave ${first}: ${g.describe(g.waveAt(first - 1, g.SKIES[skies].extra, null, g.giants))}`);
     while (g.waves.n < last && t < most) {
       const P = g.player, live = g.raiders.list.filter((r) => !r.f.down);
@@ -60,8 +64,10 @@ for (let run = 0; run < runs; run++) {
       minHull = Math.min(minHull, P.frac('hull'));
       if (g.waves.n !== lastWave) { out.push(`  wave ${lastWave + 1} beaten in ${(t - start).toFixed(0)} s; lowest hull ${(minHull * 100).toFixed(0)}%; downed so far ${g.downed}`); lastWave = g.waves.n; start = t; minHull = 1; }
     }
+    if (!g.waves.sunk) g.step(1 / 60, {}); // (a raider that went down as the last wave was beaten is counted a frame later)
+    offs.forEach((off) => off());
     out.push(`  downed ${g.downed}, hits ${g.hits}, shards this voyage ◆ ${Math.round(g.voyage.shards)}, sim time ${t} s`);
-    return { text: out.join('\n'), beaten: g.waves.n - (first - 1), sank, shards: Math.round(g.voyage.shards) };
+    return { text: out.join('\n'), beaten: g.waves.n - (first - 1), sank, shards: Math.round(g.voyage.shards), caught, away };
   }, [ship, waves, skies, first, owns, mods, power]);
   console.log(`run ${run + 1}:\n${res.text}`);
   results.push(res);
@@ -69,6 +75,7 @@ for (let run = 0; run < runs; run++) {
 if (runs > 1) {
   const all = results.filter((r) => r.beaten >= waves).length, mean = Math.round(results.reduce((a, r) => a + r.shards, 0) / runs);
   const sank = results.filter((r) => r.sank).map((r) => r.sank).sort((a, b) => a - b);
-  console.log(`summary: all ${waves} waves beaten ${all} of ${runs} times; sank in wave ${sank.length ? sank.join(', ') : '(never)'}; ◆ ${mean} a voyage on average`);
+  const caught = results.reduce((a, r) => a + r.caught, 0), away = results.reduce((a, r) => a + r.away, 0);
+  console.log(`summary: all ${waves} waves beaten ${all} of ${runs} times; sank in wave ${sank.length ? sank.join(', ') : '(never)'}; ◆ ${mean} a voyage on average${caught + away ? `; treasure ships caught ${caught}, got away ${away}` : ''}`);
 }
 await browser.close();

@@ -102,6 +102,10 @@ which were made from this repository only):
    one line on a phone; an owned ship's five bars show above Set sail held upright, and a ship you look at to buy stays
    above the panel; the firepower words tell the big two apart; a giant's line under Buy and a note as she's bought;
    edge tags kept on the screen by their own widths, and tags under a wave's banner fade while it shows.
+   **Stage 4a's gate** (October 8): tags at the edge no longer land on each other (on a phone held sideways, three
+   raiders behind you used to put theirs in one place; `edgeSlide` in `main.js`), the port's note keeps beside its
+   panel on a phone held sideways, `tools/sim-fight.mjs` says whether each treasure ship was caught or got away, and
+   "How hard it is" was measured again (many runs of each).
 2. **D2a-fights-tactics**: shot types, dodging broadsides (the red danger fan), raking fire, the crew patching her.
 3. **D2b-fights-foes**: raiders with nerve, named captains, wave arrivals, the Man-o'-war's fortress battle, a line of
    battle, choosing the road between waves.
@@ -112,7 +116,7 @@ Run them in that order (each builds on the last), with the gate's `shots` asking
 upright-phone and sideways-phone sizes.
 
 **First steps in a new session:** `npm install` in the repository's main folder; `cd polished && node tools/build.mjs &&
-node tools/check.mjs` and see it end "all good" (about 12 minutes since D0; it was 25); read `docs/plan/chris-decisions.md` and the five
+node tools/check.mjs` and see it end "all good" (about 15 minutes since D0, more while another agent is busy; it was 25); read `docs/plan/chris-decisions.md` and the five
 specs; ask Chris whether anything has changed since October 7; then run stage 4.
 
 ## How the work has been run
@@ -137,7 +141,8 @@ specs; ask Chris whether anything has changed since October 7; then run stage 4.
 ## Things learned the hard way
 
 - **This machine has 4 CPUs**: a workflow runs 2 agents at a time, and the full check (`node tools/check.mjs`) takes
-  about 12 minutes in software rendering since D0 (it was 25; `--quick` about 6, `--ships` under 3). In software a
+  about 15 minutes in software rendering since D0 (it was 25; with another agent busy it can take 25 or more, and a
+  starved run can trip the check's frame-time comparisons: run it again on its own; `--quick` about 6, `--ships` under 3). In software a
   frame takes a second or more, so a check that waits on frames it doesn't look at wastes minutes: hold or skip them
   (the ships demo's `hold`, `undrawn` in the check). A stage of four packages took 6 to 15 hours
   (stage 3 took about 15).

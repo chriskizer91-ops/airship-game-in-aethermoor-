@@ -706,6 +706,18 @@ async function main() {
     }
     return Number.isFinite(to) ? to : NaN;
   }
+  // tag a at the edge, its bottom middle at (x, y), slid up past the first n tags at the edge in its way, no higher than
+  // `top` (the panels along the top); NaN if there's no room
+  function edgeSlide(a, x, y, n, top) {
+    const h = a._warn ? TAG.warn : TAG.h;
+    for (let k = 0; k <= n; k++) {
+      let to = Infinity;
+      for (let j = 0; j < n; j++) { const c = edges[j], ch = c._warn ? TAG.warn : TAG.h; if (Math.abs(x - c._x) < a._hw + c._hw + TAG_GAP && y > c._y - ch - TAG_GAP && y - h < c._y + TAG_GAP) to = Math.min(to, c._y - ch - TAG_GAP); }
+      if (to === Infinity) return y;
+      if ((y = to) < top) return NaN;
+    }
+    return NaN;
+  }
   // tag a slid from (x, y) up (dir -1) or down (1) until nothing's in its way; NaN if it never gets clear
   function slide(a, x, y, dir, ships = true) {
     for (let n = 0; n < 12; n++) { const to = inWay(a, x, y, dir, ships); if (to !== to) return y; y = to; }
@@ -827,6 +839,21 @@ async function main() {
       a._y = Math.max(a._y, a._top);
       for (let j = 0; j < i; j++) { const b = edges[j]; if (Math.abs(a._x - b._x) < a._hw + b._hw) a._y = Math.max(a._y, b._y + h); }
       a._y = Math.min(a._y, edgeBottom(a._x));
+      // (no room left for it along the edge, as down the right of a phone held sideways, where the panels leave room for
+      // a tag or two: it goes up past the tags in its way, or beside them, half a tag's width at a time, towards the
+      // middle first, then the other way, still on the screen and between the panels there)
+      if (edgeSlide(a, a._x, a._y, i, -Infinity) !== a._y) {
+        const inward = a._x > W2 ? -1 : 1, up = tagUp(a._warn), step = a._hw + TAG_GAP;
+        for (let k = 0; k <= 24; k++) {
+          const x = a._x + inward * (k % 2 ? 1 : -1) * Math.ceil(k / 2) * step;
+          if (x - a._hw < 4 || x + a._hw > view.w - 4) continue;
+          const top = edgeTop(x, up), bottom = edgeBottom(x);
+          if (top > bottom) continue;
+          let y = edgeSlide(a, x, Math.max(top, Math.min(bottom, a._y)), i, top);
+          if (y !== y) y = edgeSlide(a, x, bottom, i, top);
+          if (y === y) { a._x = x; a._y = y; break; }
+        }
+      }
     }
     // those over their ships, from the highest on the screen down, each in the first clear place (placeOver): the
     // highest just over her ship, one that would land on it (or on her ship: two raiders far off, one just over the

@@ -173,7 +173,8 @@
 //                     another; her ship going down with the big map open, its card on top; and a bounty rising where
 //                     the card between waves comes up keeping clear of it. The port at the four phone sizes, a
 //                     narrow one held sideways (640 by 360) and the smallest (568 by 320): its top line on one line,
-//                     its panel clear of the top line and of the ships; each of the six ships' buttons all inside the
+//                     its panel clear of the top line, of the ships and of the longest note it shows (as a ship is
+//                     bought); each of the six ships' buttons all inside the
 //                     ships' rows; every ship not owned (the Frigate, the Galleon and the Man-o'-war, before the
 //                     Galleon and after) showing all her stats above her Buy button, its words on one line, and held
 //                     upright her ship all above the panel; your own ship's tab showing all five stats above Set sail
@@ -655,8 +656,29 @@ const layoutAt = (page, HUD, PANELS, sink = false) => page.evaluate(({ HUD, PANE
   g.placeTags(); g.placeTags();
   out.warnTags = document.querySelectorAll('#tags .tag.edge.warn').length;
   tagsClear('readying a broadside: ');
+  // tags at the edge never on each other (on a phone held sideways the panels leave room down the side for a tag or
+  // two, so the rest go beside them): as things stand, every raider readying her broadside, the view swung all round
+  // her in 12 steps (half of them readying broadsides), and three raiders behind her on the right with the view swung
+  // to her left, as in a big ship's broadside (the gate's case: the three tags used to land in one place)
+  const tagLaps = (what) => {
+    const T = [...document.querySelectorAll('#tags .tag.edge')].map((t) => [t.querySelector('b').textContent, t.getBoundingClientRect()]);
+    for (let i = 0; i < T.length; i++) for (let j = i + 1; j < T.length; j++) if (lap(T[i][1], T[j][1])) out.tagLaps.push(`${what}${T[i][0]} at ${Math.round(T[i][1].left)},${Math.round(T[i][1].top)} x ${T[j][0]} at ${Math.round(T[j][1].left)},${Math.round(T[j][1].top)}`);
+  };
+  out.tagLaps = [];
+  tagLaps('readying a broadside: ');
   for (const r of g.raiders.list) r.charge.b = null;
-  g.placeTags();
+  g.placeTags(); tagLaps('');
+  for (let k = 1; k < 12; k++) {
+    g.cam.yaw = k * Math.PI / 6; g.cam.pitch = 0.15 - (k % 3) * 0.12; g.raiders.list.forEach((r, i) => { r.charge.b = (i + k) % 2 ? 'port' : null; });
+    g.step(1 / 60, {}); g.placeTags(); g.placeTags(); tagLaps(`the view swung ${k * 30}°: `);
+  }
+  for (const r of g.raiders.list) r.charge.b = null;
+  g.raiders.clear(); P.speed = 0;
+  for (const [id, d] of [['manowar', 700], ['frigate', 450], ['brig', 330]]) g.raiders.spawn(id, P.pos.clone().addScaledVector(f, -d).addScaledVector(s, 300), P.heading, true);
+  g.raiders.spawn('cutter', P.pos.clone().addScaledVector(s, -420), P.heading, true);
+  g.cam.yaw = -Math.PI / 2; g.cam.pitch = 0.05; g.step(1 / 60, {}); g.placeTags(); g.placeTags(); tagLaps('three behind her: ');
+  out.behindTags = document.querySelectorAll('#tags .tag.edge').length;
+  g.cam.yaw = 0; g.cam.pitch = 0.15; g.placeTags();
   // between waves: the card risen into view (its rising finished), then looked at with the rest
   g.raiders.clear(); Object.assign(g.waves, { n: 2, state: 'fight', next: null }); g.step(0.15, {}); $('toast').textContent = say.toast;
   $('calm').getAnimations().forEach((a) => a.finish());
@@ -697,6 +719,7 @@ const layoutAt = (page, HUD, PANELS, sink = false) => page.evaluate(({ HUD, PANE
 function layoutProblems(L, where) {
   if (L.laps.length || L.off.length) problems.push(`${where}: the HUD's pieces land on each other or off the screen: ${[...L.laps, ...L.off].join('; ')}`);
   if (L.tags.length) problems.push(`${where}: raiders' tags at the edge (or their arrows) land on the panels: ${L.tags.join('; ')}`);
+  if (L.tagLaps.length || L.behindTags < 3) problems.push(`${where}: raiders' tags at the edge should never land on each other (${L.behindTags} of 3 raiders behind her at the edge): ${L.tagLaps.slice(0, 6).join('; ')}`);
   if (!L.calm || L.edgeTags < 5 || L.warnTags < 5 || !L.map) problems.push(`${where}: the layout test didn't run as it should (the card between waves never in view, too few edge tags, or the big map not fitting): ${JSON.stringify({ calm: L.calm, edgeTags: L.edgeTags, map: L.map })}`);
   if (L.pause.length || !L.mapClosed) problems.push(`${where}: the pause card should lie over everything at sea (and close the big map): ${[...L.pause, L.mapClosed ? '' : 'the big map still open'].filter(Boolean).join('; ')}`);
   if (!L.battery) problems.push(`${where}: after the card between waves went (the window changed while it was up), the edge tags no longer keep clear of the guns' label`);
@@ -704,7 +727,7 @@ function layoutProblems(L, where) {
   if (!(L.nameGap >= 2.5)) problems.push(`${where}: the big map's names ${L.nearest} land on or touch each other (${L.nameGap} px apart)`);
   if (L.wave[0] !== L.wave[1]) problems.push(`${where}: between waves the score should say the wave just beaten, as the card does (Wave ${L.wave[1]}), not Wave ${L.wave[0]}`);
   if ('sunk' in L && (!L.sunk || !L.sunkMapClosed)) problems.push(`${where}: her ship going down with the big map open should close it and show its card on top: ${JSON.stringify({ sunk: L.sunk, closed: L.sunkMapClosed })}`);
-  return `${L.laps.length + L.off.length + L.tags.length + L.pause.length ? `${L.laps.length + L.off.length} overlaps, ${L.tags.length} tags on panels, ${L.pause.length} under the pause card` : 'all clear'} (${L.edgeTags} tags at the edge, ${L.warnTags} of them saying "Broadside!" in turn; the map's names ${L.names} px, ${L.nameGap} px apart at the closest)`;
+  return `${L.laps.length + L.off.length + L.tags.length + L.pause.length + L.tagLaps.length ? `${L.laps.length + L.off.length} overlaps, ${L.tags.length} tags on panels, ${L.tagLaps.length} tags on tags, ${L.pause.length} under the pause card` : 'all clear'} (${L.edgeTags} tags at the edge, ${L.warnTags} of them saying "Broadside!" in turn, none on another in 13 views and with three raiders behind her; the map's names ${L.names} px, ${L.nameGap} px apart at the closest)`;
 }
 // a raider's bounty and the card between waves (at the page's size now): the wave's last raider brought down right where
 // the card will rise (her bounty would rise over its words), and the bounty looked at every 0.1 s while it can be read
@@ -800,7 +823,11 @@ async function bigTwoAt(page, name, press) {
     await shot(page, `${name}-${id}-sea`);
     const guns = await page.evaluate(() => {
       const g = window.__game, P = g.player; g.raiders.clear(); g.waves.timer = 1e9;
-      const side = P.heading + Math.PI / 2, foe = g.raiders.spawn('frigate', P.pos.clone().add({ x: Math.sin(side) * 420, y: 0, z: Math.cos(side) * 420 }), P.heading, true);
+      // (her, the Frigate 420 m off her left and the view behind her on the right all in clear air: she starts a voyage
+      // clear of the big clouds, but a raider deep in one off her side can't be locked on to, about one time in twenty)
+      const side = P.heading + Math.PI / 2, abeam = (d) => P.pos.clone().add({ x: Math.sin(side) * d, y: 20, z: Math.cos(side) * d });
+      for (let k = 0; k < 30 && [0, 420, -110].some((d) => g.sky.cloudAt(abeam(d)) > 0); k++) P.pos.addScaledVector(P.forward(), 250);
+      const foe = g.raiders.spawn('frigate', P.pos.clone().add({ x: Math.sin(side) * 420, y: 0, z: Math.cos(side) * 420 }), P.heading, true);
       for (const k in g.gunnery.ready) g.gunnery.ready[k] = 0;
       g.cam.yaw = Math.PI / 2; g.cam.pitch = 0.05; g.step(0.1, {});
       const label = document.getElementById('battery-name').textContent, count = document.getElementById('battery-count').textContent, locked = g.locked === foe;
@@ -3433,8 +3460,8 @@ if (!quick && !demoOnly) {
   await sized(page, 390, 844, 'phone');
   console.log(`phone, reading a fight from afar: ${glowProblems(pga, pgb, 'phone')}; ${fireProblems(await fireAt(page), 'phone')}; ${wakeProblems(await wakesFar(page), 'phone', { screen: 35, pixels: 100 })}; ${hiddenWakeProblems(await hiddenWake(page), 'phone')}; upright, ${tagProblems(await tagsAt(page), 'phone 390x844')}; ${tagEdgeProblems(await tagEdges(page), 'phone 390x844')}; held sideways, ${sidewaysTags} (and at 844 by 390, ${wideTags})`);
   // the port at the same four sizes, a narrow phone held sideways (640 by 360) and the smallest (568 by 320, an iPhone
-  // SE's first one): its top line on one line, even with ◆ 12,345, and its panel clear of the top line and of the ships
-  // along the bottom; every one of the six ships' buttons all inside the ships' rows (none cut off at an end); every
+  // SE's first one): its top line on one line, even with ◆ 12,345, and its panel clear of the top line, of the ships
+  // along the bottom and of the longest note the port shows (as a ship is bought); every one of the six ships' buttons all inside the ships' rows (none cut off at an end); every
   // ship you can't buy yet (the Frigate, the Galleon and the Man-o'-war, short of shards, and the Man-o'-war before the
   // Galleon) showing all of how she sails above her Buy button, its words on one line, and on a phone held upright her
   // ship all above the panel's top; your own ship's tab showing all of how she sails above Set sail and its fade (at
@@ -3473,14 +3500,16 @@ if (!quick && !demoOnly) {
       $('pp-tab-ship').click();
       const was = { flying: d.flying, owned: Object.fromEntries(Object.keys(d.ships).map((id) => [id, d.ships[id].owned])) }, tucked = [], empty = [], laps = new Set();
       const lap = (a, c) => a.left < c.right - 1 && c.left < a.right - 1 && a.top < c.bottom - 1 && c.top < a.bottom - 1;
+      $('port-note').textContent = 'The Doldrums is yours: from now on, the treasure ships are Galleons'; // (the longest note the port shows: kept clear of the panel too)
       const look = (id, own) => {
         d.ships[id].owned = own; $('port-ships').querySelector(`[data-ship="${id}"]`).click(); $('pp-tab-ship').click();
         const b = r('pp-blurb'), so = document.querySelector('.sail-out').getBoundingClientRect(), pn = r('port-panel');
         if (b.height && b.bottom > so.top + 1) tucked.push(`${id}${own ? '' : ' (not owned)'} by ${Math.round(b.bottom - so.top)} px`);
         if (innerWidth <= 700 && innerHeight > 500 && pn.bottom - so.bottom > 12) empty.push(`${id}${own ? '' : ' (not owned)'}: ${Math.round(pn.bottom - so.bottom)} px`);
-        for (const other of ['port-ships', 'port-shards', 'btn-skies', 'btn-settings-port']) if (lap(pn, r(other))) laps.add(other);
+        for (const other of ['port-ships', 'port-shards', 'btn-skies', 'btn-settings-port', 'port-note']) if (lap(pn, r(other))) laps.add(other);
       };
       for (const id of ['skiff', 'cutter', 'brig', 'frigate', 'galleon', 'manowar']) { if (id !== 'skiff') look(id, false); look(id, true); }
+      $('port-note').textContent = '';
       const row = r('port-ships'), cut = [...$('port-ships').querySelectorAll('button')].filter((b) => { const x = b.getBoundingClientRect(); return x.left < row.left - 0.5 || x.right > row.right + 0.5 || x.top < row.top - 0.5 || x.bottom > row.bottom + 0.5; }).map((b) => b.dataset.ship);
       for (const id in was.owned) d.ships[id].owned = was.owned[id];
       d.flying = was.flying; $('port-ships').querySelector(`[data-ship="${was.flying}"]`).click();
