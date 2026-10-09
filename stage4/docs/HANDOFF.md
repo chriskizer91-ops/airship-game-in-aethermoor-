@@ -4,7 +4,12 @@
 > stage 4 is built in a folder of its own. Wherever this note says `polished/`, read `stage4/`: work only inside
 > `stage4/`, and leave `polished/` (and everything else outside `stage4/`) unchanged. It keeps its own `node_modules`
 > (`npm install` in `stage4/`). Git: branch `claude/jolly-ramanujan-xqqm3h`, started from `claude/laughing-curie-qbp98i`.
-> Its own links are given in "Stage 4" below once published; `polished/`'s links stay with `polished/`.
+> Its own links (private to Chris): **play it** https://claude.ai/artifact/6egmobrK5JJHWEFKWohyvz (published from
+> `stage4/dist/game.artifact.html` with `capabilities: {db: {}, user: {}}`; leave `capabilities` out on later publishes)
+> and **the ships up close** https://claude.ai/artifact/PjsAJrsX7TngKRUuKoZhFC (from `stage4/dist/hangar.artifact.html`).
+> Never publish `stage4/` to `polished/`'s links or the original game's. Stage 4 runs in three parts, each published
+> when its gate passes: 4a (D0, D1: done October 9), 4b (D2-touchups, D2a, D2b), 4c (D3). The stage script is
+> `docs/plan/build-stage.js` (its args now include `branch` and `trailer`; builders push every commit at once).
 
 For a fresh session picking this up. Read this first, then `docs/plan/chris-decisions.md`, `README.md` and
 `docs/game.md` (all in `polished/`).
@@ -106,6 +111,8 @@ which were made from this repository only):
    raiders behind you used to put theirs in one place; `edgeSlide` in `main.js`), the port's note keeps beside its
    panel on a phone held sideways, `tools/sim-fight.mjs` says whether each treasure ship was caught or got away, and
    "How hard it is" was measured again (many runs of each).
+1b. **D2-touchups**: stage 4a's gate's open points (HUD text over your own ship on a phone, the smallest phone's
+   banner, a new Galleon that's no step up yet, the frame-time tests on a busy machine) and a sea trial in port.
 2. **D2a-fights-tactics**: shot types, dodging broadsides (the red danger fan), raking fire, the crew patching her.
 3. **D2b-fights-foes**: raiders with nerve, named captains, wave arrivals, the Man-o'-war's fortress battle, a line of
    battle, choosing the road between waves.
