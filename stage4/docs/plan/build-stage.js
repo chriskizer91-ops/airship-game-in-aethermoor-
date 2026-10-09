@@ -9,10 +9,14 @@ export const meta = {
   ],
 }
 
-// Run with Workflow({scriptPath, args: {stage, scratch, specs, branch, trailer, packages: [{key, title}], shots}}).
+// Run with Workflow({scriptPath, args: {stage, scratch, specs, branch, trailer, packages: [{key, title}], shots, carry}}).
 // scratch must be outside stage4/ (the builders commit everything under stage4/).
+// carry (optional) picks up after a restart stopped a run: carry.wip = {base, commit, note} when the first package's
+// builder was stopped (its unchecked work committed as `commit` on top of `base`), and carry.fix = {key, title,
+// findings} when a package was built and reviewed but not yet fixed (its fix runs after the first build; findings may
+// be a path to a JSON file holding them, kept outside stage4/).
 const SCRATCH = args.scratch, SPECS = args.specs, REPO = '/home/user/airship-game-in-aethermoor-', DIR = `${REPO}/stage4`
-const BRANCH = args.branch, TRAILER = args.trailer
+const BRANCH = args.branch, TRAILER = args.trailer, CARRY = args.carry || {}
 const CTX = `You are building the polished version of "Skies of Aethermoor", an airship combat game (three.js 0.186, esbuild, one self-contained HTML page) set in Aethermoor, the world Chris made for D&D. This version is the advanced one that must run smoothly on a smartphone (a separate laptop-only version exists elsewhere; nothing may be taken from it). Chris plays on his phone and a laptop, and wants the game as epic, rich and beautiful as a phone allows.
 
 WHERE AND HOW
@@ -88,25 +92,34 @@ const FIX = {
 }
 
 const PKGS = args.packages
-const build = (P) => agent(`${CTX}\n\nYOUR PACKAGE: ${P.key}: ${P.title}\nRead its spec: ${SPECS}/${P.key}.md (paths in it are relative to ${SPECS}). Read the code it touches before changing anything. Build it completely, test it (add checks to tools/check.mjs as the spec asks), run the full check until it ends with "all good", update docs/game.md, commit and push. Record git HEAD before you start, as 'base'.`, { label: `build:${P.key}`, phase: 'Build', schema: IMPL })
+const WIP = (w) => w ? `\n\nPICKING UP STOPPED WORK: a builder before you was stopped partway through this package when the machine restarted. Its work so far (not yet checked) is committed as ${w.commit} on top of ${w.base}: see git -C ${REPO} diff ${w.base} ${w.commit} -- stage4 ':!stage4/dist'. ${w.note || ''} Read what it did, check it against the spec, then finish the package (fix what's wrong or missing, don't start over), run the full check until it ends with "all good", commit and push. Report base as ${w.base} (the commit before the package began), so the reviewers see all of it.` : ''
+const build = (P, w) => agent(`${CTX}\n\nYOUR PACKAGE: ${P.key}: ${P.title}\nRead its spec: ${SPECS}/${P.key}.md (paths in it are relative to ${SPECS}). Read the code it touches before changing anything. Build it completely, test it (add checks to tools/check.mjs as the spec asks), run the full check until it ends with "all good", update docs/game.md, commit and push. Record git HEAD before you start, as 'base'.${WIP(w)}`, { label: `build:${P.key}`, phase: 'Build', schema: IMPL })
 
 const SANDBOX = (P, impl, who) => `DO NOT edit, stage or commit anything in the repo: another agent is writing there now. To run anything, extract that exact commit into your scratch folder: mkdir -p ${SCRATCH}/${who}-${P.key} && git -C ${REPO} archive ${impl.commit} stage4 | tar -x -C ${SCRATCH}/${who}-${P.key} && ln -sfn ${DIR}/node_modules ${SCRATCH}/${who}-${P.key}/node_modules, then build and probe there (in ${SCRATCH}/${who}-${P.key}/stage4; short runs only; don't run the full check, the builder did).`
 const REPORTED = (impl) => JSON.stringify({ changes: impl.changes, full_check: impl.full_check, not_done: impl.not_done, measurements: impl.measurements, checks_added: impl.checks_added })
 const reviewCode = (P, impl) => agent(`${CTX}\n\nYOU ARE A READ-ONLY CODE REVIEWER for package ${P.key} (${P.title}); its spec is ${SPECS}/${P.key}.md. Another agent built it in commits ${impl.base}..${impl.commit} (review with: git -C ${REPO} diff ${impl.base} ${impl.commit} -- stage4 ':!stage4/dist'). It reported:\n${REPORTED(impl)}\n\n${SANDBOX(P, impl, 'code')}\n\nRead the diff closely and hunt for real problems: bugs and edge cases in the new code (state carried between waves and voyages, pause, going down, back to port, a reload, several raiders, the Galleon and the Man-o'-war, old saves), per-frame allocations or effect budgets that would stutter a phone, checks in tools/check.mjs that don't really prove what they claim (or were weakened), source left unfiled or missing from the commit, and parts of the spec missed or done differently without reason. Prove each one with a short probe where you can. Report only concrete, verifiable problems, each with a fix; no style nits.`, { label: `review-code:${P.key}`, phase: 'Review', schema: REVIEW })
 const reviewPlay = (P, impl) => agent(`${CTX}\n\nYOU ARE A READ-ONLY PLAYTESTER for package ${P.key} (${P.title}); its spec is ${SPECS}/${P.key}.md. Another agent built it in commits ${impl.base}..${impl.commit}. It reported:\n${REPORTED(impl)}\n\n${SANDBOX(P, impl, 'play')}\n\nPlay what the package added as Chris would, at three sizes: laptop 1280x800 (mouse and keys), phone upright 390x844 and phone sideways 844x390 (deviceScaleFactor 2, hasTouch, isMobile; tap the real buttons). Take screenshots into ${SCRATCH}/play-${P.key}/shots and look at every one. Hunt for what a player would notice: things that look wrong, unclear or ugly, text clipped or overlapping, buttons crowding or hidden on a phone, controls that don't answer on one of the devices, effects too faint or too loud at real fight distance, wording Chris would find unclear, and parts of the spec that don't show up in play. Report only concrete problems you saw, each with the screenshot path as evidence and a fix.`, { label: `review-play:${P.key}`, phase: 'Review', schema: REVIEW })
-const fix = (P, findings) => agent(`${CTX}\n\nYOU ARE THE FIXER for package ${P.key} (${P.title}; spec ${SPECS}/${P.key}.md). Two reviewers (one reading the code, one playing it) reported these findings on it (later packages may have been built on top since, so look at the code as it is now):\n${JSON.stringify(findings)}\n\nFor each finding: check it against the current code (reproduce it where you can). If it's real, fix it properly (and add or strengthen a check where that proves the fix). If it's wrong or no longer applies, reject it with the reason. Then run the full check until it ends with "all good", commit the fixes (title like "Fixes after review: ${P.title}") and push. If nothing needed fixing, don't commit; return an empty commit.`, { label: `fix:${P.key}`, phase: 'Fix', schema: FIX })
+const fix = (P, findings) => agent(`${CTX}\n\nYOU ARE THE FIXER for package ${P.key} (${P.title}; spec ${SPECS}/${P.key}.md). Two reviewers (one reading the code, one playing it) reported these findings on it (later packages may have been built on top since, so look at the code as it is now):\n${typeof findings === 'string' ? `they're in ${findings} (the "findings" list; read the whole file)` : JSON.stringify(findings)}\n\nFor each finding: check it against the current code (reproduce it where you can). If it's real, fix it properly (and add or strengthen a check where that proves the fix). If it's wrong or no longer applies, reject it with the reason. Then run the full check until it ends with "all good", commit the fixes (title like "Fixes after review: ${P.title}") and push. If nothing needed fixing, don't commit; return an empty commit.`, { label: `fix:${P.key}`, phase: 'Fix', schema: FIX })
 
 const results = []
-let current = await build(PKGS[0])
+let carried = null
+let current = await build(PKGS[0], CARRY.wip)
 for (let i = 0; i < PKGS.length; i++) {
   const P = PKGS[i]
   if (!current) { log(`${P.key}: the builder returned nothing; stopping`); break }
   results.push({ key: P.key, impl: current })
   log(`${P.key}: built (${current.commit.slice(0, 7)}, ${current.pushed ? 'pushed' : 'NOT pushed'}), check: ${current.full_check.slice(-60)}`)
-  // the next build starts first so it holds one of the two agent slots; the reviewers share the other
-  const np = i + 1 < PKGS.length ? build(PKGS[i + 1]) : null
-  const impl = current
-  const revs = await parallel([() => reviewCode(P, impl), () => reviewPlay(P, impl)])
+  const impl = current, next = PKGS[i + 1], carryNow = i === 0 && CARRY.fix
+  // the next build starts first so it holds one of the two agent slots; the reviewers share the other. A carried
+  // fix is a writer too, so it goes before the next build (never two writers at once).
+  let np = next && !carryNow ? build(next) : null
+  const rp = parallel([() => reviewCode(P, impl), () => reviewPlay(P, impl)])
+  if (carryNow) {
+    log(`${CARRY.fix.key}: fixing its carried review findings`)
+    carried = await fix(CARRY.fix, CARRY.fix.findings)
+    if (next) np = build(next)
+  }
+  const revs = await rp
   current = np ? await np : null
   results[i].reviews = revs
   const findings = revs.filter(Boolean).flatMap((r, k) => r.findings.map((f) => ({ ...f, id: `${k ? 'play' : 'code'}-${f.id}` })))
@@ -123,4 +136,4 @@ const gate = await agent(`${CTX}\n\nYOU ARE THE GATE for build stage ${args.stag
   properties: { full_check: { type: 'string' }, sim: { type: 'string' }, screenshots: { type: 'array', items: { type: 'object', properties: { path: { type: 'string' }, what: { type: 'string' }, verdict: { type: 'string' } }, required: ['path', 'what', 'verdict'] } }, log: { type: 'string' }, concerns: { type: 'string' } },
   required: ['full_check', 'sim', 'screenshots', 'log', 'concerns'],
 } })
-return { results, gate }
+return { results, carried, gate }
