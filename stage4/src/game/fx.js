@@ -173,8 +173,8 @@ export function makeFx({ scene, camera, touch = false }) {
   });
   on('volley', (e) => { if (e.owner === 'player') buzz(PULSES[Math.min(6, e.count)]); });
   on('hit', (e) => {
-    const B = BURST[e.part], mine = e.target === 'player';
-    burst(e.at, B[0], B[1], B[2], mine ? 0.45 : 1);
+    const B = BURST[e.part], mine = e.target === 'player', rk = e.raked ? 1.6 : 1; // (raking fire bursts bigger: tactics.js)
+    burst(e.at, B[0], B[1], B[2] * rk, (mine ? 0.45 : 1) * rk);
     // what it knocks off, thrown back the way the shot came: splinters and a puff of dark dust from the hull, scraps
     // of canvas and a pale puff from the sails, glittering shards from the crystals
     const looks = mine ? PLAYER_LOOKS : e.raider?.looks ?? RAIDER_LOOKS, back = hb.copy(e.dir).negate();

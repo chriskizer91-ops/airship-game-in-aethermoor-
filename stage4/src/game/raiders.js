@@ -18,9 +18,17 @@
 // blackened iron, crimson crystals, red eyes at her bow and a great swallow-tailed banner. How sharp the raiders are
 // depends on the skies the Captain chose (progress.js); on Fair Winds a captain is no tougher than her crew, hits no
 // harder and reloads no faster.
-// Before a raider's broadside goes off, her gun ports glow red for half a second (a little longer on the two big ships),
-// brightening to gold, and the lids on that side fly open and her guns run out (looks.js): time to climb, dive or turn
-// away. Then her side ripples off, bow to stern (guns.js).
+// Before a raider's broadside goes off, her gun ports glow red, brightening to gold, a soft red fan opens off her side
+// showing where her guns can reach (guns.js fanGeometry), and the lids on that side fly open and her guns run out
+// (looks.js): for the skies' warning time (progress.js `warn`: 1 s on Fair Winds, 0.8 on Crosswinds, 0.6 on the
+// Maelstrom; a little longer on the two big ships). Her gunners aim then, where the Captain will be when the side goes
+// off if she holds her course, and that's where it goes: climb, dive or turn out of the red and it misses. Then her
+// side ripples off, bow to stern (guns.js). Her broadside crews reload quicker than her light guns' (RAIDER.broadside),
+// so she fires as often as before the warning made her wait.
+// On Crosswinds and the Maelstrom they fight smarter (progress.js `smart`, tactics.js SMART): a big raider the Captain
+// points her bow at crosses ahead of it, to rake her; and on the Maelstrom a small one makes her attack runs at the
+// Captain's stern, where her guns are few, and one the Captain's guns are locked on to, her loaded broadside pointed at
+// her, may climb or dive out of it.
 // Clouds (sky.js): a raider can't see the Captain hidden deep in cloud unless she's near (the skies' `sight`): she holds
 // her fire and comes looking where she last saw her, circling there. With the Captain inside a cloud, seen or not, the
 // raiders aim 2.6 times as wide.
@@ -30,16 +38,35 @@ import { makeLook, dress } from '../ship/dress.js';
 import { liveryArt, liveryOpts, wearLivery, DEBRIS } from '../ship/livery.js';
 import { FLEET, STATS } from '../ships/index.js';
 import { makeFlyer } from './flight.js';
-import { makeGunnery, intercept, HEAVY } from './guns.js';
-import { hitZones, firstHit } from './damage.js';
+import { makeGunnery, intercept, HEAVY, KINDS, fanGeometry, batteryFor } from './guns.js';
+import { hitZones, firstHit, sailBox } from './damage.js';
 import { CLOUD_Y } from './world.js';
+import { emit, payload } from './events.js';
+import { SMART } from './tactics.js';
 
 // How the raiders compare with the Captain, before the skies' own settings: reload half as slowly again, and aim a
-// little off (by this much for every metre to the target)
-export const RAIDER = { slow: 1.5, aim: 0.02 };
-// how long her gun ports glow before a broadside (seconds), and the glow's colours, from first to firing. The glow's
-// time comes out of her next reload, so she fires her broadsides as often as she would without it
-export const WARN = { time: 0.5, big: 0.65 }, WARN_FROM = new THREE.Color(0xff4636), WARN_TO = new THREE.Color(0xffc070);
+// little off (by this much for every metre to the target); and her broadside crews reload in this share of that time,
+// as her broadside then waits the skies' warning time (so a Crosswinds raider's side goes off about every 3.9 s, as
+// before the warning: tuned with tools/sim-fight.mjs so a Captain who ignores it is as hard pressed as ever)
+export const RAIDER = { slow: 1.5, aim: 0.02, broadside: 0.8 };
+// how much longer the two big ships' gun ports glow than the skies' warning time (seconds), and the glow's colours,
+// from first to firing
+export const WARN = { big: 0.15 }, WARN_FROM = new THREE.Color(0xff4636), WARN_TO = new THREE.Color(0xffc070);
+// her red danger fan while she readies a broadside: its colour, and how strong it is as she's about to fire (it grows
+// from a third of that as her ports start to glow); out to where she'd fire at all (shoot: 70% of the guns' reach)
+export const FAN = { color: 0xff3a2a, opacity: 0.5, reach: KINDS.broadside.speed * KINDS.broadside.life * 0.7 };
+// how it's drawn: a red glow, strongest along its two edges and near her, fading out to its far end, with bands of red
+// rippling out from her side, faster as she's about to fire, so it reads as a fan even seen from inside it (gun's own
+// frame: +z the way the gun points, its swing and tilt given)
+const FAN_VERT = `uniform float uYaw; uniform float uReach; varying float vA; varying float vR;
+  void main() { vR = length(position) / uReach; vA = abs(atan(position.x, position.z)) / uYaw; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
+const FAN_FRAG = `uniform vec3 uColor; uniform float uK; uniform float uTime; varying float vA; varying float vR;
+  void main() {
+    float fade = 1.0 - pow(vR, 2.5), edge = smoothstep(0.86, 1.0, vA), band = 0.5 + 0.5 * sin((vR * 9.0 - uTime * (1.5 + 3.0 * uK)) * 6.2832);
+    band *= band; band *= band;
+    gl_FragColor = vec4(uColor, clamp(uK * fade * (0.14 + 0.6 * edge + 0.34 * band), 0.0, 1.0));
+    #include <colorspace_fragment>
+  }`;
 // a raider captain's edge over her crew (times as tough, as hard-hitting, as long to reload), all of it on most skies
 // and none on Fair Winds (the skies' `captain`), and her bounty
 export const CAPTAIN = { toughness: 2, damage: 1.2, reload: 0.9, bounty: 4 };
@@ -305,30 +332,45 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
     const role = treasure && !captain ? 'prize' : ROLE[id];
     const f = makeFlyer(ship, stats, { pos, heading }, { speed: S.pace * (role === 'prize' ? TREASURE.laden : 1) }); // (a treasure ship sails laden)
     f.sail = 0.85; f.speed = f.H.vmax * 0.6;
-    // where the Captain's guns aim at her: her hull's middle, or a treasure ship's fore sails (shoot them to catch her)
+    // where the Captain's guns aim at her, by the shot they're loaded with (tactics.js): round shot at her hull's middle
+    // (a treasure ship's fore sails: shoot them to catch her), chain shot at the middle of her middle mast's sails, and
+    // crystal breakers at the top of her middle crystals; at her hull once that part's gone
     f.aimY = Tm.zones.aim.y;
-    const sails = Tm.zones.sails.filter((b) => !b.isEmpty());
-    if (role === 'prize' && sails.length) {
-      const c = sails[0].getCenter(new THREE.Vector3()), at = new THREE.Vector3();
-      f.aimAt = () => at.copy(c).applyMatrix4(ship.body.matrixWorld);
-    }
+    const Z = Tm.zones, hullAim = f.aimAt, at = new THREE.Vector3(), sb = new THREE.Box3();
+    const masts = Z.sails.flatMap((b, i) => (b.isEmpty() ? [] : [i])), midMast = masts[masts.length >> 1], cb = Z.crystals[Z.crystals.length >> 1];
+    const fore = role === 'prize' && masts.length ? Z.sails[masts[0]].getCenter(new THREE.Vector3()) : null;
+    const crown = cb ? new THREE.Vector3((cb.min.x + cb.max.x) / 2, cb.max.y, (cb.min.z + cb.max.z) / 2) : null;
+    f.aimAt = (shot = 'round') => {
+      if (shot === 'chain' && midMast !== undefined && f.health.sails > 0) sailBox(Z, midMast, ship.U.uFold.value.x, sb).getCenter(at);
+      else if (shot === 'breaker' && crown && f.health.crystals > 0) at.copy(crown);
+      else if (fore && f.health.sails > 0) at.copy(fore);
+      else return hullAim();
+      return at.applyMatrix4(ship.body.matrixWorld);
+    };
     f.strikes = role === 'prize';
     ship.root.position.copy(pos); ship.root.rotation.y = heading;
     scene.add(ship.root);
-    const gun = makeGunnery(ship, { reload: RAIDER.slow * S.reload * (HEAVY[id] ?? 1) * edge('reload'), damage: S.damage * edge('damage') }, f);
+    const gun = makeGunnery(ship, { reload: RAIDER.slow * S.reload * (HEAVY[id] ?? 1) * edge('reload'), damage: S.damage * edge('damage'), kinds: { broadside: RAIDER.broadside } }, f);
     const r = { id, R: Tm.R, name: `Raider ${captain ? 'captain\'s ' + Tm.R.cls : Tm.R.cls}`, captain, ship, f, gun, zones: Tm.zones, role, frozen,
       bounty: captain ? BOUNTY[id] * CAPTAIN.bounty : role === 'prize' ? TREASURE.bounty : BOUNTY[id], aim: RAIDER.aim * S.aim, looks: LOOKS[look], livery: look, weak: id === 'manowar',
-      mode: 'attack', timer: 0, side: 1, alt: (Math.random() - 0.5) * (role === 'chaser' ? 50 : 20), counted: false, gone: false,
+      mode: 'attack', timer: 0, side: 1, alt: (Math.random() - 0.5) * (role === 'chaser' ? 50 : 20), alt0: 0, counted: false, gone: false,
       course: heading, fleeing: false, weave: Math.random() * 6,
       // whether she can see the Captain (not hidden in cloud far from her), where she last saw her (null: never yet),
       // and whether she's hidden in cloud herself, lost to the Captain's sight (sky.js)
       sees: true, seen: null, hidden: false, lost: false, seenAt: pos.clone(),
-      // a broadside being readied: which battery (null when none), seconds left of how many, the volley's aiming error,
-      // and when next to ask if the foe is still in reach
-      charge: { b: null, t: 0, T: 0, off: new THREE.Vector3(), ask: 0 } };
+      // a broadside being readied: which battery (null when none), seconds left of how many, and the volley's aiming
+      // error. Each side's aim, set as it starts to be readied: where the foe was and how she was moving, and when
+      charge: { b: null, t: 0, T: 0, off: new THREE.Vector3(), aimed: false },
+      aimed: { port: { p: new THREE.Vector3(), v: new THREE.Vector3(), at: -1 }, starboard: { p: new THREE.Vector3(), v: new THREE.Vector3(), at: -1 } },
+      dodge: 0, fans: null };
     // where a gun at `from` aims: where the foe will be when its shot gets there (each gun of a rippling broadside
     // works it out again as its turn comes, so the last guns still lead her)
     r.lead = (from, K, out) => intercept(from, f.velocity, foeNow.aimAt(), foeNow.velocity, K.speed, out);
+    // a readied broadside's guns aim where the foe would be had she held her course since it began to be readied: each
+    // gun as its turn comes, leading that course (so climbing, diving or turning away makes the whole side miss)
+    const held = new THREE.Vector3(), course = (A) => (from, K, out) => intercept(from, f.velocity, held.copy(A.p).addScaledVector(A.v, clock - A.at), A.v, K.speed, out);
+    r.held = { port: course(r.aimed.port), starboard: course(r.aimed.starboard) };
+    r.alt0 = r.alt; // (the height she keeps over or under the foe, to come back to after a dodge)
     gun.from = r; // (each of her bolts remembers her, so a hit on the Captain can tell who fired it)
     f.gun = gun; // (her guns' state shows on her model: looks.js)
     ship.update(0, {}); ship.root.updateMatrixWorld(true);
@@ -352,7 +394,8 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
 
   // where to steer: chasers come at the foe bow-first and break away when close; broadside ships keep it abeam.
   // (The answer is one kept object, read straight away by flight.js)
-  const ahead = new THREE.Vector3(), wish = { turn: 0, climb: 0, sailTo: 1 }, look = new THREE.Vector3(), still = new THREE.Vector3();
+  const ahead = new THREE.Vector3(), wish = { turn: 0, climb: 0, sailTo: 1 }, look = new THREE.Vector3(), still = new THREE.Vector3(), fw = new THREE.Vector3();
+  let smart = 0; // (how smart they fight on these skies: set each frame)
   function steer(r, foe, dt) {
     // (the Captain lost in cloud: she comes looking where she last saw her, circling 200 m round it, a little above; one
     // that never saw her sails on as she was)
@@ -376,8 +419,10 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
       want = r.breakH;
       if (r.timer <= 0) r.mode = 'attack';
     } else if (r.role === 'chaser' || d > 1500) {
-      // an attack run: come at the foe, then peel away, side-on, when close or after 10-15 seconds of chasing
+      // an attack run: come at the foe, then peel away, side-on, when close or after 10-15 seconds of chasing (smartest,
+      // a small raider comes at her stern quarter, where her guns are few)
       ahead.copy(P).addScaledVector(V, Math.min(3, d / 250));
+      if (smart >= 2 && r.role === 'chaser' && r.sees) ahead.addScaledVector(fw.set(Math.sin(foe.heading), 0, Math.cos(foe.heading)), -SMART.stern);
       want = Math.atan2(ahead.x - me.pos.x, ahead.z - me.pos.z);
       sailTo = d < 300 ? 0.6 : 1;
       if (d < 900) r.run = (r.run ?? 0) + dt;
@@ -386,12 +431,25 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
         r.mode = 'break'; r.timer = 3 + Math.random() * 2.5;
         r.breakH = bearing + (Math.random() < 0.5 ? 1 : -1) * (1.8 + Math.random() * 0.7); r.alt = (Math.random() - 0.5) * 70;
       }
+    } else if (smart >= 1 && r.sees && d < SMART.near && Math.abs(wrap(Math.atan2(-dx, -dz) - foe.heading)) < SMART.facing
+      && Math.hypot(P.x + Math.sin(foe.heading) * SMART.ahead - me.pos.x, P.z + Math.cos(foe.heading) * SMART.ahead - me.pos.z) > SMART.ahead * 0.6) {
+      // (smarter: the foe pointing her bow at a big raider, she makes for a spot ahead of the foe's bow, to cross it;
+      // once there she turns her side to bear as ever, down the foe's length, raking her)
+      ahead.set(P.x + Math.sin(foe.heading) * SMART.ahead, P.y, P.z + Math.cos(foe.heading) * SMART.ahead);
+      want = Math.atan2(ahead.x - me.pos.x, ahead.z - me.pos.z);
+      sailTo = 1;
     } else {
       if (Math.abs(rel) > 0.35 && Math.abs(rel) < Math.PI - 0.35) r.side = Math.sign(rel);
       const ideal = 260 + L * 4, k = clamp((d - ideal) / 300, -1, 1);
       want = bearing - r.side * (Math.PI / 2 - k * 0.9);
       sailTo = 0.75;
     }
+    // (smartest: one the foe's guns are locked on to, with a loaded broadside pointed at her, may climb or dive out of it)
+    if (smart >= 2 && r.sees && foe.locked === r && r.dodge <= 0 && Math.random() < SMART.dodge * dt) {
+      const g = foe.gun, b = g && batteryFor(wrap(Math.atan2(-dx, -dz) - foe.heading));
+      if (b && g.ready[b] === 0 && g.count(b) && g.reaches(b, me.aimAt())) { r.dodge = SMART.hold; r.alt += (r.alt > 0 ? -1 : 1) * SMART.alt; }
+    }
+    if (r.dodge > 0 && (r.dodge -= dt) <= 0) r.alt = r.alt0;
     // keep clear of the other raiders
     let vx = Math.sin(want), vz = Math.cos(want);
     for (const o of list) {
@@ -405,8 +463,11 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
   }
 
   // fire every battery that can reach where the foe will be, a little off. A broadside of three guns or more is readied
-  // first, her ports glowing, and fires when the glow is full (or stands down if the foe slips out of its reach)
+  // first, her ports glowing and her fan showing, aimed where the foe is heading as it begins (told: `warn`), and fires
+  // there when the glow is full, wherever the foe is by then
   const off = new THREE.Vector3(), aim = new THREE.Vector3(), SIDES = ['bow', 'port', 'starboard', 'stern'], drift = { turn: 0, climb: 0, sailTo: 0.6 }, CALM = { calm: true };
+  const WARNED = payload('warn');
+  let clock = 0; // (the raiders' own clock, for their readied broadsides' aim)
   const canReach = (r, b, foe) => {
     const m = r.gun.muzzle(b);
     intercept(m.p, r.f.velocity, foe.aimAt(), foe.velocity, m.K.speed, aim);
@@ -415,16 +476,12 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
   };
   function shoot(r, foe, dt) {
     const ch = r.charge;
-    if (!r.sees) { ch.b = null; return; } // (she can't see the Captain: she holds her fire, and stands down a broadside)
-    if (ch.b) {
-      // (whether the foe is still in reach is asked six times a second, and as she fires)
-      const ask = (ch.ask -= dt) <= 0 || ch.t - dt <= 0;
-      if (ask) ch.ask = 1 / 6;
-      if (ask && canReach(r, ch.b, foe) < 0) ch.b = null;
-      else if ((ch.t -= dt) <= 0) {
-        r.gun.fire(ch.b, r.lead, bolts, 'raider', r.f.velocity, ch.off);
-        r.gun.ready[ch.b] = Math.max(0, r.gun.ready[ch.b] - ch.T); ch.b = null;
-      }
+    if (!r.sees) { ch.b = null; ch.aimed = false; return; } // (she can't see the Captain: she holds her fire, and stands down a broadside)
+    if (ch.b && (ch.t -= dt) <= 0) {
+      const A = r.aimed[ch.b];
+      if (A && !ch.aimed) { A.p.copy(foe.aimAt()); A.v.copy(foe.velocity); A.at = clock; } // (one readied some other way, a test's: aimed now)
+      r.gun.fire(ch.b, A ? r.held[ch.b] : r.lead, bolts, 'raider', r.f.velocity, ch.off);
+      ch.b = null; ch.aimed = false; // (its guns still to go off keep leading that course)
     }
     for (const b of SIDES) {
       if (b === ch.b || r.gun.ready[b] > 0 || !r.gun.count(b)) continue;
@@ -433,11 +490,43 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
       const e = (dist * r.aim + 1.5) * (1 + 1.6 * foe.cloud); // (wider with the Captain inside a cloud)
       off.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(2 * e);
       if (r.gun.B[b][0].kind === 'broadside' && r.gun.count(b) >= 3) {
-        if (!ch.b) { ch.b = b; ch.t = ch.T = r.R.length >= 50 ? WARN.big : WARN.time; ch.off.copy(off); ch.ask = 1 / 6; }
+        if (!ch.b) {
+          ch.b = b; ch.t = ch.T = (skies().warn ?? 0.8) + (r.R.length >= 50 ? WARN.big : 0); ch.off.copy(off);
+          const A = r.aimed[b]; A.p.copy(foe.aimAt()); A.v.copy(foe.velocity); A.at = clock; ch.aimed = true;
+          WARNED.raider = r; WARNED.battery = b; WARNED.time = ch.T; emit('warn'); WARNED.raider = null;
+        }
         continue;
       }
       r.gun.fire(b, r.lead, bolts, 'raider', r.f.velocity, off);
     }
+  }
+  // her red danger fan, while she readies a broadside: one shape for every raider (guns.js fanGeometry), and each raider's
+  // two (port and starboard) made the first time she readies that side, children of her ship's body at her middle gun on
+  // that side, pointing its way, so they lean and roll with her. Each has its own copy of the one material (its strength
+  // is its own: the copies share one shader), drawn after the ships, tinting red what's behind it without hiding it
+  const fanGeo = fanGeometry(KINDS.broadside, FAN.reach), FWD = new THREE.Vector3(0, 0, 1), fanTime = { value: 0 };
+  const fanMat = new THREE.ShaderMaterial({ vertexShader: FAN_VERT, fragmentShader: FAN_FRAG, transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    uniforms: { uColor: { value: new THREE.Color(FAN.color) }, uK: { value: 0 }, uTime: fanTime, uYaw: { value: KINDS.broadside.yaw }, uReach: { value: FAN.reach } } });
+  function fanFor(r, b) {
+    r.fans ??= {};
+    let m = r.fans[b];
+    if (!m) {
+      const g = r.gun.B[b][r.gun.B[b].length >> 1];
+      m = r.fans[b] = new THREE.Mesh(fanGeo, fanMat.clone()); m.name = 'danger fan'; m.renderOrder = 4; m.visible = false;
+      m.material.uniforms.uTime = fanTime; // (one clock for every fan)
+      m.position.copy(g.p); m.quaternion.setFromUnitVectors(FWD, g.d);
+      r.ship.body.add(m);
+    }
+    return m;
+  }
+  // (shown for the side being readied, growing as her ports brighten; the other hidden)
+  function showFans(r) {
+    const ch = r.charge;
+    if (ch.b === 'port' || ch.b === 'starboard') {
+      const m = fanFor(r, ch.b), k = ch.T > 0 ? 1 - Math.max(0, ch.t) / ch.T : 1;
+      m.visible = true; m.material.uniforms.uK.value = FAN.opacity * (0.35 + 0.65 * k);
+    }
+    if (r.fans) for (const b in r.fans) if (b !== ch.b) r.fans[b].visible = false;
   }
   // her gun ports glowing as a broadside is readied: red and small at first, swelling to hot gold as it's about to fire
   const port = new THREE.Vector3();
@@ -451,7 +540,7 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
   // every frame: steer, fly, fire, pick the detail level; returns the raiders that went down this frame
   const downed = []; // (kept, and read straight away by main.js)
   function update(dt, foe, camera) {
-    downed.length = 0; escaped.length = 0; foeNow = foe;
+    downed.length = 0; escaped.length = 0; foeNow = foe; clock += dt; fanTime.value = clock; smart = skies().smart ?? 0;
     const toScreen = 1 / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)), sight = skies().sight ?? 250;
     for (const r of list) {
       const live = !r.f.down;
@@ -465,7 +554,8 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
       // guns are asked whose turn has come, as the shot that downed her may have landed after she last fired)
       if (r.f.down && !r.counted) { r.counted = true; r.gun.cancel(); downed.push(r); }
       r.gun.update(dt);
-      if (live && ai && !r.frozen && !foe.down) { shoot(r, foe, dt); if (r.charge.b) glowPorts(r); } else r.charge.b = null;
+      if (live && ai && !r.frozen && !foe.down) { shoot(r, foe, dt); if (r.charge.b) glowPorts(r); } else { r.charge.b = null; r.charge.aimed = false; }
+      if (r.charge.b || r.fans) showFans(r);
       // a treasure ship that gets far enough away has escaped
       if (r.role === 'prize' && r.fleeing && !r.f.down && r.f.pos.distanceTo(foe.pos) > 3600) { r.gone = true; r.escaped = true; escaped.push(r); }
       // a wreck falls away below the clouds before it's taken away (140 m under them), or at least 150 m if she went

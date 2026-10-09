@@ -15,6 +15,8 @@
 //   rewards            each shard gathered chimes, higher up the scale for each one of a run; spilled shards clink;
 //                      the Surge fills the sails with a rush, and as the next one charges a hum climbs to full and a
 //                      soft ping says it's ready; locking on clicks; a broadside loaded again clacks
+//   tactics            loading another shot clacks like a crossbow drawn; a shot earned at sea rings like a charm; the
+//                      crew patching her ring out with a hammer on an anvil
 //   Chris's effects    (sounds.js) for the moments they fit: setting sail and coming home, a wave arriving (an alarm, a
 //                      boss's brass for a captain or a Man-o'-war, a pirate phrase for a treasure ship), a wave beaten,
 //                      the ship lost, alarms when she's badly hurt, a soft chord on crossing into another region,
@@ -283,6 +285,8 @@ export function makeSound({ audio, touch = false, where = () => null, weather = 
   cue('lock', withCues((c, e) => c.lock(e)));
   cue('guns:ready', withCues((c, e) => c.ready(e)));
   cue('raider:escaped', () => fx('hex'));
+  cue('shot', (e) => fx(e.why === 'earned' ? 'charm' : 'crossbow', 'ui', 0, e.why === 'earned' ? 1 : 0.6));
+  cue('patch', (e) => { if (e.stage === 'start') fx('anvil', 'ui', 0, 0.55); });
   // a Man-o'-war's crystal column blowing out: a glassy shatter and crystals dying in falling bells, where it is
   cue('blowout', withCues((c, e) => c.blowout(e)));
   // crossing into another region (its name shown): a soft chord with a far bell
@@ -322,6 +326,7 @@ export function makeSound({ audio, touch = false, where = () => null, weather = 
   // ---------- the port and the title screen ----------
   cue('port:buy', () => { fx('ui-buy'); fx('coins', 'ui', 0.15); fx('dock-clamp', 'ui', 0.4); });
   cue('port:upgrade', (e) => { fx('upgrade'); if (UPGRADE[e.mod]) fx(UPGRADE[e.mod], 'ui', 0.35, 0.7); });
+  cue('port:shot', () => { fx('ui-buy'); fx('coins', 'ui', 0.15); fx('crossbow', 'ui', 0.35, 0.7); });
   // a note for each notch of crystal power: high and airy towards the sails, lower and metallic towards the guns
   cue('port:power', (e) => { if (!audio.mixer) return; const k = e.power + 2; audio.mixer.here(0, 0.2); audio.tone(k <= 2 ? { f: [880, 740, 587][k], ratio: 2, index: 0.8, d: 0.6, g: 0.12 } : { f: [440, 294][k - 3], ratio: 1.41, index: 2.5, d: 0.7, g: 0.12 }, 1, 'ui'); });
   cue('port:skies', (e) => fx(e.skies === 'fair' ? 'charm' : e.skies === 'cross' ? 'wind' : 'thunder', 'ui', 0, e.skies === 'cross' ? 0.7 : 1));

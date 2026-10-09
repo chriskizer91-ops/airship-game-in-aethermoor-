@@ -122,6 +122,20 @@ which were made from this repository only):
    timed in turns (`TURNS` in `tools/check.mjs`) and go by the middle turn. "Try her out" in port (`TRIAL` in
    `main.js`) takes a ship not owned out for one fight, changing nothing in the save.
 2. **D2a-fights-tactics**: shot types, dodging broadsides (the red danger fan), raking fire, the crew patching her.
+   Built October 9 (`docs/game.md`, "Tactics" and "How hard it is"). The rules live in `src/game/tactics.js` (`SHOTS`,
+   `RAKE`, `PATCH`, `SMART`). Shot: `gunnery.shot`/`setShot` (guns.js; changing reloads every battery; breakers counted
+   in `gunnery.breakers`), bolts carry `shot`, `hitTest` in main.js multiplies by the part's share and by `rakeMul`
+   (broadsides only, both ways); keys 1/2/3, right-click (`shot`), `#btn-shot` over Surge on a phone (shown once she has
+   more than round shot: body class `has-shot`, which moves the guns' label up and, held sideways, shrinks Surge);
+   `progress.data.shots` (earned by deeds in `waves()`, or bought in port's Shot rows). The warning: raiders.js readies
+   a broadside for the skies' `warn` (progress.js), aims it then at where the Captain will be if she holds her course
+   (`r.aimed`, `r.held`), tells `warn`, shows a fan per side (guns.js `fanGeometry`, a banded shader in raiders.js), and
+   the tag says "Broadside!" with a ring on screen too; `RAIDER.broadside` (0.8) keeps a plain Captain's fights as hard
+   as before. Patching: flight.js `startPatch` (X, `#btn-patch` by the sail buttons), guns reload at `PATCH.rate`.
+   Smarter raiders: skies' `smart` (Crosswinds 1: big raiders cross your bow; the Maelstrom 2: also small ones at your
+   stern, and dodging a loaded broadside: chasers at the stern on Crosswinds made it much harder, so they're the
+   Maelstrom's). `tools/sim-fight.mjs` gained `--dodge`, `--react`, `--shot`, `--patch`, `--policy cross`, `--skilled`,
+   and `--smart`/`--warn` for tuning, and reports broadside and light-gun damage a minute and raking hits.
 3. **D2b-fights-foes**: raiders with nerve, named captains, wave arrivals, the Man-o'-war's fortress battle, a line of
    battle, choosing the road between waves.
 4. **D3-progression**: save version 2, a gentle first voyage, the homecoming summary, commendations and a Captain's

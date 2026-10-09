@@ -10,8 +10,11 @@
 // Upgrades bought in port (mods.js) scale the speed, speeding up, turning and climbing. The wind helps a ship sailing
 // with it and holds back one sailing into it, and a Surge pours the crystals into the sails for a few seconds.
 // A broadside's recoil heels the ship (guns.js pushes `heelV`); she rights herself on a soft spring.
+// Her crew can patch her mid-fight (startPatch: the Captain's, tactics.js PATCH): whatever's worst off, by a third over
+// six seconds, then thirty seconds before they can again.
 import * as THREE from 'three';
 import { THINNING } from './world.js';
+import { PATCH } from './tactics.js';
 
 export function handling(st) {
   return { vmax: 14 + 3.2 * st.speed, turn: 0.06 + 0.028 * st.turning, climb: 3 + 2.1 * st.climbing };
@@ -45,6 +48,7 @@ export function makeFlyer(ship, stats, start, tune = {}) {
     list: 0, // how far she lists towards the side that took the most hits, badly holed (radians, + to starboard: looks.js)
     trim: 0, // how far she dips at one end (radians, + bow down: a Man-o'-war whose crystal column there blew out, looks.js)
     cloud: 0, hidden: false, // how deep in cloud she is (0 to 1), and whether she's hidden in it (the Captain's: sky.js)
+    patch: { t: 0, cd: 0, part: null }, // her crew patching her: seconds of it left, seconds before they can again, and the part
   };
   const look = { turn: 0, climb: 0, heel: 0, list: 0, trim: 0 }; // what the model is told each frame (kept, not made each time)
   // the heel's spring: a broadside's kick rolls her over for a second or so, then she rights herself
@@ -57,6 +61,14 @@ export function makeFlyer(ship, stats, start, tune = {}) {
   s.crew = () => Math.ceil(stats.crew * s.frac('hull')); // the crew falls with the hull
   s.forward = () => new THREE.Vector3(Math.sin(s.heading), 0, Math.cos(s.heading));
   s.repair = (k) => { for (const p in full) s.health[p] = Math.min(full[p], s.health[p] + full[p] * k); };
+  // the part worst off (its share of full), and the crew patching it: refused while she's going down, while they're
+  // getting ready again, or with nothing to patch; else the part they patch
+  s.worst = () => { let w = 'hull'; for (const p in full) if (s.frac(p) < s.frac(w)) w = p; return w; };
+  s.startPatch = () => {
+    if (s.down || s.patch.cd > 0 || s.frac(s.worst()) >= 1) return null;
+    const P = s.patch; P.part = s.worst(); P.t = PATCH.time; P.cd = PATCH.time + PATCH.wait;
+    return P.part;
+  };
   s.strikes = false; // a treasure ship strikes her colours (gives up) with no sails left, or a quarter of her hull
   s.hit = (part, damage) => {
     if (s.down) return;
@@ -69,6 +81,9 @@ export function makeFlyer(ship, stats, start, tune = {}) {
   // c: turn (-1 port .. 1 starboard), climb (-1 .. 1), and either sail (a rate, from the keys) or sailTo (set outright)
   s.update = (dt, c) => {
     if (s.down) return sink(dt);
+    const P = s.patch;
+    if (P.t > 0) { const k = Math.min(dt, P.t); P.t -= k; s.health[P.part] = Math.min(full[P.part], s.health[P.part] + (full[P.part] * PATCH.share * k) / PATCH.time); }
+    if (P.cd > 0) P.cd = Math.max(0, P.cd - dt);
     const sf = s.frac('sails'), cf = s.frac('crystals');
     const surging = s.surge.on > 0;
     if (surging) s.surge.on = Math.max(0, s.surge.on - dt); else s.surge.charge = Math.min(1, s.surge.charge + dt / SURGE.recharge);
@@ -128,6 +143,7 @@ export function makeFlyer(ship, stats, start, tune = {}) {
   s.reset = (pos, heading) => {
     Object.assign(s.health, full); s.down = null; s.pos.copy(pos); s.heading = heading; s.vy = 0; s.turn = 0; s.climb = 0;
     s.speed = H.vmax * 0.45 * pace; s.sail = 0.5; s.surge.on = 0; s.surge.charge = 1; s.heel = s.heelV = 0; s.list = 0; s.trim = 0; ship.root.rotation.set(0, heading, 0);
+    s.patch.t = s.patch.cd = 0; s.patch.part = null;
   };
   return s;
 }

@@ -67,7 +67,8 @@
 //                     motion); hits marked on the crosshair in the part's colour and a kill's ring; a hit on you shaking
 //                     the view, its red arc pointing at the shooter and naming her, one taking the hull under 30% told;
 //                     a shot passing 10 m off one near miss, doing no harm; a raider's ports glowing at least 0.45 s
-//                     before her broadside, and her tag flashing "Broadside!" while she's off screen (not on screen; on
+//                     before her broadside, and her tag flashing "Broadside!" while she's off screen (on screen too, over
+//                     her, with its ring closing; on
 //                     the phone too, stacked clear of another raider's tag at that edge, and holding still while the
 //                     game is paused); raiders' tags far off, two or three close together on the screen, clear of each
 //                     other, of all their ships and of the panels along the top, over their ships (not at the edge), and
@@ -83,6 +84,25 @@
 //                     its sparks' and smoke's budgets, a step under a millisecond, a blast throwing 90 sparks or more;
 //                     back to port from the pause menu ending the pause; on the phone, smaller budgets, a buzz for a
 //                     hit and a kill, and none for a ship that gives up
+//                     tactics (tactics.js): chain shot bought in port with its button (◆ 200, the breakers still ◆ 600,
+//                     the note saying how to load it); a bolt of each shot into each part of a raider Frigate from her
+//                     beam (her crystals from above) doing exactly its table's share; chain shot loaded with 2 reloading
+//                     every battery, the guns' lock point in her sails, three volleys at a Brig sailing away tearing her
+//                     sails (twice the hull's damage or more); five volleys of crystal breakers from 60 m above a
+//                     Man-o'-war hitting her crystals, one fewer left each, then round shot loaded again and said so; a
+//                     raider Frigate's broadside readied (told, her red fan showing) 0.75 to 0.95 s before she fires on
+//                     Crosswinds, the fan gone as she does; three broadsides hitting a Captain who holds still 3 times or
+//                     more, one who climbs on each warning once at most; three broadsides down a raider Brig's length
+//                     doing 1.5 times her beam's (within 10%), told and marked "Raked!", and a raider's shot down the
+//                     Captain's length raking her (half as much again, the toast saying so) where one across doesn't;
+//                     a treasure ship striking earning chain shot and a captain's Frigate the breakers (banners, the
+//                     save); the real X key patching her sails from 40% to 73% in 6 s (her row glowing), a broadside's
+//                     reload taking twice as long meanwhile, and X again doing nothing (a toast saying how long); a
+//                     raider Brig the Captain points at turning to cross her bow on Crosswinds (to come alongside on Fair
+//                     Winds), and one on the Maelstrom dodging a loaded broadside; pictures of a chain-shot volley, the
+//                     red fan, a rake and a patch. On a phone: the shot button hidden with round shot only, shown with
+//                     chain shot and loading it with a tap; Patch hidden at full health, shown at hull 60%, a tap starting
+//                     the crew patching; both measured in every phone layout; a picture of both
 //                     wrecks worth watching: debris matching the part hit, a 60-shot barrage fitting its batches with
 //                     not a piece cut short and all fallen 4 s later, and canvas scraps keeping their own flapping beat;
 //                     a raider Brig blown apart in three blasts or more within 3 s, her crystals dark by 2 s, through
@@ -624,7 +644,8 @@ const gameReady = () => window.__game?.ready || !document.getElementById('error'
 // regions' names on it big enough to read (11 of the page's pixels or more) and none of them on (or touching) another.
 // The edge tags are measured with their arrows, and again with every raider off the screen readying her broadside (each
 // tag taller, saying "Broadside!", with a bigger arrow). `sink`: and the ship going down with the big map open, its card
-// over everything
+// over everything. Her ship has chain shot and her hull at 60%, so on a phone the shot button (over Surge) and the
+// Patch button (by the sail buttons) are showing too
 const layoutAt = (page, HUD, PANELS, sink = false) => page.evaluate(({ HUD, PANELS, sink }) => {
   const g = window.__game, $ = (id) => document.getElementById(id), out = { laps: [], tags: [], off: [], pause: [] };
   const box = (id) => { const el = $(id); if (!el || el.hidden || getComputedStyle(el).display === 'none' || getComputedStyle(el).visibility === 'hidden') return null; const b = el.getBoundingClientRect(); return b.width && b.height ? b : null; };
@@ -642,7 +663,8 @@ const layoutAt = (page, HUD, PANELS, sink = false) => page.evaluate(({ HUD, PANE
     if (hit.some((el) => !el?.closest('#paused .card'))) out.pause.push(`${what}: ${hit.map((el) => el?.id || el?.className || el?.tagName).join(', ')}`);
     if (!hit[4]?.closest('#btn-abandon')) out.pause.push(`${what}: its button is under ${hit[4]?.id || hit[4]?.tagName}`);
   };
-  g.fly('brig'); const P = g.player; g.waves.timer = 1e9; g.raiders.setAI(false); P.pos.set(2000, 900, 1500); P.heading = 0.6;
+  g.progress.data.shots.chain = true;
+  g.fly('brig'); const P = g.player; g.waves.timer = 1e9; g.raiders.setAI(false); P.pos.set(2000, 900, 1500); P.heading = 0.6; P.health.hull = P.full.hull * 0.6;
   const f = P.forward(), s = { x: Math.cos(0.6), y: 0, z: -Math.sin(0.6) };
   // one raider ahead (locked on), and eight all round off the screen
   g.raiders.spawn('frigate', P.pos.clone().addScaledVector(f, 260), P.heading + 2, true, true);
@@ -671,6 +693,7 @@ const layoutAt = (page, HUD, PANELS, sink = false) => page.evaluate(({ HUD, PANE
   };
   tagsClear('');
   out.edgeTags = document.querySelectorAll('#tags .tag.edge').length;
+  out.tacButtons = ['btn-shot', 'btn-patch'].filter((id) => box(id)).length; // (on a phone: the shot and Patch buttons, measured with the rest)
   // (every raider readying her broadside: placed again as things stand, twice, as the first measures a warning's height)
   for (const r of g.raiders.list) r.charge.b = 'port';
   g.placeTags(); g.placeTags();
@@ -2618,13 +2641,15 @@ if (!demoOnly) {
     if (arc) { const d = Math.abs(Math.atan2(Math.sin(arc.arc - arc.shooter), Math.cos(arc.arc - arc.shooter))); out.arc = { off: Math.round(d * 180 / Math.PI), playing, named }; }
     // her ports can't be seen while she's off screen: as she readies her broadside there, her tag at the edge flashes
     // red (and its arrow) and says "Broadside!", and stops once she has fired; with her on screen, readying another,
-    // her tag doesn't (her glowing ports show)
+    // her tag over her flashes and says so too (her red fan showing: tactics), with its ring closing as she's about to
+    // fire
     g.raiders.clear(); g.bolts.clear(); P.repair(1);
     const re = g.raiders.spawn('frigate', P.pos.clone().add({ x: 300, y: 0, z: 0 }), Math.PI, false); g.raiders.setAI(true);
     const tagNow = () => {
       const el = re.tag, bs = el?.querySelector('.bs');
       return { edge: !!el?.classList.contains('edge'), warn: !!el?.classList.contains('warn'), says: bs && getComputedStyle(bs).display !== 'none' ? bs.textContent : '',
-        flashing: !!el?.getAnimations().some((x) => x.animationName === 'tag-warn'), arrow: el ? getComputedStyle(el.querySelector('.arrow')).color : '' };
+        flashing: !!el?.getAnimations().some((x) => x.animationName === 'tag-warn'), arrow: el ? getComputedStyle(el.querySelector('.arrow')).color : '', ring: el ? +el.style.getPropertyValue('--k') : -1,
+        ringShown: !!el?.querySelector('.ring') && getComputedStyle(el.querySelector('.ring')).display !== 'none' };
     };
     const edgeTag = { readying: null, fired: null, onScreen: null };
     t = 0;
@@ -2634,7 +2659,7 @@ if (!demoOnly) {
       else if (!re.charge.b && edgeTag.readying) edgeTag.fired = tagNow();
     }
     t = 0;
-    while (t < 30 && !edgeTag.onScreen) {
+    while (t < 30 && !(edgeTag.onScreen?.ring >= 0.3)) {
       const look = re.f.pos.clone().sub(P.pos); g.cam.yaw = Math.atan2(look.x, look.z) - P.heading; g.cam.pitch = 0.1;
       g.step(0.05, {}); still(P); t += 0.05;
       if (re.charge.b) edgeTag.onScreen = tagNow();
@@ -2762,7 +2787,7 @@ if (!demoOnly) {
   console.log(`a raider Frigate off screen readying her broadside: her tag ${tagWords(et.readying)}; once she's fired: ${tagWords(et.fired)}; on screen, readying another: ${tagWords(et.onScreen)}`);
   if (!et.readying?.edge || !et.readying.warn || !et.readying.flashing || et.readying.says !== 'Broadside!' || et.readying.arrow !== 'rgb(255, 58, 40)') problems.push(`an off-screen raider readying her broadside should flash her edge tag and its arrow red and say "Broadside!": ${JSON.stringify(et.readying)}`);
   if (!et.fired || et.fired.warn || et.fired.says) problems.push(`a raider's edge tag should stop flashing once she has fired: ${JSON.stringify(et.fired)}`);
-  if (!et.onScreen || et.onScreen.edge || et.onScreen.warn) problems.push(`a raider on screen readying her broadside shouldn't flash her tag (her ports show): ${JSON.stringify(et.onScreen)}`);
+  if (!et.onScreen || et.onScreen.edge || !et.onScreen.warn || !et.onScreen.flashing || et.onScreen.says !== 'Broadside!' || !et.onScreen.ringShown || !(et.onScreen.ring >= 0.3)) problems.push(`a raider on screen readying her broadside should flash her tag over her, saying "Broadside!", its ring closing: ${JSON.stringify(et.onScreen)}`);
   console.log(`a raider Frigate downed mid-broadside (${stopped.waited} guns waiting): ${stopped.fromWreck} more fired; a Man-o'-war's four batteries at once: ${big.waiting} of ${big.guns} guns wait their turn, at most ${big.together} go off together, ${big.fired} fire`);
   if (stopped.fromWreck || !stopped.waited) problems.push(`a raider brought down mid-broadside shouldn't fire another gun: ${JSON.stringify(stopped)}`);
   if (big.fired !== big.guns || big.together > 6 || big.waiting < big.guns - 6) problems.push(`a Man-o'-war's four batteries fired at once should all ripple, a few guns at a time: ${JSON.stringify(big)}`);
@@ -3339,6 +3364,254 @@ if (!demoOnly) {
   const cloudyAfter = await clouds();
   console.log(`drawing context lost: ${lost.paused ? 'paused' : 'NOT PAUSED'}; given back: sky light ${lost.sky ? 'back' : 'GONE'}, clouds ${lost.clouds ? 'back' : 'GONE'} (the cloud pattern's mean ${cloudy} → ${cloudyAfter})`);
   if (!lost.paused || !lost.sky || !lost.clouds || Math.abs(cloudy - cloudyAfter) > 0.002 || cloudy < 0.47 || cloudy > 0.5) problems.push(`losing the drawing context went wrong: ${JSON.stringify({ ...lost, cloudy, cloudyAfter })}`);
+  // ---------- tactics (tactics.js): shot, the broadside warning and dodging it, raking fire, the crew patching her ----------
+  // shot bought in port with its own button (◆ 200 for chain shot, breakers left to buy), the note saying how to load it
+  const portShot = await page.evaluate(() => {
+    const g = window.__game;
+    if (g.mode === 'voyage') g.endVoyage(0);
+    g.progress.reset(); const d2 = g.progress.data; d2.shards = 1000; g.port.setMode('port'); document.querySelector('#port-ships [data-ship="skiff"]').click();
+    let told = ''; const off = g.events.on('port:shot', (e) => { told = e.shot; });
+    const row = (id) => document.querySelector(`.buyshot[data-shot="${id}"] button`);
+    const before = { chain: row('chain').textContent, breaker: row('breaker').textContent };
+    row('chain').click(); off();
+    return { before, after: { chain: row('chain').textContent, disabled: row('chain').disabled, breaker: row('breaker').textContent }, shards: d2.shards, owned: { ...d2.shots }, told, note: document.getElementById('port-note').textContent };
+  });
+  console.log(`tactics, shot in port: chain shot "${portShot.before.chain}" bought (now "${portShot.after.chain}", ◆ ${portShot.shards} left, told "${portShot.told}", the note "${portShot.note}"), breakers "${portShot.after.breaker}"`);
+  if (portShot.before.chain !== '◆ 200' || portShot.after.chain !== 'Aboard' || !portShot.after.disabled || portShot.shards !== 800 || !portShot.owned.chain || portShot.owned.breaker || portShot.told !== 'chain' || portShot.after.breaker !== '◆ 600' || !portShot.note.startsWith('Chain shot aboard') || !portShot.note.includes('press 2')) problems.push(`chain shot should be bought in port for ◆ 200 (the breakers still ◆ 600), told, with a note saying how to load it: ${JSON.stringify(portShot)}`);
+  const tac = await page.evaluate(() => {
+    const g = window.__game, E = g.events, T = g.tactics, out = {};
+    g.progress.reset(); let d = g.progress.data; d.skies = 'cross';
+    // (a voyage in a fight: one frozen Skiff 3 km off keeps the wave going, so the crew don't patch her up for nothing)
+    const voyage = (id) => { g.fly(id); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false); g.raiders.clear(); g.bolts.clear(); g.raiders.spawn('skiff', g.player.pos.clone().add({ x: 3000, y: 0, z: 3000 }), 0, true); g.waves.state = 'fight'; return g.player; };
+    const still = (P) => { P.speed = 0.01; P.sail = 0; P.vy = 0; P.turn = 0; P.climb = 0; };
+    const look = (P, r, pitch = 0.05) => { const v = r.f.pos.clone().sub(P.pos); g.cam.yaw = Math.atan2(v.x, v.z) - P.heading; g.cam.pitch = pitch; };
+    const tough = (f) => { for (const k of ['hull', 'sails', 'crystals']) f.full[k] = f.health[k] = 1e9; };
+    // 1. each shot's damage on each part: a bolt of each shot into each part of a raider Frigate frozen side-on, from
+    // her beam (her crystals from above; no raking): every hit does the shot's weight times its number for the part hit
+    // (tactics.js SHOTS)
+    let P = voyage('brig'); P.pos.set(0, 900, 0); P.heading = 0; still(P);
+    const tgt = g.raiders.spawn('frigate', P.pos.clone().add({ x: 0, y: 0, z: 220 }), Math.PI / 2, true); tough(tgt.f); g.step(1 / 60, {});
+    const boxes = [tgt.zones.hullBox, ...tgt.zones.sails, ...tgt.zones.crystals].filter((b) => !b.isEmpty()), seen = {}, wrong = [];
+    let shot = 'round';
+    const offH = E.on('hit', (e) => { if (e.owner !== 'player') return; const k = `${shot} ${e.part}`, want = T.SHOTS[shot][e.part] * 55; seen[k] = (seen[k] ?? 0) + 1; if (Math.abs(e.damage - want) > 1e-6 || e.raked) wrong.push(`${k}: ${e.damage} not ${want}`); });
+    for (shot of T.SHOT_ORDER) {
+      for (const b of boxes) {
+        const top = tgt.zones.crystals.includes(b), c = P.pos.clone().set((b.min.x + b.max.x) / 2, top ? b.max.y - 0.3 : (b.min.y + b.max.y) / 2, (b.min.z + b.max.z) / 2).applyMatrix4(tgt.ship.body.matrixWorld);
+        const dir = top ? c.clone().set(0, -1, 0) : c.clone().sub(P.pos).normalize();
+        g.bolts.fire(c.clone().addScaledVector(dir, top ? -12 : -30), dir, 'broadside', 'player', null, 1, shot);
+      }
+      g.step(0.3, {});
+    }
+    offH();
+    out.parts = { seen, wrong };
+    // 2. chain shot loaded with its key (owned): every battery reloads; the lock point is in her sails; three chain
+    // volleys at a raider Brig frozen 260 m off, sailing away (as a runner does), tear her sails, hardly her hull
+    d.shots.chain = true;
+    P = voyage('brig'); P.pos.set(0, 900, 0); P.heading = Math.PI / 2; still(P);
+    const rb = g.raiders.spawn('brig', P.pos.clone().add({ x: 0, y: 0, z: 260 }), 0, true); tough(rb.f); look(P, rb); g.step(1 / 60, {});
+    for (const k in g.gunnery.ready) g.gunnery.ready[k] = 0;
+    g.step(1 / 60, { pressed: new Set(['2']) });
+    const full = Object.keys(g.gunnery.ready).every((k) => Math.abs(g.gunnery.ready[k] - (g.gunnery.reload(k) - 1 / 60)) < 1e-6);
+    const inv = rb.ship.body.matrixWorld.clone().invert(), lp = rb.f.aimAt('chain').clone().applyMatrix4(inv);
+    const dmg = { hull: 0, sails: 0, crystals: 0 }, offC = E.on('hit', (e) => { if (e.owner === 'player') dmg[e.part] += e.damage; });
+    for (let v = 0; v < 3; v++) { for (const k in g.gunnery.ready) g.gunnery.ready[k] = 0; look(P, rb); g.step(1 / 60, { fire: true }); g.step(1.3, {}); }
+    offC();
+    out.chain = { shot: g.gunnery.shot, full, inSails: rb.zones.sails.some((b) => b.containsPoint(lp)), dmg, locked: g.locked === rb, label: document.getElementById('battery-shot').textContent };
+    // 3. crystal breakers (owned) from 60 m above a raider Man-o'-war, 400 m off her side: her crystals hit, one fewer
+    // volley left for each, and after the fifth, round shot loaded again (and said so)
+    d.shots.breaker = true;
+    P = voyage('frigate'); P.pos.set(0, 960, 0); P.heading = 0; still(P);
+    const mw = g.raiders.spawn('manowar', P.pos.clone().add({ x: 400, y: -60, z: 0 }), 0, true); tough(mw.f); look(P, mw, 0.1); g.step(1 / 60, {});
+    g.pickShot('breaker');
+    const left = [], crys = { hits: 0 }, offB = E.on('hit', (e) => { if (e.owner === 'player' && e.part === 'crystals') crys.hits++; });
+    for (let v = 0; v < 5; v++) { for (const k in g.gunnery.ready) g.gunnery.ready[k] = 0; look(P, mw, 0.1); g.step(1 / 60, { fire: true }); left.push(g.gunnery.breakers); g.step(1.2, {}); }
+    offB();
+    out.breakers = { left, crystals: crys.hits, after: g.gunnery.shot, toast: document.getElementById('toast').textContent, again: g.pickShot('breaker') };
+    // 4. the broadside warning: a raider Frigate 300 m abeam of a still Captain at her height readies her broadside, her
+    // red fan showing, the skies' 0.8 s (Crosswinds) before her first shot, and tells it (`warn`)
+    P = voyage('brig'); P.pos.set(0, 900, 0); P.heading = 0; still(P); P.full.hull = P.health.hull = 1e6; P.full.crystals = P.health.crystals = 1e6; P.full.sails = P.health.sails = 1e6;
+    let rw = g.raiders.spawn('frigate', P.pos.clone().add({ x: 300, y: 0, z: 0 }), Math.PI, false); g.raiders.setAI(true);
+    let t = 0, chargedAt = -1, boltAt = -1, fan = 0, warned = -1;
+    const offW = E.on('warn', (e) => { if (warned < 0 && e.raider === rw) warned = t + 0.05; }); // (told during the step that ends at t + 0.05)
+    while (t < 20 && boltAt < 0) {
+      g.step(0.05, {}); still(P); t += 0.05;
+      if (chargedAt < 0 && rw.charge.b) chargedAt = t;
+      if (rw.charge.b && rw.fans?.[rw.charge.b]?.visible && rw.fans[rw.charge.b].material.uniforms.uK.value > 0) fan++;
+      if (g.bolts.bolts.some((b) => b.owner === 'raider' && b.K.size > 1.2)) boltAt = t;
+    }
+    offW();
+    out.warn = { chargedAt: +chargedAt.toFixed(2), boltAt: +boltAt.toFixed(2), warned: +warned.toFixed(2), fan, fanGone: !Object.values(rw.fans ?? {}).some((m) => m.visible) };
+    // 5. dodging it: three of her broadsides at a Captain who holds still, then three at one who climbs on each warning
+    // for 2.5 s: her gunners aim where the Captain was heading, so the climbing one is hardly hit
+    const volleys = (climb) => {
+      g.raiders.clear(); g.bolts.clear();
+      P.pos.set(0, 900, 0); P.heading = 0; still(P); P.repair(1);
+      rw = g.raiders.spawn('frigate', P.pos.clone().add({ x: 300, y: 0, z: 0 }), Math.PI, false); g.raiders.setAI(true);
+      let n = 0, hits = 0, up = 0, tt = 0;
+      const offs = [E.on('warn', (e) => { if (e.raider === rw && n < 3) { n++; up = climb ? 2.5 : 0; } }), E.on('hit', (e) => { if (e.target === 'player' && e.size > 1.2) hits++; })];
+      // (until her third broadside's shots are all gone)
+      while (tt < 30) {
+        g.step(0.05, { climb: up > 0 ? 1 : 0 }); tt += 0.05; up -= 0.05; P.speed = 0.01; P.sail = 0;
+        if (!climb) { P.vy = 0; P.climb = 0; }
+        if (n >= 3 && !rw.charge.b && !rw.gun.pending && !g.bolts.bolts.some((b) => b.owner === 'raider' && b.K.size > 1.2)) break;
+      }
+      offs.forEach((f) => f());
+      return { warnings: n, hits };
+    };
+    out.dodge = { still: volleys(false), climbing: volleys(true) };
+    g.raiders.setAI(false); g.raiders.clear(); g.bolts.clear();
+    // 6. raking fire: three port broadsides into a raider Brig frozen 260 m off, from her beam, then three from dead ahead
+    // of her, her bow at the Captain: the hits down her length do half as much again, told (`raked`) and marked "Raked!"
+    P = voyage('brig'); P.pos.set(0, 900, 0); P.heading = 0; still(P);
+    const rk = g.raiders.spawn('brig', P.pos.clone().add({ x: 260, y: 0, z: 0 }), 0, true); tough(rk.f); g.step(1 / 60, {});
+    const per = { beam: [], ahead: [] };
+    let where = 'beam', raked = 0;
+    const offR = [E.on('hit', (e) => { if (e.owner === 'player') per[where].push(e.damage); }), E.on('raked', (e) => { if (e.owner === 'player') raked++; })];
+    const fire3 = () => { for (let v = 0; v < 3; v++) { for (const k in g.gunnery.ready) g.gunnery.ready[k] = 0; look(P, rk); g.step(1 / 60, { fire: true }); g.step(1.2, {}); } };
+    fire3();
+    where = 'ahead'; rk.f.pos.set(0, 900, -260); rk.f.heading = 0; rk.ship.root.position.copy(rk.f.pos); rk.ship.root.rotation.y = 0; P.heading = Math.PI / 2; g.step(1 / 60, {});
+    let marked = false; // (the marker is animated by the page, in its own time: looked for while it shows)
+    for (let v = 0; v < 3; v++) { for (const k in g.gunnery.ready) g.gunnery.ready[k] = 0; look(P, rk); g.step(1 / 60, { fire: true }); g.step(0.45, {}); marked ||= document.getElementById('raked').getAnimations().length > 0; g.step(0.75, {}); }
+    offR.forEach((f) => f());
+    const mean = (a) => a.reduce((x, y) => x + y, 0) / Math.max(1, a.length);
+    out.rake = { beam: per.beam.length, ahead: per.ahead.length, ratio: +(mean(per.ahead) / mean(per.beam)).toFixed(3), raked, marked };
+    // a raider's broadside shot down the Captain's length: half as much again on her, and the first time in a voyage a
+    // toast says so; across her, as usual
+    P = voyage('brig'); P.pos.set(0, 900, 0); P.heading = 0; still(P); P.full.hull = P.health.hull = 1e6; g.step(1 / 60, {});
+    const onHer = [], offP = E.on('hit', (e) => { if (e.target === 'player') onHer.push({ d: +e.damage.toFixed(2), raked: e.raked }); });
+    const shoot = (from) => { const at = P.aimAt().clone(), src = at.clone().add(from); g.bolts.fire(src, at.clone().sub(src).normalize(), 'broadside', 'raider', null, 1); g.step(0.5, {}); };
+    shoot({ x: 0, y: 0, z: 150 }); out.rakedToast = document.getElementById('toast').textContent; shoot({ x: 150, y: 0, z: 0 });
+    offP();
+    out.onHer = onHer;
+    // 7. a captain's Frigate brought down earns crystal breakers, and a treasure ship striking to her chain shot (each said
+    // in a banner, kept in the save, the phone's shot button shown)
+    g.progress.reset(); d = g.progress.data; d.skies = 'cross';
+    P = voyage('brig'); P.pos.set(0, 900, 0); still(P);
+    const earned = [], offE = E.on('shot', (e) => { if (e.why === 'earned') earned.push(e.shot); });
+    const tr = g.raiders.spawn('brig', P.pos.clone().add({ x: 0, y: 0, z: 400 }), 0, true, false, true); tr.f.hit('sails', 1e9); g.step(0.1, {});
+    const b1 = document.getElementById('banner-title').textContent;
+    const cf = g.raiders.spawn('frigate', P.pos.clone().add({ x: 0, y: 0, z: -400 }), 0, true, true); cf.f.hit('hull', 1e9); g.step(0.1, {});
+    offE();
+    out.earned = { earned, shots: { ...d.shots }, banners: [b1, document.getElementById('banner-title').textContent], line: document.getElementById('banner-line').textContent };
+    g.raiders.clear(); g.bolts.clear();
+    return out;
+  });
+  {
+    const { parts, chain, breakers, warn: tw, dodge, rake, onHer, earned } = tac;
+    const combos = Object.keys(parts.seen);
+    console.log(`tactics, each shot on each part: ${combos.map((k) => `${k} ×${parts.seen[k]}`).join(', ')}${parts.wrong.length ? `; WRONG: ${parts.wrong.slice(0, 4).join('; ')}` : ', every hit as the table says'}`);
+    if (parts.wrong.length || combos.length < 9) problems.push(`each shot should hit each part as hard as tactics.js says (all nine of shot and part seen): ${JSON.stringify(parts)}`);
+    console.log(`tactics, chain shot: loaded with 2 (${chain.shot}), ${chain.full ? 'every battery reloading' : 'NOT RELOADING'}, the lock point ${chain.inSails ? 'in her sails' : 'NOT IN HER SAILS'}, the guns' label "${chain.label}"; three volleys at a ship sailing away: sails ${Math.round(chain.dmg.sails)}, hull ${Math.round(chain.dmg.hull)}, crystals ${Math.round(chain.dmg.crystals)}`);
+    if (chain.shot !== 'chain' || !chain.full || !chain.inSails || !(chain.dmg.sails > 0) || chain.dmg.sails < 2 * chain.dmg.hull || chain.label !== ' · Chain shot') problems.push(`chain shot loaded with 2 should reload every battery, lock on to her sails and tear them (at least twice the hull's damage): ${JSON.stringify(chain)}`);
+    console.log(`tactics, crystal breakers from 60 m above a Man-o'-war: volleys left ${breakers.left.join(', ')}, ${breakers.crystals} hits on her crystals, then ${breakers.after} shot ("${breakers.toast}")`);
+    if (breakers.left.join() !== '4,3,2,1,0' || breakers.crystals < 3 || breakers.after !== 'round' || !breakers.toast.startsWith('Out of crystal breakers') || breakers.again) problems.push(`five volleys of crystal breakers should crack her crystals, one fewer left each, then round shot loaded again (and no more breakers): ${JSON.stringify(breakers)}`);
+    console.log(`tactics, a raider Frigate's warning: readying from ${tw.chargedAt} s (told at ${tw.warned} s), her red fan showing ${tw.fan} frames, her first broadside shot at ${tw.boltAt} s, the fan ${tw.fanGone ? 'gone as she fires' : 'STILL SHOWING'}`);
+    if (tw.chargedAt < 0 || tw.boltAt - tw.chargedAt < 0.75 || tw.boltAt - tw.chargedAt > 0.95 || Math.abs(tw.warned - tw.chargedAt) > 0.01 || tw.fan < 10 || !tw.fanGone) problems.push(`a raider's broadside should be readied (her red fan showing, told) the skies' 0.8 s before she fires: ${JSON.stringify(tw)}`);
+    console.log(`tactics, dodging: three broadsides at a Captain holding still hit her ${dodge.still.hits} times; at one climbing on each warning, ${dodge.climbing.hits}`);
+    if (dodge.still.warnings < 3 || dodge.climbing.warnings < 3 || dodge.still.hits < 3 || dodge.climbing.hits > 1) problems.push(`climbing on a raider's broadside warning should make her miss (at most 1 hit in three broadsides, against 3 or more holding still): ${JSON.stringify(dodge)}`);
+    console.log(`tactics, raking: ${rake.beam} hits from her beam, ${rake.ahead} from dead ahead of her, ${rake.ratio} times as hard; told ${rake.raked} times, "Raked!" ${rake.marked ? 'shown' : 'NOT SHOWN'}; a raider's shot down your length ${onHer[0]?.d} (${onHer[0]?.raked ? 'raked' : 'NOT RAKED'}, the toast "${tac.rakedToast}"), across you ${onHer[1]?.d}`);
+    if (rake.beam < 6 || rake.ahead < 6 || Math.abs(rake.ratio - 1.5) > 0.15 || rake.raked < 1 || !rake.marked) problems.push(`a broadside down a ship's length should do half as much again (within 10%), told and marked "Raked!": ${JSON.stringify(rake)}`);
+    if (onHer.length !== 2 || !onHer[0].raked || onHer[1].raked || Math.abs(onHer[0].d / onHer[1].d - 1.5) > 0.01 || tac.rakedToast !== 'Raked! Don\'t let them cross your bow') problems.push(`a raider's broadside down the Captain's length should rake her (half as much again, the toast saying so), across her not: ${JSON.stringify({ onHer, toast: tac.rakedToast })}`);
+    console.log(`tactics, shot earned at sea: ${earned.earned.join(' then ') || 'NOTHING'} (banners "${earned.banners.join('", "')}", "${earned.line}")`);
+    if (earned.earned.join() !== 'chain,breaker' || !earned.shots.chain || !earned.shots.breaker || earned.banners[0] !== 'Chain shot!' || earned.banners[1] !== 'Crystal breakers!' || !earned.line.includes('press 3')) problems.push(`a treasure ship striking should earn chain shot, and a captain's Frigate crystal breakers, each said in a banner and kept: ${JSON.stringify(earned)}`);
+  }
+  // the crew patching her, with the real X key (laptop): her sails at 40% patched to 73% in 6 s, a broadside's reload
+  // taking twice as long meanwhile, and X again within 30 s doing nothing (the crew getting ready, said in a toast)
+  await page.evaluate(() => {
+    const g = window.__game; g.fly('brig'); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false);
+    const P = g.player; P.pos.set(0, 900, 0); P.heading = 0; P.speed = 0.01; P.sail = 0; P.health.sails = P.full.sails * 0.4;
+    g.raiders.spawn('skiff', P.pos.clone().add({ x: 3000, y: 0, z: 3000 }), 0, true); g.waves.state = 'fight'; // (a fight going on: no free patching)
+    document.activeElement?.blur?.();
+  });
+  await undrawn(page, true);
+  await page.keyboard.press('x');
+  await wait(page, () => window.__game.player.patch.t > 0, null, 'X starts the crew patching her');
+  const patched = await page.evaluate(() => {
+    const g = window.__game, P = g.player, G = g.gunnery, out = { part: P.patch.part, toast: document.getElementById('toast').textContent };
+    g.step(0.12, {}); out.row = document.getElementById('row-sails').classList.contains('patching'); // (the panel's next tenth of a second)
+    for (const k in G.ready) G.ready[k] = 0;
+    g.cam.yaw = Math.PI / 2; g.cam.pitch = 0.05; g.step(1 / 60, { fire: true });
+    let t = 0; while (G.ready.port > 0 && t < 10) { g.step(0.05, {}); t += 0.05; }
+    out.reload = +(t / G.reload('port')).toFixed(2);
+    g.step(Math.max(0, P.patch.t) + 0.1, {});
+    g.step(0.12, {}); out.sails = +P.frac('sails').toFixed(3); out.cd = +P.patch.cd.toFixed(1); out.rowAfter = document.getElementById('row-sails').classList.contains('patching');
+    return out;
+  });
+  await page.keyboard.press('x');
+  await page.waitForFunction(() => /again in \d+ s/.test(document.getElementById('toast').textContent), null, { timeout: 30000 }).catch(() => {});
+  Object.assign(patched, await page.evaluate(() => { const P = window.__game.player; return { again: P.patch.t > 0, sails2: +P.frac('sails').toFixed(3), toast2: document.getElementById('toast').textContent }; }));
+  await undrawn(page, false);
+  console.log(`tactics, X: the crew patch the ${patched.part} ("${patched.toast}", her row ${patched.row ? 'glowing' : 'NOT GLOWING'}): 40% to ${Math.round(patched.sails * 100)}% in 6 s, a broadside reloading ${patched.reload} times as long meanwhile; X again: ${patched.again ? 'PATCHING AGAIN' : `nothing ("${patched.toast2}")`}`);
+  if (patched.part !== 'sails' || !patched.row || patched.rowAfter || Math.abs(patched.sails - 0.73) > 0.02 || Math.abs(patched.reload - 2) > 0.2 || patched.again || patched.sails2 !== patched.sails || !/again in \d+ s/.test(patched.toast2) || patched.cd < 28) problems.push(`X should patch her worst part by a third over 6 s, the guns reloading at half speed, and not again within 30 s: ${JSON.stringify(patched)}`);
+  // smarter raiders: on Crosswinds a raider Brig the Captain points her bow at makes for a spot ahead of it, to cross
+  // it and rake her (she turns that way), where on Fair Winds she comes alongside (turning the other way); on the
+  // Maelstrom one the Captain's guns are locked on to, a loaded broadside pointed at her, climbs or dives out of it
+  const smart = await page.evaluate(() => {
+    const g = window.__game, d = g.progress.data, out = {};
+    const turnAt = (skies) => {
+      d.skies = skies; g.fly('brig'); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false); g.waves.state = 'fight';
+      const P = g.player; P.pos.set(0, 900, 0); P.heading = 0; P.speed = 0.01; P.sail = 0;
+      const r = g.raiders.spawn('brig', P.pos.clone().add({ x: -120, y: 0, z: 480 }), Math.PI * 0.75, false); g.raiders.setAI(true);
+      g.step(0.6, { turn: 0 }); P.speed = 0.01;
+      const out = r.f.turn; g.raiders.setAI(false); g.raiders.clear(); return +out.toFixed(2);
+    };
+    out.cross = turnAt('cross'); out.fair = turnAt('fair');
+    d.skies = 'mael'; g.fly('brig'); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false); g.waves.state = 'fight';
+    const P = g.player; P.pos.set(0, 900, 0); P.heading = 0; P.full.hull = P.health.hull = 1e6;
+    const r = g.raiders.spawn('frigate', P.pos.clone().add({ x: 330, y: 0, z: 0 }), 0, false); g.raiders.setAI(true);
+    let t = 0, dodged = -1;
+    while (t < 30 && dodged < 0) {
+      const v = r.f.pos.clone().sub(P.pos); g.cam.yaw = Math.atan2(v.x, v.z) - P.heading; g.cam.pitch = 0.05;
+      for (const k in g.gunnery.ready) g.gunnery.ready[k] = 0;
+      g.step(0.1, {}); t += 0.1; P.speed = 0.01;
+      if (r.dodge > 0) dodged = t;
+    }
+    out.dodged = +dodged.toFixed(1); out.locked = g.locked === r;
+    g.raiders.setAI(false); g.raiders.clear(); d.skies = 'cross';
+    return out;
+  });
+  console.log(`tactics, smarter raiders: a Brig the Captain points at turns ${smart.cross} on Crosswinds (to cross her bow), ${smart.fair} on Fair Winds (to come alongside); on the Maelstrom one locked on to with a loaded broadside at her ${smart.dodged >= 0 ? `dodged ${smart.dodged} s in` : 'NEVER DODGED'}`);
+  if (!(smart.cross < -0.2) || !(smart.fair > 0.2) || smart.dodged < 0) problems.push(`smarter raiders: on Crosswinds a big raider should turn to cross the Captain's bow (on Fair Winds come alongside), and on the Maelstrom dodge a loaded broadside: ${JSON.stringify(smart)}`);
+  // pictures: a chain-shot volley, the red danger fan, a rake and the crew patching (looked at by eye)
+  await page.evaluate(() => {
+    const g = window.__game, d = g.progress.data; d.shots.chain = d.shots.breaker = true;
+    g.fly('frigate'); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false); g.waves.state = 'fight';
+    const P = g.player; P.pos.set(2000, 900, 1500); P.heading = 0.6; P.speed = 3; P.sail = 0.05;
+    const s = { x: Math.cos(0.6), y: 0, z: -Math.sin(0.6) }, r = g.raiders.spawn('brig', P.pos.clone().addScaledVector(s, 380).addScaledVector(P.forward(), 40), P.heading + 0.3, true);
+    // (the view held where it's put while the pictures are drawn: the page's own frames run meanwhile)
+    const v = r.f.pos.clone().sub(P.pos); g.cam.yaw = Math.atan2(v.x, v.z) - P.heading; g.cam.pitch = 0.06; g.input.lastLook = performance.now() / 1000 + 120;
+    g.pickShot('chain'); g.step(1 / 60, {}); for (const k in g.gunnery.ready) g.gunnery.ready[k] = 0; g.step(1 / 60, { fire: true }); g.step(0.3, {});
+  });
+  await shot(page, 'laptop-chain-shot');
+  await page.evaluate(() => {
+    const g = window.__game; g.raiders.clear(); g.bolts.clear();
+    const P = g.player; P.full.hull = P.health.hull = 1e6;
+    const f = P.forward(), s = { x: Math.cos(0.6), y: 0, z: -Math.sin(0.6) }, r = g.raiders.spawn('frigate', P.pos.clone().addScaledVector(s, -330).addScaledVector(f, 120), P.heading, false); g.raiders.setAI(true);
+    for (let i = 0; i < 400 && !r.charge.b; i++) g.step(1 / 60, {});
+    r.charge.T = 1e9; r.charge.t = 0.3e9; // (held while it's drawn)
+    const v = r.f.pos.clone().sub(P.pos); g.cam.yaw = Math.atan2(v.x, v.z) - P.heading + 0.25; g.cam.pitch = 0.22; g.input.lastLook = performance.now() / 1000 + 120; g.step(1 / 60, {});
+  });
+  await page.waitForTimeout(1200);
+  await shot(page, 'laptop-danger-fan');
+  await page.evaluate(() => {
+    const g = window.__game; g.raiders.setAI(false); g.raiders.clear(); g.bolts.clear();
+    const P = g.player; P.heading = 0.6; g.pickShot('round');
+    const r = g.raiders.spawn('brig', P.pos.clone().addScaledVector(P.forward(), -260), P.heading + Math.PI / 2, true); // (her bow at the Captain's stern quarter: down her length)
+    P.heading = 0.6 + Math.PI / 2; g.step(1 / 60, {}); r.f.heading = Math.atan2(P.pos.x - r.f.pos.x, P.pos.z - r.f.pos.z); r.ship.root.rotation.y = r.f.heading; g.step(1 / 60, {});
+    const v = r.f.pos.clone().sub(P.pos); g.cam.yaw = Math.atan2(v.x, v.z) - P.heading; g.cam.pitch = 0.08; g.input.lastLook = performance.now() / 1000 + 120;
+    for (const k in g.gunnery.ready) g.gunnery.ready[k] = 0; g.step(1 / 60, { fire: true }); g.step(0.95, {});
+  });
+  await page.evaluate(() => document.getElementById('raked').getAnimations().forEach((a) => { a.pause(); a.currentTime = 300; })); // (held while it's drawn)
+  await shot(page, 'laptop-rake');
+  await page.evaluate(() => document.getElementById('raked').getAnimations().forEach((a) => a.finish()));
+  await page.evaluate(() => {
+    const g = window.__game; g.raiders.clear(); g.bolts.clear();
+    const P = g.player; P.full.hull = 2000; P.health.hull = 700; P.patch.cd = 0; g.cam.yaw = 0.4; g.cam.pitch = 0.2; g.input.lastLook = performance.now() / 1000 + 120;
+    g.raiders.spawn('skiff', P.pos.clone().add({ x: 3000, y: 0, z: 3000 }), 0, true); g.waves.state = 'fight'; // (a fight going on)
+    g.step(1 / 60, { pressed: new Set(['x']) }); g.step(2, {});
+  });
+  await shot(page, 'laptop-patch');
+  await page.evaluate(() => { const g = window.__game; g.raiders.clear(); g.bolts.clear(); g.player.repair(1); g.player.patch.cd = 0; g.input.lastLook = 0; });
   // between waves the card is a strip docked at the bottom, clear of the middle (where the wreck and her shards are);
   // with the mouse locked it can't be clicked, so Enter sails on and B goes back to port, as its buttons say
   await page.evaluate(() => { const g = window.__game; g.pause(false); document.activeElement?.blur?.(); g.raiders.clear(); g.raiders.setAI(false); Object.assign(g.waves, { n: 1, state: 'fight', next: null }); g.step(0.05, {}); });
@@ -3466,6 +3739,27 @@ if (!quick && !demoOnly) {
   console.log(`phone: a resting thumb keeps the view (${rested.toFixed(2)} of 1); a drag while paused moves it ${jumped.toFixed(2)}; sliding off Fire aims ${slid.toFixed(2)} while firing`);
   await touch('touchStart', await box('#btn-surge')); await touch('touchEnd');
   await wait(page, () => window.__game.player.surge.on > 0, null, 'Surge surges');
+  // the shot button (over Surge, once she has more than round shot): hidden before, then a tap loads the next shot; and
+  // the Patch button (by the sail buttons): hidden at full health, shown at hull 60%, and a tap starts the crew patching
+  // her (a fight going on: a frozen Skiff far off). A picture of both
+  const phoneTac = await page.evaluate(() => {
+    const g = window.__game, P = g.player; g.raiders.clear(); g.raiders.spawn('skiff', P.pos.clone().add({ x: 3000, y: 0, z: 3000 }), 0, true); g.waves.state = 'fight';
+    P.repair(1); P.patch.cd = 0; g.step(0.15, {});
+    const out = { shotBefore: !document.getElementById('btn-shot').hidden, patchFull: !document.getElementById('btn-patch').hidden };
+    g.progress.data.shots.chain = true; g.step(0.15, {});
+    out.shotShown = !document.getElementById('btn-shot').hidden && document.body.classList.contains('has-shot');
+    return out;
+  });
+  await touch('touchStart', await box('#btn-shot')); await touch('touchEnd');
+  await wait(page, () => window.__game.gunnery.shot === 'chain', null, 'phone: a tap on the shot button loads chain shot');
+  Object.assign(phoneTac, await page.evaluate(() => { const g = window.__game, P = g.player; P.health.hull = P.full.hull * 0.6; g.step(0.15, {}); return { shot: g.gunnery.shot, says: document.getElementById('btn-shot').textContent, patchHurt: !document.getElementById('btn-patch').hidden }; }));
+  if (phoneTac.patchHurt) { await touch('touchStart', await box('#btn-patch')); await touch('touchEnd'); }
+  await wait(page, () => window.__game.player.patch.t > 0, null, 'phone: a tap on Patch starts the crew patching her');
+  Object.assign(phoneTac, await page.evaluate(() => { const g = window.__game; g.step(0.15, {}); const b = document.getElementById('btn-patch'); return { patching: g.player.patch.part, ring: b.classList.contains('busy') && b.classList.contains('on') }; }));
+  await undrawn(page, false); await page.waitForTimeout(1500); await shot(page, 'phone-shot-and-patch'); await undrawn(page, true);
+  console.log(`phone: the shot button ${phoneTac.shotBefore ? 'SHOWING WITH ROUND SHOT ONLY' : 'hidden with round shot only'}, ${phoneTac.shotShown ? 'shown' : 'NOT SHOWN'} with chain shot, a tap loading ${phoneTac.shot} ("${phoneTac.says}"); Patch ${phoneTac.patchFull ? 'SHOWING AT FULL HEALTH' : 'hidden at full health'}, ${phoneTac.patchHurt ? 'shown' : 'NOT SHOWN'} at hull 60%, a tap patching the ${phoneTac.patching ?? 'NOTHING'}${phoneTac.ring ? ', its ring filling' : ''}`);
+  if (phoneTac.shotBefore || !phoneTac.shotShown || phoneTac.shot !== 'chain' || phoneTac.says !== 'Chain' || phoneTac.patchFull || !phoneTac.patchHurt || phoneTac.patching !== 'hull' || !phoneTac.ring) problems.push(`phone: the shot button should show once she has chain shot and load it with a tap, and Patch show once she's hurt and start the crew patching with a tap: ${JSON.stringify(phoneTac)}`);
+  await page.evaluate(() => { const g = window.__game, P = g.player; g.raiders.clear(); P.repair(1); g.pickShot('round'); g.step(0.15, {}); });
   // on a phone held upright a raider alongside is off screen, so her glowing ports can't be seen: a raider Frigate 270 m
   // off the side readying her broadside flashes her tag at the edge red, and it says "Broadside!". A raider Brig held
   // just beyond her, a little higher, has her tag at the same edge: the two are stacked clear of each other (the warning
@@ -3594,14 +3888,16 @@ if (!quick && !demoOnly) {
   if (!says(rightWords, 'Left', 'right')) problems.push(`phone: with Fire back on the right, the hint and How to fly should say the left thumb steers again: ${JSON.stringify(rightWords)}`);
   // nothing on the screen lands on anything else, on a phone held upright or sideways (two sizes each): layoutAt,
   // with the touch buttons and the hint
-  const HUD = ['ship', 'compass', 'btn-pause', 'minimap', 'score', 'battery', 'toast', 'warn', 'banner', 'region', 'aim', 'btn-fire', 'btn-surge', 'btn-sail-up', 'btn-sail-down', 'touch-hint', 'calm'];
+  const HUD = ['ship', 'compass', 'btn-pause', 'minimap', 'score', 'battery', 'toast', 'warn', 'banner', 'region', 'aim', 'btn-fire', 'btn-surge', 'btn-shot', 'btn-patch', 'btn-sail-up', 'btn-sail-down', 'touch-hint', 'calm'];
   const PANELS = ['ship', 'compass', 'btn-pause', 'minimap', 'score', 'battery', 'touch-buttons', 'touch-hint'];
   const layouts = [];
   for (const [w, h] of [[390, 844], [360, 640], [844, 390], [740, 360], [640, 360], [568, 320]]) {
     // (the new size, once the game has heard of it: drawn in software, a frame can take longer than the half second)
     await page.setViewportSize({ width: w, height: h }); await page.waitForTimeout(500);
     await page.waitForFunction(([w, h]) => Math.abs(window.__game.camera.aspect - w / h) < 1e-6, [w, h], { timeout: 30000 }).catch(() => problems.push(`phone ${w}x${h}: the game never heard the window change size`));
-    layouts.push(`${w}x${h}: ${layoutProblems(await layoutAt(page, HUD, PANELS, w === 360), `phone ${w}x${h}`)}; a bounty ${bountyProblems(await bountyCard(page), `phone ${w}x${h}`)}`);
+    const L = await layoutAt(page, HUD, PANELS, w === 360);
+    if (L.tacButtons !== 2) problems.push(`phone ${w}x${h}: the layout test should measure the shot and Patch buttons with the rest (${L.tacButtons} of 2 showing)`);
+    layouts.push(`${w}x${h}: ${layoutProblems(L, `phone ${w}x${h}`)}; a bounty ${bountyProblems(await bountyCard(page), `phone ${w}x${h}`)}`);
   }
   console.log(`phone layouts: ${layouts.join('; ')}`);
   // reading a fight from afar on a phone: upright, a raider's glows, scars and fire and a far wake; held sideways, two

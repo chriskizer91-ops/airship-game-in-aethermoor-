@@ -1,9 +1,10 @@
 // input.js: one set of controls from the keyboard and mouse (a laptop) or the touch screen (a phone), both at once.
 //   Laptop: W/S sails, A/D or arrows turn, Space/E or Up climb, Shift/Q or Down dive, mouse aims (click the view to
-//   lock the mouse to it; Esc lets go), left click or F fires, R surges, C looks ahead, M map, P pause, H help.
+//   lock the mouse to it; Esc lets go), left click or F fires, R surges, 1/2/3 load a shot and a right-click the next
+//   (`shot`), X patches her up, C looks ahead, M map, P pause, H help.
 //   Phone: a stick under the left thumb steers and climbs, dragging on the right aims, Fire (slide the thumb off it to
-//   aim while firing), Surge and the sail buttons. With Fire on the left (Settings: leftFire), the sides swap: the
-//   stick is under the right thumb, and the left one aims.
+//   aim while firing), Surge, the shot button (the next shot), Patch and the sail buttons. With Fire on the left
+//   (Settings: leftFire), the sides swap: the stick is under the right thumb, and the left one aims.
 // Only while `active` (flying); in port and on the title screen the controls are left alone.
 export function makeInput(canvas, el) {
   const keys = new Set();
@@ -40,6 +41,7 @@ export function makeInput(canvas, el) {
   canvas.addEventListener('mousedown', (e) => {
     if (fromTouch() || !s.active) return;
     if (e.button === 0 && (s.locked || !lockable)) mouseFire = true;
+    if (e.button === 2 && s.locked) s.pressed.add('shot'); // (a right-click while aiming: the next shot)
     if (s.locked) return;
     if (e.button === 0 || e.button === 2) drag = { x: e.clientX, y: e.clientY, moved: 0, button: e.button };
   });
@@ -49,6 +51,8 @@ export function makeInput(canvas, el) {
       // a plain click: lock the mouse to the view for aiming (laptops); if the page won't allow it, dragging still aims
       try { const p = canvas.requestPointerLock(); p?.catch?.(noLock); } catch { noLock(); }
     }
+    // (a plain right-click without the lock: the next shot too; a right-drag aims)
+    if (drag && drag.button === 2 && drag.moved < 6 && !s.locked && s.active && !fromTouch()) s.pressed.add('shot');
     drag = null;
   });
   addEventListener('mousemove', (e) => {
@@ -112,6 +116,9 @@ export function makeInput(canvas, el) {
   hold('#btn-sail-up', () => { sailHold = 1; }, () => { sailHold = 0; });
   hold('#btn-sail-down', () => { sailHold = -1; }, () => { sailHold = 0; });
   el.querySelector('#btn-surge').addEventListener('pointerdown', (e) => { e.preventDefault(); s.pressed.add('r'); });
+  el.querySelector('#btn-shot').addEventListener('pointerdown', (e) => { e.preventDefault(); s.pressed.add('shot'); });
+  el.querySelector('#btn-patch').addEventListener('pointerdown', (e) => { e.preventDefault(); s.pressed.add('x'); });
+  for (const id of ['#btn-shot', '#btn-patch']) el.querySelector(id).addEventListener('contextmenu', (e) => e.preventDefault());
 
   // every frame: combine everything into one set of controls (one kept object, filled afresh each frame)
   const out = { turn: 0, climb: 0, sail: 0, fire: false, look: { x: 0, y: 0 }, zoom: 0, pressed: new Set(), lastLook: 0, locked: false };

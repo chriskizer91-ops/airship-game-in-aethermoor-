@@ -23,13 +23,26 @@
 //   volley          { owner, battery, count, kind, ship, p }
 //                                                a battery starting to fire (its guns ripple off after it, bow first);
 //                                                p is its middle gun
-//   hit             { owner, target, part, at, damage, raider, dir, vel, size }
+//   hit             { owner, target, part, at, damage, raider, dir, vel, size, raked }
 //                                                a shot landing: who fired it, 'player' or 'raider' hit, 'hull',
 //                                                'sails' or 'crystals', where (world), how hard, the raider: the one
 //                                                hit, or the one that fired at the Captain (she may be going down by
 //                                                then; null for a shot no raider's guns fired), which way the shot was
 //                                                flying (a unit vector), the velocity of the ship it hit, and how big
-//                                                the shot was (1 a chaser's, 1.35 a broadside's: the scar it leaves)
+//                                                the shot was (1 a chaser's, 1.35 a broadside's: the scar it leaves),
+//                                                and whether it was raking fire (down her length: tactics.js)
+//   raked           { owner, raider, at }        a broadside's shot raking a ship (the first of a volley's hits that
+//                                                do): 'player' (the Captain raked the raider) or 'raider' (a raider
+//                                                raked the Captain); where it landed
+//   warn            { raider, battery, time }    a raider starting to ready a broadside at the Captain: her ports glow
+//                                                and her red fan shows for `time` seconds, then she fires where the
+//                                                Captain was heading
+//   shot            { shot, why, left }          the Captain's shot: 'round', 'chain' or 'breaker'; why 'pick' (she
+//                                                loaded it), 'out' (no crystal breakers left: round shot loaded) or
+//                                                'earned' (a new kind earned by a deed, in the hold, not loaded); and
+//                                                how many volleys of breakers are left
+//   patch           { part, stage }              the Captain's crew patching her: 'start' or 'done', and what
+//   port:shot       { shot }                     a kind of shot bought in port
 //   nearMiss        { pan, close, at }           a raider's shot just missing the Captain's ship: pan -1 (left of the
 //                                                view) to 1 (right), close 0 (barely) to 1 (a hair's breadth)
 //   raider:down     { raider, why, at }          'hull', 'crystals' or 'struck' (a treasure ship giving up)
@@ -83,7 +96,11 @@ export const PAYLOAD = {
   'voyage:end': { kept: 0, sunk: false, waves: 0, trial: false },
   fire: { owner: '', kind: '', battery: '', p: v(), dir: v(), weight: 1, ship: '', vel: v(), i: 0, n: 1, raider: null },
   volley: { owner: '', battery: '', count: 0, kind: '', ship: '', p: v() },
-  hit: { owner: '', target: '', part: '', at: v(), damage: 0, raider: null, dir: v(), vel: v(), size: 1 },
+  hit: { owner: '', target: '', part: '', at: v(), damage: 0, raider: null, dir: v(), vel: v(), size: 1, raked: false },
+  raked: { owner: '', raider: null, at: v() },
+  warn: { raider: null, battery: '', time: 0 },
+  shot: { shot: '', why: '', left: 0 },
+  patch: { part: '', stage: '' },
   nearMiss: { pan: 0, close: 0, at: v() },
   'raider:down': { raider: null, why: '', at: v() },
   'raider:escaped': { raider: null },
@@ -110,6 +127,7 @@ export const PAYLOAD = {
   'port:upgrade': { ship: '', mod: '', step: 0 },
   'port:power': { ship: '', power: 0 },
   'port:skies': { skies: '' },
+  'port:shot': { shot: '' },
 };
 // Each event's listeners, in the order they started listening. A listener may stop listening (or another start) while
 // the event is being told: one that stops is only blanked out until the telling is over (taking it out of the list there

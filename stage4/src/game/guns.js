@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { emit, payload } from './events.js';
 import { RIPPLE } from '../ship/parts.js';
+import { SHOTS } from './tactics.js';
 export { RIPPLE };
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -72,6 +73,31 @@ export function clampToArc(want, axis, yawMax, pitchMax, out = new THREE.Vector3
   return out.multiplyScalar(Math.cos(pitch)).setY(Math.sin(pitch)).normalize();
 }
 
+// The red danger fan a raider shows while she readies a broadside (raiders.js): where that side's guns can reach, as a
+// wedge in the gun's own frame (+z the way it points, +y up): across its swing (K.yaw each way, in `segs` slices), its
+// top and bottom faces at its tilt (K.pitch up and down) and its two sides, out to `reach` metres (in rings, so the
+// glow drawn on it can fade out along it: raiders.js). Made once (one shape for every raider), about 170 triangles
+export function fanGeometry(K, reach, segs = 16, rings = 3) {
+  const pos = [], idx = [];
+  const at = (a, p, r) => { pos.push(Math.sin(a) * Math.cos(p) * r, Math.sin(p) * r, Math.cos(a) * Math.cos(p) * r); return pos.length / 3 - 1; };
+  // the top and bottom faces: rings out from her side, each a row of corners across the swing
+  for (const p of [K.pitch, -K.pitch]) {
+    const apex = at(0, p, 0), rows = [];
+    for (let j = 1; j <= rings; j++) { const row = []; for (let i = 0; i <= segs; i++) row.push(at(-K.yaw + (2 * K.yaw * i) / segs, p, (reach * j) / rings)); rows.push(row); }
+    for (let i = 0; i < segs; i++) idx.push(apex, rows[0][i], rows[0][i + 1]);
+    for (let j = 1; j < rings; j++) for (let i = 0; i < segs; i++) { const a = rows[j - 1], b = rows[j]; idx.push(a[i], b[i], b[i + 1], a[i], b[i + 1], a[i + 1]); }
+  }
+  // its two sides, from the top face's edge down to the bottom's
+  for (const a of [-K.yaw, K.yaw]) {
+    let up = at(a, K.pitch, 0), dn = at(a, -K.pitch, 0);
+    for (let j = 1; j <= rings; j++) { const u = at(a, K.pitch, (reach * j) / rings), d = at(a, -K.pitch, (reach * j) / rings); idx.push(up, dn, d, up, d, u); up = u; dn = d; }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx);
+  g.computeBoundingSphere();
+  return g;
+}
+
 // Send the first `n` items of a buffer that changes every frame to the graphics card, and only those (nothing at all
 // when there are none: then nothing of it is drawn). Each buffer keeps one range object, used again every frame
 export function upload(attr, n) {
@@ -82,12 +108,15 @@ export function upload(attr, n) {
 
 
 // All the bolts in flight, for every ship, drawn as one batch of glowing streaks; their hot heads are glows in fx.js.
-// The Captain's bolts burn gold, the raiders' burn red. Each streak tapers from its head and fades out along its tail
+// The Captain's bolts burn gold, the raiders' burn red; the Captain's chain shot is lilac silver, two heads spinning round
+// its path like a pair of balls on a chain, and her crystal breakers pale blue (tactics.js SHOTS: each shot flies at its
+// own speed and reach). Each streak tapers from its head and fades out along its tail
 // (grown out of the muzzle as it flies, so it never pokes back through the ship that fired it). A bolt that flies its
 // full time without hitting anything burns out in a little wisp of sparks.
 // The bolts are a handful of objects used over and over (`bolts` is the ones in flight), so firing makes nothing new.
 // Each remembers who fired it (`from`: the raider, set by her gunnery; null for the Captain's), for whoever it hits.
-export const BOLT_COLORS = { player: 0xffb347, raider: 0xff4636 };
+export const BOLT_COLORS = { player: SHOTS.round.color, raider: 0xff4636, chain: SHOTS.chain.color, breaker: SHOTS.breaker.color };
+const SPIN = { r: 1.2, turns: 14 }; // (a chain shot's two heads: how far from its path, and how many turns a second)
 export const TAIL = 36; // the longest tail, in metres (times the shot's size: a broadside's is heavier)
 export function makeBolts(scene, fx, max = 400) {
   const geo = new THREE.CylinderGeometry(0.26, 0.05, 1, 6, 1, true).rotateX(Math.PI / 2); // thick at the head (+z)
@@ -103,16 +132,20 @@ export function makeBolts(scene, fx, max = 400) {
   for (const k in BOLT_COLORS) { COL[k] = new THREE.Color(BOLT_COLORS[k]); HEAD[k] = COL[k].clone().lerp(new THREE.Color(0xffffff), 0.3); }
 
   const bolts = [], free = [];
-  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), FWD = V(0, 0, 1), mid = new THREE.Vector3(), size3 = new THREE.Vector3(), sv = new THREE.Vector3();
-  const made = () => ({ p: new THREE.Vector3(), prev: new THREE.Vector3(), v: new THREE.Vector3(), life: 0, K: null, owner: 'player', from: null, damage: 0, flown: 0, flare: 0, whiz: false });
-  // a bolt from `from` along `dir` (both read, not kept), carrying the firing ship's velocity `inherit`
-  function fire(from, dir, kind, owner, inherit, weight = 1) {
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), FWD = V(0, 0, 1), UP = V(0, 1, 0), mid = new THREE.Vector3(), size3 = new THREE.Vector3(), sv = new THREE.Vector3();
+  const s1 = new THREE.Vector3(), s2 = new THREE.Vector3(), hp = new THREE.Vector3();
+  const made = () => ({ p: new THREE.Vector3(), prev: new THREE.Vector3(), v: new THREE.Vector3(), life: 0, K: null, owner: 'player', col: 'player', shot: 'round', from: null, damage: 0, flown: 0, age: 0, flare: 0, whiz: false });
+  // a bolt from `from` along `dir` (both read, not kept), carrying the firing ship's velocity `inherit`, of `shot`
+  // (tactics.js: its speed and reach; the Captain's chain shot and breakers in their own colours)
+  function fire(from, dir, kind, owner, inherit, weight = 1, shot = 'round') {
     if (bolts.length >= max) return null;
-    const K = KINDS[kind], b = free.pop() ?? made();
+    const K = KINDS[kind], S = SHOTS[shot] ?? SHOTS.round, b = free.pop() ?? made();
     b.p.copy(from); b.prev.copy(from);
-    b.v.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(K.spread * 2).add(dir).normalize().multiplyScalar(K.speed);
+    b.v.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(K.spread * 2).add(dir).normalize().multiplyScalar(K.speed * S.speed);
     if (inherit) b.v.add(inherit);
-    b.life = K.life; b.K = K; b.owner = COL[owner] ? owner : 'player'; b.from = null; b.damage = K.damage * weight; b.flown = 0; b.flare = 0; b.whiz = false;
+    b.life = K.life * S.life; b.K = K; b.owner = owner === 'raider' ? 'raider' : 'player'; b.shot = SHOTS[shot] ? shot : 'round';
+    b.col = b.owner === 'player' && b.shot !== 'round' ? b.shot : b.owner;
+    b.from = null; b.damage = K.damage * weight; b.flown = 0; b.age = 0; b.flare = 0; b.whiz = false;
     bolts.push(b);
     return b;
   }
@@ -122,11 +155,11 @@ export function makeBolts(scene, fx, max = 400) {
   function update(dt, hit) {
     for (let i = bolts.length - 1; i >= 0; i--) {
       const b = bolts[i];
-      b.prev.copy(b.p); b.v.y -= G * dt; b.p.addScaledVector(b.v, dt); b.life -= dt; b.flown += b.v.length() * dt;
+      b.prev.copy(b.p); b.v.y -= G * dt; b.p.addScaledVector(b.v, dt); b.life -= dt; b.age += dt; b.flown += b.v.length() * dt;
       if (b.flare > 0) b.flare -= dt;
       if (b.life <= 0 || b.p.y < 0) {
         // burnt out in the air: a little wisp of sparks in its colour
-        if (b.p.y >= 0) for (let k = 0; k < 3; k++) fx.spark(b.p, sv.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(8).addScaledVector(b.v, 0.08), 0.4, 2.2 * b.K.size, BOLT_COLORS[b.owner]);
+        if (b.p.y >= 0) for (let k = 0; k < 3; k++) fx.spark(b.p, sv.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(8).addScaledVector(b.v, 0.08), 0.4, 2.2 * b.K.size, BOLT_COLORS[b.col]);
         drop(i); continue;
       }
       if (hit(b, b.prev, b.p)) drop(i);
@@ -135,9 +168,15 @@ export function makeBolts(scene, fx, max = 400) {
       const b = bolts[i], K = b.K, len = Math.min(Math.min(TAIL, b.v.length() * 0.075) * K.size, b.flown + 1);
       q.setFromUnitVectors(FWD, sc.copy(b.v).normalize());
       m4.compose(mid.copy(b.p).addScaledVector(sc, -len / 2), q, size3.set(K.size, K.size, len));
-      mesh.setMatrixAt(i, m4); mesh.setColorAt(i, COL[b.owner]);
-      const h = HEAD[b.owner];
-      fx.glowAt(b.p, h.r, h.g, h.b, (K === KINDS.broadside ? 6 : 4.5) * K.size * (b.flare > 0 ? 2.5 : 1)); // a near miss flares
+      mesh.setMatrixAt(i, m4); mesh.setColorAt(i, COL[b.col]);
+      const h = HEAD[b.col], size = (K === KINDS.broadside ? 6 : 4.5) * K.size * (b.flare > 0 ? 2.5 : 1); // (a near miss flares)
+      if (b.shot === 'chain') {
+        // chain shot: two heads spinning round its path, opposite each other (s1, s2: two ways across it)
+        s1.crossVectors(sc, UP); if (s1.lengthSq() < 1e-6) s1.set(1, 0, 0); s1.normalize(); s2.crossVectors(s1, sc);
+        const a = b.age * SPIN.turns * Math.PI * 2, c = Math.cos(a) * SPIN.r, s = Math.sin(a) * SPIN.r;
+        fx.glowAt(hp.copy(b.p).addScaledVector(s1, c).addScaledVector(s2, s), h.r, h.g, h.b, size * 0.85);
+        fx.glowAt(hp.copy(b.p).addScaledVector(s1, -c).addScaledVector(s2, -s), h.r, h.g, h.b, size * 0.85);
+      } else fx.glowAt(b.p, h.r, h.g, h.b, size);
     }
     mesh.count = bolts.length; upload(mesh.instanceMatrix, bolts.length); upload(mesh.instanceColor, bolts.length);
   }
@@ -147,18 +186,22 @@ export function makeBolts(scene, fx, max = 400) {
 
 // A ship's gunnery: reload clocks per battery, and firing the battery that faces the aim point.
 // `reload` stretches or shortens the reload, `damage` makes each shot heavier or lighter (upgrades, crystal power, and
-// the raiders' slower crews). `flyer` (flight.js), if given, heels as her broadsides go off. `from` (set by raiders.js:
+// the raiders' slower crews), and `kinds` stretches or shortens one kind of gun's reload more (a raider's broadsides:
+// raiders.js). Its `shot` is what its guns are loaded with (tactics.js SHOTS: round shot to start with); `setShot`
+// changes it, drawing the old shot and loading the new, so every battery reloads. Crystal breakers are kept count of
+// (`breakers`: volleys left, one fewer for each battery fired with them). `update(dt, rate)` reloads at `rate` times
+// the usual speed (half, while the crew patch her: main.js). `flyer` (flight.js), if given, heels as her broadsides go off. `from` (set by raiders.js:
 // the raider) is given to each bolt she fires.
 // A battery's guns go off one after another, bow first: a broadside one port every 55 ms (both decks together), the
 // whole side in at most 0.55 s; a pair of chasers 80 ms apart (RIPPLE, kept with the ship's parts: each gun on the
 // model kicks back at its own turn). Its first gun fires at once, and its reload starts then. Each battery counts its
 // volleys (`volleys`), so the ship's model can tell when one went off (looks.js)
 const PENDING = 32; // room for guns waiting their turn, at least, per ship (more if she has more guns: a Man-o'-war)
-export function makeGunnery(ship, { reload: slow = 1, damage = 1 } = {}, flyer = null) {
+export function makeGunnery(ship, { reload: slow = 1, damage = 1, kinds = null } = {}, flyer = null) {
   const B = gunsOf(ship), R = ship.recipe, ready = { bow: 0, stern: 0, port: 0, starboard: 0 }, volleys = { bow: 0, stern: 0, port: 0, starboard: 0 }, weight = damage * (GUN_WEIGHT[R.id] ?? 1);
   const world = new THREE.Vector3(), dirW = new THREE.Vector3(), nm = new THREE.Matrix3(), want = new THREE.Vector3(), arc = new THREE.Vector3();
   const M = { p: new THREE.Vector3(), d: new THREE.Vector3(), K: null }; // the muzzle last asked for (kept, not made each time)
-  const reload = (b) => (B[b][0] ? KINDS[B[b][0].kind].reload * slow : 1);
+  const reload = (b) => (B[b][0] ? KINDS[B[b][0].kind].reload * slow * (kinds?.[B[b][0].kind] ?? 1) * SHOTS[gunnery.shot].reload : 1);
   // each gun's turn, after the battery's first (seconds), and the battery's guns in that order
   for (const b in B) {
     const list = B[b];
@@ -173,7 +216,7 @@ export function makeGunnery(ship, { reload: slow = 1, damage = 1 } = {}, flyer =
   // what each battery's volley is aiming at (a point read as each gun fires, or a function that works it out from
   // where that gun is), with an aiming error added, who fired, and the ship's velocity (read as each gun fires)
   const V0 = new THREE.Vector3(), ctx = {};
-  for (const b in B) ctx[b] = { aim: null, off: new THREE.Vector3(), owner: '', inherit: null, bolts: null, n: 0 };
+  for (const b in B) ctx[b] = { aim: null, off: new THREE.Vector3(), owner: '', inherit: null, bolts: null, n: 0, shot: 'round' };
   // the guns waiting their turn: which, how long still, which battery, their place in the volley. There's room for every
   // gun she has, so all four batteries rippling at once still ripple (a Man-o'-war's two broadsides are 48 guns)
   const cap = Math.max(PENDING, B.bow.length + B.stern.length + B.port.length + B.starboard.length);
@@ -186,7 +229,7 @@ export function makeGunnery(ship, { reload: slow = 1, damage = 1 } = {}, flyer =
     dirW.copy(g.d).applyMatrix3(nm).normalize();
     if (typeof c.aim === 'function') c.aim(world, K, want); else want.copy(c.aim);
     want.add(c.off).sub(world).normalize();
-    const bolt = c.bolts.fire(world, clampToArc(want, dirW, K.yaw, K.pitch, arc), g.kind, c.owner, c.inherit, weight);
+    const bolt = c.bolts.fire(world, clampToArc(want, dirW, K.yaw, K.pitch, arc), g.kind, c.owner, c.inherit, weight, c.shot);
     if (bolt) bolt.from = gunnery.from;
     FIRE.owner = c.owner; FIRE.kind = g.kind; FIRE.battery = b; FIRE.p.copy(world); FIRE.dir.copy(dirW); FIRE.weight = weight; FIRE.ship = R.id;
     FIRE.vel.copy(c.inherit ?? V0); FIRE.i = i; FIRE.n = c.n; FIRE.raider = gunnery.from;
@@ -196,12 +239,20 @@ export function makeGunnery(ship, { reload: slow = 1, damage = 1 } = {}, flyer =
     if (flyer && g.kind === 'broadside') flyer.heelV += Math.sign(g.d.x) * 0.012 * weight * (25 / R.length);
   }
   const gunnery = {
-    B, ready, volleys, reload, from: null, cap,
+    B, ready, volleys, reload, from: null, cap, shot: 'round', breakers: SHOTS.breaker.volleys,
     count: (b) => B[b].length,
     get pending() { return np; },
-    // the reload clocks, and the guns whose turn has come (from where the ship is now)
-    update(dt) {
-      for (const k in ready) ready[k] = Math.max(0, ready[k] - dt);
+    // load another shot (false if it's already loaded): the old drawn, the new loaded, so every battery reloads (guns
+    // still rippling off keep what they were loaded with)
+    setShot(s) {
+      if (s === gunnery.shot || !SHOTS[s]) return false;
+      gunnery.shot = s;
+      for (const k in ready) if (B[k].length) ready[k] = reload(k);
+      return true;
+    },
+    // the reload clocks (at `rate` times the usual speed), and the guns whose turn has come (from where the ship is now)
+    update(dt, rate = 1) {
+      for (const k in ready) ready[k] = Math.max(0, ready[k] - dt * rate);
       if (!np) return;
       let due = false;
       for (let j = 0; j < np; j++) if ((pt[j] -= dt) <= 0) due = true;
@@ -224,11 +275,12 @@ export function makeGunnery(ship, { reload: slow = 1, damage = 1 } = {}, flyer =
       M.p.copy(g.p).applyMatrix4(ship.body.matrixWorld); M.d.copy(g.d).applyMatrix3(nm).normalize(); M.K = KINDS[g.kind];
       return M;
     },
-    // can battery b reach this point? (inside its swing and tilt, and its range); `m` is its muzzle, if already known
+    // can battery b reach this point? (inside its swing and tilt, and its range with the shot it's loaded with: chain
+    // shot flies slower and not so far); `m` is its muzzle, if already known
     reaches(b, aim, m = this.muzzle(b)) {
       if (!m) return false;
-      want.copy(aim).sub(m.p); const dist = want.length(); want.normalize();
-      return dist < m.K.speed * m.K.life * 0.92 && want.angleTo(clampToArc(want, m.d, m.K.yaw, m.K.pitch, arc)) < 0.02;
+      want.copy(aim).sub(m.p); const dist = want.length(), S = SHOTS[gunnery.shot]; want.normalize();
+      return dist < m.K.speed * S.speed * m.K.life * S.life * 0.92 && want.angleTo(clampToArc(want, m.d, m.K.yaw, m.K.pitch, arc)) < 0.02;
     },
     // fire battery b: `aim` is a point (world, read again as each gun's turn comes) or a function (from, K, out) that
     // works out where a gun at `from` should aim; `off` (optional) is added to it. Returns how many guns will fire
@@ -237,7 +289,8 @@ export function makeGunnery(ship, { reload: slow = 1, damage = 1 } = {}, flyer =
       ship.root.updateWorldMatrix(true, true); // where the ship is now, not where it was last drawn
       nm.getNormalMatrix(ship.body.matrixWorld);
       const c = ctx[b], list = B[b];
-      c.aim = aim; c.bolts = bolts; c.owner = owner; c.inherit = inherit ?? null; c.n = list.length;
+      c.aim = aim; c.bolts = bolts; c.owner = owner; c.inherit = inherit ?? null; c.n = list.length; c.shot = gunnery.shot;
+      if (c.shot === 'breaker') gunnery.breakers = Math.max(0, gunnery.breakers - 1);
       if (off) c.off.copy(off); else c.off.set(0, 0, 0);
       VOLLEY.owner = owner; VOLLEY.battery = b; VOLLEY.count = list.length; VOLLEY.kind = list[0].kind; VOLLEY.ship = R.id;
       VOLLEY.p.copy(list[list.length >> 1].p).applyMatrix4(ship.body.matrixWorld);

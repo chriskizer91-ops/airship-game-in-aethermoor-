@@ -5,7 +5,8 @@
 //   your ship: a new Captain has nothing to buy yet), with "To port" beside it. A new Captain is told which skies
 //   suit a first voyage; one who has been to sea sees the shards waiting to be spent.
 //   Port: pick which ship to sail, buy ships (the Man-o'-war only once the Galleon is owned) and upgrades with Crystal
-//   Shards, and set where the crystals' power goes.
+//   Shards, set where the crystals' power goes, and buy chain shot and crystal breakers (the Captain's for every ship
+//   she sails: tactics.js; she can earn them at sea too).
 //   Looking at a ship you don't own, the big gold button buys her (filling up as you earn towards her price); under it
 //   "Try her out" takes her out for a sea trial (one fight, for nothing: main.js), and setting sail in your own ship is
 //   a plain line beside that. On a phone the panel has two tabs: the ship, and her upgrades (with a gold dot when
@@ -17,6 +18,7 @@ import { KINDS, GUN_WEIGHT } from './guns.js';
 import { SKIES, PRICES, NEEDS } from './progress.js';
 import { MODS, STEPS, POWER, modCost, loadout } from './mods.js';
 import { emit, payload } from './events.js';
+import { SHOTS, SHOT_ICON, SHOT_LINES } from './tactics.js';
 
 const $ = (id) => document.getElementById(id);
 const CALM = { calm: true };
@@ -189,6 +191,20 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
     });
     modsEl.append(row);
   }
+  // the kinds of shot to buy (round shot is always aboard): bought once, for every ship she sails
+  const shotsEl = $('pp-shots');
+  for (const id of ['chain', 'breaker']) {
+    const S = SHOTS[id], row = document.createElement('div');
+    row.className = 'buyshot'; row.dataset.shot = id; row.style.setProperty('--shot', `#${S.color.toString(16).padStart(6, '0')}`);
+    row.innerHTML = `<b><span style="color: var(--shot)">${SHOT_ICON[id]}</span>${S.name}</b><button class="buy" type="button"></button><p>${SHOT_LINES[id]}</p>`;
+    row.querySelector('button').addEventListener('click', () => {
+      const d = progress.data;
+      if (d.shots[id] || d.shards < S.price) return;
+      d.shards -= S.price; d.shots[id] = true; progress.save(); refresh();
+      payload('port:shot').shot = id; emit('port:shot');
+    });
+    shotsEl.append(row);
+  }
   $('btn-sail').addEventListener('click', () => onSail(progress.data.flying));
   // a sea trial (Chris: a garage's test drive): a ship not owned yet taken out for one fight, for nothing (main.js)
   $('btn-try').addEventListener('click', () => { if (!progress.data.ships[viewing].owned) onTrial?.(viewing); });
@@ -297,6 +313,10 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
       row.querySelector('.pips').textContent = '●'.repeat(step) + '○'.repeat(STEPS - step);
       if (step >= STEPS) { b.textContent = 'Done'; b.disabled = true; }
       else { const cost = modCost(viewing, step); b.textContent = `◆ ${fmt(cost)}`; b.disabled = d.shards < cost; canBuy ||= owned && d.shards >= cost; }
+    }
+    for (const row of shotsEl.children) {
+      const id = row.dataset.shot, b = row.querySelector('button'), have = !!d.shots?.[id];
+      b.textContent = have ? 'Aboard' : `◆ ${fmt(SHOTS[id].price)}`; b.disabled = have || d.shards < SHOTS[id].price;
     }
     $('pp-tab-upgrades').querySelector('.dot').hidden = !canBuy;
   }

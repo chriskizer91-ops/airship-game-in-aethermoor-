@@ -130,12 +130,15 @@
   .power { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; font-size: 13px; color: var(--dim); }
   .power input { width: 100%; accent-color: var(--gold); }
   #pp-power-note { margin: 4px 0 0; font-size: 12.5px; color: var(--cream); min-height: 2.7em; }
-  .mod { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; padding: 8px 0; border-top: 1px solid rgba(236, 220, 184, 0.15); }
-  .mod b { font-weight: 500; color: var(--cream); }
+  .mod, .buyshot { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; padding: 8px 0; border-top: 1px solid rgba(236, 220, 184, 0.15); }
+  .mod b, .buyshot b { font-weight: 500; color: var(--cream); }
   .mod .pips { margin-left: 4px; color: var(--gold); letter-spacing: 2px; font-size: 12px; }
-  .mod p { grid-column: 1; margin: 0; font-size: 13px; color: var(--cream); }
+  .mod p, .buyshot p { grid-column: 1; margin: 0; font-size: 13px; color: var(--cream); }
   .mod small { grid-column: 1; font-size: 11.5px; color: var(--dim); }
-  .mod .buy { grid-row: 1 / span 3; grid-column: 2; min-width: 76px; min-height: 40px; padding: 6px 10px; font-size: 14px; }
+  .mod .buy, .buyshot .buy { grid-row: 1 / span 3; grid-column: 2; min-width: 76px; min-height: 40px; padding: 6px 10px; font-size: 14px; }
+  /* (the kinds of shot, the Captain's for every ship she sails: bought once, or earned at sea) */
+  #pp-shot-part h3 small { font: 400 12px var(--body); letter-spacing: 0; color: var(--dim); }
+  .buyshot b svg { width: 14px; height: 14px; margin-right: 5px; vertical-align: -2px; }
   .sail-out { position: sticky; bottom: 0; display: grid; gap: 6px; justify-items: center; padding: 12px 0 14px; margin-top: 10px;
     background: linear-gradient(rgba(24, 12, 30, 0), rgba(24, 12, 30, 0.95) 22%); text-align: center; }
   .sail-out .big, #pp-buy { width: 100%; }
@@ -203,6 +206,12 @@
   .meter.crystals i { background: #ff9f45; }
   .meter.surge i { background: #9fe7ff; }
   #row-surge.ready dt { color: #9fe7ff; }
+  /* the crew patching her (main.js): the row for what they patch glows green; on a laptop, the Patch row fills as they
+     get ready again (X) */
+  .meter.patch i { background: #b8e6a0; }
+  #row-patch.ready dt { color: #b8e6a0; }
+  #health .patching dt, #health .patching dd { color: #b8e6a0; }
+  #health .patching .meter { box-shadow: 0 0 0 1px #b8e6a0, 0 0 8px rgba(184, 230, 160, 0.85); }
 
   /* ---------- the compass and the wind, the map, the score ---------- */
   #compass { position: fixed; top: var(--top); left: 50%; translate: -50% 0; display: flex; align-items: baseline; gap: 10px; padding: 4px 12px; white-space: nowrap;
@@ -263,6 +272,11 @@
   #battery { position: fixed; left: 50%; top: calc(var(--top) + 44px); translate: -50% 0; text-align: center; font-size: 13.5px; pointer-events: none; white-space: nowrap; }
   #battery b { color: var(--gold); font-weight: 500; }
   #battery .meter { width: 110px; margin: 3px auto 0; }
+  body.touch #battery-shot { display: none; } /* (on a phone the shot button says what's loaded) */
+  /* your broadside raking a raider (down her length): "Raked!" just right of the crosshair for a moment (main.js), clear
+     of the tag over the raider you're aiming at */
+  #raked { position: fixed; left: calc(50% + 30px); top: calc(50% - 10px); margin: 0; font: 700 19px/1 var(--display); letter-spacing: 0.04em; color: #ffd36a; opacity: 0; pointer-events: none;
+    white-space: nowrap; transform-origin: 0 50%; text-shadow: 0 2px 0 #000, 0 0 12px rgba(255, 140, 40, 0.9); }
   body.between #battery { display: none; } /* (between waves there's nothing to fire at) */
   /* a raider's bounty, rising in gold out of her wreck (placed and faded by main.js) */
   #bounties { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
@@ -298,6 +312,10 @@
   .tag.warn .meter { display: none; } /* (in place of her bars, so the tag is no taller and fits between the panels) */
   .tag.warn b, .tag.warn .d { color: #ffe2d8; }
   .tag.warn .arrow { color: #ff3a28; scale: 1.5; filter: drop-shadow(0 0 4px #ff2a10); animation: arrow-warn 0.22s ease-in-out infinite alternate; }
+  /* (and a ring beside the word, closing as she's about to fire: --k, 0 to 1, from main.js) */
+  .tag .bs .ring { display: inline-block; width: 11px; height: 11px; margin-right: 5px; vertical-align: -1px; border-radius: 50%;
+    background: conic-gradient(#fff calc((1 - var(--k, 0)) * 360deg), rgba(255, 255, 255, 0.2) 0);
+    -webkit-mask: radial-gradient(farthest-side, transparent 52%, #000 56%); mask: radial-gradient(farthest-side, transparent 52%, #000 56%); }
   @keyframes tag-warn { from { background-color: rgba(190, 24, 14, 0.95); border-color: #ffd0c0; box-shadow: 0 0 16px rgba(255, 50, 30, 0.95); }
     to { background-color: rgba(80, 8, 10, 0.88); border-color: #ff4636; box-shadow: 0 0 4px rgba(255, 50, 30, 0.4); } }
   @keyframes arrow-warn { from { opacity: 1; } to { opacity: 0.5; } }
@@ -374,6 +392,23 @@
   .fire-row { display: flex; gap: 12px; align-items: end; }
   #btn-surge { width: 58px; height: 58px; border-radius: 50%; border: 2px solid #9fe7ff; background: radial-gradient(circle at 50% 40%, #2a5a78, #12233a); color: #dff6ff; font-size: 13px; font-weight: 500; touch-action: none; }
   #btn-surge:disabled { opacity: 0.45; }
+  /* the shot button, over Surge once she has more than round shot (main.js), showing the shot loaded in its colour; and
+     the Patch button, by the sail buttons once she's hurt, its ring filling as the crew get ready again, glowing while
+     they patch */
+  .fire-col { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  #btn-shot { width: 50px; height: 50px; padding: 0; border-radius: 50%; border: 2px solid var(--shot, var(--gold)); background: radial-gradient(circle at 50% 40%, #4a3446, #1a0f1e);
+    color: var(--shot, var(--gold)); display: grid; place-items: center; align-content: center; gap: 1px; touch-action: none; box-shadow: 0 0 10px rgba(0, 0, 0, 0.45); }
+  #btn-shot svg { width: 19px; height: 19px; }
+  #btn-shot small { font-size: 10px; font-weight: 500; line-height: 1; color: var(--ink); white-space: nowrap; }
+  .sail { align-items: center; }
+  #btn-patch { position: relative; width: 46px; height: 46px; padding: 0; border-radius: 50%; border: 2px solid #b8e6a0; background: radial-gradient(circle at 50% 40%, #3e5e34, #18281a);
+    color: #e8ffe0; font-size: 12px; font-weight: 500; touch-action: none; }
+  #btn-patch.busy { border-color: rgba(184, 230, 160, 0.3); color: rgba(232, 255, 224, 0.6); }
+  #btn-patch.busy::after { content: ''; position: absolute; inset: -2px; border-radius: 50%; background: conic-gradient(#b8e6a0 calc(var(--k, 0) * 360deg), transparent 0);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px)); mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px)); }
+  #btn-patch.on { animation: patching 0.8s ease-in-out infinite alternate; }
+  @keyframes patching { from { box-shadow: 0 0 4px rgba(184, 230, 160, 0.4); } to { box-shadow: 0 0 16px rgba(184, 230, 160, 0.95); } }
+  body.fire-left #btn-patch { order: 3; }
   .sail { display: flex; gap: 8px; }
   .sail button { width: 56px; height: 46px; border-radius: 8px; border: 1px solid rgba(236, 220, 184, 0.6); background: var(--panel); font-size: 14px; font-weight: 500; touch-action: none; }
   .sail button.on { border-color: var(--gold); color: var(--gold); }
@@ -457,9 +492,11 @@
     .bounty.rich { font-size: 24px; }
     #dock { justify-content: center; }
     body.touch #battery { top: auto; bottom: calc(var(--bottom) + 158px); right: var(--gutter); left: auto; translate: none; text-align: right; }
+    body.touch.has-shot #battery { bottom: calc(var(--bottom) + 188px); } /* (over the shot button, over Surge) */
     body.touch.fire-left #battery { right: auto; left: var(--gutter); text-align: left; }
     #touch-hint { max-width: calc(100% - 2 * var(--gutter) - 186px); }
     body.touch #calm { bottom: calc(var(--bottom) + 156px); }
+    body.touch.has-shot #calm { bottom: calc(var(--bottom) + 186px); }
     #calm { grid-template-columns: 1fr; padding: 8px 12px; gap: 6px; }
     #calm h2 { font-size: 17px; }
     #calm p { font-size: 13px; }
@@ -547,6 +584,11 @@
     #battery { top: auto; bottom: calc(var(--bottom) + 150px); right: var(--gutter); left: auto; translate: none; text-align: right; font-size: 12.5px; }
     body.fire-left #battery { right: auto; left: var(--gutter); text-align: left; }
     #touch-buttons { bottom: calc(var(--bottom) + 2px); }
+    /* (the shot button over Surge, both a little smaller, and the guns' label over them) */
+    body.has-shot .fire-col { gap: 6px; }
+    body.has-shot #btn-shot { width: 42px; height: 42px; }
+    body.has-shot #btn-surge { width: 54px; height: 54px; }
+    body.has-shot #battery { bottom: calc(var(--bottom) + 166px); }
     #touch-hint { max-width: 164px; font-size: 12px; padding: 4px 8px; }
     body.touch #calm, #calm { bottom: auto; top: calc(var(--top) + 32px); width: min(calc(100% - 2 * (var(--gutter) + 172px)), 560px); grid-template-columns: 1fr; padding: 6px 10px; gap: 4px; }
     #calm .choices { justify-content: flex-start; }
@@ -653,6 +695,15 @@
   }
   @media (max-height: 340px) {
     body.touch #battery, #battery { bottom: calc(var(--bottom) + 146px); }
+    /* (with the shot button over Surge, the buttons a little smaller again, so they're no taller than without it) */
+    body.has-shot #touch-buttons { gap: 8px; }
+    body.has-shot .fire-col { gap: 4px; }
+    body.has-shot #btn-fire { width: 80px; height: 80px; }
+    body.has-shot #btn-shot { width: 40px; height: 40px; }
+    body.has-shot #btn-surge { width: 50px; height: 50px; }
+    body.has-shot .sail button { height: 40px; }
+    body.has-shot #btn-patch { width: 40px; height: 40px; }
+    body.touch.has-shot #battery, body.has-shot #battery { bottom: calc(var(--bottom) + 146px); }
   }
   /* the smallest phones held sideways (568 px across, as an iPhone SE's first one): the panel a little narrower and the
      ships' buttons a little tighter, so all six fit along the bottom without being cut off */
@@ -673,7 +724,7 @@
     /* (the toast and a warning under the crosshair a little wider, between the hint and the touch buttons, so the
        longest toast takes two lines and the warning keeps clear under it) */
     #toast { max-width: calc(100% - 2 * (var(--gutter) + 166px)); font-size: 12.5px; }
-    #warn { top: calc(50% + 80px); max-width: calc(100% - 2 * (var(--gutter) + 166px)); font-size: 12.5px; }
+    #warn { top: calc(50% + 80px); max-width: calc(100% - 2 * (var(--gutter) + 176px)); font-size: 12.5px; } /* (clear of the Patch button by the sail buttons) */
     /* (the raiders' tags a little smaller, so a crowd of them all round still finds room on so small a screen) */
     .tag { gap: 1px 5px; padding: 2px 5px 3px; font-size: 11px; }
     .tag .meter { width: 56px; }
@@ -735,6 +786,10 @@
         <h3>Upgrades</h3>
         <div id="pp-mods"></div>
       </div>
+      <div id="pp-shot-part">
+        <h3>Shot <small>for all your ships</small></h3>
+        <div id="pp-shots"></div>
+      </div>
     </div>
     <div class="sail-out">
       <div id="pp-buy" hidden><button id="btn-buy" class="big" type="button"><span>Buy</span></button></div>
@@ -759,6 +814,7 @@
     <div class="row" id="row-sails"><dt>Sails</dt><span class="meter sails"><b></b><i id="h-sails"></i></span><dd id="n-sails">0</dd></div>
     <div class="row" id="row-crystals"><dt>Crystals</dt><span class="meter crystals"><b></b><i id="h-crystals"></i></span><dd id="n-crystals">0</dd></div>
     <div class="row" id="row-surge"><dt>Surge</dt><span class="meter surge"><i id="h-surge"></i></span><dd class="mouse-only">R</dd></div>
+    <div class="row mouse-only" id="row-patch"><dt>Patch</dt><span class="meter patch"><i id="h-patch"></i></span><dd>X</dd></div>
   </dl>
 </section>
 <!-- the heading, and the wind: in words, and an arrow showing the way it blows (up: the way you're heading) -->
@@ -782,12 +838,14 @@
   <g id="hitmark" stroke="#e2bd67" stroke-width="2.6" stroke-linecap="round" fill="none"><path d="M8.5 8.5L13.4 13.4M-8.5 8.5L-13.4 13.4M8.5 -8.5L13.4 -13.4M-8.5 -8.5L-13.4 -13.4"/>
     <path id="hitgem" d="M0 -5L3.4 0L0 5L-3.4 0Z" fill="#ffd27a" stroke-width="1.2" visibility="hidden"/></g>
   <circle id="killring" r="16" fill="none" stroke="#ff4636" stroke-width="2.4"/></svg></div>
-<div id="battery" class="shadow"><span class="pill"><b id="battery-name">Bow guns</b> · <span id="battery-count">2</span></span><span class="meter"><i id="reload-bar"></i></span></div>
+<div id="battery" class="shadow"><span class="pill"><b id="battery-name">Bow guns</b> · <span id="battery-count">2</span><span id="battery-shot"></span></span><span class="meter"><i id="reload-bar"></i></span></div>
+<!-- (your broadside raking a raider: by the crosshair, main.js) -->
+<b id="raked" aria-hidden="true">Raked!</b>
 <p id="warn" class="panel" hidden></p>
 <div id="stick" hidden><i></i></div>
 <div id="touch-buttons" class="touch-only">
-  <div class="fire-row"><button id="btn-surge" type="button">Surge</button><button id="btn-fire" type="button" aria-label="Fire">Fire</button></div>
-  <div class="sail"><button id="btn-sail-down" type="button">Sail −</button><button id="btn-sail-up" type="button">Sail +</button></div>
+  <div class="fire-row"><div class="fire-col"><button id="btn-shot" type="button" aria-label="Change shot" hidden></button><button id="btn-surge" type="button">Surge</button></div><button id="btn-fire" type="button" aria-label="Fire">Fire</button></div>
+  <div class="sail"><button id="btn-patch" type="button" aria-label="Patch her up" hidden>Patch</button><button id="btn-sail-down" type="button">Sail −</button><button id="btn-sail-up" type="button">Sail +</button></div>
 </div>
 <!-- (with Fire on the left, the thumbs swap: main.js puts in the words in data-left) -->
 <p id="touch-hint" class="touch-only" data-left="Right thumb: steer and climb. Drag on the left to aim. Hold Fire, and slide off it to aim as you fire.">Left thumb: steer and climb. Drag on the right to aim. Hold Fire, and slide off it to aim as you fire.</p>
@@ -803,6 +861,7 @@
       <dt>On a raider</dt><dd>the guns lock on and aim ahead of her</dd>
       <dt>Left click or F</dt><dd>fire</dd>
       <dt>R</dt><dd>Surge: a burst of speed</dd>
+      <dt>1 2 3 · X</dt><dd>shot (or right-click) · patch her up</dd>
       <dt>C · M · P · H</dt><dd>look ahead · map · pause · hide this</dd>
     </dl>
     <p id="lock-hint">Click the sky to aim with the mouse. Esc lets go.</p>
@@ -834,6 +893,9 @@
       <dt>Fire</dt><dd>Hold it to keep firing. Slide your thumb off it to aim as you fire.</dd>
       <dt>Broadsides</dt><dd>Look to her side for your side guns: they hit hardest.</dd>
       <dt>Surge</dt><dd>A burst of speed, to run or to catch her. It fills up again.</dd>
+      <dt>Shot</dt><dd>Over Surge, once you have chain shot: tap it to load the next kind of shot (round, chain, crystal breakers).</dd>
+      <dt>Patch</dt><dd>Shows by the sail buttons when she's hurt: the crew patch her up, while the guns reload slower.</dd>
+      <dt>Red fan</dt><dd>A raider about to fire her broadside: climb, dive or turn out of it and she misses.</dd>
       <dt>Sail − / +</dt><dd>Less or more sail: slower or faster.</dd>
       <dt>The map</dt><dd>Tap the corner map to make it big.</dd>
     </dl>
@@ -845,6 +907,9 @@
       <dt>The ring</dt><dd>Put it on a raider and it turns red: your gunners lock on and aim ahead of her.</dd>
       <dt>Left click or F</dt><dd>Fire. Look to her side for your side guns: they hit hardest.</dd>
       <dt>R</dt><dd>Surge: a burst of speed.</dd>
+      <dt>1 · 2 · 3</dt><dd>Round shot, chain shot, crystal breakers, once you have them (right-click: the next).</dd>
+      <dt>X</dt><dd>The crew patch her up, while the guns reload slower.</dd>
+      <dt>Red fan</dt><dd>A raider about to fire her broadside: climb, dive or turn out of it and she misses.</dd>
       <dt>Wheel</dt><dd>Closer or further.</dd>
       <dt>C · M · P · H</dt><dd>Look ahead · the big map · pause · the keys.</dd>
       <dt>Enter · B</dt><dd>Between waves: sail on, or back to port.</dd>

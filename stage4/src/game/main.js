@@ -15,6 +15,13 @@
 // glowing wake of Aether streams behind her (wakes.js).
 // The sky at sea is the sky director's (sky.js): each region's air, storms rolling in for some waves (the card before
 // one says so), clouds to fly through and hide in, and the raiders losing the Captain there.
+// The fight's tactics (tactics.js): the Captain's guns load round shot, chain shot or crystal breakers (1, 2, 3 or a
+// right-click on a laptop, the shot button on a phone; chain shot earned from the first treasure ship that strikes to
+// her, the breakers from the first raider captain's Frigate she sinks, or either bought in port), a broadside's shot
+// down a ship's length rakes her for half as much again (both ways: "Raked!" by the crosshair), and her crew patch her
+// mid-fight (X, or the Patch button on a phone once she's hurt), the guns reloading at half speed meanwhile. A raider
+// readying a broadside shows her red fan and her tag says "Broadside!", with a ring closing as she's about to fire
+// (raiders.js: her gunners aim where you're heading).
 // The title screen is drawn in the world itself, at sunset (title.js); the port in its own quiet void (port.js). Going
 // from one to another (or out to sea) dips through the night for a moment, so no scene ever shows in the wrong place.
 // The sound (sound.js, through audio.js) answers the same news, and plays Chris's music; it starts with the first touch
@@ -31,7 +38,8 @@ import { makeWorld, regionAt, REGIONS, SUN, HAZE, MAP, THINNING, DAY, billowsFor
 import { makeSky } from './sky.js';
 import { makeInput } from './input.js';
 import { makeFlyer, WIND, windHelp } from './flight.js';
-import { makeBolts, makeGunnery, batteryFor, BATTERY_NAMES, intercept } from './guns.js';
+import { makeBolts, makeGunnery, batteryFor, BATTERY_NAMES, intercept, KINDS } from './guns.js';
+import { SHOTS, SHOT_ORDER, SHOT_ICON, RAKE, PATCH, SMART, rakeMul } from './tactics.js';
 import { makeFx } from './fx.js';
 import { makeWrecks } from './wrecks.js';
 import { makeSurge } from './surge.js';
@@ -221,6 +229,8 @@ async function main() {
     player.aimY = zones.get(id).aim.y;
     gunnery = makeGunnery(ship, L.guns, player); loaded.port = loaded.starboard = 0; wasLocked = null;
     player.gun = gunnery; // (her guns show on her model as they fire and reload: looks.js)
+    player.locked = null; // (the raider her guns are locked on to, for the smartest raiders to dodge: raiders.js)
+    rakedNote = false; wasPatching = false; shotsShown(); // (round shot loaded, five volleys of breakers aboard)
     fx.follow(player); surge.follow(player, zones.get(id));
     scene.add(ship.root);
     // the sun's shadows: a box round the ship, sized to her, so her masts and sails shade her deck. The sun sits
@@ -283,6 +293,8 @@ async function main() {
   // a giant bought: what she brings to the sky, said as she's bought (Chris: giant raiders only once you own one)
   const BOUGHT = { galleon: 'from now on, the treasure ships are Galleons', manowar: 'from now on, raiders sail Men-o\'-war too' };
   events.on('port:buy', (e) => { if (BOUGHT[e.ship]) note(`The ${SHIPS.find((s) => s.id === e.ship).name} is yours: ${BOUGHT[e.ship]}`); });
+  // shot bought: how to load it at sea
+  events.on('port:shot', (e) => note(`${SHOTS[e.shot].name} aboard, for every ship: ${touch ? 'tap the shot button over Surge at sea' : `press ${SHOTS[e.shot].key} at sea`}`));
   // newer progress came from the store: say so when this device had its own (a new browser just shows it)
   progress.onLoad((d, had, kept) => { if (had) note(kept ? 'Your other device\'s progress is here, plus the shards you won here' : 'Your progress from your other device is here'); });
 
@@ -335,6 +347,7 @@ async function main() {
       if (ang < tol && ang < bestA) { bestA = ang; locked = r; }
     }
     if (locked !== wasLocked) { wasLocked = locked; if (locked) { LOCK.raider = locked; emit('lock'); LOCK.raider = null; } }
+    player.locked = locked;
     aimPoint.copy(target).addScaledVector(cam.look, 800);
   }
   function aimFor(battery) {
@@ -343,37 +356,53 @@ async function main() {
     player.ship.root.updateMatrixWorld(true);
     const m = gunnery.muzzle(battery);
     if (!m) { reach = false; return; }
-    intercept(m.p, player.velocity, locked.f.aimAt(), locked.f.velocity, m.K.speed, aimPoint);
+    // (her sails for chain shot, her crystals for breakers; leading her by the shot's own speed: chain shot is slower)
+    intercept(m.p, player.velocity, locked.f.aimAt(gunnery.shot), locked.f.velocity, m.K.speed * SHOTS[gunnery.shot].speed, aimPoint);
     reach = gunnery.reaches(battery, aimPoint, m);
   }
 
   // ---------- shots landing ----------
   // a shot's path this frame, from a to c: did it hit a raider (the Captain's) or the Captain's ship (a raider's)?
   // Each hit is told to the events (the sparks, shake and buzz answer it, fx.js), and marked on the HUD. A raider's
-  // shot that only just misses flares and is told as a near miss
+  // shot that only just misses flares and is told as a near miss. How hard it hits: its weight, times its shot's on the
+  // part it hits (tactics.js SHOTS: chain shot shreds sails, breakers crack crystals), times half as much again for a
+  // broadside's shot raking her, down her length from across her bow or stern (rakeMul), either way
   const HIT = payload('hit'), NEAR = payload('nearMiss'), LOW = payload('player:low');
   function hitTest(b, a, c) {
     if (b.owner === 'player') {
       const h = raiders.hitBy(a, c);
       if (!h) return false;
-      const r = h.r, part = h.h.part, was = !!r.f.down;
-      r.f.hit(part, b.damage); V.hits++;
-      HIT.owner = 'player'; HIT.target = 'raider'; HIT.part = part; HIT.at.copy(h.h.at); HIT.damage = b.damage; HIT.raider = r; HIT.size = b.K.size;
+      const r = h.r, part = h.h.part, was = !!r.f.down, rake = b.K === KINDS.broadside ? rakeMul(b.v, r.ship.body) : 1, damage = b.damage * SHOTS[b.shot][part] * rake;
+      r.f.hit(part, damage); V.hits++;
+      HIT.owner = 'player'; HIT.target = 'raider'; HIT.part = part; HIT.at.copy(h.h.at); HIT.damage = damage; HIT.raider = r; HIT.size = b.K.size; HIT.raked = rake > 1;
       HIT.dir.copy(b.v).normalize(); HIT.vel.copy(r.f.velocity); emit('hit');
       hitMark(part, !was && !!r.f.down); tagFlash(r, part);
+      if (rake > 1) raked('player', r, h.h.at);
       return true;
     }
     if (player.down) return false;
     const h = firstHit(zones.get(player.ship.recipe.id), player.ship.body, a, c, player.ship.U.uFold.value.x);
     if (!h) { nearMiss(b, a, c); return false; }
-    const before = player.frac(h.part);
-    player.hit(h.part, b.damage);
-    HIT.owner = 'raider'; HIT.target = 'player'; HIT.part = h.part; HIT.at.copy(h.at); HIT.damage = b.damage; HIT.raider = b.from; HIT.size = b.K.size;
+    const before = player.frac(h.part), rake = b.K === KINDS.broadside ? rakeMul(b.v, player.ship.body) : 1, damage = b.damage * SHOTS[b.shot][h.part] * rake;
+    player.hit(h.part, damage);
+    HIT.owner = 'raider'; HIT.target = 'player'; HIT.part = h.part; HIT.at.copy(h.at); HIT.damage = damage; HIT.raider = b.from; HIT.size = b.K.size; HIT.raked = rake > 1;
     HIT.dir.copy(b.v).normalize(); HIT.vel.copy(player.velocity); emit('hit');
     if (before >= 0.3 && player.frac(h.part) < 0.3) { LOW.part = h.part; emit('player:low'); }
-    hurt = Math.min(1, hurt + 0.45);
+    hurt = Math.min(1, hurt + (rake > 1 ? 0.75 : 0.45)); // (raked, the red at the screen's edge flares harder)
     incoming(b, h.part);
+    if (rake > 1) raked('raider', b.from, h.at);
     return true;
+  }
+  // raking fire, told once a volley (its first raking hit: a broadside's shots land within half a second): yours marked
+  // "Raked!" by the crosshair; a raider raking you, the first time in a voyage, is explained in a toast
+  const RAKED = payload('raked'), lastRake = { player: -9, raider: -9 };
+  let rakedNote = false, rakeAnim = null;
+  function raked(owner, r, at) {
+    if (time - lastRake[owner] < 0.6) return;
+    lastRake[owner] = time;
+    RAKED.owner = owner; RAKED.raider = r; RAKED.at.copy(at); emit('raked'); RAKED.raider = null;
+    if (owner === 'player') { rakeAnim?.cancel(); rakeAnim = $('raked').animate([{ opacity: 1, transform: 'scale(1.35)' }, { opacity: 1, transform: 'scale(1)', offset: 0.25 }, { opacity: 0, transform: 'translateY(-8px)' }], { duration: 900, easing: 'ease-out' }); }
+    else if (!rakedNote) { rakedNote = true; toast('Raked! Don\'t let them cross your bow'); }
   }
   // a raider's shot passing close: once it's past its nearest point to the ship (not while it's still coming on, as
   // it might yet hit), within her length and a bit
@@ -388,6 +417,61 @@ async function main() {
     nv.copy(near).applyMatrix4(camera.matrixWorldInverse);
     NEAR.pan = THREE.MathUtils.clamp(nv.x / 15, -1, 1); NEAR.close = 1 - d / limit; NEAR.at.copy(near);
     emit('nearMiss');
+  }
+
+  // ---------- shot, and patching her ----------
+  // the shot her guns are loaded with (tactics.js): one she has (round shot always; chain shot and breakers once earned
+  // or bought; breakers while any are left) is loaded, every battery reloading for it, and said so; the next she has, for
+  // a right-click or the phone's shot button
+  const SHOT = payload('shot'), PATCHED = payload('patch');
+  const hasShot = (s) => s === 'round' || (!!progress.data.shots?.[s] && (s !== 'breaker' || gunnery.breakers > 0));
+  const extraShots = () => !!(progress.data.shots?.chain || progress.data.shots?.breaker);
+  function pickShot(s, why = 'pick') {
+    if (!gunnery || player.down || !SHOTS[s] || s === gunnery.shot) return false;
+    if (!hasShot(s)) {
+      toast(s === 'breaker' && progress.data.shots?.breaker ? 'Out of crystal breakers' : `No ${SHOTS[s].name.toLowerCase()} yet: earn it at sea, or buy it in port`);
+      return false;
+    }
+    gunnery.setShot(s);
+    SHOT.shot = s; SHOT.why = why; SHOT.left = gunnery.breakers; emit('shot');
+    toast(why === 'out' ? 'Out of crystal breakers: loading round shot' : `Loading ${SHOTS[s].name.toLowerCase()}${s === 'breaker' ? ` (${gunnery.breakers} volley${gunnery.breakers === 1 ? '' : 's'} left)` : ''}`);
+    shotsShown();
+    return true;
+  }
+  const nextShot = () => { const i = SHOT_ORDER.indexOf(gunnery.shot); for (let k = 1; k < SHOT_ORDER.length; k++) { const s = SHOT_ORDER[(i + k) % SHOT_ORDER.length]; if (hasShot(s)) return s; } return gunnery.shot; };
+  // a kind of shot earned by a deed: kept in the save, said in a banner (how to load it), and the phone's button shown
+  function earn(s, line) {
+    const d = progress.data;
+    if (d.shots[s]) return;
+    d.shots[s] = true; progress.save();
+    SHOT.shot = s; SHOT.why = 'earned'; SHOT.left = gunnery.breakers; emit('shot');
+    banner(`${SHOTS[s].name}!`, `${line}: ${touch ? 'tap the shot button over Surge' : `press ${SHOTS[s].key}`}`);
+    shotsShown();
+  }
+  // the phone's shot button (shown once she has more than round shot) and the guns' label, as her shot changes
+  const shotHex = (s) => `#${SHOTS[s].color.toString(16).padStart(6, '0')}`;
+  function shotsShown() {
+    if (!gunnery) return;
+    const s = gunnery.shot, more = extraShots(), b = $('btn-shot'), key = `${s}:${more}:${gunnery.breakers}`;
+    if (b._key === key) return;
+    b._key = key;
+    if (document.body.classList.contains('has-shot') !== more) { document.body.classList.toggle('has-shot', more); b.hidden = !more; layout(); }
+    b.innerHTML = `${SHOT_ICON[s]}<small>${SHOTS[s].short}${s === 'breaker' ? ` ${gunnery.breakers}` : ''}</small>`;
+    b.style.setProperty('--shot', shotHex(s)); b.setAttribute('aria-label', `${SHOTS[s].name} loaded: tap for the next`);
+    setText($('battery-shot'), more ? ` · ${SHOTS[s].name}${s === 'breaker' ? ` (${gunnery.breakers})` : ''}` : '');
+    setStyle($('reload-bar'), 'background', shotHex(s));
+  }
+  // the crew patching her (flight.js startPatch: X, or the phone's Patch button), said in a toast; told as it starts and
+  // as it's done. Refused while they're at it or getting ready again (saying how long), or with nothing to patch
+  let wasPatching = false;
+  function patchUp() {
+    if (!player || player.down) return;
+    const P = player.patch;
+    if (P.cd > 0) { toast(P.t > 0 ? `The crew are patching the ${P.part}` : `The crew can patch her again in ${Math.ceil(P.cd)} s`); return; }
+    const part = player.startPatch();
+    if (!part) { toast('Nothing to patch'); return; }
+    toast(`The crew patch the ${part}: the guns reload slower for ${PATCH.time} s`);
+    PATCHED.part = part; PATCHED.stage = 'start'; emit('patch'); wasPatching = true;
   }
 
   // ---------- the raiders come in waves; between them, sail on or go home ----------
@@ -415,6 +499,10 @@ async function main() {
     for (const r of gone) {
       V.downed++;
       DOWN.raider = r; DOWN.why = r.f.down.why; DOWN.at.copy(r.f.pos); emit('raider:down'); // (her end in the sky: wrecks.js)
+      // deeds that earn a kind of shot (not on a sea trial: it changes nothing): chain shot from the first treasure ship
+      // that strikes to her, crystal breakers from the first raider captain's Frigate she sinks
+      if (!trial && r.role === 'prize' && r.f.down.why === 'struck') earn('chain', 'Her crew left chain shot in the hold');
+      if (!trial && r.captain && r.id === 'frigate') earn('breaker', 'Crystal breakers in her hold');
       const who = r.captain ? `The captain's ${r.R.cls}` : `The ${r.R.cls}`, why = r.f.down.why;
       if (trial) { toast(why === 'struck' ? `${who} strikes her colours!` : why === 'hull' ? `${r.captain ? who : r.R.cls} down!` : `${who} is sinking!`); continue; } // (a sea trial: no shards)
       SPILL.at.copy(r.f.pos).setY(r.f.pos.y + 2); SPILL.total = r.bounty * skies().shards * (1 + 0.1 * W.n);
@@ -653,7 +741,7 @@ async function main() {
   const chip = (el) => { el._chip = el.previousElementSibling?.tagName === 'B' ? el.previousElementSibling : null; return el; };
   const H = {}; // the HUD's elements, looked up once
   for (const id of ['hurt', 'battery-name', 'battery-count', 'reload-bar', 'aim', 'tags', 'r-speed', 'r-height', 'r-sail', 'sail-bar', 'score-n', 'wave-n', 'voyage-n',
-    'heading', 'wind-arrow', 'wind-n', 'wind-words', 'h-surge', 'row-surge', 'btn-surge', 'warn', 'score', 'score-raiders', 'hitmark', 'hitgem', 'killring', ...PARTS.flatMap((k) => [`h-${k}`, `n-${k}`, `row-${k}`])]) H[id] = $(id);
+    'heading', 'wind-arrow', 'wind-n', 'wind-words', 'h-surge', 'row-surge', 'btn-surge', 'h-patch', 'row-patch', 'btn-patch', 'warn', 'score', 'score-raiders', 'hitmark', 'hitgem', 'killring', ...PARTS.flatMap((k) => [`h-${k}`, `n-${k}`, `row-${k}`])]) H[id] = $(id);
   for (const k of PARTS) { chip(H[`h-${k}`]); H[`row-${k}`]._dt = H[`row-${k}`].querySelector('dt'); H[`row-${k}`]._bar = H[`row-${k}`].querySelector('.meter'); }
 
   // ---------- hits, on the HUD ----------
@@ -701,6 +789,7 @@ async function main() {
   const TAG_HALF = 52, TAG_EDGE = 6, TAG_REACH = 86, ARROW = 18, ARROW_WARN = 22;
   const edgeX = (el, W2) => W2 - Math.max(TAG_HALF, el._hw + TAG_EDGE); // (the furthest from the middle its bottom middle goes)
   const tagUp = (warn) => (warn ? TAG.warn + ARROW_WARN : TAG.h + ARROW);
+  const tagH = (a) => (a._warn ? TAG.warn : TAG.h); // (a tag's height: taller saying "Broadside!")
   function edgeTop(x, up) { let t = 6; for (const b of EDGE.top) if (x > b.l - TAG_REACH && x < b.r + TAG_REACH && b.b + 4 > t) t = b.b + 4; return t + up; }
   function edgeBottom(x) { let y = view.h - 6; for (const b of EDGE.bottom) if (x > b.l - TAG_REACH && x < b.r + TAG_REACH && b.t - 4 < y) y = b.t - 4; return y; }
   // a tag over a ship (its bottom middle at x, hw half as wide as it is) may reach up to just under the panels along the
@@ -799,7 +888,7 @@ async function main() {
   const TAG_GAP = 2;
   let overN = 0;
   function inWay(a, x, y, dir, ships) {
-    const hw = a._hw, h = TAG.h;
+    const hw = a._hw, h = tagH(a);
     let to = dir < 0 ? Infinity : -Infinity, v;
     for (let pass = 0; pass < 2; pass++) {
       const list = pass ? over : edges, n = pass ? overN : edges.length;
@@ -902,7 +991,7 @@ async function main() {
     for (let n = 0; n < 12; n++) { const to = inWay(a, x, y, dir, ships); if (to !== to) return y; y = to; }
     return NaN;
   }
-  const tagFits = (a, x, y) => y === y && x - a._hw >= 4 && x + a._hw <= view.w - 4 && y - TAG.h >= overTop(x, a._hw) && y <= overBottom(x, a._hw);
+  const tagFits = (a, x, y) => y === y && x - a._hw >= 4 && x + a._hw <= view.w - 4 && y - tagH(a) >= overTop(x, a._hw) && y <= overBottom(x, a._hw);
   // a tag over her ship placed: the first clear place of: just over her ship, pushed up past whatever's in the way (so a
   // stack of tags sits over all their ships, never on one of them); a little lower, just under the panels along the top
   // (her mast heads reaching up to them: at most 60% of a tag lower); a tag's width or two to either side, pushed up the
@@ -928,18 +1017,19 @@ async function main() {
     }
     a._homeAt = -1;
     if (kept) return false;
-    y = slide(a, x0, Math.max(y0, overTop(x0, a._hw) + TAG.h), 1);
-    if (y - y0 <= TAG.h * 0.6 && tagFits(a, x0, y)) { a._y = y; return true; }
+    y = slide(a, x0, Math.max(y0, overTop(x0, a._hw) + tagH(a)), 1);
+    if (y - y0 <= tagH(a) * 0.6 && tagFits(a, x0, y)) { a._y = y; return true; }
     for (let k = 1; k < FAN.length; k++) { const x = x0 + FAN[k] * step; y = slide(a, x, y0, -1); if (tagFits(a, x, y)) { a._x = x; a._y = y; return true; } }
-    if (a._box) for (let k = 0; k < 3; k++) { const x = x0 + FAN[k] * step; y = slide(a, x, a._sb + TAG_GAP + TAG.h, 1); if (tagFits(a, x, y)) { a._x = x; a._y = y; return true; } }
+    if (a._box) for (let k = 0; k < 3; k++) { const x = x0 + FAN[k] * step; y = slide(a, x, a._sb + TAG_GAP + tagH(a), 1); if (tagFits(a, x, y)) { a._x = x; a._y = y; return true; } }
     const x = Math.max(a._hw + 4, Math.min(view.w - a._hw - 4, x0));
-    y = Math.max(y0, overTop(x, a._hw) + TAG.h);
+    y = Math.max(y0, overTop(x, a._hw) + tagH(a));
     const down = slide(a, x, y, 1, false);
     a._x = x; a._y = down === down ? down : y;
     return true;
   }
-  // each raider's tag: over it, or at the edge of the screen pointing to it (flashing red as she readies a broadside);
-  // its distance and health ten times a second. (dt: the frame's seconds, for a tag gliding to a new place)
+  // each raider's tag: over it, or at the edge of the screen pointing to it (flashing red and saying "Broadside!" as she
+  // readies a broadside, with a ring closing as she's about to fire); its distance and health ten times a second. (dt:
+  // the frame's seconds, for a tag gliding to a new place)
   function tags(slow, dt = 0) {
     const W2 = view.w / 2, H2 = view.h / 2;
     if (TAG.sizes !== sizes) { TAG.sizes = sizes; TAG.measured = TAG.warned = false; for (const r of raiders.list) if (r.tag) r.tag._measure = true; } // (a new window size: tags measured again)
@@ -951,7 +1041,7 @@ async function main() {
       let el = r.tag;
       if (!el) {
         el = r.tag = document.createElement('div'); el.className = r.captain ? 'tag captain' : r.role === 'prize' ? 'tag captain prize' : 'tag';
-        el.innerHTML = `<span class="arrow"></span><b>${r.captain ? 'Captain · ' : r.role === 'prize' ? 'Treasure · ' : ''}${r.R.cls}</b> <span class="d"></span>${PARTS.map((k) => `<span class="meter ${k}"><b></b><i></i></span>`).join('')}<span class="bs">Broadside!</span><span class="lost">Lost in the cloud</span>`;
+        el.innerHTML = `<span class="arrow"></span><b>${r.captain ? 'Captain · ' : r.role === 'prize' ? 'Treasure · ' : ''}${r.R.cls}</b> <span class="d"></span>${PARTS.map((k) => `<span class="meter ${k}"><b></b><i></i></span>`).join('')}<span class="bs"><i class="ring"></i>Broadside!</span><span class="lost">Lost in the cloud</span>`;
         el._d = el.querySelector('.d'); el._m = [...el.querySelectorAll('.meter i')].map(chip); el._arrow = el.querySelector('.arrow'); el._fresh = true; el._hw = 42; el._ox = el._oy = 0; el._had = false; el._homeAt = -1;
         H.tags.append(el); // (raiders.js takes it away with its raider)
       }
@@ -965,9 +1055,11 @@ async function main() {
       // (off screen: pinned where the line to her meets the edge, then kept between the panels at the top and bottom)
       const ax = edgeX(el, W2), k = Math.max(Math.abs(x) / ax, y < 0 ? -y / (H2 - tagUp(false) - 6) : y / (H2 - 6));
       const edge = behind || k > 1;
-      // off screen, her glowing gun ports can't be seen (on a phone a raider alongside usually is): while she readies a
-      // broadside, her tag at the edge flashes red, and says so
-      const warn = edge && !!r.charge.b;
+      // while she readies a broadside (her red fan showing), her tag flashes red and says so, with a ring closing as she's
+      // about to fire: over her, and at the edge, where her glowing ports and her fan can't be seen (on a phone a raider
+      // alongside usually is)
+      const warn = !!r.charge.b;
+      if (warn) { const k = Math.round((r.charge.T > 0 ? 1 - Math.max(0, r.charge.t) / r.charge.T : 1) * 20) / 20; if (el._k !== k) { el._k = k; el.style.setProperty('--k', String(k)); } }
       // (and the highest an edge tag may be pushed to make room for another, below: just under the panels along the top)
       let top = TAG.h + 6;
       if (edge) {
@@ -1197,6 +1289,21 @@ async function main() {
     setWidth(H['h-surge'], sg.on > 0 ? sg.on / 3 : sg.charge);
     H['row-surge'].classList.toggle('ready', sg.charge >= 1);
     H['btn-surge'].disabled = sg.charge < 1;
+    shotsShown(); // (her shot, if it changed some other way: a shot bought or earned)
+    // the crew patching her: the row for what they patch glows; on a laptop the Patch row fills as they get ready again;
+    // on a phone the Patch button shows once she's hurt (her worst part under 70%), its ring filling as they get ready
+    const PT = player.patch, ready = 1 - PT.cd / (PATCH.time + PATCH.wait);
+    for (const k of PARTS) H[`row-${k}`].classList.toggle('patching', PT.t > 0 && PT.part === k);
+    setWidth(H['h-patch'], PT.t > 0 ? PT.t / PATCH.time : ready);
+    H['row-patch'].classList.toggle('ready', PT.cd <= 0);
+    const pb = H['btn-patch'], show = !player.down && (PT.t > 0 || player.frac(player.worst()) < PATCH.show);
+    if (pb.hidden === show) { pb.hidden = !show; layout(); }
+    if (show) {
+      const k = Math.round(ready * 40) / 40;
+      if (pb._k !== k) { pb._k = k; pb.style.setProperty('--k', String(k)); }
+      if (pb._busy !== PT.cd > 0) { pb._busy = PT.cd > 0; pb.classList.toggle('busy', pb._busy); }
+      if (pb._on !== PT.t > 0) { pb._on = PT.t > 0; pb.classList.toggle('on', pb._on); }
+    }
     // a new region's name, at a quiet moment: not in a fight, not over a banner (they share the sky under the compass),
     // and not over the card between waves where that sits at the top (a phone held sideways)
     const r = regionAt(player.pos.x, player.pos.z);
@@ -1254,6 +1361,9 @@ async function main() {
       else if (k === 'r') { if (player.startSurge()) { toast('Surge!'); emit('surge'); } }
       else if (k === 'Enter') sailOn();
       else if (k === 'b') goHome();
+      else if (k === '1' || k === '2' || k === '3') pickShot(SHOT_ORDER[+k - 1]);
+      else if (k === 'shot') pickShot(nextShot());
+      else if (k === 'x') patchUp();
     }
     player.update(dt, inp);
     player.ship.root.updateMatrixWorld(true);
@@ -1262,13 +1372,17 @@ async function main() {
     sound.listen(camera, player.pos); // (where the sounds of this step are heard from)
     const battery = batteryFor(cam.yaw);
     aimFor(battery);
-    gunnery.update(dt);
+    gunnery.update(dt, player.patch.t > 0 ? PATCH.rate : 1); // (the guns reload at half speed while the crew patch her)
+    if (wasPatching && player.patch.t <= 0) { wasPatching = false; PATCHED.part = player.patch.part; PATCHED.stage = 'done'; emit('patch'); }
     // a broadside loaded again is told (a clack: sound.js)
     for (let i = 0; i < 2; i++) {
       const b = SIDES[i];
       if (loaded[b] > 0 && gunnery.ready[b] === 0 && gunnery.B[b][0]?.kind === 'broadside' && !player.down) { READY.battery = b; READY.firing = !!inp.fire; emit('guns:ready'); }
     }
-    if (inp.fire && !player.down && gunnery.fire(battery, aimPoint, bolts, 'player', player.velocity) > 0) sky.reveal(); // (her guns give her away)
+    if (inp.fire && !player.down && gunnery.fire(battery, aimPoint, bolts, 'player', player.velocity) > 0) {
+      sky.reveal(); // (her guns give her away)
+      if (gunnery.shot === 'breaker') { if (!gunnery.breakers) pickShot('round', 'out'); else shotsShown(); } // (her last volley of breakers: round shot again)
+    }
     loaded.port = gunnery.ready.port; loaded.starboard = gunnery.ready.starboard;
     bolts.update(dt, hitTest);
     // (her scars and every raider's, and their flames, as they stand after this step's hits; and their life: her lids
@@ -1323,6 +1437,7 @@ async function main() {
     fx, events, wrecks, surge, looks, wakes, get lastArc() { return lastArc; }, get time() { return time; }, audio, sound, settings,
     progress, port, title, sail, endVoyage, pause, sailOn, wind: WIND, sky, waveAt, treasureShip, SKIES, get mode() { return mode; }, get paused() { return paused; },
     giants, describe, // (which giants sail among the raiders this voyage, and a wave in words)
+    tactics: { SHOTS, SHOT_ORDER, RAKE, PATCH, SMART, rakeMul }, pickShot, nextShot: () => nextShot(), patchUp, // (shot, raking and patching)
     fly: (id) => sail(id, true), // a voyage in any ship, owned or not (for tests)
     get trial() { return trial; }, TRIAL, // (the ship on her sea trial, if one is out; the wave each is tried on)
     words: { side: sideWords, wind: () => windWords() }, layout, edge: EDGE, // (directions in words, and the panels the edge tags keep clear of)
