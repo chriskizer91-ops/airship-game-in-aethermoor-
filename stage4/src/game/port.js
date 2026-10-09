@@ -6,9 +6,10 @@
 //   suit a first voyage; one who has been to sea sees the shards waiting to be spent.
 //   Port: pick which ship to sail, buy ships (the Man-o'-war only once the Galleon is owned) and upgrades with Crystal
 //   Shards, and set where the crystals' power goes.
-//   Looking at a ship you don't own, the big gold button buys her (filling up as you earn towards her price), and
-//   setting sail in your own ship is a plain line under it. On a phone the panel has two tabs: the ship, and her
-//   upgrades (with a gold dot when there's one you can buy).
+//   Looking at a ship you don't own, the big gold button buys her (filling up as you earn towards her price); under it
+//   "Try her out" takes her out for a sea trial (one fight, for nothing: main.js), and setting sail in your own ship is
+//   a plain line beside that. On a phone the panel has two tabs: the ship, and her upgrades (with a gold dot when
+//   there's one you can buy).
 import * as THREE from 'three';
 import { SHIPS, STATS } from '../ships/index.js';
 import { handling } from './flight.js';
@@ -57,7 +58,7 @@ function makeBerth() {
   return g;
 }
 
-export function makePort({ renderer, env, progress, shipFor, touch = false, onSail, onMode }) {
+export function makePort({ renderer, env, progress, shipFor, touch = false, onSail, onTrial, onMode }) {
   const scene = new THREE.Scene();
   scene.environment = env; scene.environmentIntensity = 0.75;
   scene.add(makeVoid());
@@ -189,6 +190,8 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
     modsEl.append(row);
   }
   $('btn-sail').addEventListener('click', () => onSail(progress.data.flying));
+  // a sea trial (Chris: a garage's test drive): a ship not owned yet taken out for one fight, for nothing (main.js)
+  $('btn-try').addEventListener('click', () => { if (!progress.data.ships[viewing].owned) onTrial?.(viewing); });
 
   // the stat bars: this ship as built (pale) and with its upgrades (gold), against the best any ship can be
   const best = { speed: 0, turn: 0, climb: 0, hull: 0, firepower: 0 };
@@ -207,7 +210,7 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
     for (const k in best) best[k] = Math.max(best[k], f[k]);
   }
   // a bar's length for a figure: its share of the best any ship can be. The hull and firepower run from a Skiff's to a
-  // Man-o'-war's, thirty times as much, so their bars go by the square root of that share: a Skiff's still shows, and
+  // Captain's Man-o'-war's, twenty to fifty times as much, so their bars go by the square root of that share: a Skiff's still shows, and
   // a bigger figure always has a longer bar (the number, or the word, says exactly how much)
   const ROOT = { hull: true, firepower: true };
   const share = (k, v) => (ROOT[k] ? Math.sqrt(v / best[k]) : v / best[k]);
@@ -268,7 +271,9 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
     }
     $('pp-need').textContent = [first ? `The port sells her once you own the ${first.name}.` : short ? `You have ◆ ${fmt(d.shards)}. Bring down raiders to earn the rest.` : '', owned ? '' : GIANT[viewing] ?? ''].filter(Boolean).join(' ');
     const sail = $('btn-sail');
-    sail.classList.toggle('alt', !owned); sail.textContent = owned ? `Set sail in the ${F.name}` : `or set sail in the ${F.name}`;
+    // (on a narrow phone held sideways, beside "Try her out", the plain line says just "or sail the Zephyr")
+    sail.classList.toggle('alt', !owned); sail.innerHTML = owned ? `Set sail in the ${F.name}` : `or <span class="long">set </span>sail <span class="long">in </span>the ${F.name}`;
+    $('btn-try').hidden = owned; // (beside it, a ship not owned can be tried out: a sea trial)
     const base = figures(viewing, { power: 0, mods: { armour: 0, canvas: 0, drill: 0, crystals: 0 } }), now = figures(viewing, cfg);
     // (looking at another ship: a white mark on each bar where the ship you sail now is, to compare)
     const mine = viewing !== d.flying ? figures(d.flying, d.ships[d.flying]) : null;

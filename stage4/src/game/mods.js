@@ -19,12 +19,14 @@ export const modCost = (ship, step) => Math.round((STEP_COST[step] * CLASS[ship]
 // 6% heavier shots, but 6% less top speed and speeding up
 export const POWER = ['All to sails', 'More to sails', 'Even', 'More to guns', 'All to guns'];
 
-// the big two are better found under the Captain than under a raider crew: they answer the helm better (the best crew
-// in the sky, and a 54-second circle would be no fun to fly), times as quick to turn and to climb; her shipwrights
-// plate their hulls heavier and her crystal-cutters set their crystals deeper (`tough`, times as tough: a big ship is a
-// big target, her crystals heaped high on her deck, and every raider's shots find her); and her gunners work the heavy
-// guns as fast as any (a raider crew takes longer: guns.js HEAVY). Raiders sail them as built
-export const HELM = { galleon: { turn: 1.2, climb: 1.15, tough: 1.6 }, manowar: { turn: 1.35, climb: 1.4, tough: 1.3 } };
+// the big two are better found under the Captain than under a raider crew, so buying one feels mighty at once (tuned
+// with many runs of tools/sim-fight.mjs: a new Galleon well ahead of a Frigate with every upgrade, the Man-o'-war ahead
+// again): they answer the helm better (the best crew in the sky, and a 54-second circle would be no fun to fly), times
+// as quick to turn and to climb; her shipwrights plate their hulls heavier and her crystal-cutters set their crystals
+// deeper (`tough`, times as tough: a big ship is a big target, her crystals heaped high on her deck, and every raider's
+// shots find her); and her gunners, the best in the sky, reload the heavy guns quicker than any crew (`reload`, times as
+// long; a raider crew takes longer than most: guns.js HEAVY). Raiders sail them as built
+export const HELM = { galleon: { turn: 1.4, climb: 1.15, tough: 2.2, reload: 0.8 }, manowar: { turn: 1.4, climb: 1.4, tough: 2.1, reload: 0.75 } };
 
 export function loadout(id, cfg) {
   const st = STATS[id], m = cfg.mods, p = cfg.power, helm = HELM[id];
@@ -41,6 +43,6 @@ export function loadout(id, cfg) {
       climb: (1 + 0.12 * m.crystals) * (helm?.climb ?? 1),
       turn: helm?.turn ?? 1,
     },
-    guns: { reload: (1 - 0.1 * m.drill) * (1 - 0.08 * p), damage: 1 + 0.06 * p },
+    guns: { reload: (1 - 0.1 * m.drill) * (1 - 0.08 * p) * (helm?.reload ?? 1), damage: 1 + 0.06 * p },
   };
 }

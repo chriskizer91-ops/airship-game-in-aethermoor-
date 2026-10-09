@@ -112,7 +112,15 @@ which were made from this repository only):
    panel on a phone held sideways, `tools/sim-fight.mjs` says whether each treasure ship was caught or got away, and
    "How hard it is" was measured again (many runs of each).
 1b. **D2-touchups**: stage 4a's gate's open points (HUD text over your own ship on a phone, the smallest phone's
-   banner, a new Galleon that's no step up yet, the frame-time tests on a busy machine) and a sea trial in port.
+   banner, a new Galleon that's no step up yet, the frame-time tests on a busy machine) and a sea trial in port. Built
+   October 9 (`docs/game.md`, "Touch-ups and a sea trial", "A sea trial", "The screen" and "How hard it is"). Raiders'
+   tags and the warning keep off the Captain's own ship (`ownBox`, `placeWarn` and the OFF list in `main.js`: her box in
+   four slabs from stern to bow; edge tags try just beside her first, rising at most two and a half tags). Narrow phones
+   held sideways have the compass on one line and a smaller banner; the smallest (568 by 320) has it under the pause
+   button. The big two's helm (`HELM` in `src/game/mods.js`) was tuned with many runs of `tools/sim-fight.mjs` so a new
+   Galleon beats a Frigate with every upgrade (see "How hard it is"). The two frame-time comparisons in the check are
+   timed in turns (`TURNS` in `tools/check.mjs`) and go by the middle turn. "Try her out" in port (`TRIAL` in
+   `main.js`) takes a ship not owned out for one fight, changing nothing in the save.
 2. **D2a-fights-tactics**: shot types, dodging broadsides (the red danger fan), raking fire, the crew patching her.
 3. **D2b-fights-foes**: raiders with nerve, named captains, wave arrivals, the Man-o'-war's fortress battle, a line of
    battle, choosing the road between waves.

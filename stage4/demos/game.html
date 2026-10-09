@@ -149,6 +149,9 @@
   #pp-need { margin: 0; font-size: 12.5px; color: var(--dim); }
   #pp-need:empty { display: none; }
   #btn-sail.alt { width: auto; padding: 6px 10px; font: 500 14px/1.2 var(--body); color: var(--cream); background: none; border: 0; box-shadow: none; text-decoration: underline; text-underline-offset: 3px; }
+  /* (and beside that, for a ship you don't own, "Try her out": a sea trial, one fight for nothing) */
+  .sail-alts { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px 12px; width: 100%; }
+  #btn-try { min-height: 34px; padding: 4px 14px; font: 500 14px/1.2 var(--body); color: var(--gold); white-space: nowrap; }
 
   /* ---------- cards: between waves, paused, how to fly ---------- */
   .card { padding: 14px 18px; text-align: center; width: min(92vw, 430px); }
@@ -503,6 +506,7 @@
     .sail-out .big { padding: 8px 14px; font-size: 17px; }
     #pp-need { display: none; } /* (the shards are at the top, and the Buy button fills with gold towards her price) */
     #btn-sail.alt { padding: 2px 8px; }
+    #btn-try { min-height: 30px; padding: 3px 12px; font-size: 13.5px; }
     /* (so the panel shows all of how she sails and her blurb, or two of her upgrades, above the button: her stats
        before her blurb, without their heading (the tab says it), and the tabs, stats and upgrades a little tighter) */
     #pp-ship-part { display: flex; flex-direction: column; }
@@ -615,11 +619,40 @@
     #banner-title { font-size: clamp(26px, 3.4vw, 40px); }
     #banner-line { margin-top: 4px; font-size: clamp(14px, 1.5vw, 16px); }
   }
-  /* a laptop window short and narrow at once: the upright phone's top, the short one's middle */
+  /* a laptop window short and narrow at once, or a narrow phone held sideways (667 by 375, 640 by 360): the short
+     window's top and middle, with the compass on one line as on a wider phone held sideways, and the banner's words a
+     little smaller (the first voyage's title on one line), so it fits under the compass, between the panels at the top
+     and over the crosshair */
   @media (max-width: 700px) and (max-height: 500px) {
     #btn-pause { top: var(--top); left: auto; right: calc(var(--gutter) + var(--map-w) + 8px); translate: none; }
     #port-ships button { padding: 5px 6px 4px; }
     #port-ships button b { font-size: 13px; }
+    #compass { flex-direction: row; align-items: baseline; gap: 8px; padding: 3px 10px; }
+    #banner { max-width: calc(100% - 2 * (var(--gutter) + 162px)); padding: 4px 10px 6px; }
+    #banner-title { font-size: 17px; }
+    #banner-line { font-size: 12.5px; padding: 2px 8px; }
+    #region { font-size: 17px; }
+    /* (in port, "Try her out" and "or sail the Zephyr" side by side on one line, no taller than the plain line alone) */
+    .sail-alts { gap: 2px 8px; }
+    #btn-try { min-height: 0; padding: 2px 10px; font-size: 13px; }
+    #btn-sail.alt { font-size: 13px; }
+    #btn-sail .long { display: none; }
+  }
+  /* the smallest phones held sideways (568 by 320, an iPhone SE's first one with the browser's bars showing): the
+     banner (and the region's name, in its place) just under the pause button, as wide as the room between your ship's
+     panel (a little narrower here) and the map, its words smaller again; and the guns' label a little lower, clear of
+     the score */
+  @media (max-width: 600px) and (max-height: 500px) {
+    #readout { max-width: 112px; }
+    #health .meter { width: 46px; }
+    #banner, #region { top: calc(var(--top) + 48px); }
+    #banner { max-width: calc(100% - 2 * (var(--gutter) + 134px)); }
+    #banner-title { font-size: 16px; }
+    #banner-line { font-size: 12px; }
+    #region { font-size: 16px; }
+  }
+  @media (max-height: 340px) {
+    body.touch #battery, #battery { bottom: calc(var(--bottom) + 146px); }
   }
   /* the smallest phones held sideways (568 px across, as an iPhone SE's first one): the panel a little narrower and the
      ships' buttons a little tighter, so all six fit along the bottom without being cut off */
@@ -632,6 +665,19 @@
     .sail-out .big { font-size: 15.5px; padding: 8px 10px; }
     #btn-buy { letter-spacing: 0; }
     #btn-buy .the { display: none; } /* ("Buy Thunderhead · ◆ 30,000": her name is just above, and so it fits on one line) */
+    /* (between waves the card just under the pause button, as wide as the room between your ship's panel and the map;
+       the crosshair makes way for it, as the guns' label does: there's nothing to fire at then) */
+    body.touch #calm, #calm { top: calc(var(--top) + 48px); width: calc(100% - 2 * (var(--gutter) + 134px)); }
+    #calm p { font-size: 12px; }
+    body.between #aim { display: none; }
+    /* (the toast and a warning under the crosshair a little wider, between the hint and the touch buttons, so the
+       longest toast takes two lines and the warning keeps clear under it) */
+    #toast { max-width: calc(100% - 2 * (var(--gutter) + 166px)); font-size: 12.5px; }
+    #warn { top: calc(50% + 80px); max-width: calc(100% - 2 * (var(--gutter) + 166px)); font-size: 12.5px; }
+    /* (the raiders' tags a little smaller, so a crowd of them all round still finds room on so small a screen) */
+    .tag { gap: 1px 5px; padding: 2px 5px 3px; font-size: 11px; }
+    .tag .meter { width: 56px; }
+    .tag .bs { font-size: 11px; }
   }
   /* the tabs, wherever the panel is short (a phone either way). The Upgrades tab shows the upgrades first (no heading:
      the tab says it), then crystal power, so they're there without scrolling */
@@ -693,7 +739,7 @@
     <div class="sail-out">
       <div id="pp-buy" hidden><button id="btn-buy" class="big" type="button"><span>Buy</span></button></div>
       <p id="pp-need"></p>
-      <button id="btn-sail" class="big" type="button">Set sail</button>
+      <div class="sail-alts"><button id="btn-try" class="plain" type="button" hidden>Try her out</button><button id="btn-sail" class="big" type="button">Set sail</button></div>
     </div>
   </section>
 </section>

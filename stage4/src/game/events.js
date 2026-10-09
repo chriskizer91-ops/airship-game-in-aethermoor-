@@ -10,8 +10,10 @@
 //   mode            { mode }                     'title', 'port' or 'voyage': the screen changed
 //   pause           { on }                       the voyage paused (true) or resumed (false); leaving a paused voyage
 //                                                for port tells it ended (false) just before voyage:end
-//   voyage:start    { ship, skies }              set sail: the ship's id ('brig'...), the skies' id ('cross'...)
-//   voyage:end      { kept, sunk, waves }        back in port: shards banked, whether she went down, waves beaten
+//   voyage:start    { ship, skies, trial }       set sail: the ship's id ('brig'...), the skies' id ('cross'...), and
+//                                                whether it's her sea trial (a ship not owned, out for one fight)
+//   voyage:end      { kept, sunk, waves, trial } back in port: shards banked, whether she went down, waves beaten,
+//                                                and whether it was a sea trial (nothing banked)
 //   fire            { owner, kind, battery, p, dir, weight, ship, vel, i, n, raider }
 //                                                one gun going off: 'player' or 'raider'; 'chaser' or 'broadside';
 //                                                'bow', 'port', 'starboard' or 'stern'; where its muzzle is and which
@@ -77,8 +79,8 @@ const v = () => new Vector3();
 export const PAYLOAD = {
   mode: { mode: '' },
   pause: { on: false },
-  'voyage:start': { ship: '', skies: '' },
-  'voyage:end': { kept: 0, sunk: false, waves: 0 },
+  'voyage:start': { ship: '', skies: '', trial: false },
+  'voyage:end': { kept: 0, sunk: false, waves: 0, trial: false },
   fire: { owner: '', kind: '', battery: '', p: v(), dir: v(), weight: 1, ship: '', vel: v(), i: 0, n: 1, raider: null },
   volley: { owner: '', battery: '', count: 0, kind: '', ship: '', p: v() },
   hit: { owner: '', target: '', part: '', at: v(), damage: 0, raider: null, dir: v(), vel: v(), size: 1 },
