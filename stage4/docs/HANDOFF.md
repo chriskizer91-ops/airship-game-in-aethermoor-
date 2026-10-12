@@ -156,6 +156,16 @@ which were made from this repository only):
    held sideways, the toast sits lower and the warning hides) so a long card fits; the sideways rules for the guns'
    label are written as strongly as the upright ones (a 640 by 360 phone matches both); `layoutAt` takes `{ shot,
    hurt, left }` and the phone passes cover a new Captain, Fire on the left and both buttons.
+   **Stage 4b's gate** (October 12, for D2-touchups and D2a): the full check passed as committed (30 minutes with
+   balance runs alongside), so there were no code fixes. The balance runs were measured again (12 to 36 voyages of each)
+   and "How hard it is" updated: a skilled Captain's Brig takes about four fifths less broadside damage (first measured
+   as nine tenths), a plain Captain's Frigate on the Maelstrom beats all eight waves 4 times in 36, and the big two's late
+   waves are a little harder than first measured (the Man-o'-war beats waves 16 to 20 five times in six, 21 to 25 four
+   times in five). The check's time in the docs is now about 20 minutes. Looked at in the gate's screenshots and worth a
+   touch-up: seen from behind with a raider level alongside, her red fan is nearly edge-on and reads as a pink haze over
+   the horizon (her "Broadside!" tag and ring are what tell you; from above or ahead the fan's rings read well); chain
+   shot in flight at a fight's range shows as small violet sparks, its two heads too small to see; and the edge tags'
+   arrows are small, nearly even triangles, so which way one points is hard to read at a glance.
 3. **D2b-fights-foes**: raiders with nerve, named captains, wave arrivals, the Man-o'-war's fortress battle, a line of
    battle, choosing the road between waves.
 4. **D3-progression**: save version 2, a gentle first voyage, the homecoming summary, commendations and a Captain's
@@ -165,7 +175,7 @@ Run them in that order (each builds on the last), with the gate's `shots` asking
 upright-phone and sideways-phone sizes.
 
 **First steps in a new session:** `npm install` in the repository's main folder; `cd polished && node tools/build.mjs &&
-node tools/check.mjs` and see it end "all good" (about 15 minutes since D0, more while another agent is busy; it was 25); read `docs/plan/chris-decisions.md` and the five
+node tools/check.mjs` and see it end "all good" (about 15 minutes after D0, about 20 since D2a's checks, more while another agent is busy; it was 25 before D0); read `docs/plan/chris-decisions.md` and the five
 specs; ask Chris whether anything has changed since October 7; then run stage 4.
 
 ## How the work has been run
@@ -190,7 +200,7 @@ specs; ask Chris whether anything has changed since October 7; then run stage 4.
 ## Things learned the hard way
 
 - **This machine has 4 CPUs**: a workflow runs 2 agents at a time, and the full check (`node tools/check.mjs`) takes
-  about 15 minutes in software rendering since D0 (it was 25; with another agent busy it can take 25 or more, and a
+  about 20 minutes in software rendering since D2a (15 after D0, 25 before it; with another agent busy it can take 25 or more, and a
   starved run can trip the check's frame-time comparisons: run it again on its own; `--quick` about 6, `--ships` under 3). In software a
   frame takes a second or more, so a check that waits on frames it doesn't look at wastes minutes: hold or skip them
   (the ships demo's `hold`, `undrawn` in the check). A stage of four packages took 6 to 15 hours
