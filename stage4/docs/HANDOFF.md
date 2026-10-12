@@ -8,7 +8,8 @@
 > `stage4/dist/game.artifact.html` with `capabilities: {db: {}, user: {}}`; leave `capabilities` out on later publishes)
 > and **the ships up close** https://claude.ai/artifact/PjsAJrsX7TngKRUuKoZhFC (from `stage4/dist/hangar.artifact.html`).
 > Never publish `stage4/` to `polished/`'s links or the original game's. Stage 4 runs in three parts, each published
-> when its gate passes: 4a (D0, D1: done October 9), 4b (D2-touchups, D2a, D2b), 4c (D3). The stage script is
+> when its gate passes: 4a (D0, D1: done October 9), 4b (D2-touchups, D2a: done October 12), 4c (D2b-touchups,
+> D2b), 4d (D3). The stage script is
 > `docs/plan/build-stage.js` (its args now include `branch` and `trailer`; builders push every commit at once).
 
 For a fresh session picking this up. Read this first, then `docs/plan/chris-decisions.md`, `README.md` and
