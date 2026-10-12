@@ -464,8 +464,8 @@ async function main() {
     if (b._key === key) return;
     b._key = key;
     if (document.body.classList.contains('has-shot') !== more) { document.body.classList.toggle('has-shot', more); b.hidden = !more; layout(); }
-    b.innerHTML = `${SHOT_ICON[s]}<small>${SHOTS[s].short}${s === 'breaker' ? ` ${gunnery.breakers}` : ''}</small>`;
-    b.style.setProperty('--shot', shotHex(s)); b.setAttribute('aria-label', `${SHOTS[s].name} loaded: tap for the next`);
+    b.innerHTML = `${SHOT_ICON[s]}<small>${SHOTS[s].short}</small>${s === 'breaker' ? `<b class="left">${gunnery.breakers}</b>` : ''}`; // (the breakers left: a badge on its shoulder)
+    b.style.setProperty('--shot', shotHex(s)); b.setAttribute('aria-label', `${SHOTS[s].name} loaded${s === 'breaker' ? ` (${gunnery.breakers} left)` : ''}: tap for the next`);
     setText($('battery-shot'), more ? ` · ${SHOTS[s].name}${s === 'breaker' ? ` (${gunnery.breakers})` : ''}` : '');
     setStyle($('reload-bar'), 'background', shotHex(s));
   }
@@ -715,7 +715,9 @@ async function main() {
     if (mode !== 'voyage') return;
     const boxes = (ids) => ids.filter((id) => !$(id).classList.contains('gone')).map((id) => $(id).getBoundingClientRect()).filter((b) => b.width && b.height).map((b) => ({ l: b.left, r: b.right, t: b.top, b: b.bottom }));
     EDGE.top = boxes(TOP_IDS); EDGE.bottom = boxes(BOTTOM_IDS).filter((b) => b.t > view.h * 0.4);
-    EDGE.top.push(...boxes(['battery']).filter((b) => b.b < view.h * 0.4)); // (the guns' label, wherever it is)
+    // (the guns' label, wherever it is: along the top under the compass, or along the bottom over the touch buttons,
+    // even reaching up past four tenths of the way down, as it does over the shot button on a phone held sideways)
+    for (const b of boxes(['battery'])) if (b.b < view.h * 0.4) EDGE.top.push(b); else if (b.t <= view.h * 0.4) EDGE.bottom.push(b);
     const c = $('calm');
     CALM_AT.on = !c.hidden && c.offsetWidth > 0;
     if (CALM_AT.on) Object.assign(CALM_AT, { l: c.offsetLeft - c.offsetWidth / 2, r: c.offsetLeft + c.offsetWidth / 2, t: c.offsetTop, b: c.offsetTop + c.offsetHeight, top: c.offsetTop + c.offsetHeight / 2 < view.h / 2 });

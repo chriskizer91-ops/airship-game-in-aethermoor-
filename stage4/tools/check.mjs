@@ -88,7 +88,8 @@
 //                     the note saying how to load it); a bolt of each shot into each part of a raider Frigate from her
 //                     beam (her crystals from above) doing exactly its table's share; chain shot loaded with 2 reloading
 //                     every battery, the guns' lock point in her sails, three volleys at a Brig sailing away tearing her
-//                     sails (twice the hull's damage or more); five volleys of crystal breakers from 60 m above a
+//                     sails (twice the hull's damage or more), and a treasure Brig running from a Skiff striking her
+//                     colours after far fewer volleys of chain shot than of round shot; five volleys of crystal breakers from 60 m above a
 //                     Man-o'-war hitting her crystals, one fewer left each, then round shot loaded again and said so; a
 //                     raider Frigate's broadside readied (told, her red fan showing) 0.75 to 0.95 s before she fires on
 //                     Crosswinds, the fan gone as she does; three broadsides hitting a Captain who holds still 3 times or
@@ -99,12 +100,13 @@
 //                     save); the real X key patching her sails from 40% to 73% in 6 s (her row glowing), a broadside's
 //                     reload taking twice as long meanwhile, and X again doing nothing (a toast saying how long); the
 //                     real V key loading the next shot she has (round, chain, breakers, round; with round shot only a toast
-//                     saying how to get more); a
+//                     saying how to get more), and 3 and 2 loading theirs with Shift held (diving); a
 //                     raider Brig the Captain points at turning to cross her bow on Crosswinds (to come alongside on Fair
 //                     Winds), and one on the Maelstrom dodging a loaded broadside; pictures of a chain-shot volley, the
 //                     red fan (from inside it, and from above), a rake and a patch. On a phone: the shot button hidden with round shot only, shown with
 //                     chain shot and loading it with a tap; Patch hidden at full health, shown at hull 60%, a tap starting
-//                     the crew patching; both measured in every phone layout; a picture of both
+//                     the crew patching; both measured in every phone layout, the shot button's name inside its ring
+//                     for each shot and the badge with the breakers left clear of the guns' label; a picture of both
 //                     wrecks worth watching: debris matching the part hit, a 60-shot barrage fitting its batches with
 //                     not a piece cut short and all fallen 4 s later, and canvas scraps keeping their own flapping beat;
 //                     a raider Brig blown apart in three blasts or more within 3 s, her crystals dark by 2 s, through
@@ -650,6 +652,26 @@ const gameReady = () => window.__game?.ready || !document.getElementById('error'
 // tag taller, saying "Broadside!", with a bigger arrow). `sink`: and the ship going down with the big map open, its card
 // over everything. Her ship has chain shot and her hull at 60%, so on a phone the shot button (over Surge) and the
 // Patch button (by the sail buttons) are showing too
+// On a phone: the shot button with each shot loaded, its name inside its ring (the letters standing on the line no wider
+// than the ring is across there), and with crystal breakers the badge saying how many are left clear of the guns' label
+// and on the screen. Problems, in words
+const shotButton = (page) => page.evaluate(() => {
+  const g = window.__game, d = g.progress.data, $ = (id) => document.getElementById(id), out = [];
+  d.shots.chain = d.shots.breaker = true; g.fly('brig'); g.waves.timer = 1e9; g.raiders.setAI(false); g.step(1 / 60, {});
+  const meet = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+  for (const s of ['round', 'chain', 'breaker']) {
+    g.pickShot(s); g.step(0.12, {});
+    const btn = $('btn-shot'), b = btn.getBoundingClientRect(), l = btn.querySelector('small')?.getBoundingClientRect();
+    if (btn.hidden || !b.width || !l) { out.push(`${s}: the shot button isn't showing`); continue; }
+    const R = b.width / 2 - 2, dy = l.bottom - (b.top + b.height / 2) - 0.18 * l.height, across = 2 * Math.sqrt(Math.max(0, R * R - dy * dy));
+    if (l.width > across + 0.5) out.push(`${s}: its name (${l.width.toFixed(1)} px) is wider than its ring there (${across.toFixed(1)} px)`);
+    const badge = btn.querySelector('.left')?.getBoundingClientRect();
+    if (s === 'breaker' && (!badge || meet(badge, $('battery').getBoundingClientRect()) || badge.left < 0 || badge.top < 0 || badge.right > innerWidth)) out.push(`breakers: the badge with how many are left ${badge ? 'lands on the guns\' label or off the screen' : 'is missing'}`);
+    if (s === 'breaker' && badge && btn.querySelector('.left').textContent !== String(g.gunnery.breakers)) out.push('breakers: the badge says the wrong number');
+  }
+  g.pickShot('round'); d.shots.breaker = false;
+  return out;
+});
 const layoutAt = (page, HUD, PANELS, sink = false) => page.evaluate(({ HUD, PANELS, sink }) => {
   const g = window.__game, $ = (id) => document.getElementById(id), out = { laps: [], tags: [], off: [], pause: [] };
   const box = (id) => { const el = $(id); if (!el || el.hidden || getComputedStyle(el).display === 'none' || getComputedStyle(el).visibility === 'hidden') return null; const b = el.getBoundingClientRect(); return b.width && b.height ? b : null; };
@@ -3421,6 +3443,17 @@ if (!demoOnly) {
     for (let v = 0; v < 3; v++) { for (const k in g.gunnery.ready) g.gunnery.ready[k] = 0; look(P, rb); g.step(1 / 60, { fire: true }); g.step(1.3, {}); }
     offC();
     out.chain = { shot: g.gunnery.shot, full, inSails: rb.zones.sails.some((b) => b.containsPoint(lp)), dmg, locked: g.locked === rb, label: document.getElementById('battery-shot').textContent };
+    // 2b. catching a runner: a Skiff's bow guns at a treasure Brig frozen 260 m ahead, sailing away, volley after volley
+    // until she strikes her colours, with round shot and then with chain shot: chain shot makes her give up much sooner
+    const strikeAfter = (shot) => {
+      P = voyage('skiff'); P.pos.set(0, 900, 0); P.heading = 0; still(P);
+      const tr = g.raiders.spawn('brig', P.pos.clone().add({ x: 0, y: 0, z: 260 }), 0, true, false, true); look(P, tr); g.step(1 / 60, {});
+      if (shot !== 'round') g.pickShot(shot);
+      let v = 0;
+      while (!tr.f.down && v < 60) { for (const k in g.gunnery.ready) g.gunnery.ready[k] = 0; look(P, tr); g.step(1 / 60, { fire: true }); g.step(0.9, {}); v++; }
+      return { volleys: v, why: tr.f.down?.why ?? 'still sailing', sails: +tr.f.frac('sails').toFixed(2), hull: +tr.f.frac('hull').toFixed(2) };
+    };
+    out.runner = { round: strikeAfter('round'), chain: strikeAfter('chain') };
     // 3. crystal breakers (owned) from 60 m above a raider Man-o'-war, 400 m off her side: her crystals hit, one fewer
     // volley left for each, and after the fifth, round shot loaded again (and said so)
     d.shots.breaker = true;
@@ -3507,6 +3540,9 @@ if (!demoOnly) {
     if (parts.wrong.length || combos.length < 9) problems.push(`each shot should hit each part as hard as tactics.js says (all nine of shot and part seen): ${JSON.stringify(parts)}`);
     console.log(`tactics, chain shot: loaded with 2 (${chain.shot}), ${chain.full ? 'every battery reloading' : 'NOT RELOADING'}, the lock point ${chain.inSails ? 'in her sails' : 'NOT IN HER SAILS'}, the guns' label "${chain.label}"; three volleys at a ship sailing away: sails ${Math.round(chain.dmg.sails)}, hull ${Math.round(chain.dmg.hull)}, crystals ${Math.round(chain.dmg.crystals)}`);
     if (chain.shot !== 'chain' || !chain.full || !chain.inSails || !(chain.dmg.sails > 0) || chain.dmg.sails < 2 * chain.dmg.hull || chain.label !== ' · Chain shot') problems.push(`chain shot loaded with 2 should reload every battery, lock on to her sails and tear them (at least twice the hull's damage): ${JSON.stringify(chain)}`);
+    const { runner } = tac;
+    console.log(`tactics, a Skiff's bow guns at a treasure Brig running: round shot, she ${runner.round.why} after ${runner.round.volleys} volleys; chain shot, she ${runner.chain.why} after ${runner.chain.volleys}`);
+    if (runner.round.why !== 'struck' || runner.chain.why !== 'struck' || !(runner.chain.volleys <= runner.round.volleys * 0.7)) problems.push(`a treasure ship shot with chain shot should strike her colours much sooner than with round shot: ${JSON.stringify(runner)}`);
     console.log(`tactics, crystal breakers from 60 m above a Man-o'-war: volleys left ${breakers.left.join(', ')}, ${breakers.crystals} hits on her crystals, then ${breakers.after} shot ("${breakers.toast}")`);
     if (breakers.left.join() !== '4,3,2,1,0' || breakers.crystals < 3 || breakers.after !== 'round' || !breakers.toast.startsWith('Out of crystal breakers') || breakers.again) problems.push(`five volleys of crystal breakers should crack her crystals, one fewer left each, then round shot loaded again (and no more breakers): ${JSON.stringify(breakers)}`);
     console.log(`tactics, a raider Frigate's warning: readying from ${tw.chargedAt} s (told at ${tw.warned} s), her red fan showing ${tw.fan} frames, her first broadside shot at ${tw.boltAt} s, the fan ${tw.fanGone ? 'gone as she fires' : 'STILL SHOWING'}`);
@@ -3561,10 +3597,18 @@ if (!demoOnly) {
     await page.waitForFunction((want) => window.__game.gunnery.shot === want, want, { timeout: 30000 }).catch(() => {});
     cycled.order.push(await page.evaluate(() => window.__game.gunnery.shot));
   }
+  // (and 3 then 2 with Shift held, diving: they type # and @, and still load the breakers and chain shot)
+  await page.keyboard.down('Shift');
+  for (const [key, want] of [['Digit3', 'breaker'], ['Digit2', 'chain']]) {
+    await page.keyboard.press(key);
+    await page.waitForFunction((want) => window.__game.gunnery.shot === want, want, { timeout: 30000 }).catch(() => {});
+    cycled.order.push(await page.evaluate(() => window.__game.gunnery.shot));
+  }
+  await page.keyboard.up('Shift');
   await undrawn(page, false);
   await page.evaluate(() => { const g = window.__game, d = g.progress.data; d.shots.chain = d.shots.breaker = false; g.player.repair(1); g.player.patch.cd = 0; });
-  console.log(`tactics, V: with round shot only "${cycled.toast}"; with all three, ${cycled.order.join(' → ')}`);
-  if (!cycled.toast.startsWith('Only round shot aboard') || cycled.order.join() !== 'chain,breaker,round') problems.push(`V should load the next shot she has (round, chain, breakers, round), and with round shot only say how to get more: ${JSON.stringify(cycled)}`);
+  console.log(`tactics, V: with round shot only "${cycled.toast}"; with all three, ${cycled.order.slice(0, 3).join(' → ')}; Shift+3 and Shift+2 (diving): ${cycled.order.slice(3).join(', ')}`);
+  if (!cycled.toast.startsWith('Only round shot aboard') || cycled.order.join() !== 'chain,breaker,round,breaker,chain') problems.push(`V should load the next shot she has (round, chain, breakers, round), with round shot only say how to get more, and 3 and 2 should load their shot with Shift held: ${JSON.stringify(cycled)}`);
   // smarter raiders: on Crosswinds a raider Brig the Captain points her bow at makes for a spot ahead of it, to cross
   // it and rake her (she turns that way), where on Fair Winds she comes alongside (turning the other way); on the
   // Maelstrom one the Captain's guns are locked on to, a loaded broadside pointed at her, climbs or dives out of it
@@ -3929,6 +3973,7 @@ if (!quick && !demoOnly) {
     // (the new size, once the game has heard of it: drawn in software, a frame can take longer than the half second)
     await page.setViewportSize({ width: w, height: h }); await page.waitForTimeout(500);
     await page.waitForFunction(([w, h]) => Math.abs(window.__game.camera.aspect - w / h) < 1e-6, [w, h], { timeout: 30000 }).catch(() => problems.push(`phone ${w}x${h}: the game never heard the window change size`));
+    for (const p of await shotButton(page)) problems.push(`phone ${w}x${h}: the shot button: ${p}`);
     const L = await layoutAt(page, HUD, PANELS, w === 360);
     if (L.tacButtons !== 2) problems.push(`phone ${w}x${h}: the layout test should measure the shot and Patch buttons with the rest (${L.tacButtons} of 2 showing)`);
     layouts.push(`${w}x${h}: ${layoutProblems(L, `phone ${w}x${h}`)}; a bounty ${bountyProblems(await bountyCard(page), `phone ${w}x${h}`)}`);

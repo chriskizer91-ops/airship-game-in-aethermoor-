@@ -15,14 +15,17 @@ export function makeInput(canvas, el) {
   };
   const now = () => performance.now() / 1000;
   const typing = (e) => /input|textarea|select/i.test(e.target.tagName);
+  // a key by its name (lower case); 1, 2 and 3 by where they sit, so they still pick a shot with Shift held to dive
+  // (which makes them !, @ and #)
+  const keyOf = (e) => (/^(Digit|Numpad)[1-3]$/.test(e.code) ? e.code.slice(-1) : e.key.length === 1 ? e.key.toLowerCase() : e.key);
   addEventListener('keydown', (e) => {
     if (typing(e) || !s.active) return;
-    const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    const k = keyOf(e);
     if (!keys.has(k)) s.pressed.add(k);
     keys.add(k);
     if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) e.preventDefault();
   });
-  addEventListener('keyup', (e) => keys.delete(e.key.length === 1 ? e.key.toLowerCase() : e.key));
+  addEventListener('keyup', (e) => keys.delete(keyOf(e)));
   addEventListener('blur', () => { keys.clear(); s.fire = false; mouseFire = false; });
 
   // ---------- the mouse: lock it to the view to aim; without the lock, drag to aim and click to fire ----------

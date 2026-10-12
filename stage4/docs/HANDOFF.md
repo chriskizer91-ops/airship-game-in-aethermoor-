@@ -122,12 +122,14 @@ which were made from this repository only):
    timed in turns (`TURNS` in `tools/check.mjs`) and go by the middle turn. "Try her out" in port (`TRIAL` in
    `main.js`) takes a ship not owned out for one fight, changing nothing in the save.
 2. **D2a-fights-tactics**: shot types, dodging broadsides (the red danger fan), raking fire, the crew patching her.
-   Built October 9 (`docs/game.md`, "Tactics" and "How hard it is"). The rules live in `src/game/tactics.js` (`SHOTS`,
+   Built October 9 to 12 (`docs/game.md`, "Tactics" and "How hard it is"). The rules live in `src/game/tactics.js` (`SHOTS`,
    `RAKE`, `PATCH`, `SMART`). Shot: `gunnery.shot`/`setShot` (guns.js; changing reloads every battery; breakers counted
    in `gunnery.breakers`), bolts carry `shot`, `hitTest` in main.js multiplies by the part's share and by `rakeMul`
-   (broadsides only, both ways); keys 1/2/3, V or a right-click (`shot`, `cycleShot` in main.js), `#btn-shot` over
-   Surge on a phone (shown once she has more than round shot: body class `has-shot`, which moves the guns' label up
-   and, held sideways, shrinks Surge); chain shot's two heads spin round its path (`SPIN` in guns.js);
+   (broadsides only, both ways); keys 1/2/3 (by `e.code` in input.js, so they work with Shift held to dive), V or a
+   right-click (`shot`, `cycleShot` in main.js), `#btn-shot` over Surge on a phone (shown once she has more than round
+   shot: body class `has-shot`, which moves the guns' label up and, held sideways, shrinks Surge and the button's
+   picture and name; the breakers left are a badge, `.left`; `shotButton` in tools/check.mjs keeps the name inside the
+   ring at every phone size); chain shot's two heads spin round its path (`SPIN` in guns.js);
    `progress.data.shots` (earned by deeds in `waves()`, or bought in port's Shot rows). The warning: raiders.js readies
    a broadside for the skies' `warn` (progress.js), aims it then at where the Captain will be if she holds her course
    (`r.aimed`, `r.held`), tells `warn`, shows a fan per side (guns.js `fanGeometry`, a banded shader in raiders.js), and

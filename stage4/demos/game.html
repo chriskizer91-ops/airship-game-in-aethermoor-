@@ -396,10 +396,15 @@
      the Patch button, by the sail buttons once she's hurt, its ring filling as the crew get ready again, glowing while
      they patch */
   .fire-col { display: flex; flex-direction: column; align-items: center; gap: 8px; }
-  #btn-shot { width: 50px; height: 50px; padding: 0; border-radius: 50%; border: 2px solid var(--shot, var(--gold)); background: radial-gradient(circle at 50% 40%, #4a3446, #1a0f1e);
+  #btn-shot { position: relative; width: 50px; height: 50px; padding: 0; border-radius: 50%; border: 2px solid var(--shot, var(--gold)); background: radial-gradient(circle at 50% 40%, #4a3446, #1a0f1e);
     color: var(--shot, var(--gold)); display: grid; place-items: center; align-content: center; gap: 1px; touch-action: none; box-shadow: 0 0 10px rgba(0, 0, 0, 0.45); }
   #btn-shot svg { width: 19px; height: 19px; }
   #btn-shot small { font-size: 10px; font-weight: 500; line-height: 1; color: var(--ink); white-space: nowrap; }
+  /* (with crystal breakers loaded, how many volleys are left: a little badge on its shoulder, towards the middle of the
+     screen, clear of the guns' label over it) */
+  #btn-shot .left { position: absolute; top: -5px; left: -5px; min-width: 17px; height: 17px; padding: 0 4px; box-sizing: border-box; border-radius: 9px;
+    background: var(--shot); color: #10202a; font: 600 11px/17px var(--body); font-variant-numeric: tabular-nums lining-nums; box-shadow: 0 0 0 1.5px #1a0f1e; }
+  body.fire-left #btn-shot .left { left: auto; right: -5px; }
   .sail { align-items: center; }
   #btn-patch { position: relative; width: 46px; height: 46px; padding: 0; border-radius: 50%; border: 2px solid #b8e6a0; background: radial-gradient(circle at 50% 40%, #3e5e34, #18281a);
     color: #e8ffe0; font-size: 12px; font-weight: 500; touch-action: none; }
@@ -409,6 +414,9 @@
   #btn-patch.on { animation: patching 0.8s ease-in-out infinite alternate; }
   @keyframes patching { from { box-shadow: 0 0 4px rgba(184, 230, 160, 0.4); } to { box-shadow: 0 0 16px rgba(184, 230, 160, 0.95); } }
   body.fire-left #btn-patch { order: 3; }
+  /* (between waves there's nothing to fire at, and the crew patch her for nothing: the shot and Patch buttons wait for
+     the next wave, so the card between waves has its room) */
+  body.between #btn-shot, body.between #btn-patch { display: none; }
   .sail { display: flex; gap: 8px; }
   .sail button { width: 56px; height: 46px; border-radius: 8px; border: 1px solid rgba(236, 220, 184, 0.6); background: var(--panel); font-size: 14px; font-weight: 500; touch-action: none; }
   .sail button.on { border-color: var(--gold); color: var(--gold); }
@@ -496,7 +504,6 @@
     body.touch.fire-left #battery { right: auto; left: var(--gutter); text-align: left; }
     #touch-hint { max-width: calc(100% - 2 * var(--gutter) - 186px); }
     body.touch #calm { bottom: calc(var(--bottom) + 156px); }
-    body.touch.has-shot #calm { bottom: calc(var(--bottom) + 186px); }
     #calm { grid-template-columns: 1fr; padding: 8px 12px; gap: 6px; }
     #calm h2 { font-size: 17px; }
     #calm p { font-size: 13px; }
@@ -587,6 +594,8 @@
     /* (the shot button over Surge, both a little smaller, and the guns' label over them) */
     body.has-shot .fire-col { gap: 6px; }
     body.has-shot #btn-shot { width: 42px; height: 42px; }
+    body.has-shot #btn-shot svg { width: 15px; height: 15px; } /* (its picture and name smaller, so the name fits inside its ring) */
+    body.has-shot #btn-shot small { font-size: 8.5px; }
     body.has-shot #btn-surge { width: 54px; height: 54px; }
     body.has-shot #battery { bottom: calc(var(--bottom) + 166px); }
     #touch-hint { max-width: 164px; font-size: 12px; padding: 4px 8px; }
@@ -699,8 +708,7 @@
     body.has-shot #touch-buttons { gap: 8px; }
     body.has-shot .fire-col { gap: 4px; }
     body.has-shot #btn-fire { width: 80px; height: 80px; }
-    body.has-shot #btn-shot { width: 40px; height: 40px; }
-    body.has-shot #btn-surge { width: 50px; height: 50px; }
+    body.has-shot #btn-surge { width: 48px; height: 48px; }
     body.has-shot .sail button { height: 40px; }
     body.has-shot #btn-patch { width: 40px; height: 40px; }
     body.touch.has-shot #battery, body.has-shot #battery { bottom: calc(var(--bottom) + 146px); }
