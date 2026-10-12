@@ -97,10 +97,12 @@
 //                     Captain's length raking her (half as much again, the toast saying so) where one across doesn't;
 //                     a treasure ship striking earning chain shot and a captain's Frigate the breakers (banners, the
 //                     save); the real X key patching her sails from 40% to 73% in 6 s (her row glowing), a broadside's
-//                     reload taking twice as long meanwhile, and X again doing nothing (a toast saying how long); a
+//                     reload taking twice as long meanwhile, and X again doing nothing (a toast saying how long); the
+//                     real V key loading the next shot she has (round, chain, breakers, round; with round shot only a toast
+//                     saying how to get more); a
 //                     raider Brig the Captain points at turning to cross her bow on Crosswinds (to come alongside on Fair
 //                     Winds), and one on the Maelstrom dodging a loaded broadside; pictures of a chain-shot volley, the
-//                     red fan, a rake and a patch. On a phone: the shot button hidden with round shot only, shown with
+//                     red fan (from inside it, and from above), a rake and a patch. On a phone: the shot button hidden with round shot only, shown with
 //                     chain shot and loading it with a tap; Patch hidden at full health, shown at hull 60%, a tap starting
 //                     the crew patching; both measured in every phone layout; a picture of both
 //                     wrecks worth watching: debris matching the part hit, a 60-shot barrage fitting its batches with
@@ -378,10 +380,12 @@ const sized = async (page, w, h, where) => {
   const ship4 = (owned, armour = 0) => ({ owned, power: 1, mods: { armour, canvas: 0, drill: 0, crystals: 0 } });
   const before = { v: 1, saved: 9e12, skies: 'cross', shards: 420, flying: 'brig', voyages: 7, ships: { skiff: ship4(true), cutter: ship4(true), brig: ship4(true, 2), frigate: ship4(false) } };
   const bigTwo = (p) => { const d = p.data, G = d.ships.galleon, M = d.ships.manowar, ups = (x) => x ? Object.values(x.mods).reduce((a, b) => a + b, 0) : -1;
-    return `${d.shards} ${d.flying} brig ${d.ships.brig.owned} armour ${d.ships.brig.mods.armour}, galleon ${G?.owned} ${ups(G)}, man-o'-war ${M?.owned} ${ups(M)}`; };
+    return `${d.shards} ${d.flying} brig ${d.ships.brig.owned} armour ${d.ships.brig.mods.armour}, galleon ${G?.owned} ${ups(G)}, man-o'-war ${M?.owned} ${ups(M)}, shot ${d.shots?.chain} ${d.shots?.breaker}`; };
+  // (and from before the kinds of shot: none bought; the store's copy, saved with chain shot bought and before the
+  // breakers were known of, keeps its chain shot)
   const olden = device(new Map([['skies-of-aethermoor/save-1', JSON.stringify(before)]]), { online: false });
-  store = { ...before, saved: 9.5e12, shards: 421 }; const adopted = device(new Map()); await wait(300);
-  sync.push(['a save from before the big two', `${bigTwo(olden)}; from the store ${bigTwo(adopted)}`, '420 brig brig true armour 2, galleon false 0, man-o\'-war false 0; from the store 421 brig brig true armour 2, galleon false 0, man-o\'-war false 0']);
+  store = { ...before, saved: 9.5e12, shards: 421, shots: { chain: true } }; const adopted = device(new Map()); await wait(300);
+  sync.push(['a save from before the big two', `${bigTwo(olden)}; from the store ${bigTwo(adopted)}`, '420 brig brig true armour 2, galleon false 0, man-o\'-war false 0, shot false false; from the store 421 brig brig true armour 2, galleon false 0, man-o\'-war false 0, shot true false']);
   for (const [what, was, want] of sync) if (was !== want) problems.push(`the save between two devices, ${what}: ${was}, should be ${want}`);
   console.log(`the save between two devices: ${sync.every(([, a, b]) => a === b) ? 'the newest save always wins, and no voyage is lost' : 'WRONG'}`);
 }
@@ -3543,6 +3547,24 @@ if (!demoOnly) {
   await undrawn(page, false);
   console.log(`tactics, X: the crew patch the ${patched.part} ("${patched.toast}", her row ${patched.row ? 'glowing' : 'NOT GLOWING'}): 40% to ${Math.round(patched.sails * 100)}% in 6 s, a broadside reloading ${patched.reload} times as long meanwhile; X again: ${patched.again ? 'PATCHING AGAIN' : `nothing ("${patched.toast2}")`}`);
   if (patched.part !== 'sails' || !patched.row || patched.rowAfter || Math.abs(patched.sails - 0.73) > 0.02 || Math.abs(patched.reload - 2) > 0.2 || patched.again || patched.sails2 !== patched.sails || !/again in \d+ s/.test(patched.toast2) || patched.cd < 28) problems.push(`X should patch her worst part by a third over 6 s, the guns reloading at half speed, and not again within 30 s: ${JSON.stringify(patched)}`);
+  // the real V key loading the next shot she has (Chris: one key cycles the shot on a laptop): with round shot only, a
+  // toast saying how to get more; with chain shot and the breakers, round → chain → breakers → round
+  const cycled = { toast: '', order: [] };
+  await page.evaluate(() => { const g = window.__game, d = g.progress.data; d.shots.chain = d.shots.breaker = false; g.pickShot('round'); document.activeElement?.blur?.(); });
+  await undrawn(page, true);
+  await page.keyboard.press('v');
+  await page.waitForFunction(() => /^Only round shot aboard/.test(document.getElementById('toast').textContent), null, { timeout: 30000 }).catch(() => {});
+  cycled.toast = await page.evaluate(() => document.getElementById('toast').textContent);
+  await page.evaluate(() => { const d = window.__game.progress.data; d.shots.chain = d.shots.breaker = true; });
+  for (const want of ['chain', 'breaker', 'round']) {
+    await page.keyboard.press('v');
+    await page.waitForFunction((want) => window.__game.gunnery.shot === want, want, { timeout: 30000 }).catch(() => {});
+    cycled.order.push(await page.evaluate(() => window.__game.gunnery.shot));
+  }
+  await undrawn(page, false);
+  await page.evaluate(() => { const g = window.__game, d = g.progress.data; d.shots.chain = d.shots.breaker = false; g.player.repair(1); g.player.patch.cd = 0; });
+  console.log(`tactics, V: with round shot only "${cycled.toast}"; with all three, ${cycled.order.join(' → ')}`);
+  if (!cycled.toast.startsWith('Only round shot aboard') || cycled.order.join() !== 'chain,breaker,round') problems.push(`V should load the next shot she has (round, chain, breakers, round), and with round shot only say how to get more: ${JSON.stringify(cycled)}`);
   // smarter raiders: on Crosswinds a raider Brig the Captain points her bow at makes for a spot ahead of it, to cross
   // it and rake her (she turns that way), where on Fair Winds she comes alongside (turning the other way); on the
   // Maelstrom one the Captain's guns are locked on to, a loaded broadside pointed at her, climbs or dives out of it
@@ -3577,10 +3599,15 @@ if (!demoOnly) {
     const g = window.__game, d = g.progress.data; d.shots.chain = d.shots.breaker = true;
     g.fly('frigate'); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false); g.waves.state = 'fight';
     const P = g.player; P.pos.set(2000, 900, 1500); P.heading = 0.6; P.speed = 3; P.sail = 0.05;
-    const s = { x: Math.cos(0.6), y: 0, z: -Math.sin(0.6) }, r = g.raiders.spawn('brig', P.pos.clone().addScaledVector(s, 380).addScaledVector(P.forward(), 40), P.heading + 0.3, true);
+    // (a raider Brig 240 m off her port bow; the volley fired at her, then the view swung back towards the bow, so the
+    // shot is seen crossing the screen to her, its pairs of heads spinning)
+    const f = P.forward(), s = { x: Math.cos(0.6), y: 0, z: -Math.sin(0.6) };
+    const r = g.raiders.spawn('brig', P.pos.clone().addScaledVector(f, Math.cos(1) * 240).addScaledVector(s, Math.sin(1) * 240).add({ x: 0, y: 12, z: 0 }), P.heading + 0.9, true);
     // (the view held where it's put while the pictures are drawn: the page's own frames run meanwhile)
-    const v = r.f.pos.clone().sub(P.pos); g.cam.yaw = Math.atan2(v.x, v.z) - P.heading; g.cam.pitch = 0.06; g.input.lastLook = performance.now() / 1000 + 120;
-    g.pickShot('chain'); g.step(1 / 60, {}); for (const k in g.gunnery.ready) g.gunnery.ready[k] = 0; g.step(1 / 60, { fire: true }); g.step(0.3, {});
+    const v = r.f.pos.clone().sub(P.pos), yaw = Math.atan2(v.x, v.z) - P.heading, Y = Math.atan2(Math.sin(yaw), Math.cos(yaw));
+    g.cam.yaw = Y; g.cam.pitch = 0.06; g.input.lastLook = performance.now() / 1000 + 120;
+    g.pickShot('chain'); g.step(1 / 60, {}); for (const k in g.gunnery.ready) g.gunnery.ready[k] = 0; g.step(1 / 60, { fire: true });
+    g.cam.yaw = Y * 0.45; g.cam.pitch = 0.14; g.step(0.22, {});
   });
   await shot(page, 'laptop-chain-shot');
   await page.evaluate(() => {
@@ -3593,6 +3620,13 @@ if (!demoOnly) {
   });
   await page.waitForTimeout(1200);
   await shot(page, 'laptop-danger-fan');
+  // (and seen from 200 m above it, out of her reach: the red wedge spreading off her side)
+  await page.evaluate(() => {
+    const g = window.__game, P = g.player, r = g.raiders.list[0]; P.pos.y += 200; P.vy = 0;
+    const v = r.f.pos.clone().sub(P.pos); g.cam.yaw = Math.atan2(v.x, v.z) - P.heading + 0.5; g.cam.pitch = 0.5; g.input.lastLook = performance.now() / 1000 + 120; g.step(1 / 60, {});
+  });
+  await page.waitForTimeout(1200);
+  await shot(page, 'laptop-danger-fan-above');
   await page.evaluate(() => {
     const g = window.__game; g.raiders.setAI(false); g.raiders.clear(); g.bolts.clear();
     const P = g.player; P.heading = 0.6; g.pickShot('round');

@@ -317,6 +317,7 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
     for (const row of shotsEl.children) {
       const id = row.dataset.shot, b = row.querySelector('button'), have = !!d.shots?.[id];
       b.textContent = have ? 'Aboard' : `◆ ${fmt(SHOTS[id].price)}`; b.disabled = have || d.shards < SHOTS[id].price;
+      canBuy ||= owned && !b.disabled; // (a kind of shot to buy shows the gold dot too)
     }
     $('pp-tab-upgrades').querySelector('.dot').hidden = !canBuy;
   }

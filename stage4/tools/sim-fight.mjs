@@ -27,11 +27,12 @@
 //   --skilled                all of them: --dodge --shot auto --patch
 //   --smart N, --warn S      for tuning: the skies' smart raiders (0, 1 or 2) and broadside warning (seconds) for this
 //                            run, in place of the skies' own (progress.js SKIES)
+//   --rake M                 for tuning: raking fire's bonus (tactics.js RAKE.mul: 1.5; 1 is none) for this run
 import { chromium } from 'playwright';
 const root = new URL('..', import.meta.url).pathname;
 const args = process.argv.slice(2), flag = (k, d) => { const i = args.indexOf('--' + k); return i >= 0 ? args.splice(i, 2)[1] : d; };
 const on = (k) => { const i = args.indexOf('--' + k); if (i < 0) return false; args.splice(i, 1); return true; };
-const smartArg = flag('smart', null), warnArg = flag('warn', null);
+const smartArg = flag('smart', null), warnArg = flag('warn', null), rakeArg = flag('rake', null);
 const runs = +flag('runs', 1), mods = +flag('mods', 0), power = +flag('power', 0), ownsArg = flag('owns', null), policy = flag('policy', 'abeam'), react = +flag('react', 0.35);
 const skilled = on('skilled'), dodge = on('dodge') || skilled, patch = on('patch') || skilled, shotArg = flag('shot', skilled ? 'auto' : 'round');
 const ship = args[0] ?? 'brig', waves = +(args[1] ?? 4), skies = args[2] ?? 'cross', first = +(args[3] ?? 1);
@@ -43,11 +44,12 @@ page.on('pageerror', (e) => console.log('ERR', e.message));
 await page.goto('file://' + root + 'dist/game.html');
 await page.waitForFunction(() => window.__game?.ready, null, { timeout: 180000 });
 const tools = [dodge && `dodging ${react} s after a warning`, shotArg !== 'round' && `${shotArg} shot`, patch && 'patching', policy === 'cross' && 'crossing bows'].filter(Boolean);
-console.log(`${smartArg !== null || warnArg !== null ? `(tuning: ${smartArg !== null ? `smart ${smartArg} ` : ''}${warnArg !== null ? `warning ${warnArg} s` : ''}) ` : ''}the ${ship}, waves ${first} to ${first + waves - 1} on ${skies}, owning ${owns.length ? owns.join(' and ') : 'no giants'}, upgrades ${mods} of 3, crystal power ${power}; ${tools.length ? `a skilled Captain (${tools.join(', ')})` : 'a plain Captain (no dodging, round shot only, no patching)'}`);
+console.log(`${smartArg !== null || warnArg !== null || rakeArg !== null ? `(tuning: ${smartArg !== null ? `smart ${smartArg} ` : ''}${warnArg !== null ? `warning ${warnArg} s ` : ''}${rakeArg !== null ? `raking ×${rakeArg}` : ''}) ` : ''}the ${ship}, waves ${first} to ${first + waves - 1} on ${skies}, owning ${owns.length ? owns.join(' and ') : 'no giants'}, upgrades ${mods} of 3, crystal power ${power}; ${tools.length ? `a skilled Captain (${tools.join(', ')})` : 'a plain Captain (no dodging, round shot only, no patching)'}`);
 const results = [];
 for (let run = 0; run < runs; run++) {
-  const res = await page.evaluate(([ship, waves, skies, first, owns, mods, power, dodge, patch, shotArg, policy, react, smartArg, warnArg]) => {
+  const res = await page.evaluate(([ship, waves, skies, first, owns, mods, power, dodge, patch, shotArg, policy, react, smartArg, warnArg, rakeArg]) => {
     const g = window.__game, out = [];
+    if (rakeArg !== null) g.tactics.RAKE.mul = +rakeArg;
     if (smartArg !== null) g.SKIES[skies].smart = +smartArg;
     if (warnArg !== null) g.SKIES[skies].warn = +warnArg;
     if (g.mode === 'voyage') g.endVoyage(0);
@@ -116,7 +118,7 @@ for (let run = 0; run < runs; run++) {
     out.push(`  downed ${g.downed}, hits ${g.hits}, shards this voyage ◆ ${Math.round(g.voyage.shards)}, sim time ${t} s (${Math.round(fightT)} s fighting)`);
     out.push(`  damage taken a minute of fighting: broadsides ${perMin(took.broadside)}, light guns ${perMin(took.light)}; raked: her ${rakes.player} hits, the raiders' ${rakes.raider}; ${count.warns} broadside warnings, ${count.patches} patches, ${count.shots} shot changes`);
     return { text: out.join('\n'), beaten: g.waves.n - (first - 1), sank, shards: Math.round(g.voyage.shards), caught, away, fightT, took, rakes, patches: count.patches };
-  }, [ship, waves, skies, first, owns, mods, power, dodge, patch, shotArg, policy, react, smartArg, warnArg]);
+  }, [ship, waves, skies, first, owns, mods, power, dodge, patch, shotArg, policy, react, smartArg, warnArg, rakeArg]);
   console.log(`run ${run + 1}:\n${res.text}`);
   results.push(res);
 }

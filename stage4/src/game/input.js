@@ -1,7 +1,7 @@
 // input.js: one set of controls from the keyboard and mouse (a laptop) or the touch screen (a phone), both at once.
 //   Laptop: W/S sails, A/D or arrows turn, Space/E or Up climb, Shift/Q or Down dive, mouse aims (click the view to
-//   lock the mouse to it; Esc lets go), left click or F fires, R surges, 1/2/3 load a shot and a right-click the next
-//   (`shot`), X patches her up, C looks ahead, M map, P pause, H help.
+//   lock the mouse to it; Esc lets go), left click or F fires, R surges, 1/2/3 load a shot and V or a right-click the
+//   next (`shot`), X patches her up, C looks ahead, M map, P pause, H help.
 //   Phone: a stick under the left thumb steers and climbs, dragging on the right aims, Fire (slide the thumb off it to
 //   aim while firing), Surge, the shot button (the next shot), Patch and the sail buttons. With Fire on the left
 //   (Settings: leftFire), the sides swap: the stick is under the right thumb, and the left one aims.

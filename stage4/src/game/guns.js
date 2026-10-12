@@ -116,7 +116,10 @@ export function upload(attr, n) {
 // The bolts are a handful of objects used over and over (`bolts` is the ones in flight), so firing makes nothing new.
 // Each remembers who fired it (`from`: the raider, set by her gunnery; null for the Captain's), for whoever it hits.
 export const BOLT_COLORS = { player: SHOTS.round.color, raider: 0xff4636, chain: SHOTS.chain.color, breaker: SHOTS.breaker.color };
-const SPIN = { r: 1.2, turns: 14 }; // (a chain shot's two heads: how far from its path, and how many turns a second)
+// (a chain shot's two heads: how far from its path, how many turns a second, and how big each is against a round shot's
+// head: small and far enough apart to read as two balls on a chain from behind your ship, turning slowly enough to see
+// it on a phone's 30 frames a second)
+const SPIN = { r: 2.2, turns: 6, size: 0.55 };
 export const TAIL = 36; // the longest tail, in metres (times the shot's size: a broadside's is heavier)
 export function makeBolts(scene, fx, max = 400) {
   const geo = new THREE.CylinderGeometry(0.26, 0.05, 1, 6, 1, true).rotateX(Math.PI / 2); // thick at the head (+z)
@@ -174,8 +177,8 @@ export function makeBolts(scene, fx, max = 400) {
         // chain shot: two heads spinning round its path, opposite each other (s1, s2: two ways across it)
         s1.crossVectors(sc, UP); if (s1.lengthSq() < 1e-6) s1.set(1, 0, 0); s1.normalize(); s2.crossVectors(s1, sc);
         const a = b.age * SPIN.turns * Math.PI * 2, c = Math.cos(a) * SPIN.r, s = Math.sin(a) * SPIN.r;
-        fx.glowAt(hp.copy(b.p).addScaledVector(s1, c).addScaledVector(s2, s), h.r, h.g, h.b, size * 0.85);
-        fx.glowAt(hp.copy(b.p).addScaledVector(s1, -c).addScaledVector(s2, -s), h.r, h.g, h.b, size * 0.85);
+        fx.glowAt(hp.copy(b.p).addScaledVector(s1, c).addScaledVector(s2, s), h.r, h.g, h.b, size * SPIN.size);
+        fx.glowAt(hp.copy(b.p).addScaledVector(s1, -c).addScaledVector(s2, -s), h.r, h.g, h.b, size * SPIN.size);
       } else fx.glowAt(b.p, h.r, h.g, h.b, size);
     }
     mesh.count = bolts.length; upload(mesh.instanceMatrix, bolts.length); upload(mesh.instanceColor, bolts.length);

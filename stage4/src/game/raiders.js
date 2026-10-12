@@ -370,7 +370,6 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
     // gun as its turn comes, leading that course (so climbing, diving or turning away makes the whole side miss)
     const held = new THREE.Vector3(), course = (A) => (from, K, out) => intercept(from, f.velocity, held.copy(A.p).addScaledVector(A.v, clock - A.at), A.v, K.speed, out);
     r.held = { port: course(r.aimed.port), starboard: course(r.aimed.starboard) };
-    r.alt0 = r.alt; // (the height she keeps over or under the foe, to come back to after a dodge)
     gun.from = r; // (each of her bolts remembers her, so a hit on the Captain can tell who fired it)
     f.gun = gun; // (her guns' state shows on her model: looks.js)
     ship.update(0, {}); ship.root.updateMatrixWorld(true);
@@ -445,9 +444,11 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
       sailTo = 0.75;
     }
     // (smartest: one the foe's guns are locked on to, with a loaded broadside pointed at her, may climb or dive out of it)
+    // (her height over the foe kept, to come back to after the dodge; the foe's guns' reach and aim for the shot they're
+    // loaded with)
     if (smart >= 2 && r.sees && foe.locked === r && r.dodge <= 0 && Math.random() < SMART.dodge * dt) {
       const g = foe.gun, b = g && batteryFor(wrap(Math.atan2(-dx, -dz) - foe.heading));
-      if (b && g.ready[b] === 0 && g.count(b) && g.reaches(b, me.aimAt())) { r.dodge = SMART.hold; r.alt += (r.alt > 0 ? -1 : 1) * SMART.alt; }
+      if (b && g.ready[b] === 0 && g.count(b) && g.reaches(b, me.aimAt(g.shot))) { r.dodge = SMART.hold; r.alt0 = r.alt; r.alt += (r.alt > 0 ? -1 : 1) * SMART.alt; }
     }
     if (r.dodge > 0 && (r.dodge -= dt) <= 0) r.alt = r.alt0;
     // keep clear of the other raiders

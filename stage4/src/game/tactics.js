@@ -22,7 +22,7 @@ import * as THREE from 'three';
 // as long-lived (its reach is both), times as long to load, its colour, the key that picks it, and its price in port
 export const SHOTS = {
   round: { name: 'Round shot', short: 'Round', hull: 1, sails: 1, crystals: 1, speed: 1, life: 1, reload: 1, color: 0xffb347, key: '1' },
-  chain: { name: 'Chain shot', short: 'Chain', hull: 0.25, sails: 2.5, crystals: 0.25, speed: 0.85, life: 0.8, reload: 1, color: 0xc9b6ff, key: '2', price: 200 },
+  chain: { name: 'Chain shot', short: 'Chain', hull: 0.25, sails: 2.5, crystals: 0.25, speed: 0.85, life: 0.8, reload: 1, color: 0xb592ff, key: '2', price: 200 },
   breaker: { name: 'Crystal breakers', short: 'Breakers', hull: 0.5, sails: 0.3, crystals: 1.6, speed: 1, life: 1, reload: 1.25, color: 0x9fe7ff, key: '3', price: 600, volleys: 5 },
 };
 export const SHOT_ORDER = ['round', 'chain', 'breaker'];

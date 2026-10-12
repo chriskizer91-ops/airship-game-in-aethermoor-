@@ -421,8 +421,8 @@ async function main() {
 
   // ---------- shot, and patching her ----------
   // the shot her guns are loaded with (tactics.js): one she has (round shot always; chain shot and breakers once earned
-  // or bought; breakers while any are left) is loaded, every battery reloading for it, and said so; the next she has, for
-  // a right-click or the phone's shot button
+  // or bought; breakers while any are left) is loaded, every battery reloading for it, and said so (1, 2 or 3 on a
+  // laptop); the next she has, for V or a right-click, or the phone's shot button
   const SHOT = payload('shot'), PATCHED = payload('patch');
   const hasShot = (s) => s === 'round' || (!!progress.data.shots?.[s] && (s !== 'breaker' || gunnery.breakers > 0));
   const extraShots = () => !!(progress.data.shots?.chain || progress.data.shots?.breaker);
@@ -439,6 +439,14 @@ async function main() {
     return true;
   }
   const nextShot = () => { const i = SHOT_ORDER.indexOf(gunnery.shot); for (let k = 1; k < SHOT_ORDER.length; k++) { const s = SHOT_ORDER[(i + k) % SHOT_ORDER.length]; if (hasShot(s)) return s; } return gunnery.shot; };
+  // the next shot she has loaded (V or a right-click on a laptop, the phone's shot button); with nothing else aboard,
+  // a toast says how to get more
+  function cycleShot() {
+    if (!gunnery || player.down) return;
+    const s = nextShot();
+    if (s !== gunnery.shot) pickShot(s);
+    else toast(extraShots() ? 'Out of crystal breakers' : 'Only round shot aboard: earn chain shot at sea, or buy it in port');
+  }
   // a kind of shot earned by a deed: kept in the save, said in a banner (how to load it), and the phone's button shown
   function earn(s, line) {
     const d = progress.data;
@@ -1362,7 +1370,7 @@ async function main() {
       else if (k === 'Enter') sailOn();
       else if (k === 'b') goHome();
       else if (k === '1' || k === '2' || k === '3') pickShot(SHOT_ORDER[+k - 1]);
-      else if (k === 'shot') pickShot(nextShot());
+      else if (k === 'shot' || k === 'v') cycleShot();
       else if (k === 'x') patchUp();
     }
     player.update(dt, inp);
