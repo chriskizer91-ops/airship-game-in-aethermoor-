@@ -120,7 +120,12 @@ which were made from this repository only):
    button. The big two's helm (`HELM` in `src/game/mods.js`) was tuned with many runs of `tools/sim-fight.mjs` so a new
    Galleon beats a Frigate with every upgrade (see "How hard it is"). The two frame-time comparisons in the check are
    timed in turns (`TURNS` in `tools/check.mjs`) and go by the middle turn. "Try her out" in port (`TRIAL` in
-   `main.js`) takes a ship not owned out for one fight, changing nothing in the save.
+   `main.js`) takes a ship not owned out for one fight, changing nothing in the save. Fixed after review (October 12):
+   the warning goes to the nearest clear place (`WARN_STAY` keeps it from hopping), may lie over a toast, and keeps its
+   own place only while a banner takes the only room; edge tags keep off the crosshair (`CROSS`, last in OFF, dropped
+   first when a screen is crowded), a tag with no room beside her goes to the nearest place (`edgeNear`), tags over
+   ships keep off edge tags' arrows and look anywhere (`overAnywhere`) before landing on the warning; a trial's wave is
+   made ready as she sails, fought in Crosswinds at the hardest, and says "Sea trial" in the score.
 2. **D2a-fights-tactics**: shot types, dodging broadsides (the red danger fan), raking fire, the crew patching her.
    Built October 9 to 12 (`docs/game.md`, "Tactics" and "How hard it is"). The rules live in `src/game/tactics.js` (`SHOTS`,
    `RAKE`, `PATCH`, `SMART`). Shot: `gunnery.shot`/`setShot` (guns.js; changing reloads every battery; breakers counted

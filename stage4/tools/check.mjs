@@ -49,9 +49,11 @@
 //                     rippling within 0.6 s, heeling her, kicking the view (0.5 to 4 m), hitting and reloading in
 //                     the Captain's 2.08 and 1.95 s (her gunners quicker on the big two), with pictures (and on the phone with taps); a treasure ship shot until she strikes, and
 //                     another let run until she gets away; a sea trial from the port's own buttons (laptop, and taps
-//                     on a phone upright and held sideways): "Try her out" under a ship not owned, the Galleon's trial
-//                     (wave 13, owning no giant) won with no shards spilled and only the way home, the Man-o'-war's
-//                     (wave 15, a raider captain's Frigate in her place) lost, the Gale's left from the pause card,
+//                     on a phone upright and held sideways): "Try her out" under a ship not owned (6 px clear of Buy,
+//                     32 px tall), the Galleon's trial (wave 13, owning no giant, the score saying "Sea trial", the
+//                     keys folded) won with no shards spilled and only the way home, counting down, the Man-o'-war's
+//                     (wave 15, a raider captain's Frigate in her place, made ready as she sails) lost, the Gale's
+//                     fought in Crosswinds on a Maelstrom Captain's save and left from the pause card,
 //                     each home to her in port with a line saying what she costs, and the save (in the game and the
 //                     browser's storage) exactly as before each time; back to
 //                     port from the card after wave 4 (the next wave's captain made ready), the Cutter bought and
@@ -75,9 +77,11 @@
 //                     a close raider's with her masts high clear of the panels and of her hull (laptop, and a phone
 //                     upright and held sideways at two sizes); the Captain's own ship kept clear: in each of the six
 //                     ships, her crystals cracked, raiders behind her, beside her and ahead past her masts, seen from
-//                     behind, her side and her bow, no tag (arrow and all) and not the warning on her box on the screen
-//                     (four slabs, stern to bow, from her bounds), the warning still showing, clear of the crosshair,
-//                     the panels and every tag (laptop, and a phone upright and held sideways); a
+//                     behind, her side and her bow, her banner up and gone, no tag (arrow and all) and not the warning
+//                     on her box on the screen (four slabs, stern to bow, from her bounds; the warning only in its own
+//                     place while a banner takes the only room), the warning still showing, clear of the crosshair, the
+//                     panels, every tag and the banner, no tag over a ship on an edge tag's arrow, and a raider astern's
+//                     tag never on the crosshair (laptop, and phones upright and held sideways, down to 568 by 320); a
 //                     raider's glows drawn at the screen's scale as the Captain's are, from her first frame and once the
 //                     window changes size (laptop, and a phone turned sideways); a raider shot down mid-broadside firing no more; a Man-o'-war's four batteries all
 //                     rippling at once; a busy fight (a Frigate against three raiders for 15 s, two blown apart) fitting
@@ -951,13 +955,17 @@ function bigTwoProblems({ locked, ...res }, name) {
 }
 // a sea trial (main.js TRIAL; Chris: like a garage's test drive), from the port's own buttons (`press`: a click on a
 // laptop, a tap on a phone), at the page's size now. With ◆ 450 and only the Skiff: the Galleon not owned shows "Try her
-// out" under her Buy button (all of it in the panel, on one line, clear of Buy); pressed, she sails on her trial (the
-// Galleon's: wave 13, as she's built, owning no giant); the wave comes with no giant in it, her banner says it's her sea
-// trial, and beaten (every raider shot down), no shards spill, nothing rises, and the card says her trial's over with only
-// the way home; home, the port shows the Galleon again, with a line saying what she costs. Then the Man-o'-war tried and
-// her ship sunk (wave 15 with no Man-o'-war in it: a raider captain's Frigate in her place): its card says it cost
-// nothing, and To port brings her home, her line saying she's sold once the Galleon is owned. And the Gale tried and
-// left from the pause card. After each, the save (in the game and in the browser's storage) exactly as it was before
+// out" under her Buy button (all of it in the panel, on one line, 6 px or more clear of Buy and 32 px tall); pressed (on
+// a device's first voyages, the keys showing on a laptop), she sails on her trial (the Galleon's: wave 13, as she's
+// built, owning no giant); the wave comes with no giant in it, her banner says it's her sea trial, the score says "Sea
+// trial" (not a wave she's never reached) and the keys fold away; beaten (every raider shot down), no shards spill,
+// nothing rises, and the card says her trial's over and what she costs (in one piece), with only the way home, counting
+// down to going home by itself; home, the port shows the Galleon again, with a line saying what she costs. Then the
+// Man-o'-war tried (her wave's raider captain's Frigate built as she sails, not as the wave appears) and her ship sunk
+// (wave 15 with no Man-o'-war in it: a raider captain's Frigate in her place): its card says it cost nothing, and To port
+// brings her home, her line saying she's sold once the Galleon is owned. And the Gale tried, the Captain's skies the
+// Maelstrom (her trial fought in Crosswinds), and left from the pause card. After each, the save (in the game and in the
+// browser's storage) exactly as it was before
 async function seaTrialAt(page, press) {
   const snap = () => page.evaluate(() => JSON.stringify(window.__game.progress.data) + '|' + localStorage.getItem('skies-of-aethermoor/save-1'));
   const was = await page.evaluate(() => {
@@ -971,29 +979,33 @@ async function seaTrialAt(page, press) {
   out.button = await page.evaluate(() => {
     const $ = (id) => document.getElementById(id), r = (id) => $(id).getBoundingClientRect(), t = r('btn-try'), p = r('port-panel'), b = r('btn-buy');
     const rg = document.createRange(); rg.selectNodeContents($('btn-try'));
-    return { shown: !$('btn-try').hidden && t.width > 0, text: $('btn-try').textContent, inPanel: t.left >= p.left - 1 && t.right <= p.right + 1 && t.top >= p.top - 1 && t.bottom <= p.bottom + 1, lines: new Set([...rg.getClientRects()].map((x) => Math.round(x.top))).size, clearOfBuy: t.top >= b.bottom - 1 };
+    return { shown: !$('btn-try').hidden && t.width > 0, text: $('btn-try').textContent, inPanel: t.left >= p.left - 1 && t.right <= p.right + 1 && t.top >= p.top - 1 && t.bottom <= p.bottom + 1, lines: new Set([...rg.getClientRects()].map((x) => Math.round(x.top))).size, gap: Math.round(t.top - b.bottom), tall: Math.round(t.height) };
   });
-  // won: the Galleon
+  // won: the Galleon (on a device's first voyages, the keys showing on a laptop as she sails)
+  const keys = await page.evaluate(() => { const S = window.__game.settings.data, n = S.voyages; S.voyages = 0; return n; });
   await press('#btn-try');
   out.won = await page.evaluate(() => {
     const g = window.__game, $ = (id) => document.getElementById(id), o = { mode: g.mode, trial: g.trial, wave: g.waves.n, giants: Object.values(g.giants).filter(Boolean).length, opening: $('banner-title').textContent };
+    const score = () => document.querySelector('#score .sc-wave').textContent;
     g.raiders.setAI(false); g.step(6, {});
-    o.ids = g.raiders.list.map((r) => r.R.id); o.banner = $('banner-title').textContent;
+    o.ids = g.raiders.list.map((r) => r.R.id); o.banner = $('banner-title').textContent; o.score = score(); o.keys = !$('help').hidden;
     for (const r of g.raiders.list) r.f.hit('hull', 1e9);
     g.step(3, {});
     o.state = g.waves.state; o.card = $('calm-title').textContent; o.line = $('calm-line').textContent; o.sailOn = !$('btn-sail-on').hidden;
     o.shards = g.voyage.shards; o.spilled = g.pickups.list.length; o.bounties = [...document.querySelectorAll('#bounties .bounty')].filter((b) => !b.hidden).length;
+    o.cardScore = score(); o.home = $('go-port-text').textContent; o.homeBig = $('btn-go-port').classList.contains('big');
     return o;
   });
+  await page.evaluate((n) => { window.__game.settings.data.voyages = n; }, keys);
   await page.evaluate(() => document.getElementById('calm').getAnimations().forEach((a) => a.finish()));
   await press('#btn-go-port');
   out.wonHome = await page.evaluate(() => ({ mode: window.__game.mode, ship: document.getElementById('pp-name').textContent, note: document.getElementById('port-note').textContent, trial: window.__game.trial }));
   out.saves.push((await snap()) === before);
-  // lost: the Man-o'-war
-  await page.evaluate(() => document.querySelector('#port-ships [data-ship="manowar"]').click());
+  // lost: the Man-o'-war (her wave's raider captain's Frigate built as she sails, not as the wave appears)
+  await page.evaluate(() => { delete window.__game.raiders.templates['frigate:captain']; document.querySelector('#port-ships [data-ship="manowar"]').click(); });
   await press('#btn-try');
   out.lost = await page.evaluate(() => {
-    const g = window.__game, $ = (id) => document.getElementById(id), o = { mode: g.mode, trial: g.trial, wave: g.waves.n };
+    const g = window.__game, $ = (id) => document.getElementById(id), o = { mode: g.mode, trial: g.trial, wave: g.waves.n, prepared: !!g.raiders.templates['frigate:captain'] && g.waves.next?.captain >= 0 };
     g.raiders.setAI(false); g.step(6, {});
     o.ids = g.raiders.list.map((r) => r.R.id + (r.captain ? ' (captain)' : ''));
     g.player.hit('hull', 1e9); g.step(6, {});
@@ -1003,27 +1015,29 @@ async function seaTrialAt(page, press) {
   await press('#btn-abandon');
   out.lostHome = await page.evaluate(() => ({ mode: window.__game.mode, ship: document.getElementById('pp-name').textContent, note: document.getElementById('port-note').textContent, trial: window.__game.trial }));
   out.saves.push((await snap()) === before);
-  // left from the pause card: the Gale
-  await page.evaluate(() => document.querySelector('#port-ships [data-ship="cutter"]').click());
+  // left from the pause card: the Gale, the Captain's skies the Maelstrom (her trial fought in Crosswinds)
+  await page.evaluate(() => { const g = window.__game; g.progress.data.skies = 'mael'; g.progress.save(); document.querySelector('#port-ships [data-ship="cutter"]').click(); });
+  const stormy = await snap();
   await press('#btn-try');
-  out.paused = await page.evaluate(() => { const g = window.__game; g.raiders.setAI(false); g.step(7, {}); const o = { trial: g.trial, wave: g.waves.n, fighting: g.waves.state }; g.pause(true); o.line = document.getElementById('paused-line').textContent; return o; });
+  out.paused = await page.evaluate(() => { const g = window.__game; g.raiders.setAI(false); g.step(7, {}); const o = { trial: g.trial, wave: g.waves.n, fighting: g.waves.state, skies: g.fightSkies }; g.pause(true); o.line = document.getElementById('paused-line').textContent; return o; });
   await press('#btn-abandon');
-  out.pausedHome = await page.evaluate(() => ({ mode: window.__game.mode, ship: document.getElementById('pp-name').textContent, trial: window.__game.trial }));
-  out.saves.push((await snap()) === before);
+  out.pausedHome = await page.evaluate(() => ({ mode: window.__game.mode, ship: document.getElementById('pp-name').textContent, trial: window.__game.trial, skies: window.__game.fightSkies }));
+  out.saves.push((await snap()) === stormy);
   await page.evaluate((keep) => { const g = window.__game; g.progress.reset(); Object.assign(g.progress.data, JSON.parse(keep)); g.progress.save(); g.port.setMode('port'); }, was);
   return out;
 }
 function seaTrialProblems(T, where) {
   const W = T.won, L = T.lost, B = T.button;
-  if (!B.shown || B.text !== 'Try her out' || !B.inPanel || B.lines !== 1 || !B.clearOfBuy) problems.push(`${where}: a ship not owned should have "Try her out" under her Buy button, all of it in the panel, on one line: ${JSON.stringify(B)}`);
-  if (W.mode !== 'voyage' || W.trial !== 'galleon' || W.wave !== 12 || W.giants || W.opening !== 'Sea trial: the Doldrums' || W.ids.join(' ') !== 'frigate frigate brig' || W.banner !== 'Sea trial: raiders') problems.push(`${where}: "Try her out" should take the Galleon on her sea trial (wave 13, owning no giant, said so): ${JSON.stringify(W)}`);
-  if (W.state !== 'choose' || W.card !== 'Sea trial over: she won' || W.sailOn || W.shards || W.spilled || W.bounties || !W.line.includes('◆ 12,000')) problems.push(`${where}: a sea trial won should earn nothing (no shards spilled, no bounty) and end with only the way home: ${JSON.stringify(W)}`);
-  if (T.wonHome.mode !== 'port' || T.wonHome.ship !== 'Doldrums' || T.wonHome.trial || T.wonHome.note !== 'Back from her sea trial: the Doldrums costs ◆ 12,000') problems.push(`${where}: back from her sea trial, the port should show the Galleon again with what she costs: ${JSON.stringify(T.wonHome)}`);
-  if (L.trial !== 'manowar' || L.wave !== 14 || L.ids.some((id) => id.startsWith('manowar') || id.startsWith('galleon')) || !L.ids.includes('frigate (captain)') || !L.sunk || !L.line.includes('cost nothing') || L.button !== 'To port') problems.push(`${where}: the Man-o'-war's sea trial should be wave 15 with no giant raider (never as if she were owned), and sunk say it cost nothing: ${JSON.stringify(L)}`);
-  if (T.lostHome.mode !== 'port' || T.lostHome.ship !== 'Thunderhead' || T.lostHome.trial || T.lostHome.note !== 'Back from her sea trial: the Thunderhead costs ◆ 30,000, once you own the Doldrums') problems.push(`${where}: back from a sea trial lost, the port should show her again with what she costs: ${JSON.stringify(T.lostHome)}`);
+  if (!B.shown || B.text !== 'Try her out' || !B.inPanel || B.lines !== 1 || !(B.gap >= 6) || !(B.tall >= 32)) problems.push(`${where}: a ship not owned should have "Try her out" under her Buy button (6 px or more clear of it, and tall enough for a thumb: 32 px), all of it in the panel, on one line: ${JSON.stringify(B)}`);
+  if (W.mode !== 'voyage' || W.trial !== 'galleon' || W.wave !== 12 || W.giants || W.opening !== 'Sea trial: the Doldrums' || W.ids.join(' ') !== 'frigate frigate brig' || W.banner !== 'Sea trial: raiders' || W.score !== 'Sea trial' || W.keys) problems.push(`${where}: "Try her out" should take the Galleon on her sea trial (wave 13, owning no giant, said so, the score saying "Sea trial" and not a wave, and the keys folded away as her wave comes): ${JSON.stringify(W)}`);
+  if (W.state !== 'choose' || W.card !== 'Sea trial over: she won' || W.sailOn || W.shards || W.spilled || W.bounties || W.line !== 'It cost nothing. She\'s ◆\u00a012,000 in port.' || W.cardScore !== 'Sea trial' || !/^Back to port \((2[0-4])\)$/.test(W.home) || !W.homeBig) problems.push(`${where}: a sea trial won should earn nothing (no shards spilled, no bounty) and end with only the way home, counting down to going home by itself, and what she costs in one piece: ${JSON.stringify(W)}`);
+  if (T.wonHome.mode !== 'port' || T.wonHome.ship !== 'Doldrums' || T.wonHome.trial || T.wonHome.note !== 'Back from her sea trial: the Doldrums costs ◆\u00a012,000') problems.push(`${where}: back from her sea trial, the port should show the Galleon again with what she costs (in one piece): ${JSON.stringify(T.wonHome)}`);
+  if (L.trial !== 'manowar' || L.wave !== 14 || !L.prepared || L.ids.some((id) => id.startsWith('manowar') || id.startsWith('galleon')) || !L.ids.includes('frigate (captain)') || !L.sunk || !L.line.includes('cost nothing') || L.button !== 'To port') problems.push(`${where}: the Man-o'-war's sea trial should be wave 15 with no giant raider (never as if she were owned), its raider captain's ship built as she sails, and sunk say it cost nothing: ${JSON.stringify(L)}`);
+  if (T.lostHome.mode !== 'port' || T.lostHome.ship !== 'Thunderhead' || T.lostHome.trial || T.lostHome.note !== 'Back from her sea trial: the Thunderhead costs ◆\u00a030,000, once you own the Doldrums') problems.push(`${where}: back from a sea trial lost, the port should show her again with what she costs: ${JSON.stringify(T.lostHome)}`);
   if (T.paused.trial !== 'cutter' || T.paused.fighting !== 'fight' || !T.paused.line.includes('sea trial') || T.pausedHome.mode !== 'port' || T.pausedHome.ship !== 'Gale' || T.pausedHome.trial) problems.push(`${where}: a sea trial left from the pause card should come home to the port: ${JSON.stringify({ paused: T.paused, home: T.pausedHome })}`);
+  if (T.paused.skies !== 'Crosswinds' || T.pausedHome.skies !== 'Maelstrom') problems.push(`${where}: a sea trial should be fought in Crosswinds at the hardest (the Captain's own skies again afterwards): ${JSON.stringify({ paused: T.paused, home: T.pausedHome })}`);
   if (T.saves.some((x) => !x)) problems.push(`${where}: a sea trial should change nothing in the save (won, lost, or left from the pause card): ${T.saves.join(', ')}`);
-  return `"${B.text}" under Buy; the Galleon's trial (${W.ids.join(', ')}) won with no shards, home to her in port ("${T.wonHome.note}"); the Man-o'-war's (${L.ids.join(', ')}) lost, home ("${T.lostHome.note}"); the Gale's left from the pause card; the save ${T.saves.every(Boolean) ? 'untouched each time' : `CHANGED (${T.saves.join(', ')})`}`;
+  return `"${B.text}" ${B.gap} px under Buy, ${B.tall} px tall; the Galleon's trial (${W.ids.join(', ')}, the score saying "${W.score}") won with no shards, "${W.home}", home to her in port ("${T.wonHome.note}"); the Man-o'-war's (${L.ids.join(', ')}) lost, home ("${T.lostHome.note}"); the Gale's (fought in ${T.paused.skies}, her Captain's skies the Maelstrom) left from the pause card; the save ${T.saves.every(Boolean) ? 'untouched each time' : `CHANGED (${T.saves.join(', ')})`}`;
 }
 // on the big button: five minutes of its clock (a frame every half second): how much of the time a raider is in sight
 // clear of the title's card (on a phone held upright, that's above the panel), how long they look on the screen (the
@@ -1377,45 +1391,72 @@ function tagEdgeProblems(T, where) {
   if (!B.under || B.seen || B.hidden || B.after !== B.n) problems.push(`${where}: as a wave comes in, its raiders' tags under its banner should fade away (and only those), and all come back once it fades: ${JSON.stringify(T)}`);
   return `the widest tags at the edge ${T.off.length ? `CUT OFF: ${T.off.join(', ')}` : 'all on the screen'}; wave 15's banner over ${B.under} of its ${B.n} tags, ${B.seen ? `${B.seen} SEEN THROUGH IT` : 'faded'}, ${B.after} back after it`;
 }
-// the Captain's own ship kept clear (main.js ownBox, placeWarn): in each of the six ships, her crystals cracked (the
-// warning showing), three raiders behind her (their tags at the bottom edge or beside it), one off each side, and one
-// ahead, low, seen past her masts (her tag over her ship), looked at from behind, from her side and from ahead of her
-// bow. Her box on the screen worked out here from her bounds as built (the box round her, in four slabs from stern to
-// bow, each as it shows on the screen): no raider's tag (with its arrow, at the edge) on it, and not the warning; the
-// warning on the screen, clear of the crosshair, of the panels and of every tag; every tag on the screen
+// the Captain's own ship kept clear (main.js ownBox, placeWarn, tags): in each of the six ships, her crystals cracked
+// (the warning showing), three raiders behind her (their tags at the bottom edge or beside it), one off each side, and
+// one ahead, low, seen past her masts (her tag over her ship), looked at from behind, from her side and from ahead of her
+// bow; each view twice, first as she sets sail (her banner up), then with the banner gone. Her box on the screen worked
+// out here from her bounds as built (the box round her, in four slabs from stern to bow, each as it shows on the
+// screen): no raider's tag (with its arrow, at the edge) on it; the warning on the screen, clear of the crosshair, the
+// panels, every tag and the banner, and off her box (with the banner up and taking the only room left, as on the
+// smallest phone, it may keep its own place on her, readable: never with the banner gone); every tag on the screen; and
+// no tag over a ship on the arrow of a tag at the edge (it may be all that says where its raider is). Then one raider
+// dead astern or nearly, her crystals whole, at three heights of the view and three ways round: its tag, at the bottom
+// edge or moved off her ship, never on the crosshair or on her box
 const ownShipAt = (page) => page.evaluate(OWN_AT);
 const OWN_AT = () => {
-  const g = window.__game, $ = (id) => document.getElementById(id), out = { size: `${innerWidth}x${innerHeight}`, views: 0, tags: 0, on: [], warnOn: [], warnOff: [], gone: [] };
+  const g = window.__game, $ = (id) => document.getElementById(id), out = { size: `${innerWidth}x${innerHeight}`, views: 0, tags: 0, on: [], warnOn: [], warnOff: [], gone: [], home: 0, arrows: [], astern: 0, aim: [] };
   const lap = (a, b, gap = 0) => a.l < b.r + gap && b.l < a.r + gap && a.t < b.b + gap && b.t < a.b + gap;
   const R = (b) => ({ l: b.left, r: b.right, t: b.top, b: b.bottom }), round = (b) => [b.l, b.t, b.r, b.b].map(Math.round).join(',');
+  const slabsOf = (P, c) => {
+    const bd = P.ship.bounds, M = P.ship.body.matrixWorld, dz = (bd.max.z - bd.min.z) / 4, slabs = [];
+    for (let k = 0; k < 4; k++) {
+      const b = { l: Infinity, r: -Infinity, t: Infinity, b: -Infinity };
+      for (let i = 0; i < 8; i++) { c.set(i & 1 ? bd.max.x : bd.min.x, i & 2 ? bd.max.y : bd.min.y, bd.min.z + dz * (k + (i & 4 ? 1 : 0))).applyMatrix4(M).project(g.camera); const x = (c.x + 1) / 2 * innerWidth, y = (1 - c.y) / 2 * innerHeight; b.l = Math.min(b.l, x); b.r = Math.max(b.r, x); b.t = Math.min(b.t, y); b.b = Math.max(b.b, y); }
+      slabs.push(b);
+    }
+    return slabs;
+  };
+  const tagOf = (t) => { const a = t.querySelector('.arrow'), boxes = [R(t.getBoundingClientRect())]; if (getComputedStyle(a).display !== 'none') boxes.push(R(a.getBoundingClientRect())); return { name: t.querySelector('b').textContent, boxes, edge: t.classList.contains('edge') }; };
+  const tagsNow = () => [...document.querySelectorAll('#tags .tag')].map(tagOf);
+  const aim = () => R($('aim').getBoundingClientRect());
   for (const id of ['skiff', 'cutter', 'brig', 'frigate', 'galleon', 'manowar']) {
     g.fly(id); const P = g.player; g.waves.timer = 1e9; g.raiders.setAI(false); g.wind.strength = 0;
     P.pos.set(2000, 900, 1500); P.heading = 0.6; P.speed = 3; P.sail = 0.05; P.health.crystals = P.full.crystals * 0.4;
     const f = P.forward(), s = { x: Math.cos(0.6), y: 0, z: -Math.sin(0.6) }, V = P.pos.constructor, c = new V();
     const at = (ahead, side, up) => P.pos.clone().addScaledVector(f, ahead).addScaledVector(s, side).add({ x: 0, y: up, z: 0 });
-    for (const [a, sd, up] of [[-500, 0, 0], [-450, 220, 20], [-520, -260, -20], [60, 420, 0], [80, -440, 0], [900, 40, -160]]) g.raiders.spawn(id === 'skiff' ? 'cutter' : 'frigate', at(a, sd, up), P.heading, true);
-    for (const [yaw, pitch, view] of [[0, 0.2, 'behind'], [Math.PI / 2, 0.2, 'side'], [Math.PI, 0.15, 'bow']]) {
+    const kind = id === 'skiff' ? 'cutter' : 'frigate';
+    for (const [a, sd, up] of [[-500, 0, 0], [-450, 220, 20], [-520, -260, -20], [60, 420, 0], [80, -440, 0], [900, 40, -160]]) g.raiders.spawn(kind, at(a, sd, up), P.heading, true);
+    for (const late of [false, true]) for (const [yaw, pitch, view] of [[0, 0.2, 'behind'], [Math.PI / 2, 0.2, 'side'], [Math.PI, 0.15, 'bow']]) {
+      if (late) g.quiet(); // (the banner gone)
       g.cam.yaw = yaw; g.cam.pitch = pitch; g.cam.zoom = 1; P.speed = 3; g.step(0.12, {}); g.placeTags(); g.placeTags(); out.views++;
-      const bd = P.ship.bounds, M = P.ship.body.matrixWorld, dz = (bd.max.z - bd.min.z) / 4, slabs = [];
-      for (let k = 0; k < 4; k++) {
-        const b = { l: Infinity, r: -Infinity, t: Infinity, b: -Infinity };
-        for (let i = 0; i < 8; i++) { c.set(i & 1 ? bd.max.x : bd.min.x, i & 2 ? bd.max.y : bd.min.y, bd.min.z + dz * (k + (i & 4 ? 1 : 0))).applyMatrix4(M).project(g.camera); const x = (c.x + 1) / 2 * innerWidth, y = (1 - c.y) / 2 * innerHeight; b.l = Math.min(b.l, x); b.r = Math.max(b.r, x); b.t = Math.min(b.t, y); b.b = Math.max(b.b, y); }
-        slabs.push(b);
-      }
-      const where = `the ${id} from ${view === 'behind' ? 'behind' : view === 'side' ? 'her side' : 'her bow'}`;
-      const tags = [...document.querySelectorAll('#tags .tag')].map((t) => { const a = t.querySelector('.arrow'), boxes = [R(t.getBoundingClientRect())]; if (getComputedStyle(a).display !== 'none') boxes.push(R(a.getBoundingClientRect())); return { name: t.querySelector('b').textContent, boxes }; });
+      const slabs = slabsOf(P, c), where = `the ${id} from ${view === 'behind' ? 'behind' : view === 'side' ? 'her side' : 'her bow'}${late ? '' : ' (her banner up)'}`;
+      const tags = tagsNow();
       for (const t of tags) {
         out.tags++;
         const b = t.boxes[0];
         if (!(b.r - b.l > 10) || b.l < -1 || b.r > innerWidth + 1 || b.t < -1 || b.b > innerHeight + 1) out.gone.push(`${where}: ${t.name} at ${round(b)}`);
         if (t.boxes.some((x) => slabs.some((sb) => lap(x, sb)))) out.on.push(`${where}: ${t.name} at ${round(b)} on her box (${slabs.map(round).join(' / ')})`);
+        if (t.edge && t.boxes[1]) for (const o of tags) if (!o.edge && lap(o.boxes[0], t.boxes[1])) out.arrows.push(`${where}: ${o.name}'s tag at ${round(o.boxes[0])} on the arrow of ${t.name}'s at ${round(t.boxes[1])}`);
       }
       const w = $('warn');
       if (w.hidden || getComputedStyle(w).display === 'none') { out.warnOff.push(`${where}: the warning not showing`); continue; }
       const wb = R(w.getBoundingClientRect()), mid = innerHeight / 2, cross = { l: innerWidth / 2 - 23, r: innerWidth / 2 + 23, t: mid - 23, b: mid + 23 };
-      if (slabs.some((sb) => lap(wb, sb))) out.warnOn.push(`${where}: the warning at ${round(wb)} on her box (${slabs.map(round).join(' / ')})`);
-      const panels = [...g.edge.top, ...g.edge.bottom].filter((p) => lap(wb, p)), under = tags.filter((t) => lap(wb, t.boxes[0]));
-      if (wb.t < 0 || wb.b > innerHeight || lap(wb, cross) || panels.length || under.length) out.warnOff.push(`${where}: the warning at ${round(wb)}${lap(wb, cross) ? ' on the crosshair' : ''}${panels.length ? ` on ${panels.length} panel(s)` : ''}${under.length ? ` under ${under.map((t) => t.name).join(', ')}'s tag` : ''}`);
+      if (slabs.some((sb) => lap(wb, sb))) { if (!late && !w.style.transform) out.home++; else out.warnOn.push(`${where}: the warning at ${round(wb)} on her box (${slabs.map(round).join(' / ')})`); }
+      const panels = [...g.edge.top, ...g.edge.bottom].filter((p) => lap(wb, p)), under = tags.filter((t) => lap(wb, t.boxes[0])), banner = !late && lap(wb, R($('banner').getBoundingClientRect()));
+      if (wb.t < 0 || wb.b > innerHeight || lap(wb, cross) || panels.length || under.length || banner) out.warnOff.push(`${where}: the warning at ${round(wb)}${lap(wb, cross) ? ' on the crosshair' : ''}${panels.length ? ` on ${panels.length} panel(s)` : ''}${under.length ? ` under ${under.map((t) => t.name).join(', ')}'s tag` : ''}${banner ? ' on the banner' : ''}`);
+    }
+    // one raider astern (her crystals whole: no warning), the view at three heights and three ways round
+    P.health.crystals = P.full.crystals; g.quiet();
+    let k = 0;
+    for (const pitch of [0.1, 0.2, 0.3]) for (const yaw of [-0.25, 0, 0.25]) {
+      g.raiders.clear(); P.pos.set(2000, 900, 1500); P.heading = 0.6; P.speed = 3; P.sail = 0.05;
+      g.cam.yaw = yaw; g.cam.pitch = pitch; g.cam.zoom = 1; g.step(0.3, {});
+      const r = g.raiders.spawn(kind, P.pos.clone().addScaledVector(P.forward(), k++ % 2 ? -700 : -300), P.heading, true);
+      g.step(0.05, {}); g.placeTags(); g.placeTags(); out.astern++;
+      const slabs = slabsOf(P, c), t = r.tag?.isConnected && tagOf(r.tag), where = `the ${id}, a raider astern, the view ${pitch} up and ${yaw} round`;
+      if (!t) { out.gone.push(`${where}: no tag`); continue; }
+      if (t.boxes.some((x) => lap(x, aim()))) out.aim.push(`${where}: its tag at ${round(t.boxes[0])} on the crosshair (${round(aim())})`);
+      if (t.boxes.some((x) => slabs.some((sb) => lap(x, sb)))) out.on.push(`${where}: its tag at ${round(t.boxes[0])} on her box (${slabs.map(round).join(' / ')})`);
     }
     g.raiders.clear();
   }
@@ -1424,8 +1465,10 @@ const OWN_AT = () => {
 };
 function ownShipProblems(O, where) {
   if (O.on.length || O.warnOn.length) problems.push(`${where}: raiders' tags and the warning should keep off the Captain's own ship (her box on the screen): ${[...O.on, ...O.warnOn].slice(0, 6).join('; ')}`);
-  if (O.warnOff.length || O.gone.length || O.views !== 18 || O.tags < 18 * 6) problems.push(`${where}: kept off her ship, the warning should still show, clear of the crosshair, the panels and the tags, and every tag on the screen: ${[...O.warnOff, ...O.gone].slice(0, 6).join('; ')} (${O.views} views, ${O.tags} tags)`);
-  return `in each of the six ships seen from behind, her side and her bow (${O.views} views, ${O.tags} tags), ${O.on.length + O.warnOn.length ? `${O.on.length} TAGS AND ${O.warnOn.length} WARNINGS ON HER` : 'no tag or warning on her'}${O.warnOff.length + O.gone.length ? `, ${O.warnOff.length + O.gone.length} HIDDEN OR IN THE WAY` : ', the warning and every tag showing'}`;
+  if (O.warnOff.length || O.gone.length || O.views !== 36 || O.tags < 36 * 6) problems.push(`${where}: kept off her ship, the warning should still show, clear of the crosshair, the panels, the tags and the banner, and every tag on the screen: ${[...O.warnOff, ...O.gone].slice(0, 6).join('; ')} (${O.views} views, ${O.tags} tags)`);
+  if (O.arrows.length) problems.push(`${where}: a tag over a ship should keep off the arrow of a tag at the edge: ${O.arrows.slice(0, 4).join('; ')}`);
+  if (O.aim.length || O.astern !== 54) problems.push(`${where}: the tag of a raider astern, moved off her ship, should never land on the crosshair: ${O.aim.slice(0, 4).join('; ')} (${O.astern} views)`);
+  return `in each of the six ships seen from behind, her side and her bow, with her banner and without (${O.views} views, ${O.tags} tags), ${O.on.length + O.warnOn.length ? `${O.on.length} TAGS AND ${O.warnOn.length} WARNINGS ON HER` : 'no tag or warning on her'}${O.home ? ` (the warning in its own place ${O.home} times, the banner up in the only room)` : ''}${O.warnOff.length + O.gone.length ? `, ${O.warnOff.length + O.gone.length} HIDDEN OR IN THE WAY` : ', the warning and every tag showing'}${O.arrows.length ? `, ${O.arrows.length} ARROWS COVERED` : ''}; a raider astern in ${O.astern} views, its tag ${O.aim.length ? `ON THE CROSSHAIR ${O.aim.length} TIMES` : 'never on the crosshair'}`;
 }
 // the storm on its way (world.js stormWall): the sky alone, looking level towards it. Down each column of the screen,
 // its crest is where the sky turns lighter going down (the lit tops of the billows against the darkened sky): found in
@@ -3987,10 +4030,12 @@ if (!quick && !demoOnly) {
   await sized(page, 844, 390, 'phone'); const wideTags = tagProblems(await tagsAt(page), 'phone 844x390');
   await sized(page, 390, 844, 'phone');
   console.log(`phone, reading a fight from afar: ${glowProblems(pga, pgb, 'phone')}; ${fireProblems(await fireAt(page), 'phone')}; ${wakeProblems(await wakesFar(page), 'phone', { screen: 35, pixels: 100 })}; ${hiddenWakeProblems(await hiddenWake(page), 'phone')}; upright, ${tagProblems(await tagsAt(page), 'phone 390x844')}; ${tagEdgeProblems(await tagEdges(page), 'phone 390x844')}; held sideways, ${sidewaysTags} (and at 844 by 390, ${wideTags})`);
-  // (her own ship kept clear, upright and held sideways: the scene left undrawn, as only places are looked at)
-  await undrawn(page, true); const ownUp = ownShipProblems(await ownShipAt(page), 'phone 390x844');
-  await sized(page, 844, 390, 'phone'); const ownSide = ownShipProblems(await ownShipAt(page), 'phone 844x390'); await sized(page, 390, 844, 'phone'); await undrawn(page, false);
-  console.log(`phone, her own ship kept clear: upright, ${ownUp}; held sideways, ${ownSide}`);
+  // (her own ship kept clear, upright and held sideways, down to the smallest phones (the browser's bars showing): the
+  // scene left undrawn, as only places are looked at)
+  await undrawn(page, true); const owns = [];
+  for (const [w, h] of [[390, 844], [375, 667], [360, 640], [844, 390], [640, 360], [568, 320]]) { await sized(page, w, h, 'phone'); owns.push(`${w}x${h}: ${ownShipProblems(await ownShipAt(page), `phone ${w}x${h}`)}`); }
+  await sized(page, 390, 844, 'phone'); await undrawn(page, false);
+  console.log(`phone, her own ship kept clear: ${owns.join('; ')}`);
   // the port at the same four sizes, a narrow phone held sideways (640 by 360) and the smallest (568 by 320, an iPhone
   // SE's first one): its top line on one line, even with ◆ 12,345, and its panel clear of the top line, of the ships
   // along the bottom and of the longest note the port shows (as a ship is bought); every one of the six ships' buttons all inside the ships' rows (none cut off at an end); every
@@ -4018,9 +4063,12 @@ if (!quick && !demoOnly) {
         const n = above(r('btn-buy')), l = lines($('btn-buy').firstElementChild), sb = g.port.shipBox(), pt = r('port-panel').top;
         stats = Math.min(stats, n); buying.push(`${id}${gal ? ' (Galleon owned)' : ''} ${n}/5${l > 1 ? ` ON ${l} LINES` : ''}`);
         if (l > 1) behind.push(`${id}'s Buy button on ${l} lines`);
-        // (and under it, "Try her out": shown, all of it in the panel, on one line, clear of Buy and of the plain line beside it)
+        // (and under it, "Try her out": shown, all of it in the panel, on one line, clear of Buy and of the plain line beside it,
+        // 6 px or more under Buy (which spends the shards at once) and 32 px tall, so a thumb landing a little high on it
+        // never buys her)
         const tb = r('btn-try'), pn = r('port-panel'), bb = r('btn-buy'), sl = r('btn-sail'), cross = (a, c) => a.left < c.right - 1 && c.left < a.right - 1 && a.top < c.bottom - 1 && c.top < a.bottom - 1;
         if ($('btn-try').hidden || !tb.width || tb.left < pn.left - 1 || tb.right > pn.right + 1 || tb.top < pn.top - 1 || tb.bottom > pn.bottom + 1 || lines($('btn-try')) > 1 || cross(tb, bb) || cross(tb, sl)) behind.push(`${id}'s "Try her out" not all in the panel on one line clear of the buttons (${[tb.left, tb.top, tb.right, tb.bottom].map(Math.round)})`);
+        if (tb.top - bb.bottom < 6 || tb.height < 32) behind.push(`${id}'s "Try her out" ${Math.round(tb.top - bb.bottom)} px under Buy and ${Math.round(tb.height)} px tall (a thumb landing a little high would buy her: 6 px clear and 32 px tall at least)`);
         if (innerWidth <= 700 && innerHeight > 500 && sb.b > pt) behind.push(`${id}${gal ? ' (Galleon owned)' : ''}'s ship ${Math.round(sb.b - pt)} px behind the panel`);
       }
       for (const id of ['skiff', 'frigate', 'galleon', 'manowar']) {
@@ -4053,7 +4101,7 @@ if (!quick && !demoOnly) {
     const ownedLeast = w <= 700 && h > 500 && h <= 720 ? 2 : 5;
     ports.push(`${w}x${h}: ${P.stats} of 5 stats over Buy (${P.buying.join(', ')}), ${P.owned.join('/')} of 5 over Set sail in her own ship (Skiff/Frigate/Galleon/Man-o'-war)${P.behind.length ? `, ${P.behind.join(', ').toUpperCase()}` : ''}, and ${P.mods} upgrade${P.mods === 1 ? '' : 's'} in view, the top line ${P.line} px tall, ${P.cut.length ? `SHIPS CUT OFF: ${P.cut.join(', ')}` : 'all six ships in their rows'}, ${P.tucked.length ? `BLURBS UNDER THE FADE: ${P.tucked.join(', ')}` : 'every blurb clear of the fade'}${P.empty.length ? `, EMPTY UNDER THE BUTTON: ${P.empty.join(', ')}` : ''}${P.laps.length ? `, THE PANEL ON ${P.laps.join(', ')}` : ''}`);
     if (P.stats < 5 || P.mods < (h < 360 ? 1 : 2) || P.line > 44 || P.right > P.w) problems.push(`phone ${w}x${h}: the port should show all of how a ship not owned sails above her Buy button, ${h < 360 ? 'an upgrade' : 'two upgrades or more'} on her Upgrades tab, and its top line on one line: ${JSON.stringify(P)}`);
-    if (P.behind.length) problems.push(`phone ${w}x${h}: in port a ship not owned should have her Buy button on one line, "Try her out" under it, and (upright) all of her ship above the panel: ${P.behind.join(', ')}`);
+    if (P.behind.length) problems.push(`phone ${w}x${h}: in port a ship not owned should have her Buy button on one line, "Try her out" under it (6 px clear of it, and 32 px tall for a thumb), and (upright) all of her ship above the panel: ${P.behind.join(', ')}`);
     if (Math.min(...P.owned) < ownedLeast) problems.push(`phone ${w}x${h}: your own ship's tab should show ${ownedLeast === 5 ? 'all of how she sails' : 'at least two of how she sails'} above Set sail and its fade: ${P.owned.join('/')} of 5 (Skiff/Frigate/Galleon/Man-o'-war)`);
     if (P.cut.length) problems.push(`phone ${w}x${h}: in port every ship's button should be all inside the ships' row, not cut off at its end: ${P.cut.join(', ')}`);
     if (P.laps.length) problems.push(`phone ${w}x${h}: in port the panel lands on ${P.laps.join(', ')}`);
