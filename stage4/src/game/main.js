@@ -162,8 +162,9 @@ async function main() {
   });
   let mode = '', paused = false, player = null, gunnery = null;
   const V = { shards: 0, downed: 0, hits: 0 }; // this voyage
-  // the waves: which (n, from 0), what's happening between them, and the next wave once it's known (shown on the card)
-  const W = { n: 0, state: 'calm', timer: 5, lost: 0, choose: 0, sunk: false, next: null, bonus: 0, bonusAt: 0, bonusShown: -1 };
+  // the waves: which (n, from 0), what's happening between them, and the next wave once it's known (shown on the card);
+  // `news`: kinds of shot earned and not yet told in a banner (earn())
+  const W = { n: 0, state: 'calm', timer: 5, lost: 0, choose: 0, sunk: false, next: null, bonus: 0, bonusAt: 0, bonusShown: -1, news: [] };
   let told = null; // the screen the events were last told of
   // a new screen: the title's sky (or the afternoon's again), and a dip through the night as it changes. The change
   // itself is at once (the night covers it), then the new screen comes up out of the night over half a second
@@ -182,7 +183,7 @@ async function main() {
   // everything a voyage leaves behind, cleared for the next: the waves (and the next one, if a card was showing), the
   // hold, the raiders, shots, smoke and shards, wrecks and the holes they tore in the clouds, and the camera
   function resetVoyage() {
-    Object.assign(W, { n: 0, state: 'calm', timer: 5, lost: 0, choose: 0, sunk: false, next: null });
+    Object.assign(W, { n: 0, state: 'calm', timer: 5, lost: 0, choose: 0, sunk: false, next: null }); W.news.length = 0; newsUp.until = 0;
     Object.assign(V, { shards: 0, downed: 0, hits: 0 });
     raiders.clear(); bolts.clear(); pickups.clear(); fx.clear(); wrecks.clear(); world.clear(); surge.clear(); looks.clear(); wakes.clear(); sky.reset(); hideBounties(); calmUp(false); bigMap(false);
     document.body.classList.remove('sinking'); hidNote = -99; gaveAway = -99;
@@ -244,6 +245,9 @@ async function main() {
     cam.dist = camDistFor(R);
     $('ship-name').textContent = R.name; $('ship-cls').textContent = `${R.cls} · ${R.length} m`;
     resetVoyage();
+    // (a raider's red fan made ready for the sky at sea and her ship's lamps, so her first warning doesn't stutter a
+    // phone making it then: raiders.js fanToWarm)
+    renderer.compile(raiders.fanToWarm(), camera, scene);
     // (her trial's wave, known now: a raider captain's ship in it is built as she sails, under the dip through the night,
     // not as the wave appears: a stutter on a phone)
     if (trial) { W.n = TRIAL[id]; W.next = nextWave(W.n); raiders.prepareWave(W.next); }
@@ -407,7 +411,7 @@ async function main() {
     if (time - lastRake[owner] < 0.6) return;
     lastRake[owner] = time;
     RAKED.owner = owner; RAKED.raider = r; RAKED.at.copy(at); emit('raked'); RAKED.raider = null;
-    if (owner === 'player') { rakeAnim?.cancel(); rakeAnim = $('raked').animate([{ opacity: 1, transform: 'scale(1.35)' }, { opacity: 1, transform: 'scale(1)', offset: 0.25 }, { opacity: 0, transform: 'translateY(-8px)' }], { duration: 900, easing: 'ease-out' }); }
+    if (owner === 'player') { rakeAnim?.cancel(); rakeAnim = $('raked').animate([{ opacity: 1, transform: 'scale(1.35)' }, { opacity: 1, transform: 'scale(1)', offset: 0.18 }, { opacity: 1, transform: 'scale(1)', offset: 0.7 }, { opacity: 0, transform: 'translateY(-8px)' }], { duration: 1300, easing: 'ease-out' }); } // (at full strength most of 1.3 s, so it's seen)
     else if (!rakedNote) { rakedNote = true; toast('Raked! Don\'t let them cross your bow'); }
   }
   // a raider's shot passing close: once it's past its nearest point to the ship (not while it's still coming on, as
@@ -453,15 +457,34 @@ async function main() {
     if (s !== gunnery.shot) pickShot(s);
     else toast(extraShots() ? 'Out of crystal breakers' : 'Only round shot aboard: earn chain shot at sea, or buy it in port');
   }
-  // a kind of shot earned by a deed: kept in the save, said in a banner (how to load it), and the phone's button shown
+  // a kind of shot earned by a deed: kept in the save, the phone's button shown, and said in a banner (how to load it)
+  // once this frame's raiders are counted (waves()): straight away while the fight goes on. A deed that ends the wave
+  // (a treasure ship that ran, caught last; a raider captain, often the last down) is said on the card between waves
+  // instead ("Chain shot is yours!"), and in the banner as the next wave nears, when the shot button shows again (the
+  // card would lie over the banner on a phone held sideways, and the button waits out of sight meanwhile). W.news:
+  // those still to tell
   function earn(s, line) {
     const d = progress.data;
     if (d.shots[s]) return;
     d.shots[s] = true; progress.save();
     SHOT.shot = s; SHOT.why = 'earned'; SHOT.left = gunnery.breakers; emit('shot');
-    banner(`${SHOTS[s].name}!`, `${line}: ${touch ? 'tap the shot button over Surge' : `press ${SHOTS[s].key}`}`);
+    W.news.push({ s, line });
     shotsShown();
   }
+  // how to load it, in words: on a phone the shot button over Surge, on a laptop its key ("press 2", "press 2 or 3")
+  const loadWords = (list) => (touch ? 'tap the shot button over Surge' : `press ${list.map((n) => SHOTS[n.s].key).join(' or ')}`);
+  // the banner for the news (one kind: its name and the deed; both at once: both names), and until when it shows (real
+  // time, in ms), so the card between waves can cut it short and tell it itself
+  const newsUp = { list: [], until: 0 };
+  function tellNews() {
+    const L = W.news;
+    if (L.length === 1) banner(`${SHOTS[L[0].s].name}!`, `${L[0].line}: ${loadWords(L)}`);
+    else banner(`${SHOTS[L[0].s].name} and ${SHOTS[L[1].s].name.toLowerCase()}!`, `In their holds: ${loadWords(L)}`);
+    newsUp.list = L.slice(); newsUp.until = bannerAt.until; L.length = 0;
+  }
+  // the news on the card between waves: its title ("Chain shot is yours!"), the wave beaten said in its line instead
+  // (short: the card is small on a phone held sideways, and how to load it comes in the banner, with the button there)
+  const newsCard = (L) => (L.length === 1 ? { title: `${SHOTS[L[0].s].name} is yours!`, line: '' } : { title: 'Two new kinds of shot!', line: `: ${SHOTS[L[0].s].name.toLowerCase()} and ${SHOTS[L[1].s].name.toLowerCase()} are yours` });
   // the phone's shot button (shown once she has more than round shot) and the guns' label, as her shot changes
   const shotHex = (s) => `#${SHOTS[s].color.toString(16).padStart(6, '0')}`;
   function shotsShown() {
@@ -529,6 +552,7 @@ async function main() {
       toast(why === 'struck' ? `${who} strikes her colours! Gather her treasure` : why === 'hull' ? `${r.captain ? who : r.R.cls} down! Fly through her shards` : `${who} is sinking! Fly through her shards`);
     }
     for (const r of raiders.escaped) { toast(`The ${r.R.cls} got away with her treasure`); payload('raider:escaped').raider = r; emit('raider:escaped'); }
+    if (W.news.length && W.state === 'fight' && raiders.list.some((r) => !r.f.down)) tellNews(); // (the fight goes on: said now)
     if (W.sunk) return;
     if (W.lost > 0) {
       if ((W.lost -= dt) <= 0) {
@@ -591,7 +615,17 @@ async function main() {
           W.bonus = 0; W.bonusShown = 0;
           return;
         }
-        $('calm-title').textContent = `Wave ${W.n} beaten`;
+        // a banner still up (a shot's, earned just before): cut short, fading as the card rises (at once if it rises at
+        // once: on a phone held sideways the card takes its place), and a shot's news told on the card and again as the
+        // next wave nears
+        if (performance.now() < bannerAt.until) {
+          const a = $('banner').getAnimations()[0], end = last ? 3170 : 4400; // (72% of its 4.4 s: where it starts to fade)
+          if (a && a.currentTime < end) { bannerAt.until -= end - a.currentTime; a.currentTime = end; }
+          if (performance.now() < newsUp.until) W.news.unshift(...newsUp.list);
+        }
+        newsUp.list = []; newsUp.until = 0;
+        const news = W.news.length ? newsCard(W.news) : null;
+        $('calm-title').textContent = news ? news.title : `Wave ${W.n} beaten`;
         const next = nextWave(W.n);
         W.next = next;
         // the weather: a storm wave next shows its storm on the horizon now (ahead of her, more or less), and says so on
@@ -605,7 +639,7 @@ async function main() {
         // a captain's ship (and a treasure ship) is built now, while the card is up, not as the wave appears (a stutter
         // on a phone)
         raiders.prepareWave(next);
-        $('calm-line').innerHTML = `◆ <b id="calm-bonus">0</b> for the wave · ◆ ${fmt(V.shards)} aboard. Next: ${describe(next)}.${storm}`;
+        $('calm-line').innerHTML = `${news ? `Wave ${W.n} beaten${news.line}. ` : ''}◆ <b id="calm-bonus">0</b> for the wave · ◆ ${fmt(V.shards)} aboard. Next: ${describe(next)}.${storm}`;
         // (shown at once, for the game; it rises into view after the slow motion, and its bonus counts up as it does)
         $('calm').classList.toggle('late', last); calmUp(true);
         W.bonus = bonus; W.bonusShown = -1; W.bonusAt = performance.now() / 1000 + (last ? 1.4 : 0.1);
@@ -620,6 +654,7 @@ async function main() {
   function sailOn() {
     if (W.state !== 'choose' || trial) return;
     calmUp(false); W.state = 'calm'; W.timer = 4; newWind();
+    if (W.news.length) tellNews(); // (a shot earned as the last wave ended: the banner now, with its button showing again)
   }
   // a bank of cloud across the raiders' way in, 500 to 800 m ahead of them (and never nearer her than 600 m)
   const mid = new THREE.Vector3();
@@ -819,7 +854,16 @@ async function main() {
   const tagUp = (warn) => (warn ? TAG.warn + ARROW_WARN : TAG.h + ARROW);
   const tagH = (a) => (a._warn ? TAG.warn : TAG.h); // (a tag's height: taller saying "Broadside!")
   function edgeTop(x, up) { let t = 6; for (const b of EDGE.top) if (x > b.l - TAG_REACH && x < b.r + TAG_REACH && b.b + 4 > t) t = b.b + 4; return t + up; }
-  function edgeBottom(x) { let y = view.h - 6; for (const b of EDGE.bottom) if (x > b.l - TAG_REACH && x < b.r + TAG_REACH && b.t - 4 < y) y = b.t - 4; return y; }
+  // (on a touch screen a tag saying "Broadside!" (warn; hw: half its width) keeps out from under the thumb that steers:
+  // on the stick's side of the screen (input.js: the left 42%, the right with Fire on the left) no lower than 70% of the
+  // way down, as the warning the Captain must see in time to climb out of it)
+  const THUMB = { side: 0.42, low: 0.7 };
+  const underThumb = (x, hw) => (input.leftFire ? x + hw > view.w * (1 - THUMB.side) : x - hw < view.w * THUMB.side);
+  function edgeBottom(x, warn = false, hw = 0) {
+    let y = view.h - 6;
+    for (const b of EDGE.bottom) if (x > b.l - TAG_REACH && x < b.r + TAG_REACH && b.t - 4 < y) y = b.t - 4;
+    return warn && touch && underThumb(x, hw) ? Math.min(y, view.h * THUMB.low) : y;
+  }
   // a tag over a ship (its bottom middle at x, hw half as wide as it is) may reach up to just under the panels along the
   // top over it (the compass, the guns' label...) and down to just over those along the bottom, never off the screen
   function overTop(x, hw) { let t = 6; for (const b of EDGE.top) if (x + hw > b.l - 4 && x - hw < b.r + 4 && b.b + 4 > t) t = b.b + 4; return t; }
@@ -975,7 +1019,7 @@ async function main() {
   const nearer = (p, q) => Math.abs(p - besideFrom) - Math.abs(q - besideFrom);
   function edgeAt(a, i, x, rise) {
     if (x - a._hw < 4 || x + a._hw > view.w - 4) return false;
-    const top = edgeTop(x, tagUp(a._warn)), bottom = edgeBottom(x), lim = Math.max(top, rise);
+    const top = edgeTop(x, tagUp(a._warn)), bottom = edgeBottom(x, a._warn, a._hw), lim = Math.max(top, rise);
     if (top > bottom) return false;
     let y = edgeSlide(a, x, Math.max(top, Math.min(bottom, a._y)), i, lim);
     if (y !== y) y = edgeSlide(a, x, bottom, i, lim);
@@ -1147,8 +1191,8 @@ async function main() {
         // right of a phone held sideways, it slides in towards the middle until they do)
         const up = tagUp(warn);
         top = edgeTop(W2 + x, up);
-        let bottom = edgeBottom(W2 + x);
-        for (let n = 0; top > bottom && n < 24 && Math.abs(x) > 16; n++) { x -= Math.sign(x) * 16; top = edgeTop(W2 + x, up); bottom = edgeBottom(W2 + x); }
+        let bottom = edgeBottom(W2 + x, warn, el._hw);
+        for (let n = 0; top > bottom && n < 24 && Math.abs(x) > 16; n++) { x -= Math.sign(x) * 16; top = edgeTop(W2 + x, up); bottom = edgeBottom(W2 + x, warn, el._hw); }
         y = Math.max(top - H2, Math.min(bottom - H2, y));
       }
       if (el._edge !== edge) { el._edge = edge; el.classList.toggle('edge', edge); }
@@ -1194,7 +1238,7 @@ async function main() {
       const a = edges[i], h = a._warn ? TAG.warn : TAG.h;
       a._y = Math.max(a._y, a._top);
       for (let j = 0; j < i; j++) { const b = edges[j]; if (Math.abs(a._x - b._x) < a._hw + b._hw) a._y = Math.max(a._y, b._y + h); }
-      a._y = Math.min(a._y, edgeBottom(a._x));
+      a._y = Math.min(a._y, edgeBottom(a._x, a._warn, a._hw));
       // (no room left for it along the edge, as down the right of a phone held sideways, where the panels leave room for
       // a tag or two: it goes up past the tags in its way, or beside them, half a tag's width at a time, towards the
       // middle first, then the other way, still on the screen and between the panels there)
@@ -1378,12 +1422,14 @@ async function main() {
     H['btn-surge'].disabled = sg.charge < 1;
     shotsShown(); // (her shot, if it changed some other way: a shot bought or earned)
     // the crew patching her: the row for what they patch glows; on a laptop the Patch row fills as they get ready again;
-    // on a phone the Patch button shows once she's hurt (her worst part under 70%), its ring filling as they get ready
+    // on a phone the Patch button shows once she's hurt (her worst part under 70%), and from the moment they patch until
+    // they're ready again, dimmed, its ring filling as they get ready (a patch often lifts her over 70%: the ring still
+    // says when they can again)
     const PT = player.patch, ready = 1 - PT.cd / (PATCH.time + PATCH.wait);
     for (const k of PARTS) H[`row-${k}`].classList.toggle('patching', PT.t > 0 && PT.part === k);
     setWidth(H['h-patch'], PT.t > 0 ? PT.t / PATCH.time : ready);
     H['row-patch'].classList.toggle('ready', PT.cd <= 0);
-    const pb = H['btn-patch'], show = !player.down && (PT.t > 0 || player.frac(player.worst()) < PATCH.show);
+    const pb = H['btn-patch'], show = !player.down && (PT.cd > 0 || player.frac(player.worst()) < PATCH.show);
     if (pb.hidden === show) { pb.hidden = !show; layout(); }
     if (show) {
       const k = Math.round(ready * 40) / 40;

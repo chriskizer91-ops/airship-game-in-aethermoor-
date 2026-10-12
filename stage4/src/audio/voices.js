@@ -1,7 +1,7 @@
 // voices.js: the sounds made for this game: the cannon (a chaser's crack, a broadside gun's boom and its rolling
 // thunder), shots landing on wood, canvas and crystal, a thud through your own deck, near misses whizzing past, ships
-// blowing up and their crystals dying, a wreck falling and booming under the clouds, shard chimes, creaking timbers
-// and the clack of guns run out again.
+// blowing up and their crystals dying, a wreck falling and booming under the clouds, shard chimes, creaking timbers,
+// the clack of guns run out again, and a raider's call as she readies her broadside at you.
 // They're played on the same instruments as Chris's sounds (src/audio/thareia/sounds.js): tone, noise and fm here take
 // the same settings as his (f, to, glide, type, d, g, a, hold, lp/bp/hp, f2, fg, q, vib, vibd, am, amd, ratio, index),
 // but are built in whatever audio context they're given. That lets them be made once, when the sound starts, in a
@@ -120,6 +120,12 @@ export const RECIPES = {
   thud: { len: 0.7, n: 1, low: true, play: (c, o, t) => {
     tone(c, o, t, { f: 90, to: 48, glide: 0.12, d: 0.6, g: 1, a: 0.002 });
     noise(c, o, t, { lp: 300, d: 0.3, g: 0.6, a: 0.002 });
+  } },
+  // a raider readying her broadside at you: a short rising call, two quick notes, the second higher and trembling (a
+  // bosun's whistle, heard over the guns)
+  warn: { len: 0.55, n: 1, play: (c, o, t) => {
+    tone(c, o, t, { f: 620, to: 930, glide: 0.12, d: 0.17, g: 0.5, a: 0.008, type: 'triangle' });
+    tone(c, o, t + 0.15, { f: 930, to: 1400, glide: 0.14, d: 0.34, g: 0.55, a: 0.008, type: 'triangle', vib: 11, vibd: 18 });
   } },
   // a shot passing close: a falling whistle and rush of air
   whiz: { len: 0.55, n: 2, play: (c, o, t, v) => {

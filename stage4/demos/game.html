@@ -275,9 +275,10 @@
   #battery .meter { width: 110px; margin: 3px auto 0; }
   body.touch #battery-shot { display: none; } /* (on a phone the shot button says what's loaded) */
   /* your broadside raking a raider (down her length): "Raked!" just right of the crosshair for a moment (main.js), clear
-     of the tag over the raider you're aiming at */
-  #raked { position: fixed; left: calc(50% + 30px); top: calc(50% - 10px); margin: 0; font: 700 19px/1 var(--display); letter-spacing: 0.04em; color: #ffd36a; opacity: 0; pointer-events: none;
-    white-space: nowrap; transform-origin: 0 50%; text-shadow: 0 2px 0 #000, 0 0 12px rgba(255, 140, 40, 0.9); }
+     of the tag over the raider you're aiming at; big, on a dark backing and outlined, so it reads over bright cloud */
+  #raked { position: fixed; left: calc(50% + 30px); top: calc(50% - 16px); margin: 0; padding: 4px 9px 5px; border-radius: 8px; background: var(--pill); font: 700 23px/1 var(--display); letter-spacing: 0.04em;
+    color: #ffd36a; opacity: 0; pointer-events: none; white-space: nowrap; transform-origin: 0 50%; -webkit-text-stroke: 3px #1a0c08; paint-order: stroke fill;
+    text-shadow: 0 2px 0 #000, 0 0 14px rgba(255, 140, 40, 0.85); }
   body.between #battery { display: none; } /* (between waves there's nothing to fire at) */
   /* a raider's bounty, rising in gold out of her wreck (placed and faded by main.js) */
   #bounties { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
@@ -497,6 +498,7 @@
     #toast { top: calc(var(--top) + 240px); max-width: calc(100% - 2 * var(--gutter)); font-size: 13.5px; }
     #warn { top: calc(50% + 30px); max-width: calc(100% - 2 * var(--gutter)); font-size: 13.5px; }
     body.between #warn { display: none; } /* (its place is the card's, between waves: no raiders then, and the crew patch her up) */
+    body.between #aim { display: none; } /* (nor anything to fire at: the card may reach up past it, with a long line) */
     .bounty { font-size: 20px; }
     .bounty.rich { font-size: 24px; }
     #dock { justify-content: center; }
@@ -589,8 +591,11 @@
     #warn { top: calc(50% + 76px); max-width: calc(100% - 2 * (var(--gutter) + 172px)); font-size: 13px; padding: 3px 10px; }
     .bounty { font-size: 20px; }
     .bounty.rich { font-size: 24px; }
-    #battery { top: auto; bottom: calc(var(--bottom) + 150px); right: var(--gutter); left: auto; translate: none; text-align: right; font-size: 12.5px; }
-    body.fire-left #battery { right: auto; left: var(--gutter); text-align: left; }
+    /* (the guns' label over the touch buttons, lower than on a phone held upright: written as strongly as the upright
+       phone's rules, which a narrow phone held sideways (640 by 360) matches too, so these win there and the label
+       keeps clear of your ship's panel with Fire on the left) */
+    body.touch #battery, #battery { top: auto; bottom: calc(var(--bottom) + 150px); right: var(--gutter); left: auto; translate: none; text-align: right; font-size: 12.5px; }
+    body.touch.fire-left #battery, body.fire-left #battery { right: auto; left: var(--gutter); text-align: left; }
     #touch-buttons { bottom: calc(var(--bottom) + 2px); }
     /* (the shot button over Surge, both a little smaller, and the guns' label over them) */
     body.has-shot .fire-col { gap: 6px; }
@@ -598,12 +603,17 @@
     body.has-shot #btn-shot svg { width: 15px; height: 15px; } /* (its picture and name smaller, so the name fits inside its ring) */
     body.has-shot #btn-shot small { font-size: 8.5px; }
     body.has-shot #btn-surge { width: 54px; height: 54px; }
-    body.has-shot #battery { bottom: calc(var(--bottom) + 166px); }
+    body.touch.has-shot #battery, body.has-shot #battery { bottom: calc(var(--bottom) + 166px); }
     #touch-hint { max-width: 164px; font-size: 12px; padding: 4px 8px; }
     body.touch #calm, #calm { bottom: auto; top: calc(var(--top) + 32px); width: min(calc(100% - 2 * (var(--gutter) + 172px)), 560px); grid-template-columns: 1fr; padding: 6px 10px; gap: 4px; }
     #calm .choices { justify-content: flex-start; }
     #calm .choices button { flex: none; }
     #calm #btn-sail-on[hidden] + #btn-go-port { flex: 1; } /* (a sea trial's card: the one way on, across the card) */
+    /* (between waves there's nothing to fire at: the crosshair makes way for the card, which may reach down past it with
+       a long line (a shot just earned, a big wave next, a storm coming), and the toast goes a little lower, in the
+       warning's place, clear of the card's foot; no warning then, as on a phone held upright) */
+    body.between #aim, body.between #warn { display: none; }
+    body.between #toast { top: calc(50% + 62px); }
     @keyframes calm-in { from { opacity: 0; visibility: hidden; translate: -50% -16px; } to { opacity: 1; visibility: visible; translate: -50% 0; } }
     #calm h2 { font-size: 16px; }
     #calm p { font-size: 12.5px; }
@@ -707,6 +717,9 @@
   }
   @media (max-height: 340px) {
     body.touch #battery, #battery { bottom: calc(var(--bottom) + 146px); }
+    /* (with Fire on the left, the left side has no room for the guns' label between your ship's panel and the buttons:
+       it stays on the right, under the score, where it is with Fire on the right) */
+    body.touch.fire-left #battery, body.fire-left #battery { right: var(--gutter); left: auto; text-align: right; }
     /* (with the shot button over Surge, the buttons a little smaller again, so they're no taller than without it) */
     body.has-shot #touch-buttons { gap: 8px; }
     body.has-shot .fire-col { gap: 4px; }
@@ -727,11 +740,12 @@
     .sail-out .big { font-size: 15.5px; padding: 8px 10px; }
     #btn-buy { letter-spacing: 0; }
     #btn-buy .the { display: none; } /* ("Buy Thunderhead · ◆ 30,000": her name is just above, and so it fits on one line) */
-    /* (between waves the card just under the pause button, as wide as the room between your ship's panel and the map;
-       the crosshair makes way for it, as the guns' label does: there's nothing to fire at then) */
-    body.touch #calm, #calm { top: calc(var(--top) + 48px); width: calc(100% - 2 * (var(--gutter) + 134px)); }
-    #calm p { font-size: 12px; }
-    body.between #aim { display: none; }
+    /* (between waves the card just under the pause button, as wide as the room between your ship's panel and the map,
+       and a little tighter, so a long line (a big wave next, a storm coming) still ends above Surge and the toast) */
+    body.touch #calm, #calm { top: calc(var(--top) + 48px); width: calc(100% - 2 * (var(--gutter) + 134px)); padding: 5px 10px; gap: 3px; }
+    #calm p { font-size: 11.5px; }
+    #calm .big { padding: 7px 12px; }
+    #calm .plain { min-height: 34px; }
     /* (the toast and a warning under the crosshair a little wider, between the hint and the touch buttons, so the
        longest toast takes two lines and the warning keeps clear under it) */
     #toast { max-width: calc(100% - 2 * (var(--gutter) + 166px)); font-size: 12.5px; }
@@ -904,9 +918,9 @@
       <dt>Fire</dt><dd>Hold it to keep firing. Slide your thumb off it to aim as you fire.</dd>
       <dt>Broadsides</dt><dd>Look to her side for your side guns: they hit hardest.</dd>
       <dt>Surge</dt><dd>A burst of speed, to run or to catch her. It fills up again.</dd>
-      <dt>Shot</dt><dd>Over Surge, once you have chain shot: tap it to load the next kind of shot (round, chain, crystal breakers).</dd>
-      <dt>Patch</dt><dd>Shows by the sail buttons when she's hurt: the crew patch her up, while the guns reload slower.</dd>
-      <dt>Red fan</dt><dd>A raider about to fire her broadside: climb, dive or turn out of it and she misses.</dd>
+      <dt>Shot</dt><dd>Over Surge, once you have chain shot or crystal breakers: tap it to load the next kind of shot.</dd>
+      <dt>Patch</dt><dd>Shows by the sail buttons when she's hurt: the crew patch her up, while the guns reload slower. Its ring fills as they get ready again.</dd>
+      <dt>Red fan</dt><dd>A raider about to fire her broadside: climb out of it and she misses. Diving works about half the time; turning away, only in a small ship.</dd>
       <dt>Sail − / +</dt><dd>Less or more sail: slower or faster.</dd>
       <dt>The map</dt><dd>Tap the corner map to make it big.</dd>
     </dl>
@@ -921,7 +935,7 @@
       <dt>1 · 2 · 3</dt><dd>Round shot, chain shot, crystal breakers, once you have them.</dd>
       <dt>V</dt><dd>The next kind of shot you have (or right-click).</dd>
       <dt>X</dt><dd>The crew patch her up, while the guns reload slower.</dd>
-      <dt>Red fan</dt><dd>A raider about to fire her broadside: climb, dive or turn out of it and she misses.</dd>
+      <dt>Red fan</dt><dd>A raider about to fire her broadside: climb out of it and she misses. Diving works about half the time; turning away, only in a small ship.</dd>
       <dt>Wheel</dt><dd>Closer or further.</dd>
       <dt>C · M · P · H</dt><dd>Look ahead · the big map · pause · the keys.</dd>
       <dt>Enter · B</dt><dd>Between waves: sail on, or back to port.</dd>

@@ -10,7 +10,7 @@
 // bigger); which waves bring a storm (`storms`: their numbers, from 1, and after the fifteenth, this share of them at
 // random: sky.js), how near a raider still sees the Captain hidden in cloud (`sight`, metres), how long a raider's gun
 // ports glow before her broadside (`warn`, seconds: her gunners aim where you'd be if you held your course, so it's time
-// to climb, dive or turn out of her red fan: raiders.js), and how smart the raiders fight (`smart`: 0 simply; 1 big ones
+// to climb out of her red fan: raiders.js), and how smart the raiders fight (`smart`: 0 simply; 1 big ones
 // try to cross your bow and rake you; 2 also small ones coming at your stern, and raiders climbing or diving out of
 // your loaded broadside: tactics.js SMART)
 export const SKIES = {

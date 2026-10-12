@@ -96,20 +96,26 @@
 //                     colours after far fewer volleys of chain shot than of round shot; five volleys of crystal breakers from 60 m above a
 //                     Man-o'-war hitting her crystals, one fewer left each, then round shot loaded again and said so; a
 //                     raider Frigate's broadside readied (told, her red fan showing) 0.75 to 0.95 s before she fires on
-//                     Crosswinds, the fan gone as she does; three broadsides hitting a Captain who holds still 3 times or
+//                     Crosswinds, the fan gone as she does (and the first fan of a voyage needing no new drawing made
+//                     as it shows); three broadsides hitting a Captain who holds still 3 times or
 //                     more, one who climbs on each warning once at most; three broadsides down a raider Brig's length
 //                     doing 1.5 times her beam's (within 10%), told and marked "Raked!", and a raider's shot down the
 //                     Captain's length raking her (half as much again, the toast saying so) where one across doesn't;
 //                     a treasure ship striking earning chain shot and a captain's Frigate the breakers (banners, the
-//                     save); the real X key patching her sails from 40% to 73% in 6 s (her row glowing), a broadside's
+//                     save); chain shot earned as the wave's last raider strikes said on the card between waves, no
+//                     banner under it, then in its banner as she sails on (with the shot button, on phones at 640 by
+//                     360, 568 by 320 and upright too), and a shot's banner still up as a wave ends cut short; the real X key patching her sails from 40% to 73% in 6 s (her row glowing), a broadside's
 //                     reload taking twice as long meanwhile, and X again doing nothing (a toast saying how long); the
 //                     real V key loading the next shot she has (round, chain, breakers, round; with round shot only a toast
 //                     saying how to get more), and 3 and 2 loading theirs with Shift held (diving); a
 //                     raider Brig the Captain points at turning to cross her bow on Crosswinds (to come alongside on Fair
-//                     Winds), and one on the Maelstrom dodging a loaded broadside; pictures of a chain-shot volley, the
+//                     Winds), and one on the Maelstrom dodging a loaded broadside but never a Skiff's loaded bow guns;
+//                     pictures of a chain-shot volley, the
 //                     red fan (from inside it, and from above), a rake and a patch. On a phone: the shot button hidden with round shot only, shown with
 //                     chain shot and loading it with a tap; Patch hidden at full health, shown at hull 60%, a tap starting
-//                     the crew patching; both measured in every phone layout, the shot button's name inside its ring
+//                     the crew patching, then staying (dimmed, its ring filling) until they're ready again, and going;
+//                     a raider's "Broadside!" tag at the edge never in the lower 30% on the stick's side as the view
+//                     swings round; both buttons measured in every phone layout, the shot button's name inside its ring
 //                     for each shot and the badge with the breakers left clear of the guns' label; a picture of both
 //                     wrecks worth watching: debris matching the part hit, a 60-shot barrage fitting its batches with
 //                     not a piece cut short and all fallen 4 s later, and canvas scraps keeping their own flapping beat;
@@ -164,7 +170,8 @@
 //                     foot, moving 3 px or more in two minutes, and with no seam looking due north, where the directions
 //                     round the sky start again: its crest stepping at most 4 px from one column to the next); wave 4 on the
 //                     Maelstrom storming (rain, thicker cloud, the wind 16% or more, two lightning strikes or more in
-//                     30 s, gusts, all told), drawing at most two more goes than a clear sky, and clearing within 25 s
+//                     30 s, gusts, all told), drawing at most two more goes than a clear sky (a drifting cloud's veil,
+//                     not the storm's, left out of both), and clearing within 25 s
 //                     once beaten; wave 3's bank of cloud drawn just where the game reckons it is (the clouds it hides
 //                     ships in), showing looking at it, and fading once the wave is beaten; inside a big cloud the mist
 //                     showing and the haze closing in, gone out of it; hidden in the cloud floor no raider firing from
@@ -205,8 +212,10 @@
 //                     on the left (and the words saying so); and at three laptop sizes and six phone sizes (upright
 //                     and sideways, down to 640 by 360 and the smallest, 568 by 320), in a battle with the toast, a
 //                     warning and the banner (or the region's name) at once with their longest words, and the first
-//                     voyage's banner (on two lines at most), and between waves: nothing on the screen landing on anything else
-//                     or off it; the edge tags clear of the panels, arrows and all, and again with every raider off the
+//                     voyage's banner (on two lines at most), and between waves (the card at its tallest too: a shot just
+//                     earned, a big wave next, a storm coming): nothing on the screen landing on anything else or off
+//                     it, on a phone as a new Captain sees it (no shot or Patch button), with Fire on the left (held
+//                     sideways with both buttons, upright with Patch alone) and with both buttons; the edge tags clear of the panels, arrows and all, and again with every raider off the
 //                     screen readying her broadside; the pause card over everything (and closing the big map); the
 //                     score saying the wave just beaten; the big map's names 11 px or more and none on (or touching)
 //                     another; her ship going down with the big map open, its card on top; and a bounty rising where
@@ -654,8 +663,9 @@ const gameReady = () => window.__game?.ready || !document.getElementById('error'
 // regions' names on it big enough to read (11 of the page's pixels or more) and none of them on (or touching) another.
 // The edge tags are measured with their arrows, and again with every raider off the screen readying her broadside (each
 // tag taller, saying "Broadside!", with a bigger arrow). `sink`: and the ship going down with the big map open, its card
-// over everything. Her ship has chain shot and her hull at 60%, so on a phone the shot button (over Surge) and the
-// Patch button (by the sail buttons) are showing too
+// over everything. `shot` and `hurt`: her ship has chain shot, and her hull at 60%, so on a phone the shot button (over
+// Surge) and the Patch button (by the sail buttons) are showing too (both, unless said otherwise; neither, as a new
+// Captain sees it); `left`: with Fire on the left (Settings), switched off again after
 // On a phone: the shot button with each shot loaded, its name inside its ring (the letters standing on the line no wider
 // than the ring is across there), and with crystal breakers the badge saying how many are left clear of the guns' label
 // and on the screen. Problems, in words
@@ -676,7 +686,40 @@ const shotButton = (page) => page.evaluate(() => {
   g.pickShot('round'); d.shots.breaker = false;
   return out;
 });
-const layoutAt = (page, HUD, PANELS, sink = false) => page.evaluate(({ HUD, PANELS, sink }) => {
+// a kind of shot earned by the deed that ends the wave (a treasure Brig, the wave's last raider, striking to her): no
+// banner (it would lie under the card between waves on a phone held sideways, saying to tap a button hidden then), the
+// news in the card's title; then, sailing on, its banner saying how to load it, the card gone and (on a phone) the
+// shot button showing. And one earned mid-wave, its banner still up as the wave ends a moment later: cut short (fading
+// from there as the card rises), its news on the card too
+const earnedLast = (page) => page.evaluate(() => {
+  const g = window.__game, $ = (id) => document.getElementById(id), d = g.progress.data, had = { ...d.shots };
+  const voyage = () => { d.shots.chain = d.shots.breaker = false; g.fly('skiff'); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false); g.raiders.clear(); const P = g.player; P.pos.set(0, 900, 0); P.heading = 0; Object.assign(g.waves, { n: 5, state: 'fight', next: null }); return P; };
+  let P = voyage();
+  const tr = g.raiders.spawn('brig', P.pos.clone().add({ x: 0, y: 0, z: 400 }), 0, true, false, true);
+  g.step(0.1, {}); const before = $('banner-title').textContent; tr.f.hit('sails', 1e9); g.step(0.1, {});
+  const out = { state: g.waves.state, before, banner: $('banner-title').textContent, card: $('calm-title').textContent, line: $('calm-line').textContent.slice(0, 40) };
+  $('calm').getAnimations().forEach((a) => a.finish());
+  g.sailOn(); g.step(0.15, {});
+  const sb = $('btn-shot');
+  out.after = { banner: $('banner-title').textContent, line: $('banner-line').textContent, on: $('banner').classList.contains('on'), card: !$('calm').hidden, button: !sb.hidden && getComputedStyle(sb).display !== 'none' };
+  P = voyage();
+  const t2 = g.raiders.spawn('brig', P.pos.clone().add({ x: 0, y: 0, z: 400 }), 0, true, false, true), sk = g.raiders.spawn('skiff', P.pos.clone().add({ x: 300, y: 0, z: 300 }), 0, true);
+  g.step(0.1, {}); t2.f.hit('sails', 1e9); g.step(0.1, {});
+  out.mid = { banner: $('banner-title').textContent };
+  sk.f.hit('hull', 1e9); g.step(0.1, {});
+  const a = $('banner').getAnimations()[0];
+  Object.assign(out.mid, { cut: a ? Math.round(a.currentTime) : -1, state: g.waves.state, card: $('calm-title').textContent });
+  g.sailOn(); g.step(0.15, {}); out.mid.again = $('banner-title').textContent;
+  g.raiders.clear(); Object.assign(d.shots, had); g.progress.save();
+  return out;
+});
+function earnedProblems(E, where, touch) {
+  const load = touch ? 'tap the shot button over Surge' : 'press 2';
+  if (E.state !== 'choose' || E.banner !== E.before || E.card !== 'Chain shot is yours!' || !E.line.startsWith('Wave 6 beaten.') || E.after.banner !== 'Chain shot!' || !E.after.on || E.after.card || !E.after.line.endsWith(load) || (touch && !E.after.button)) problems.push(`${where}: chain shot earned as the wave's last raider strikes should be said on the card between waves (no banner under it), then in its banner as she sails on (${touch ? 'the shot button showing' : 'press 2'}): ${JSON.stringify(E)}`);
+  if (E.mid.banner !== 'Chain shot!' || !(E.mid.cut >= 3170) || E.mid.state !== 'choose' || E.mid.card !== 'Chain shot is yours!' || E.mid.again !== 'Chain shot!') problems.push(`${where}: a shot's banner still up as the wave ends should be cut short as the card rises, its news on the card and in a banner again as she sails on: ${JSON.stringify(E.mid)}`);
+  return `the card says "${E.card}" (no banner under it), then sailing on "${E.after.banner}" ("${E.after.line}")${touch ? `, the shot button ${E.after.button ? 'showing' : 'HIDDEN'}` : ''}; earned mid-wave, its banner cut to ${E.mid.cut} ms of 4400 as the wave ends`;
+}
+const layoutAt = (page, HUD, PANELS, sink = false, { shot = true, hurt = true, left = false } = {}) => page.evaluate(({ HUD, PANELS, sink, shot, hurt, left }) => {
   const g = window.__game, $ = (id) => document.getElementById(id), out = { laps: [], tags: [], off: [], pause: [] };
   const box = (id) => { const el = $(id); if (!el || el.hidden || getComputedStyle(el).display === 'none' || getComputedStyle(el).visibility === 'hidden') return null; const b = el.getBoundingClientRect(); return b.width && b.height ? b : null; };
   const lap = (a, b) => a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
@@ -693,8 +736,8 @@ const layoutAt = (page, HUD, PANELS, sink = false) => page.evaluate(({ HUD, PANE
     if (hit.some((el) => !el?.closest('#paused .card'))) out.pause.push(`${what}: ${hit.map((el) => el?.id || el?.className || el?.tagName).join(', ')}`);
     if (!hit[4]?.closest('#btn-abandon')) out.pause.push(`${what}: its button is under ${hit[4]?.id || hit[4]?.tagName}`);
   };
-  g.progress.data.shots.chain = true;
-  g.fly('brig'); const P = g.player; g.waves.timer = 1e9; g.raiders.setAI(false); P.pos.set(2000, 900, 1500); P.heading = 0.6; P.health.hull = P.full.hull * 0.6;
+  g.progress.data.shots.chain = shot; if (left) g.settings.set('leftFire', true);
+  g.fly('brig'); const P = g.player; g.waves.timer = 1e9; g.raiders.setAI(false); P.pos.set(2000, 900, 1500); P.heading = 0.6; P.health.hull = P.full.hull * (hurt ? 0.6 : 1);
   const f = P.forward(), s = { x: Math.cos(0.6), y: 0, z: -Math.sin(0.6) };
   // one raider ahead (locked on), and eight all round off the screen
   g.raiders.spawn('frigate', P.pos.clone().addScaledVector(f, 260), P.heading + 2, true, true);
@@ -758,6 +801,13 @@ const layoutAt = (page, HUD, PANELS, sink = false) => page.evaluate(({ HUD, PANE
   out.calm = !!box('calm');
   look(HUD.filter((id) => id !== 'region' && id !== 'banner'), 'between waves');
   out.wave = [$('wave-n').textContent, /\d+/.exec($('calm-title').textContent)?.[0]]; // (the wave just beaten, as the card says)
+  // (and the card at its tallest as it's met: a kind of shot just earned, said in its title, a big wave next and a storm
+  // coming)
+  const card = [$('calm-title').textContent, $('calm-line').innerHTML];
+  $('calm-title').textContent = 'Crystal breakers are yours!';
+  $('calm-line').innerHTML = 'Wave 14 beaten. ◆ <b id="calm-bonus">1,234</b> for the wave · ◆ 12,345 aboard. Next: a raider captain\'s Frigate, a Frigate, a Brig and a Cutter. A storm is rolling in from the north-east.';
+  look(HUD.filter((id) => id !== 'region' && id !== 'banner'), 'between waves, the card at its tallest');
+  [$('calm-title').textContent, $('calm-line').innerHTML] = card;
   g.pause(true); onTop('paused between waves'); g.pause(false);
   // the window changing while the card is up (its panels measured without the guns' label), then Sail on: the label
   // back, and kept clear of again
@@ -786,8 +836,9 @@ const layoutAt = (page, HUD, PANELS, sink = false) => page.evaluate(({ HUD, PANE
     if (out.sunk) onTop('her ship gone down with the big map open');
   }
   $('warn').hidden = true; g.raiders.clear();
+  if (left) g.settings.set('leftFire', false);
   return out;
-}, { HUD, PANELS, sink });
+}, { HUD, PANELS, sink, shot, hurt, left });
 // what layoutAt found, as problems
 function layoutProblems(L, where) {
   if (L.laps.length || L.off.length) problems.push(`${where}: the HUD's pieces land on each other or off the screen: ${[...L.laps, ...L.off].join('; ')}`);
@@ -1688,6 +1739,26 @@ if (!demoOnly) {
   const settingsKept = await page.evaluate(() => ({ closed: document.getElementById('settings').hidden, saved: JSON.parse(localStorage.getItem('skies-of-aethermoor/settings-1') ?? '{}'), gain: +window.__game.audio.mixer.music.gain.value.toFixed(4), playing: window.__game.audio.music }));
   console.log(`settings: ${opened ? 'opened from the port' : 'DID NOT OPEN'}; music at nothing: the music's volume ${settingsKept.gain}, playing ${settingsKept.playing ?? 'nothing'}, saved ${JSON.stringify(settingsKept.saved)}`);
   if (!opened || !settingsKept.closed || settingsKept.saved.music !== 0 || settingsKept.gain >= 0.01 || settingsKept.playing !== null) problems.push(`the Settings card should open from the port, silence and stop the music at nothing, save it and close: ${JSON.stringify({ opened, ...settingsKept })}`);
+  // the first voyage here: a raider's first broadside warning makes no new drawing as her red fan first shows (its
+  // drawing was made as the voyage began, lit by the sky at sea and her lamps, not the title screen's): the shaders
+  // made counted with the raider drawn, before her fan shows, and as it shows; the fan about 170 triangles
+  const fanFirst = await page.evaluate(async () => {
+    const g = window.__game, frames = async (n) => { for (let i = 0; i < n; i++) await new Promise(requestAnimationFrame); };
+    g.fly('brig'); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false); g.waves.state = 'fight';
+    const P = g.player; P.pos.set(0, 900, 0); P.heading = 0; P.full.hull = P.health.hull = 1e6;
+    const r = g.raiders.spawn('frigate', P.pos.clone().add({ x: 300, y: 0, z: 0 }), Math.PI, false), v = r.f.pos.clone().sub(P.pos);
+    g.cam.yaw = Math.atan2(v.x, v.z); g.cam.pitch = 0.05;
+    await frames(4);
+    const out = { drawn: g.scene.visible, before: g.renderer.info.programs.length };
+    g.raiders.setAI(true); for (let i = 0; i < 400 && !r.charge.b; i++) g.step(1 / 60, {});
+    r.charge.T = 1e9; r.charge.t = 0.5e9; // (held while it's drawn)
+    await frames(3);
+    Object.assign(out, { after: g.renderer.info.programs.length, fan: !!r.fans?.[r.charge.b]?.visible, triangles: (r.fans?.[r.charge.b]?.geometry.index.count ?? 0) / 3 });
+    g.raiders.setAI(false); g.raiders.clear(); g.bolts.clear(); P.repair(1);
+    return out;
+  });
+  console.log(`the first danger fan of a voyage: ${fanFirst.fan ? 'showing' : 'NOT SHOWING'} (${fanFirst.triangles} triangles), ${fanFirst.after - fanFirst.before ? `${fanFirst.after - fanFirst.before} NEW DRAWING${fanFirst.after - fanFirst.before > 1 ? 'S' : ''} MADE as it shows (a stutter)` : 'no new drawing made as it shows'} (${fanFirst.before} made before)`);
+  if (!fanFirst.drawn || !fanFirst.fan || fanFirst.after !== fanFirst.before || !(fanFirst.triangles > 100 && fanFirst.triangles <= 200)) problems.push(`a raider's first red fan of a voyage should need no new drawing made as it shows (and be about 170 triangles): ${JSON.stringify(fanFirst)}`);
   // the Settings card's other rows, chosen on the card at sea, each taking effect at once: the picture (Smooth: one
   // screen pixel to each of the page's, small shadows, half the cloud puffs, raiders' far models sooner, fewer sparks,
   // half the rain, no scud, no sun's rays and no glitter on the sea; Sharp, a laptop's own, back as it was), aim speed
@@ -2415,11 +2486,14 @@ if (!demoOnly) {
       g.step(25, {}, 1 / 30);
       const W = g.sky.weather;
       out.storm = { storm: +W.storm.toFixed(2), rain: g.sky.air.mesh.visible && g.sky.air.kind === 'rain', cover: +M.uCover.value.toFixed(3), wind: +g.wind.strength.toFixed(3), wave: g.waves.n + 1, raiders: g.raiders.list.length };
-      // (the storm's own draws: the frame as it is, against the same frame with its weather hidden)
-      W.strike = 99; g.sky.bolt.clear(); g.step(0.05, {}); out.stormCalls = calls();
-      const S = g.sky, shown = [S.air.mesh, S.scud.mesh, S.bolt.mesh, S.veil.mesh, S.glare.mesh].map((m) => m.visible);
-      [S.air.mesh, S.scud.mesh, S.bolt.mesh, S.veil.mesh, S.glare.mesh].forEach((m) => { m.visible = false; }); out.clearCalls = calls();
-      [S.air.mesh, S.scud.mesh, S.bolt.mesh, S.veil.mesh, S.glare.mesh].forEach((m, i) => { m.visible = shown[i]; }); W.strike = 1;
+      // (the storm's own draws: the frame as it is, against the same frame with its weather hidden. The veil of a big
+      // cloud the camera may be in is left out of both: it isn't the storm's, and the big clouds drift with the wind and
+      // the clock, so whether one has drifted over this spot depends on how long the checks before have flown)
+      W.strike = 99; g.sky.bolt.clear(); g.step(0.05, {});
+      const S = g.sky, veiled = S.veil.mesh.visible; S.veil.mesh.visible = false; out.stormCalls = calls(); out.veiled = veiled;
+      const shown = [S.air.mesh, S.scud.mesh, S.bolt.mesh, S.glare.mesh].map((m) => m.visible);
+      [S.air.mesh, S.scud.mesh, S.bolt.mesh, S.glare.mesh].forEach((m) => { m.visible = false; }); out.clearCalls = calls();
+      [S.air.mesh, S.scud.mesh, S.bolt.mesh, S.glare.mesh].forEach((m, i) => { m.visible = shown[i]; }); S.veil.mesh.visible = veiled; W.strike = 1;
       const n0 = g.sky.lightningCount; g.step(30, {}, 1 / 30); out.storm.lightning = g.sky.lightningCount - n0;
       for (const r of g.raiders.list) r.f.hit('hull', 1e9);
       g.step(0.5, {}); out.storm.beaten = g.waves.state; g.step(25, {}, 1 / 30); out.storm.after = +W.storm.toFixed(3);
@@ -2568,7 +2642,7 @@ if (!demoOnly) {
     return out;
   });
   console.log(`the cloud floor in JavaScript against the card's: within ${sky.cover.mean} on average (at most ${sky.cover.most}; ${sky.cover.thick} of 64 places thick); storms on Fair Winds: ${sky.storms.fair || 'none'}, Crosswinds ${sky.storms.cross}, Maelstrom ${sky.storms.mael}; banks of cloud ${sky.storms.banks}; the card before wave 4: "${sky.card}"`);
-  console.log(`a storm wave (wave ${sky.storm.wave}): 25 s in storm ${sky.storm.storm}, rain ${sky.storm.rain ? 'falling' : 'NONE'}, cloud ${sky.storm.cover}, wind ${sky.storm.wind}; ${sky.storm.lightning} lightning strikes in 30 s; drawn in ${sky.stormCalls} goes (${sky.clearCalls} clear); beaten (${sky.storm.beaten}), 25 s later ${sky.storm.after}; told ${JSON.stringify(sky.told)}`);
+  console.log(`a storm wave (wave ${sky.storm.wave}): 25 s in storm ${sky.storm.storm}, rain ${sky.storm.rain ? 'falling' : 'NONE'}, cloud ${sky.storm.cover}, wind ${sky.storm.wind}; ${sky.storm.lightning} lightning strikes in 30 s; drawn in ${sky.stormCalls} goes (${sky.clearCalls} clear${sky.veiled ? ', a big cloud\'s veil left out of both' : ''}); beaten (${sky.storm.beaten}), 25 s later ${sky.storm.after}; told ${JSON.stringify(sky.told)}`);
   console.log(`the bank of cloud wave ${sky.bank.wave} comes out of: ${sky.bank.banked} in sight, drawn ${sky.bank.off} m from where the game reckons it is (the smallest ${sky.bank.smallest} m), changing ${Math.round(sky.bank.changed * 100)}% of the picture looking at it; beaten (${sky.bank.beaten}), 5 s later ${sky.bank.after}`);
   console.log(`in a cloud: ${JSON.stringify(sky.inside)}, 2 km off and 500 m up ${JSON.stringify(sky.outside)}; raiders' hits in 60 s: in the open ${sky.aim.open.hits}, inside a cloud ${sky.aim.cloud.hits} (how deep: ${sky.aim.cloud.cloud})`);
   console.log(`hiding in the cloud floor: ${JSON.stringify(sky.hide)}`);
@@ -3597,6 +3671,7 @@ if (!demoOnly) {
     if (onHer.length !== 2 || !onHer[0].raked || onHer[1].raked || Math.abs(onHer[0].d / onHer[1].d - 1.5) > 0.01 || tac.rakedToast !== 'Raked! Don\'t let them cross your bow') problems.push(`a raider's broadside down the Captain's length should rake her (half as much again, the toast saying so), across her not: ${JSON.stringify({ onHer, toast: tac.rakedToast })}`);
     console.log(`tactics, shot earned at sea: ${earned.earned.join(' then ') || 'NOTHING'} (banners "${earned.banners.join('", "')}", "${earned.line}")`);
     if (earned.earned.join() !== 'chain,breaker' || !earned.shots.chain || !earned.shots.breaker || earned.banners[0] !== 'Chain shot!' || earned.banners[1] !== 'Crystal breakers!' || !earned.line.includes('press 3')) problems.push(`a treasure ship striking should earn chain shot, and a captain's Frigate crystal breakers, each said in a banner and kept: ${JSON.stringify(earned)}`);
+    console.log(`tactics, a shot earned as the wave ends: ${earnedProblems(await earnedLast(page), 'laptop', false)}`);
   }
   // the crew patching her, with the real X key (laptop): her sails at 40% patched to 73% in 6 s, a broadside's reload
   // taking twice as long meanwhile, and X again within 30 s doing nothing (the crew getting ready, said in a toast)
@@ -3676,11 +3751,25 @@ if (!demoOnly) {
       if (r.dodge > 0) dodged = t;
     }
     out.dodged = +dodged.toFixed(1); out.locked = g.locked === r;
+    g.raiders.setAI(false); g.raiders.clear();
+    // (but not the bow guns: a Skiff, with no broadside, her bow guns loaded and locked on to a raider Frigate 330 m
+    // ahead, for 10 s: she never dodges)
+    g.fly('skiff'); g.wind.strength = 0; g.waves.timer = 1e9; g.waves.state = 'fight';
+    const S = g.player; S.pos.set(0, 900, 0); S.heading = 0; S.full.hull = S.health.hull = 1e6;
+    const rb = g.raiders.spawn('frigate', S.pos.clone().add({ x: 0, y: 0, z: 330 }), Math.PI, false); g.raiders.setAI(true);
+    let bow = -1, lockedBow = 0;
+    for (let k = 0; k < 100 && bow < 0; k++) {
+      const v = rb.f.pos.clone().sub(S.pos); g.cam.yaw = Math.atan2(v.x, v.z) - S.heading; g.cam.pitch = 0.05;
+      for (const b in g.gunnery.ready) g.gunnery.ready[b] = 0;
+      g.step(0.1, {}); S.speed = 0.01; if (g.locked === rb) lockedBow++;
+      if (rb.dodge > 0) bow = +(k * 0.1 + 0.1).toFixed(1);
+    }
+    out.bow = { dodged: bow, locked: lockedBow };
     g.raiders.setAI(false); g.raiders.clear(); d.skies = 'cross';
     return out;
   });
-  console.log(`tactics, smarter raiders: a Brig the Captain points at turns ${smart.cross} on Crosswinds (to cross her bow), ${smart.fair} on Fair Winds (to come alongside); on the Maelstrom one locked on to with a loaded broadside at her ${smart.dodged >= 0 ? `dodged ${smart.dodged} s in` : 'NEVER DODGED'}`);
-  if (!(smart.cross < -0.2) || !(smart.fair > 0.2) || smart.dodged < 0) problems.push(`smarter raiders: on Crosswinds a big raider should turn to cross the Captain's bow (on Fair Winds come alongside), and on the Maelstrom dodge a loaded broadside: ${JSON.stringify(smart)}`);
+  console.log(`tactics, smarter raiders: a Brig the Captain points at turns ${smart.cross} on Crosswinds (to cross her bow), ${smart.fair} on Fair Winds (to come alongside); on the Maelstrom one locked on to with a loaded broadside at her ${smart.dodged >= 0 ? `dodged ${smart.dodged} s in` : 'NEVER DODGED'}, one ahead of a Skiff's loaded bow guns ${smart.bow.dodged >= 0 ? `DODGED ${smart.bow.dodged} s in` : 'never dodged'} (locked on ${smart.bow.locked} of 100 steps)`);
+  if (!(smart.cross < -0.2) || !(smart.fair > 0.2) || smart.dodged < 0 || smart.bow.dodged >= 0 || smart.bow.locked < 50) problems.push(`smarter raiders: on Crosswinds a big raider should turn to cross the Captain's bow (on Fair Winds come alongside), and on the Maelstrom dodge a loaded broadside (but not loaded bow guns): ${JSON.stringify(smart)}`);
   // pictures: a chain-shot volley, the red danger fan, a rake and the crew patching (looked at by eye)
   await page.evaluate(() => {
     const g = window.__game, d = g.progress.data; d.shots.chain = d.shots.breaker = true;
@@ -3878,8 +3967,19 @@ if (!quick && !demoOnly) {
   await wait(page, () => window.__game.player.patch.t > 0, null, 'phone: a tap on Patch starts the crew patching her');
   Object.assign(phoneTac, await page.evaluate(() => { const g = window.__game; g.step(0.15, {}); const b = document.getElementById('btn-patch'); return { patching: g.player.patch.part, ring: b.classList.contains('busy') && b.classList.contains('on') }; }));
   await undrawn(page, false); await page.waitForTimeout(1500); await shot(page, 'phone-shot-and-patch'); await undrawn(page, true);
+  // (the patch done, her hull over 70% again: the button stays, dimmed, its ring filling, while the crew get ready again;
+  // once they are, it goes)
+  Object.assign(phoneTac, await page.evaluate(() => {
+    const g = window.__game, P = g.player, b = document.getElementById('btn-patch'), now = () => ({ shown: !b.hidden && getComputedStyle(b).display !== 'none', busy: b.classList.contains('busy'), on: b.classList.contains('on'), k: +b.style.getPropertyValue('--k'), hull: +P.frac('hull').toFixed(2), cd: Math.round(P.patch.cd) });
+    g.step(Math.max(0, P.patch.t) + 0.2, {}); g.step(0.15, {}); const waiting = now();
+    g.step(P.patch.cd + 0.2, {}); g.step(0.15, {});
+    return { waiting, ready: now() };
+  }));
   console.log(`phone: the shot button ${phoneTac.shotBefore ? 'SHOWING WITH ROUND SHOT ONLY' : 'hidden with round shot only'}, ${phoneTac.shotShown ? 'shown' : 'NOT SHOWN'} with chain shot, a tap loading ${phoneTac.shot} ("${phoneTac.says}"); Patch ${phoneTac.patchFull ? 'SHOWING AT FULL HEALTH' : 'hidden at full health'}, ${phoneTac.patchHurt ? 'shown' : 'NOT SHOWN'} at hull 60%, a tap patching the ${phoneTac.patching ?? 'NOTHING'}${phoneTac.ring ? ', its ring filling' : ''}`);
+  console.log(`phone: patched, her hull at ${Math.round(phoneTac.waiting.hull * 100)}%, the Patch button ${phoneTac.waiting.shown ? `still showing${phoneTac.waiting.busy && !phoneTac.waiting.on ? ', dimmed' : ''}, its ring at ${phoneTac.waiting.k} with ${phoneTac.waiting.cd} s to wait` : 'GONE while the crew get ready again'}; ready again, ${phoneTac.ready.shown ? 'STILL SHOWING' : 'gone'}`);
   if (phoneTac.shotBefore || !phoneTac.shotShown || phoneTac.shot !== 'chain' || phoneTac.says !== 'Chain' || phoneTac.patchFull || !phoneTac.patchHurt || phoneTac.patching !== 'hull' || !phoneTac.ring) problems.push(`phone: the shot button should show once she has chain shot and load it with a tap, and Patch show once she's hurt and start the crew patching with a tap: ${JSON.stringify(phoneTac)}`);
+  const PW = phoneTac.waiting;
+  if (!(PW.hull > 0.7) || !PW.shown || !PW.busy || PW.on || !(PW.k > 0.1 && PW.k < 0.3) || !(PW.cd >= 28) || phoneTac.ready.shown) problems.push(`phone: once the crew have patched her (over 70% again), the Patch button should stay, dimmed, its ring filling, until they're ready again, then go: ${JSON.stringify({ waiting: PW, ready: phoneTac.ready })}`);
   await page.evaluate(() => { const g = window.__game, P = g.player; g.raiders.clear(); P.repair(1); g.pickShot('round'); g.step(0.15, {}); });
   // on a phone held upright a raider alongside is off screen, so her glowing ports can't be seen: a raider Frigate 270 m
   // off the side readying her broadside flashes her tag at the edge red, and it says "Broadside!". A raider Brig held
@@ -3908,6 +4008,17 @@ if (!quick && !demoOnly) {
       const held = () => document.getElementById('tags').classList.contains('held');
       g.pause(true); await frames(); seen.paused = states(); seen.held = held();
       g.pause(false); await frames(); seen.resumed = states(); seen.heldAfter = held(); // (empty if she has stopped readying it meanwhile)
+      // (and the view swung all round, her tag at the edge saying "Broadside!": on the stick's side of the screen (the
+      // left 42%) never lower than 70% of the way down, out from under the thumb that steers)
+      seen.thumb = []; seen.left = 0; seen.low = 0;
+      for (let k = 0; k < 12; k++) {
+        g.cam.yaw = k * Math.PI / 6; g.cam.pitch = 0.2; g.step(1 / 60, {}); g.placeTags(); g.placeTags();
+        if (!r.tag?.classList.contains('edge') || !r.tag.classList.contains('warn')) continue;
+        const b = r.tag.getBoundingClientRect();
+        if (b.left >= innerWidth * 0.42) continue;
+        seen.left++; seen.low = Math.max(seen.low, Math.round(b.bottom));
+        if (b.bottom > innerHeight * 0.7 + 1) seen.thumb.push(`${k * 30}°: ${Math.round(b.left)},${Math.round(b.bottom)}`);
+      }
     }
     g.raiders.setAI(false); g.raiders.clear(); g.bolts.clear(); P.full.hull = P.health.hull = hull0;
     return seen;
@@ -3915,6 +4026,8 @@ if (!quick && !demoOnly) {
   console.log(`phone: a raider alongside readying her broadside: her tag ${phoneWarn ? `${phoneWarn.edge ? 'at the edge' : 'ON SCREEN'}, ${phoneWarn.warn ? `flashing red, "${phoneWarn.says}"` : 'NOT FLASHING'}; another raider's tag at that edge too ${phoneWarn.apart} px from it, ${phoneWarn.overlap ? `OVERLAPPING BY ${phoneWarn.overlap} px²` : 'clear of it'}; paused, its flashing ${phoneWarn.paused.join(', ') || 'GONE'}; resumed, ${phoneWarn.heldAfter ? 'STILL HELD' : phoneWarn.resumed.join(', ') || 'no longer readying'}` : 'NEVER READIED ONE'}`);
   if (!phoneWarn?.edge || !phoneWarn.warn || phoneWarn.says !== 'Broadside!') problems.push(`phone: a raider alongside, off screen, readying her broadside should flash her tag red and say "Broadside!": ${JSON.stringify(phoneWarn)}`);
   if (phoneWarn && (!phoneWarn.otherEdge || phoneWarn.apart > 120 || phoneWarn.overlap)) problems.push(`phone: two raiders' tags at the same edge, one saying "Broadside!", should be stacked close but clear of each other: ${JSON.stringify(phoneWarn)}`);
+  console.log(`phone: her "Broadside!" tag at the edge, the view swung all round: on the stick's side ${phoneWarn?.left} times, ${phoneWarn?.thumb?.length ? `UNDER THE THUMB at ${phoneWarn.thumb.join('; ')}` : `never lower than ${phoneWarn?.low} px of ${844 * 0.7}`}`);
+  if (phoneWarn && (!(phoneWarn.left >= 2) || phoneWarn.thumb.length)) problems.push(`phone: a raider's "Broadside!" tag at the edge on the stick's side should stay above 70% of the screen's height, out from under the steering thumb: ${JSON.stringify({ left: phoneWarn.left, thumb: phoneWarn.thumb })}`);
   if (phoneWarn && (!phoneWarn.held || !phoneWarn.paused.length || phoneWarn.paused.some((s) => s !== 'paused') || phoneWarn.heldAfter || phoneWarn.resumed.some((s) => s !== 'running'))) problems.push(`phone: a tag's "Broadside!" should stop flashing while the game is paused, and flash again once it's resumed: ${JSON.stringify(phoneWarn)}`);
   // on a phone the effects have smaller budgets, and a raider's shot landing buzzes the phone (where it can: an
   // Android phone; an iPhone has no way to)
@@ -4017,9 +4130,17 @@ if (!quick && !demoOnly) {
     await page.setViewportSize({ width: w, height: h }); await page.waitForTimeout(500);
     await page.waitForFunction(([w, h]) => Math.abs(window.__game.camera.aspect - w / h) < 1e-6, [w, h], { timeout: 30000 }).catch(() => problems.push(`phone ${w}x${h}: the game never heard the window change size`));
     for (const p of await shotButton(page)) problems.push(`phone ${w}x${h}: the shot button: ${p}`);
-    const L = await layoutAt(page, HUD, PANELS, w === 360);
-    if (L.tacButtons !== 2) problems.push(`phone ${w}x${h}: the layout test should measure the shot and Patch buttons with the rest (${L.tacButtons} of 2 showing)`);
-    layouts.push(`${w}x${h}: ${layoutProblems(L, `phone ${w}x${h}`)}; a bounty ${bountyProblems(await bountyCard(page), `phone ${w}x${h}`)}`);
+    // as a new Captain sees it (round shot only and not hurt: no shot button, no Patch button, Surge on its own); with
+    // Fire on the left (the guns' label on the other side, by the buttons there), held sideways with both buttons and
+    // upright with the Patch button alone; then with both buttons showing (chain shot aboard, her hull at 60%)
+    const passes = [['as a new Captain sees it', { shot: false, hurt: false }], ['with Fire on the left', w > h ? { left: true } : { left: true, shot: false }], ['', {}]];
+    for (const [what, o] of passes) {
+      const L = await layoutAt(page, HUD, PANELS, w === 360 && !what, o), want = (o.shot ?? true) + (o.hurt ?? true), where = `phone ${w}x${h}${what ? ` ${what}` : ''}`;
+      if (L.tacButtons !== want) problems.push(`${where}: the layout test should measure ${want ? `the ${want === 2 ? 'shot and Patch buttons' : 'Patch button'}` : 'no shot or Patch button'} with the rest (${L.tacButtons} of the two showing)`);
+      layouts.push(`${w}x${h}${what ? ` ${what}` : ''}: ${layoutProblems(L, where)}`);
+    }
+    layouts.push(`${w}x${h}: a bounty ${bountyProblems(await bountyCard(page), `phone ${w}x${h}`)}`);
+    if (h === 360 || h === 320 || h === 844) layouts.push(`${w}x${h}: a shot earned as the wave ends: ${earnedProblems(await earnedLast(page), `phone ${w}x${h}`, true)}`);
   }
   console.log(`phone layouts: ${layouts.join('; ')}`);
   // reading a fight from afar on a phone: upright, a raider's glows, scars and fire and a far wake; held sideways, two

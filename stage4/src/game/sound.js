@@ -16,7 +16,8 @@
 //                      the Surge fills the sails with a rush, and as the next one charges a hum climbs to full and a
 //                      soft ping says it's ready; locking on clicks; a broadside loaded again clacks
 //   tactics            loading another shot clacks like a crossbow drawn; a shot earned at sea rings like a charm; the
-//                      crew patching her ring out with a hammer on an anvil
+//                      crew patching her ring out with a hammer on an anvil; a raider readying her broadside at you
+//                      gives a short rising call from her side (so one behind you, off the screen, is heard too)
 //   Chris's effects    (sounds.js) for the moments they fit: setting sail and coming home, a wave arriving (an alarm, a
 //                      boss's brass for a captain or a Man-o'-war, a pirate phrase for a treasure ship), a wave beaten,
 //                      the ship lost, alarms when she's badly hurt, a soft chord on crossing into another region,
@@ -73,7 +74,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 // only: none in an offline check). Each takes the event's payload; nothing in them makes anything but sound nodes
 export function makeCues(M, B, { touch = false, effect = null } = {}) {
   const K = touch ? 4 : 6, KR = touch ? 3 : 5; // how many booms a broadside gets, the Captain's and a raider's
-  const S = { lastWhiz: -9, lastChime: -9, lastLock: -9 }; // (when each was last played)
+  const S = { lastWhiz: -9, lastChime: -9, lastLock: -9, lastWarn: -9 }; // (when each was last played)
   const hitKey = { player: { hull: 'ph', sails: 'ps', crystals: 'pc' }, raider: { hull: 'rh', sails: 'rs', crystals: 'rc' } };
   const PART = { hull: 'wood', sails: 'canvas', crystals: 'crystal' };
   const C = {};
@@ -191,6 +192,17 @@ export function makeCues(M, B, { touch = false, effect = null } = {}) {
     const s = M.voice('ui', 0.5, t);
     if (s) M.play(s, 'ui', 0.5, B.tick[1], t, 1, 0.22, '', M.ui);
   };
+  // a raider readying her broadside at you: a short rising call from her side, as loud from far as near (it's a
+  // warning), not more than once in 0.6 s (two readying at once: one call)
+  C.warn = (e) => {
+    const t = M.now();
+    if (t - S.lastWarn < 0.6 || !e.raider) return;
+    S.lastWarn = t;
+    const side = M.at(e.raider.f.pos, 0.1).pan / Math.max(0.35, 0.35 + 0.6 * M.P.near); // (which side, whatever the distance)
+    M.here(clamp(side * 0.8, -0.8, 0.8), 0.12);
+    const s = M.voice('ui', 1.5, t);
+    if (s) M.play(s, 'ui', 1.5, B.warn[0], t, 1, 0.32);
+  };
   // a broadside loaded and run out again: two wooden clacks
   C.ready = (e) => {
     if (e.firing) return;
@@ -284,6 +296,7 @@ export function makeSound({ audio, touch = false, where = () => null, weather = 
   cue('shards:spill', (e) => { if (!audio.mixer) return; const P = M().at(e.at, 0.3); if (!P.cull) audio.effect('coins', CHRIS.coins, 'fx', P.delay); });
   cue('lock', withCues((c, e) => c.lock(e)));
   cue('guns:ready', withCues((c, e) => c.ready(e)));
+  cue('warn', withCues((c, e) => c.warn(e)));
   cue('raider:escaped', () => fx('hex'));
   cue('shot', (e) => fx(e.why === 'earned' ? 'charm' : 'crossbow', 'ui', 0, e.why === 'earned' ? 1 : 0.6));
   cue('patch', (e) => { if (e.stage === 'start') fx('anvil', 'ui', 0, 0.55); });

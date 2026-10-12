@@ -11,11 +11,14 @@
 //   patching       the crew patch whatever's worst off (hull, sails or crystals) by a third over six seconds, while the
 //                  guns reload at half speed; then they need thirty seconds before they can again (flight.js)
 //   the warning    how long a raider's gun ports glow before her broadside is the skies' (progress.js `warn`); her
-//                  gunners aim where the Captain will be if she holds her course (raiders.js), so climbing, diving or
-//                  turning out of her red fan makes the whole broadside miss
+//                  gunners aim where the Captain will be if she holds her course (raiders.js), so climbing out of her
+//                  red fan makes the whole broadside miss (diving, about half of it: her shots may still find the
+//                  sails; a hard turn away carries only a Skiff or a Cutter clear in time, and turning towards her
+//                  makes it worse: measured, play review October 12)
 //   smarter raiders  on Crosswinds and the Maelstrom (progress.js `smart`): big raiders try to cross your bow to rake
 //                  you; on the Maelstrom small ones also come at your stern, and one your guns are locked on to, with
-//                  your loaded broadside pointed at her, may climb or dive out of it (raiders.js steer)
+//                  your loaded broadside pointed at her (not your bow or stern guns), may climb or dive out of it
+//                  (raiders.js steer)
 import * as THREE from 'three';
 
 // each shot: its name in words (and a short one for the phone's button), times as hard on each part, times as fast and

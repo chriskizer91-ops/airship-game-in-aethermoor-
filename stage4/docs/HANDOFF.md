@@ -145,7 +145,17 @@ which were made from this repository only):
    Maelstrom's). In the simulated fights raiders seldom manage a rake (a plain Captain keeps them abeam, and the
    crossing is easy to spoil): named captains (D2b) could make more of it. `tools/sim-fight.mjs` gained `--dodge`,
    `--react`, `--shot`, `--patch`, `--policy cross`, `--skilled`, and `--smart`/`--warn` for tuning, and reports
-   broadside and light-gun damage a minute and raking hits.
+   broadside and light-gun damage a minute and raking hits. Polished after review (October 12): a shot earned by the
+   deed that ends a wave goes in `W.news`, said in the card's title and then in its banner at `sailOn()` (`tellNews`);
+   a banner still up as the card rises is cut to its fade; the fan is a rounded cone (guns.js `fanGeometry`), so its
+   bands are rings from inside, and its shader is made ready (never drawn) as each voyage starts: `renderer.compile` of a
+   fan with a fresh material copy (raiders.js `fanToWarm`, called in main.js `sail()`: three.js keys a new material's
+   shader by the lights in the sky, the ship's lamps among them); the Maelstrom's dodge answers broadsides only; `edgeBottom`
+   keeps a "Broadside!" edge tag above 70% of the height on the stick's side on touch screens; sound.js `warn` calls
+   from her side; Patch shows through the whole wait (`PT.cd > 0`); between waves on phones the crosshair hides (and,
+   held sideways, the toast sits lower and the warning hides) so a long card fits; the sideways rules for the guns'
+   label are written as strongly as the upright ones (a 640 by 360 phone matches both); `layoutAt` takes `{ shot,
+   hurt, left }` and the phone passes cover a new Captain, Fire on the left and both buttons.
 3. **D2b-fights-foes**: raiders with nerve, named captains, wave arrivals, the Man-o'-war's fortress battle, a line of
    battle, choosing the road between waves.
 4. **D3-progression**: save version 2, a gentle first voyage, the homecoming summary, commendations and a Captain's

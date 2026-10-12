@@ -22,7 +22,8 @@
 // showing where her guns can reach (guns.js fanGeometry), and the lids on that side fly open and her guns run out
 // (looks.js): for the skies' warning time (progress.js `warn`: 1 s on Fair Winds, 0.8 on Crosswinds, 0.6 on the
 // Maelstrom; a little longer on the two big ships). Her gunners aim then, where the Captain will be when the side goes
-// off if she holds her course, and that's where it goes: climb, dive or turn out of the red and it misses. Then her
+// off if she holds her course, and that's where it goes: climb out of the red and it misses (dive, and about half of
+// it may still find her; a hard turn carries only a Skiff or a Cutter clear in time). Then her
 // side ripples off, bow to stern (guns.js). Her broadside crews reload quicker than her light guns' (RAIDER.broadside),
 // so she fires as often as before the warning made her wait.
 // On Crosswinds and the Maelstrom they fight smarter (progress.js `smart`, tactics.js SMART): a big raider the Captain
@@ -367,7 +368,7 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
     // works it out again as its turn comes, so the last guns still lead her)
     r.lead = (from, K, out) => intercept(from, f.velocity, foeNow.aimAt(), foeNow.velocity, K.speed, out);
     // a readied broadside's guns aim where the foe would be had she held her course since it began to be readied: each
-    // gun as its turn comes, leading that course (so climbing, diving or turning away makes the whole side miss)
+    // gun as its turn comes, leading that course (so climbing out of it makes the whole side miss)
     const held = new THREE.Vector3(), course = (A) => (from, K, out) => intercept(from, f.velocity, held.copy(A.p).addScaledVector(A.v, clock - A.at), A.v, K.speed, out);
     r.held = { port: course(r.aimed.port), starboard: course(r.aimed.starboard) };
     gun.from = r; // (each of her bolts remembers her, so a hit on the Captain can tell who fired it)
@@ -443,12 +444,13 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
       want = bearing - r.side * (Math.PI / 2 - k * 0.9);
       sailTo = 0.75;
     }
-    // (smartest: one the foe's guns are locked on to, with a loaded broadside pointed at her, may climb or dive out of it)
+    // (smartest: one the foe's guns are locked on to, with a loaded broadside pointed at her, may climb or dive out of it;
+    // a broadside only, not her bow or stern guns, a few light guns she shrugs off)
     // (her height over the foe kept, to come back to after the dodge; the foe's guns' reach and aim for the shot they're
     // loaded with)
     if (smart >= 2 && r.sees && foe.locked === r && r.dodge <= 0 && Math.random() < SMART.dodge * dt) {
       const g = foe.gun, b = g && batteryFor(wrap(Math.atan2(-dx, -dz) - foe.heading));
-      if (b && g.ready[b] === 0 && g.count(b) && g.reaches(b, me.aimAt(g.shot))) { r.dodge = SMART.hold; r.alt0 = r.alt; r.alt += (r.alt > 0 ? -1 : 1) * SMART.alt; }
+      if ((b === 'port' || b === 'starboard') && g.ready[b] === 0 && g.count(b) && g.reaches(b, me.aimAt(g.shot))) { r.dodge = SMART.hold; r.alt0 = r.alt; r.alt += (r.alt > 0 ? -1 : 1) * SMART.alt; }
     }
     if (r.dodge > 0 && (r.dodge -= dt) <= 0) r.alt = r.alt0;
     // keep clear of the other raiders
@@ -508,6 +510,19 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
   const fanGeo = fanGeometry(KINDS.broadside, FAN.reach), FWD = new THREE.Vector3(0, 0, 1), fanTime = { value: 0 };
   const fanMat = new THREE.ShaderMaterial({ vertexShader: FAN_VERT, fragmentShader: FAN_FRAG, transparent: true, depthWrite: false, side: THREE.DoubleSide,
     uniforms: { uColor: { value: new THREE.Color(FAN.color) }, uK: { value: 0 }, uTime: fanTime, uYaw: { value: KINDS.broadside.yaw }, uReach: { value: FAN.reach } } });
+  fanMat.name = 'danger fan';
+  // (its shader made ready before any warning, never drawn: main.js has three.js make it as each voyage starts, for a
+  // fan of its own (fanToWarm) with a fresh copy of the material, lit as the sky at sea is then. three.js makes a new
+  // copy's shader for the lights in the sky (the lamps of the ship she sails among them), and each raider's fans are
+  // new copies, so they find it made. Made the first time a raider readies a broadside, it would stutter a phone just as
+  // the Captain must see the warning)
+  const warmFan = new THREE.Mesh(fanGeo, fanMat);
+  warmFan.name = 'danger fan, made ready';
+  function fanToWarm() {
+    if (warmFan.material !== fanMat) warmFan.material.dispose();
+    warmFan.material = fanMat.clone();
+    return warmFan;
+  }
   function fanFor(r, b) {
     r.fans ??= {};
     let m = r.fans[b];
@@ -607,6 +622,6 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
     for (const k in T) { glowsOf(T[k].mid.body, px); glowsOf(T[k].far.body, px); }
     for (const r of list) r.ship.scale(px);
   }
-  return { list, escaped, spawn, spawnWave, update, hitBy, clear, prepare, prepareWave, model, paintings: read, templates: T, setScale, get scale() { return scale; },
+  return { list, escaped, spawn, spawnWave, update, hitBy, clear, prepare, prepareWave, fanToWarm, model, paintings: read, templates: T, setScale, get scale() { return scale; },
     setAI: (on) => { ai = on; }, setDetail: (k) => { detailAt = k; }, get detailAt() { return detailAt; } };
 }

@@ -74,24 +74,24 @@ export function clampToArc(want, axis, yawMax, pitchMax, out = new THREE.Vector3
 }
 
 // The red danger fan a raider shows while she readies a broadside (raiders.js): where that side's guns can reach, as a
-// wedge in the gun's own frame (+z the way it points, +y up): across its swing (K.yaw each way, in `segs` slices), its
-// top and bottom faces at its tilt (K.pitch up and down) and its two sides, out to `reach` metres (in rings, so the
-// glow drawn on it can fade out along it: raiders.js). Made once (one shape for every raider), about 170 triangles
-export function fanGeometry(K, reach, segs = 16, rings = 3) {
-  const pos = [], idx = [];
-  const at = (a, p, r) => { pos.push(Math.sin(a) * Math.cos(p) * r, Math.sin(p) * r, Math.cos(a) * Math.cos(p) * r); return pos.length / 3 - 1; };
-  // the top and bottom faces: rings out from her side, each a row of corners across the swing
-  for (const p of [K.pitch, -K.pitch]) {
-    const apex = at(0, p, 0), rows = [];
-    for (let j = 1; j <= rings; j++) { const row = []; for (let i = 0; i <= segs; i++) row.push(at(-K.yaw + (2 * K.yaw * i) / segs, p, (reach * j) / rings)); rows.push(row); }
-    for (let i = 0; i < segs; i++) idx.push(apex, rows[0][i], rows[0][i + 1]);
-    for (let j = 1; j < rings; j++) for (let i = 0; i < segs; i++) { const a = rows[j - 1], b = rows[j]; idx.push(a[i], b[i], b[i + 1], a[i], b[i + 1], a[i + 1]); }
+// fan in the gun's own frame (+z the way it points, +y up), out to `reach` metres: a cone flattened to her guns' swing
+// (K.yaw each way) and tilt (K.pitch up and down), round in section, a little squarer than an ellipse (so it nearly
+// fills the corners of the swing and tilt), in `segs` slices round and `rings` rings out from her side (so the glow
+// drawn on it can fade out along it, raiders.js). Round, not boxy: seen from inside it, as the Captain she's aiming at
+// always sees it, its bands of red are rings round her, not frames, and no flat side stands across the view. Made
+// once (one shape for every raider), about 170 triangles
+export function fanGeometry(K, reach, segs = 24, rings = 4) {
+  const pos = [0, 0, 0], idx = [], sq = (v) => Math.sign(v) * Math.abs(v) ** 0.8;
+  for (let j = 1; j <= rings; j++) {
+    const r = (reach * j) / rings;
+    for (let i = 0; i < segs; i++) {
+      const th = (2 * Math.PI * i) / segs, a = K.yaw * sq(Math.cos(th)), p = K.pitch * sq(Math.sin(th));
+      pos.push(Math.sin(a) * Math.cos(p) * r, Math.sin(p) * r, Math.cos(a) * Math.cos(p) * r);
+    }
   }
-  // its two sides, from the top face's edge down to the bottom's
-  for (const a of [-K.yaw, K.yaw]) {
-    let up = at(a, K.pitch, 0), dn = at(a, -K.pitch, 0);
-    for (let j = 1; j <= rings; j++) { const u = at(a, K.pitch, (reach * j) / rings), d = at(a, -K.pitch, (reach * j) / rings); idx.push(up, dn, d, up, d, u); up = u; dn = d; }
-  }
+  const at = (j, i) => 1 + (j - 1) * segs + (i % segs);
+  for (let i = 0; i < segs; i++) idx.push(0, at(1, i), at(1, i + 1));
+  for (let j = 2; j <= rings; j++) for (let i = 0; i < segs; i++) idx.push(at(j - 1, i), at(j, i), at(j, i + 1), at(j - 1, i), at(j, i + 1), at(j - 1, i + 1));
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx);
   g.computeBoundingSphere();
