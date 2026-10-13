@@ -129,7 +129,18 @@
 //                     Captain's broadside smoke at a raider Frigate 380 m off and 42 m lower, locked on: her box hidden
 //                     10% at most at 2.5, 3.5 and 4.5 s, where the same smoke left as it was (the same luck) hides 20% or
 //                     more, with most of the smoke still there, each puff keeping its own picture and turn, and a
-//                     raider's own broadside smoke across the same line never thinned. Foes worth remembering (tactics.js NERVE, CAPTAINS, PLATE, FORT, LINE, ROADS): a
+//                     raider's own broadside smoke across the same line never thinned. The touch-ups after stage 4c's
+//                     gate: a raider Brig set down along a line through a bank of cloud (in a storm and in clear air),
+//                     how much of her really shows as drawn (painted white, then black, with the clouds and without):
+//                     lost only where half of her or less shows, lost somewhere, and in the storm somewhere deep in the
+//                     cloud showing over half and not lost; sailing the Man-o'-war (laptop, and a phone upright), the
+//                     crosshair on a raider Man-o'-war ahead and below at four places, her own ship hiding 10% of the
+//                     raider at most, locked on, and every ship's view at rest turning round her middle; crystal
+//                     breakers fired level at a side-on Frigate 380 m off aimed within the middle half of what shows
+//                     of her crystals over her rail, a tenth fewer of them missing her than aimed at their tops (the
+//                     same luck), and as many on her crystals; a wave bursting up through the clouds 35 degrees to the left, on a phone held upright
+//                     off the view (the toast pointing left, her tag at the left edge glowing a moment) and on a laptop
+//                     in it (no arrow). Foes worth remembering (tactics.js NERVE, CAPTAINS, PLATE, FORT, LINE, ROADS): a
 //                     frozen crew Cutter at 40% hull, her sails shot away, striking her colours (half as many shards
 //                     again, with the wave's and the skies' bonus, said so), her pennants down and a white flag up her
 //                     mast, turned to the camera so it shows seen along her length; a fighting Brig, the last of her
@@ -166,9 +177,9 @@
 //                     first readied in it, and under the cloud floor within a minute or so; the road between waves, in
 //                     a real voyage: none after wave 1, a treasure ship's trail after wave 2 (the steady raiders and a
 //                     treasure Brig; the mouse kept locked), a hunt for the Cloud Fox in a Brig after wave 3 (the
-//                     countdown taking the steady course), none before her wave, the storm road after wave 5 (one ship
-//                     more, in a storm, shards 1.5 times and the wave's bonus double), a hunt for the Sail-Ripper in a
-//                     Frigate after wave 6 (her bounty a quarter more, her own wave then plain), never a storm road on
+//                     countdown taking the steady course), none before her wave, the storm road after wave 5 (the same
+//                     raiders, in a storm, shards 1.5 times and the wave's bonus double), a hunt for the Sail-Ripper in a
+//                     Frigate after wave 6 (her bounty half as much again, her own wave then plain), never a storm road on
 //                     Fair Winds; the real 2 key loading chain shot until the card has risen, then taking the road;
 //                     pictures of a named captain's banner, a raider striking, a flare, each way a wave arrives, a line
 //                     of battle, the Man-o'-war's guns silenced, her boats and her sinking, and the road between
@@ -2007,6 +2018,180 @@ function smokeClearProblems({ on, off }, where) {
   console.log(`${where}, her gunsmoke's pictures while it keeps clear: ${L.puffs} puffs, ${L.different} different pictures and turns${L.zero ? ' (ALL NONE)' : ''}${L.onCamera ? `, ${L.onCamera} WRITTEN ON THE CAMERA` : ''}`);
   if (!(L.puffs >= 10) || !(L.different >= Math.min(L.puffs, 10)) || L.zero || L.onCamera) problems.push(`${where}: each puff of smoke should keep its own picture and turn while her smoke keeps clear of her target (and nothing be written on the camera): ${JSON.stringify(L)}`);
   if (on.raiderThinned || !(on.raiderPuffs > 0)) problems.push(`${where}: a raider's gunsmoke should never be thinned: ${JSON.stringify({ puffs: on.raiderPuffs, thinned: on.raiderThinned })}`);
+}
+// ---------- the touch-ups after stage 4c's gate (D3-touchups) ----------
+// Lost in the cloud only while the cloud hides her (sky.js shows, world.js veil). A bank of cloud 700 m ahead of the
+// Captain, held still, and a raider Brig (frozen) set down at 13 places along a line that runs through it towards her,
+// from 1,000 m to 400 m off, the view aimed at her: wherever she's deep in the bank's cloud, how much of her really
+// shows as drawn (her ship painted all white, then all black, her lights and lines hidden: the difference is how much
+// of her comes through what's in front of her, whatever is behind her; with the clouds and the haze, over the same
+// without them), and whether she's lost. In a storm (the clouds grey) and in clear air: lost only where at most half of
+// her shows; lost somewhere (the bank still hides her); and in the storm, deep in the cloud somewhere with over half of
+// her showing and not lost (drawn in front of the cloud's middle, or through its thin edge: the old rule lost her there)
+const CLOUD_LOST = (storm) => {
+  const g = window.__game, d = g.progress.data, skies = d.skies, rnd = Math.random;
+  let s = 41; Math.random = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  try {
+    d.skies = 'cross'; g.fly('brig'); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false); g.raiders.clear(); g.waves.state = 'fight';
+    const P = g.player, V = P.pos.constructor; P.pos.set(-9000, 700, -6500); P.heading = 0; P.speed = 0; P.sail = 0;
+    const dir = new V(Math.sin(0.35), 0, Math.cos(0.35)), far = P.pos.clone().addScaledVector(dir, 1600);
+    if (storm) { g.sky.startStorm(0); g.sky.weather.storm = 1; }
+    const r = g.raiders.spawn('brig', far.clone(), 0.35 + Math.PI / 2, true); // (first: with none, the wave would be beaten, and its bank gone)
+    g.world.puffs.bank(far, P.pos, 900); g.step(3, { sail: -1 });
+    const gl = g.renderer.getContext(), Wd = g.renderer.domElement.width, Ht = g.renderer.domElement.height;
+    const frame = () => { g.renderer.render(g.scene, g.camera); const px = new Uint8Array(Wd * Ht * 4); gl.readPixels(0, 0, Wd, Ht, gl.RGBA, gl.UNSIGNED_BYTE, px); return px; };
+    const sum = (a, b) => { let n = 0; for (let i = 0; i < a.length; i += 4) n += Math.max(Math.abs(a[i] - b[i]), Math.abs(a[i + 1] - b[i + 1]), Math.abs(a[i + 2] - b[i + 2])); return n; };
+    const MB = g.wrecks.flagToWarm().material.constructor, white = new MB({ color: 0xffffff }), black = new MB({ color: 0x000000 });
+    const fog = g.scene.fog, clouds = [g.world.puffs.mesh, g.world.deck, g.sky.veil.mesh, g.sky.scud.mesh];
+    const real = () => {
+      const swap = []; r.ship.root.traverse((o) => { if (o.isMesh) swap.push([o, o.material]); else if (o.isPoints || o.isLine) swap.push([o, null, o.visible]); });
+      const paint = (m) => swap.forEach(([o, mat]) => { if (mat) o.material = m; else o.visible = false; });
+      const was = clouds.map((o) => o.visible), near = fog.near, fogFar = fog.far;
+      try {
+        paint(white); const A = frame(); paint(black); const B = frame();
+        clouds.forEach((o) => { o.visible = false; }); fog.near = fog.far = 1e9; const D = frame(); paint(white); const C = frame();
+        const all = sum(C, D); return all > 0 ? +(sum(A, B) / all).toFixed(2) : -1;
+      } finally { clouds.forEach((o, i) => { o.visible = was[i]; }); fog.near = near; fog.far = fogFar; swap.forEach(([o, mat, v]) => { if (mat) o.material = mat; else o.visible = v; }); }
+    };
+    const out = { storm, at: [] };
+    for (let k = 0; k < 13; k++) {
+      r.f.pos.copy(P.pos).addScaledVector(dir, 1000 - k * 50); r.f.pos.y = 715; r.ship.root.position.copy(r.f.pos); // (her model with her: she's frozen)
+      const v = r.f.pos.clone().sub(P.pos), u = v.clone().normalize(); g.cam.yaw = Math.atan2(v.x, v.z) - P.heading; g.cam.pitch = Math.max(-0.35, -Math.asin(u.y) + 0.03); g.input.lastLook = performance.now() / 1000 + 120;
+      g.step(0.1, { sail: -1 }); P.pos.y = 700;
+      if (r.clouded) out.at.push({ d: Math.round(r.f.pos.distanceTo(P.pos)), lost: r.lost, shows: +r.shows.toFixed(2), real: real() });
+    }
+    return out;
+  } finally { Math.random = rnd; d.skies = skies; g.sky.reset(); g.world.puffs.bank(null); g.raiders.clear(); }
+};
+function cloudLostProblems(L, where) {
+  const words = L.at.map((x) => `${x.d} m: ${Math.round(x.real * 100)}% of her showing${x.lost ? ', lost' : ''}`).join('; ');
+  const wrong = L.at.filter((x) => x.lost && x.real > 0.5);
+  if (wrong.length) problems.push(`${where}${L.storm ? ', in a storm' : ''}: a raider should be lost in cloud only while it hides most of her: ${JSON.stringify(wrong)}`);
+  if (!L.at.some((x) => x.lost && x.real < 0.3)) problems.push(`${where}${L.storm ? ', in a storm' : ''}: a bank of cloud should still hide a raider deep in it (lost): ${JSON.stringify(L.at)}`);
+  if (L.storm && !L.at.some((x) => !x.lost && x.real > 0.5)) problems.push(`${where}, in a storm: a raider deep in the bank but plainly showing (in front of a cloud's middle, or through its thin edge) should not be lost: ${JSON.stringify(L.at)}`);
+  return `${L.storm ? 'in a storm' : 'in clear air'}, a Brig in a bank of cloud ${words}`;
+}
+// A view past your own big ship (main.js pivot): sailing the Man-o'-war, the crosshair on a raider Man-o'-war ahead and
+// below her (350 m off and 90 m down, 260 and 140, 190 and 170, and off her bow, 320 and 110), how much of the raider
+// her own ship hides (the raider painted all white, then all black, with the Captain's ship drawn and hidden): 10% at
+// most (her foremast, sails and bow hid a third of one 190 m off and 170 m down), the guns locked on; and each of the
+// six ships' view at rest (looking ahead, a little down) turning round her middle, as it always has
+const OWN_VIEW = () => {
+  const g = window.__game, d = g.progress.data, skies = d.skies, out = { at: [], rest: {} };
+  try {
+    d.skies = 'cross';
+    for (const id of ['skiff', 'cutter', 'brig', 'frigate', 'galleon', 'manowar']) {
+      g.fly(id); const P = g.player, q = g.pivot(0, 0.2), mid = P.pos.clone(); mid.y += P.ship.recipe.length * 0.42 + 2;
+      out.rest[id] = +q.distanceTo(mid).toFixed(2);
+    }
+    g.fly('manowar'); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false); g.raiders.clear(); g.waves.state = 'fight';
+    const P = g.player, V = P.pos.constructor;
+    const MB = g.wrecks.flagToWarm().material.constructor, white = new MB({ color: 0xffffff }), black = new MB({ color: 0x000000 });
+    const gl = g.renderer.getContext(), Wd = g.renderer.domElement.width, Ht = g.renderer.domElement.height;
+    const frame = () => { g.renderer.render(g.scene, g.camera); const px = new Uint8Array(Wd * Ht * 4); gl.readPixels(0, 0, Wd, Ht, gl.RGBA, gl.UNSIGNED_BYTE, px); return px; };
+    const sum = (a, b) => { let n = 0; for (let i = 0; i < a.length; i += 4) n += Math.max(Math.abs(a[i] - b[i]), Math.abs(a[i + 1] - b[i + 1]), Math.abs(a[i + 2] - b[i + 2])); return n; };
+    for (const [bearing, dist, dy] of [[0, 350, -90], [0.1, 260, -140], [-0.05, 190, -170], [0.5, 320, -110]]) {
+      g.raiders.clear(); P.pos.set(-9000, 1200, -6500); P.heading = 0; P.speed = 0; P.sail = 0;
+      const r = g.raiders.spawn('manowar', new V(Math.sin(bearing) * dist, dy, Math.cos(bearing) * dist).add(P.pos), 1.2, true), at = r.f.aimAt();
+      // (the crosshair put on her from where the camera is, again as the view moves)
+      for (let i = 0; i < 5; i++) {
+        const f = at.clone().sub(g.camera.position).normalize();
+        g.cam.pitch = Math.max(-0.35, Math.min(1.25, -Math.asin(f.y))); const b = Math.atan2(f.x, f.z) - P.heading; g.cam.yaw = Math.atan2(Math.sin(b), Math.cos(b)); g.input.lastLook = performance.now() / 1000 + 120;
+        g.step(i ? 0.1 : 0.3, { sail: -1 }); P.pos.set(-9000, 1200, -6500);
+      }
+      const swap = []; r.ship.root.traverse((o) => { if (o.isMesh) swap.push([o, o.material]); else if (o.isPoints || o.isLine) swap.push([o, null, o.visible]); });
+      const paint = (m) => swap.forEach(([o, mat]) => { if (mat) o.material = m; else o.visible = false; });
+      let shows = -1;
+      try { paint(white); const A = frame(); paint(black); const B = frame(); P.ship.root.visible = false; const D = frame(); paint(white); const C = frame(); shows = +(sum(A, B) / Math.max(1, sum(C, D))).toFixed(2); }
+      finally { P.ship.root.visible = true; swap.forEach(([o, mat, v]) => { if (mat) o.material = mat; else o.visible = v; }); }
+      out.at.push({ dist, dy, bearing, shows, locked: g.locked === r, pitch: +g.cam.pitch.toFixed(2), out: +g.pivot().distanceTo(P.pos.clone().setY(P.pos.y + P.ship.recipe.length * 0.42 + 2)).toFixed(1) });
+    }
+    return out;
+  } finally { d.skies = skies; g.raiders.clear(); }
+};
+function ownViewProblems(O, where) {
+  const words = O.at.map((x) => `${x.dist} m off, ${-x.dy} m down: ${Math.round((1 - x.shows) * 100)}% of her hidden (the view ${x.out} m out)${x.locked ? '' : ' NOT LOCKED ON'}`).join('; ');
+  const bad = O.at.filter((x) => !(x.shows >= 0.9) || !x.locked), moved = Object.entries(O.rest).filter(([, v]) => v > 0.01);
+  if (bad.length) problems.push(`${where}: sailing the Man-o'-war, a raider below her aimed at should be hidden 10% at most by her own ship, the guns locked on: ${JSON.stringify(bad)}`);
+  if (moved.length) problems.push(`${where}: each ship's view at rest (looking ahead, a little down) should turn round her middle as it always has: ${JSON.stringify(O.rest)}`);
+  return `sailing the Man-o'-war, a raider Man-o'-war below her aimed at, ${words}; the view at rest round her middle in all six${moved.length ? ` (NOT: ${moved.map(([k]) => k).join(', ')})` : ''}`;
+}
+// Crystal breakers fired level (raiders.js aimAt): the Captain's Frigate with a raider Frigate 380 m off her beam,
+// side-on and at her height (frozen, and too tough to fall), the crosshair on her and the guns locked on, ten
+// broadsides of breakers, three times over with different luck: how many shots hit her crystals, her other parts, or
+// nothing; and the same volleys (the same luck) aimed at the tops of her crystals, as they were. The breakers aim within
+// the middle half of what shows of her crystals over her rail, and land on her more often than aimed at their tops (a
+// tenth fewer missing her, or more: aimed there, three in five of a level volley flew over her), and on her crystals as
+// often or more (within a twentieth: the shot's own spread across her narrow crystals decides most of that)
+const BREAKER_AIM = () => {
+  const g = window.__game, d = g.progress.data, skies = d.skies, had = d.shots.breaker, rnd = Math.random, out = {};
+  try {
+    for (const way of ['aimed', 'tops']) {
+      const tot = { shots: 0, crystals: 0, hull: 0, sails: 0, locked: 0, volleys: 0 };
+      for (const seed of [17, 99, 1234]) {
+        let s = seed; Math.random = () => (s = (s * 16807) % 2147483647) / 2147483647;
+        d.skies = 'cross'; d.shots.breaker = true; g.fly('frigate'); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false); g.raiders.clear(); g.bolts.clear(); g.waves.state = 'fight';
+        const P = g.player, V = P.pos.constructor; P.pos.set(3000, 900, 2000); P.heading = 0; P.speed = 0.01; P.sail = 0;
+        const r = g.raiders.spawn('frigate', P.pos.clone().add({ x: 380, y: 0, z: 0 }), 0, true);
+        for (const k of ['hull', 'sails', 'crystals']) r.f.full[k] = r.f.health[k] = 1e9;
+        // (where her middle crystals stand: their foot, their tops, and her rail there; and the aim, in her own frame)
+        const Z = r.zones, cb = Z.crystals[Z.crystals.length >> 1], zc = (cb.min.z + cb.max.z) / 2, M = r.ship.body.matrixWorld;
+        let rail = cb.min.y; for (let y = cb.min.y; y < Z.hullBox.max.y + 0.5; y += 0.1) if (Z.inHull(new V(0, y, zc))) rail = y;
+        out.window = [+rail.toFixed(1), +cb.max.y.toFixed(1)];
+        if (way === 'aimed') out.aimY = +r.f.aimAt('breaker').clone().applyMatrix4(M.clone().invert()).y.toFixed(2);
+        else { const top = new V((cb.min.x + cb.max.x) / 2, cb.max.y, zc), q = new V(), was = r.f.aimAt; r.f.aimAt = (shot) => (shot === 'breaker' ? q.copy(top).applyMatrix4(M) : was(shot)); }
+        g.pickShot('breaker'); g.gunnery.breakers = 99;
+        const off = [g.events.on('hit', (e) => { if (e.owner === 'player' && e.raider === r) tot[e.part]++; }), g.events.on('fire', (e) => { if (e.owner === 'player') tot.shots++; })];
+        const aim = () => { const at = r.f.aimAt('breaker'), f = at.clone().sub(g.camera.position).normalize(); g.cam.pitch = -Math.asin(f.y); const b = Math.atan2(f.x, f.z) - P.heading; g.cam.yaw = Math.atan2(Math.sin(b), Math.cos(b)); g.input.lastLook = performance.now() / 1000 + 120; };
+        try {
+          for (let v = 0; v < 10; v++) {
+            for (let i = 0; i < 3; i++) { aim(); g.step(0.1, {}); P.speed = 0.01; }
+            tot.volleys++; if (g.locked === r) tot.locked++;
+            for (const k in g.gunnery.ready) g.gunnery.ready[k] = 0;
+            g.step(1 / 60, { fire: true }); g.step(1.6, {}); P.speed = 0.01;
+          }
+        } finally { off.forEach((f) => f()); }
+      }
+      out[way] = tot;
+    }
+    return out;
+  } finally { Math.random = rnd; d.skies = skies; d.shots.breaker = had; g.pickShot('round'); g.raiders.clear(); g.bolts.clear(); }
+};
+function breakerAimProblems(B, where) {
+  const [lo, hi] = B.window, q = (hi - lo) / 4, A = B.aimed, T = B.tops, on = (x) => x.crystals + x.hull + x.sails;
+  if (!(B.aimY >= lo + q && B.aimY <= hi - q)) problems.push(`${where}: crystal breakers should aim within the middle half of what shows of her crystals over her rail (${lo} to ${hi} m): at ${B.aimY} m`);
+  if (A.locked < A.volleys || !(A.shots - on(A) <= (T.shots - on(T)) * 0.9) || !(A.crystals >= T.crystals * 0.95)) problems.push(`${where}: crystal breakers fired level at a side-on Frigate 380 m off should land on her more often than aimed at the tops of her crystals (a tenth fewer missing her), and on her crystals as often: ${JSON.stringify(B)}`);
+  return `crystal breakers fired level at a side-on Frigate 380 m off, aimed ${B.aimY} m up (her crystals show from ${lo} to ${hi} m): of ${A.shots} shots ${A.crystals} on her crystals, ${A.hull} on her hull, ${A.sails} in her sails, ${A.shots - on(A)} missing her; aimed at their tops, ${T.crystals} on her crystals, ${T.shots - on(T)} missing her`;
+}
+// A wave up through the clouds bursting through ahead on the left (main.js 'burst'): a Cutter turned round the
+// Captain to come up 35 degrees to her left, the view looking ahead. On a phone held upright, whose view is narrow,
+// she's off it: the toast points the way to look (an arrow on its left, saying "left"), and her tag at the left edge
+// glows a moment (gold, pulsing), and not 4 s on; on a laptop she's in the view, and the toast needs no arrow
+const BURST_EDGE = () => {
+  const g = window.__game, $ = (id) => document.getElementById(id), d = g.progress.data, skies = d.skies, rnd = Math.random;
+  let s = 23; Math.random = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  try {
+    d.skies = 'cross'; g.fly('brig'); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.clear();
+    const P = g.player; P.pos.set(0, 900, 0); P.heading = 0; P.speed = 0.01; P.sail = 0; g.raiders.setAI(true);
+    g.cam.yaw = 0; g.cam.pitch = 0.2; g.cam.zoom = 1; g.input.lastLook = performance.now() / 1000 + 120;
+    Object.assign(g.waves, { n: 2, state: 'calm', timer: 0.1, next: { ids: ['cutter'], captain: -1, treasure: [], how: 'below' } }); g.step(0.2, {});
+    const r = g.raiders.list[0], dx = r.f.pos.x - P.pos.x, dz = r.f.pos.z - P.pos.z, dist = Math.hypot(dx, dz);
+    r.f.pos.x = P.pos.x + Math.sin(0.62) * dist; r.f.pos.z = P.pos.z + Math.cos(0.62) * dist; r.f.heading = 0.62 + Math.PI;
+    g.quiet();
+    let up = false; const off = g.events.on('burst', (e) => { if (e.first) up = true; });
+    for (let k = 0; k < 900 && !up; k++) { P.speed = 0.01; P.sail = 0; g.cam.yaw = 0; g.cam.pitch = 0.2; g.step(0.05, {}); }
+    off(); g.step(0.3, {}); g.placeTags();
+    const b = r.tag?.getBoundingClientRect(), q = r.f.pos.clone().project(g.camera);
+    const out = { up, toast: $('toast').textContent, onScreen: Math.abs(q.x) < 1 && q.z < 1, edge: !!r.tag?.classList.contains('edge'), glow: !!r.tag?.classList.contains('burst'), left: b ? Math.round(b.left) : -1, width: innerWidth };
+    g.step(4, {}); g.placeTags(); out.later = !!r.tag?.classList.contains('burst');
+    return out;
+  } finally { Math.random = rnd; d.skies = skies; g.raiders.setAI(false); g.raiders.clear(); g.quiet(); }
+};
+function burstEdgeProblems(B, where, narrow) {
+  if (!B.up) { problems.push(`${where}: a wave up through the clouds should burst through: ${JSON.stringify(B)}`); return 'NO BURST'; }
+  if (narrow && (B.onScreen || !B.edge || !(B.left < B.width / 4) || !B.toast.startsWith('\u2190 ') || !B.toast.includes('left') || !B.glow || B.later)) problems.push(`${where}: a raider bursting up through the clouds off the narrow view on the left should have her tag at the left edge glowing a moment, and the toast pointing left: ${JSON.stringify(B)}`);
+  if (!narrow && (!B.onScreen || /[\u2190\u2192]/.test(B.toast) || !B.glow || B.later)) problems.push(`${where}: a raider bursting up through the clouds in view should need no arrow in the toast (her tag glowing a moment): ${JSON.stringify(B)}`);
+  return `bursting up through the clouds 35 degrees to the left, ${B.onScreen ? 'in view' : `off the view, her tag at the ${B.edge ? 'edge' : 'MIDDLE'}`}, ${B.glow ? 'glowing' : 'NOT GLOWING'}${B.later ? ' (STILL 4 s on)' : ''}, the toast "${B.toast}"`;
 }
 const mode = (page) => page.evaluate(() => window.__game.mode);
 if (!demoOnly) {
@@ -4295,6 +4480,14 @@ if (!demoOnly) {
     smokeClearProblems(await smokeClearAt(page), 'laptop');
     await page.evaluate(() => { const g = window.__game; g.fly('frigate'); g.waves.timer = 1e9; g.raiders.setAI(false); g.input.lastLook = 0; });
   });
+  // the touch-ups after stage 4c's gate: raiders lost in cloud only while it hides them
+  await keepVoyages(page, async () => {
+    console.log(`lost in the cloud only while it hides her: ${cloudLostProblems(await page.evaluate(CLOUD_LOST, true), 'laptop')}; ${cloudLostProblems(await page.evaluate(CLOUD_LOST, false), 'laptop')}`);
+    console.log(`a view past your own big ship: ${ownViewProblems(await page.evaluate(OWN_VIEW), 'laptop')}`);
+    console.log(`crystal breakers aimed where a level volley lands: ${breakerAimProblems(await page.evaluate(BREAKER_AIM), 'laptop')}`);
+    console.log(`a wave up through the clouds, on a laptop: ${burstEdgeProblems(await page.evaluate(BURST_EDGE), 'laptop', false)}`);
+    await page.evaluate(() => { const g = window.__game; g.fly('frigate'); g.waves.timer = 1e9; g.raiders.setAI(false); g.input.lastLook = 0; });
+  });
   // (a hit on a raider's hull from her side, and one 30 degrees off her stern quarter, each a broadside's round shot 150 m
   // out, aimed at the middle of her hull: their damage, for her plated sides)
   await page.evaluate(() => {
@@ -4535,7 +4728,7 @@ if (!demoOnly) {
     // (the banner's line says where they are, but not again how they come when its title says it)
     const again = (line) => /through the clouds|out of the sun|both sides|high and low|above and below|below you/.test(line);
     if (!B.y.every((y) => y < 430) || !B.after.every((y) => y > 430) || B.bursts < 2 || B.title !== 'Wave 4: up through the clouds!' || again(B.line)) problems.push(`a wave up through the clouds should start under the cloud floor and burst up through it (its banner's line not saying so twice): ${JSON.stringify(B)}`);
-    if (!(B.first?.d >= 800) || !(B.first.y > -0.95) || !B.first.toast.startsWith('Rising through the clouds')) problems.push(`the first of a wave up through the clouds should burst through far enough off to be in the chase view (not under your own ship), said in a toast: ${JSON.stringify(B.first)}`);
+    if (!(B.first?.d >= 800) || !(B.first.y > -0.95) || !/^(\u2190 )?Rising through the clouds.*!( \u2192)?$/.test(B.first.toast)) problems.push(`the first of a wave up through the clouds should burst through far enough off to be in the chase view (not under your own ship), said in a toast (pointing the way to look if she's off the side of the view): ${JSON.stringify(B.first)}`);
     if (!S.up.every((u) => u > 300) || S.fromSun > 30 || S.tags.some(Boolean) || !S.later.every(Boolean) || S.title !== 'Wave 4: out of the sun!' || !S.line.includes('above you') || again(S.line)) problems.push(`a wave out of the sun should come from high in the sun's direction, their tags hidden in its glare at first (its banner's line saying above you, but not out of the sun again): ${JSON.stringify(S)}`);
     if (Math.abs(Pn.apart - 180) > 30 || Pn.title !== 'Wave 4: from both sides!' || !/(left|right|ahead|behind).* and .*(left|right|ahead|behind)/.test(Pn.line) || again(Pn.line)) problems.push(`a wave from both sides should come in two groups on either side: ${JSON.stringify(Pn)}`);
     if (St.alt.join() !== '140,-140' || St.title !== 'Wave 4: high and low!' || again(St.line)) problems.push(`a wave high and low should come 140 m above and below the Captain: ${JSON.stringify(St)}`);
@@ -4654,8 +4847,8 @@ if (!demoOnly) {
   // sunk in turn: no second way on after wave 1; after wave 2 a treasure ship's trail (the steady course's raiders and a
   // treasure Brig with them), the mouse kept locked to the view (2 takes it), taken: they come; after wave 3 a hunt for
   // the Cloud Fox in a Brig (not the steady course's Cutter), the countdown taking the steady course; none before her
-  // wave; after wave 5 the storm road, clicked: one ship more, in a storm, shards half as much again and the wave's bonus
-  // double; after wave 6 a hunt for the Sail-Ripper in a Frigate, taken (her bounty a quarter more), her own wave then a
+  // wave; after wave 5 the storm road, clicked: the same raiders (since stage 4c's touch-ups: one ship more made its
+  // voyages much riskier for fewer shards), in a storm, shards half as much again and the wave's bonus double; after wave 6 a hunt for the Sail-Ripper in a Frigate, taken (her bounty half as much again), her own wave then a
   // plain one; a storm road's wave coming ahead says "into the storm!"; and on Fair Winds never a storm, but a treasure
   // ship's trail. Then the real 2 key: pressed as the wave's last raider goes down, before the card has risen, it loads
   // chain shot as ever and takes no road; once it's risen, it takes the second way on
@@ -4718,9 +4911,9 @@ if (!demoOnly) {
     const R = roads;
     console.log(`the road between waves, in a real voyage: after wave 1 ${R.first.shown ? 'A SECOND WAY' : 'one way on'}; after wave 2 "${R.treasure.words}" (the mouse let go ${R.treasure.letGo} times), taken: ${R.treasure.came.ids} (${R.treasure.came.treasure} treasure ship, the steady course ${R.treasure.next}); after wave 3 "${R.hunt.words}" (${R.hunt.who} in a ${R.hunt.ship}, the steady course ${R.hunt.next}), the countdown ${R.hunt.countdown ? 'took the steady course' : 'DID NOT'}; before Senna Vale's wave: ${R.captain.shown ? 'A SECOND WAY' : 'one way on'}; after wave 5 "${R.storm.words}", taken: ${R.storm.after.ships} ships, shards ×${R.storm.after.mult}, the wave's bonus ×${R.storm.after.bonus} (◆ ${R.storm.after.waveBonus}); after wave 6 "${R.ripper.words}" (${R.ripper.who} in a ${R.ripper.ship}, her bounty ×${R.ripper.bounty}, wave 10's captain then ${R.ripper.plain}); a storm road's wave ahead: "${R.stormTitle}"; on Fair Winds: ${R.fair}; the 2 key as the last raider went down: ${R.early.state}, ${R.early.shot} loaded, then once the card had risen: the ${R.key.road} road`);
     if (R.first.shown || !R.treasure.shown || R.treasure.kind !== 'treasure' || R.treasure.letGo !== 0 || R.treasure.words !== 'A treasure ship\'s trail: The same raiders, and a treasure Brig to catch' || R.treasure.came.road !== 'treasure' || R.treasure.came.treasure !== 1 || R.treasure.came.ids !== `brig,${R.treasure.next}`) problems.push(`in a real voyage the card after wave 2 should offer a treasure ship's trail, the steady course's raiders and a treasure Brig with them, keeping the mouse locked: ${JSON.stringify({ first: R.first.shown, treasure: R.treasure })}`);
-    if (R.hunt.kind !== 'hunt' || R.hunt.who !== 'fox' || R.hunt.ship !== 'brig' || !R.hunt.next.startsWith('cutter') || R.hunt.words !== 'Hunt Senna Vale: The Cloud Fox, a wave early: a quarter more on her head' || !R.hunt.countdown) problems.push(`the card after wave 3 should offer to hunt the Cloud Fox in a Brig (not the steady course's Cutter), and its countdown take the steady course: ${JSON.stringify(R.hunt)}`);
-    if (R.storm.kind !== 'storm' || R.storm.alt.split(',').length !== R.storm.next.split(',').length + 1 || R.storm.after.ships !== R.storm.alt.split(',').length || R.storm.after.mult !== 1.5 || R.storm.after.bonus !== 2 || !R.storm.after.storm || R.storm.after.waveBonus !== Math.round(20 * R.storm.after.n * 1.25 * 2) || !R.storm.words.startsWith('Into the storm: The same raiders and a ') || !/: into the storm!$/.test(R.stormTitle)) problems.push(`the storm road should bring one ship more, in a storm, for half as many shards again and a double bonus: ${JSON.stringify({ storm: R.storm, title: R.stormTitle })}`);
-    if (R.ripper.kind !== 'hunt' || R.ripper.who !== 'ripper' || R.ripper.ship !== 'frigate' || R.ripper.bounty !== 1.25 || R.ripper.plain !== -1 || R.ripper.came?.captain !== 'ripper' || R.ripper.words !== 'The Sail-Ripper, three waves early: a quarter more on her head') problems.push(`a hunt should bring the next raider captain early in her own wave's ship, her bounty a quarter more, and her own wave then be plain: ${JSON.stringify(R.ripper)}`);
+    if (R.hunt.kind !== 'hunt' || R.hunt.who !== 'fox' || R.hunt.ship !== 'brig' || !R.hunt.next.startsWith('cutter') || R.hunt.words !== 'Hunt Senna Vale: The Cloud Fox, a wave early: half as much again on her head' || !R.hunt.countdown) problems.push(`the card after wave 3 should offer to hunt the Cloud Fox in a Brig (not the steady course's Cutter), and its countdown take the steady course: ${JSON.stringify(R.hunt)}`);
+    if (R.storm.kind !== 'storm' || R.storm.alt.split(',').sort().join() !== R.storm.next.split(',').sort().join() || R.storm.after.ships !== R.storm.alt.split(',').length || R.storm.after.mult !== 1.5 || R.storm.after.bonus !== 2 || !R.storm.after.storm || R.storm.after.waveBonus !== Math.round(20 * R.storm.after.n * 1.25 * 2) || R.storm.words !== 'Into the storm: The same raiders, in a storm: half as many shards again' || !/: into the storm!$/.test(R.stormTitle)) problems.push(`the storm road should bring the same raiders, in a storm, for half as many shards again and a double bonus: ${JSON.stringify({ storm: R.storm, title: R.stormTitle })}`);
+    if (R.ripper.kind !== 'hunt' || R.ripper.who !== 'ripper' || R.ripper.ship !== 'frigate' || R.ripper.bounty !== 1.5 || R.ripper.plain !== -1 || R.ripper.came?.captain !== 'ripper' || R.ripper.words !== 'The Sail-Ripper, three waves early: half as much again on her head') problems.push(`a hunt should bring the next raider captain early in her own wave's ship, her bounty half as much again (since stage 4c's touch-ups: a quarter more barely paid for the risk), and her own wave then be plain: ${JSON.stringify(R.ripper)}`);
     if (R.captain.shown || R.fair.includes('storm') || !R.fair.includes('treasure') || !R.kinds.includes('steady')) problems.push(`a raider captain's wave should bar a second way, and Fair Winds never offer a storm (but a treasure ship's trail): ${JSON.stringify({ captain: R.captain, fair: R.fair, kinds: R.kinds })}`);
     if (R.early.state !== 'choose' || !R.early.alt || R.early.shot !== 'chain' || R.early.risen || R.key.state !== 'calm' || R.key.road !== 'treasure') problems.push(`the 2 key should load chain shot until the card between waves has risen, and only then take the second way on: ${JSON.stringify({ early: R.early, key: R.key })}`);
   }
@@ -5029,6 +5222,11 @@ if (!quick && !demoOnly) {
     arrowProblems(await arrowsAt(page), 'phone');
     await sized(page, 844, 390, 'phone'); arrowProblems(await arrowsAt(page), 'phone held sideways'); await sized(page, 390, 844, 'phone');
     smokeClearProblems(await smokeClearAt(page), 'phone');
+  });
+  // the touch-ups after stage 4c's gate on a phone held upright: a view past your own big ship
+  await keepVoyages(page, async () => {
+    console.log(`phone, a view past your own big ship: ${ownViewProblems(await page.evaluate(OWN_VIEW), 'phone')}`);
+    console.log(`phone, a wave up through the clouds: ${burstEdgeProblems(await page.evaluate(BURST_EDGE), 'phone', true)}`);
   });
   // the worst case for a phone: a Man-o'-war blown apart beside two other wrecks (a Frigate and a Brig), in a fight.
   // The sparks and smoke never run out of room, the debris's batches are big enough (hardly a piece cut short: at most

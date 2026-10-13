@@ -8,7 +8,9 @@
 // shared uniforms: a storm showing dark on one side of the sky before it comes, a lightning flash, the mist inside a
 // cloud, the ship's shadow on the cloud floor with the glory round it; and towering clouds stand round the horizon.
 // The cloud pattern is also worked out in JavaScript (coverAt), exactly as it's baked, so the game knows where the
-// cloud floor is thick enough to hide a ship; and makePuffs knows where its big clouds are (inside).
+// cloud floor is thick enough to hide a ship; and makePuffs knows where its big clouds are (inside). How much of a
+// point the clouds really hide as they're drawn, seen from the camera (the big clouds' pictures in front of it, the
+// cloud floor between, the haze), is worked out too (veil), so a raider is lost in cloud only while she's hidden.
 import * as THREE from 'three';
 import tile1 from '../../assets/map/tile-1.avif';
 import tile2 from '../../assets/map/tile-2.avif';
@@ -361,14 +363,22 @@ export async function makeWorld(renderer) {
   const urls = [tile1, tile2, tile3, tile4, tile5, tile6, tile7, tile8, tile9];
   const textures = await Promise.all(urls.map((u) => loadTexture(u, renderer)));
   const tw = MAP.w / 3, th = MAP.h / 3;
+  // (the glitter: a soft path of light where the sun is mirrored, and in it soft round glints, one to a square 9 m
+  // across, each set a little off its middle, swelling and fading at its own beat; they fade out where a square would
+  // be under a few pixels across, so far off and looking down they never shimmer as a field of white specks)
   const GLITTER = `
     if (uGlitter > 0.0) {
       float water = smoothstep(0.04, 0.16, diffuseColor.b - max(diffuseColor.r, diffuseColor.g * 0.85));
       if (water > 0.0) {
         vec3 v = normalize(vWorld - cameraPosition);
         float sp2 = pow(max(dot(reflect(v, vec3(0.0, 1.0, 0.0)), uSun), 0.0), 90.0);
-        float tw = fract(sin(dot(floor(vWorld.xz / 9.0) + floor(uTime * 3.0), vec2(12.9898, 78.233))) * 43758.5453);
-        diffuseColor.rgb += uSunCol * water * sp2 * (0.3 + 1.7 * step(0.82, tw)) * (1.0 - cs) * uGlitter;
+        vec2 q = vWorld.xz / 9.0, cell = floor(q);
+        float tw = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
+        vec2 at = fract(q) - 0.5 - (vec2(fract(tw * 7.31), fract(tw * 3.17)) - 0.5) * 0.4;
+        float beat = 0.5 + 0.5 * sin(uTime * (1.6 + 1.8 * tw) + tw * 40.0);
+        float px = length(fwidth(vWorld.xz)) / 9.0;
+        float spark = smoothstep(0.55, 1.0, beat) * step(0.7, fract(tw * 13.7)) * (1.0 - smoothstep(0.08, 0.4, length(at))) * (1.0 - smoothstep(0.3, 0.65, px));
+        diffuseColor.rgb += uSunCol * water * sp2 * (0.32 + 0.65 * spark) * (1.0 - cs) * uGlitter;
       }
     }`;
   const shade = (mat) => {
@@ -378,7 +388,7 @@ export async function makeWorld(renderer) {
       sh.fragmentShader = 'varying vec3 vWorld;\nuniform float uTime;\nuniform vec3 uSun;\nuniform vec3 uSunCol;\nuniform float uGlitter;\n' + CLOUD_GLSL + '\n' + sh.fragmentShader.replace('#include <map_fragment>',
         '#include <map_fragment>\nvec2 sp = vWorld.xz - uSun.xz / uSun.y * ' + CLOUD_Y.toFixed(1) + ';\nfloat cs = cover(sp, uTime);\ndiffuseColor.rgb *= 1.0 - 0.38 * cs;' + GLITTER);
     };
-    mat.customProgramCacheKey = () => 'ground-cloud-shadow-4';
+    mat.customProgramCacheKey = () => 'ground-cloud-shadow-5';
     return mat;
   };
   const ground = []; // (their materials, tinted by the look)
@@ -524,8 +534,25 @@ export async function makeWorld(renderer) {
     renderer.readRenderTargetPixels(probe.target, 0, 0, side, side, px);
     return points.map((p, i) => px[i * 4] / 255);
   }
+  // how much of point p the clouds hide as they're drawn, seen from `eye` (the camera's place) through `view` (a view
+  // matrix looking from there; the camera's own, or one looking straight at p), and `fog` (the scene's haze): the cloud
+  // floor if it lies between them (as thick as it's drawn there, holes torn in it and all, and the mist), the big
+  // clouds in front of p (puffs.veil) and the haze. 0: nothing in the way, 1: wholly hidden
+  const cross = new THREE.Vector3();
+  function deckVeil(eye, p) {
+    if ((eye.y - CLOUD_Y) * (p.y - CLOUD_Y) >= 0) return 0;
+    cross.lerpVectors(eye, p, (CLOUD_Y - eye.y) / (p.y - eye.y));
+    let c = coverAt(cross.x, cross.z, time.value, MOOD.uCover.value);
+    for (let i = 0; i < HOLES; i++) { const h = holes[i]; if (h.w > 0) { const k = Math.min(1, Math.max(0, (Math.hypot(cross.x - h.x, cross.z - h.y) - h.z * 0.4) / (h.z * 0.6))); c *= 1 - h.w * (1 - k * k * (3 - 2 * k)); } }
+    const d = cross.distanceTo(eye), m = MOOD.uMist.value * Math.min(1, Math.max(0, (d - 10) / 310));
+    return c * 0.94 + (1 - c * 0.94) * m;
+  }
+  function veil(eye, p, view, fog) {
+    const d = eye.distanceTo(p), h = fog ? Math.min(1, Math.max(0, (d - fog.near) / Math.max(1, fog.far - fog.near))) : 0, haze = h * h * (3 - 2 * h); // (as the haze is drawn: three.js Fog)
+    return 1 - (1 - haze) * (1 - deckVeil(eye, p)) * (1 - puffs.veil(p, view));
+  }
   // (coverAt: how thick the cloud floor is at (x, z) now, 0 to 1, with the look's cloud)
-  return { group, time, puffs, deck, clouds, tear, update, clear, holes, setLook, skyLight, quality, mood: MOOD, ground, sea, uCloud, coverOnCard, get look() { return now; }, get rays() { return raysK; },
+  return { group, time, puffs, deck, clouds, tear, update, clear, holes, setLook, skyLight, quality, mood: MOOD, ground, sea, uCloud, coverOnCard, veil, get look() { return now; }, get rays() { return raysK; },
     coverAt: (x, z, t = time.value, bias = MOOD.uCover.value) => coverAt(x, z, t, bias) };
 }
 
@@ -617,10 +644,41 @@ function makePuffs() {
     for (let i = BANK; i < BANK + shown; i++) { const y = offs[i * 3 + 1]; if (Math.abs(p.y - y) < sizes[i] * 0.38) best = Math.max(best, depth(i, p)); }
     return best;
   }
+  // how much of point p the big clouds hide as drawn, seen through `view` (a view matrix: the camera's, or one looking
+  // straight at p from where it is): each cloud nearer than p, its picture (the very opacity drawn, read once from it:
+  // ALPHA) where p is seen through it, faded as the shader fades it (near the eye and far off, the bank as it fades in,
+  // the mist). A ship nearer than a cloud's middle is drawn in front of it, so that cloud hides nothing of her
+  let alpha = null;
+  const ALPHA = 64, pv = new THREE.Vector3(), cv = new THREE.Vector3();
+  function readAlpha() {
+    const img = U.uMap.value.image, n = img.width / ALPHA, px = img.getContext('2d').getImageData(0, 0, img.width, img.height).data;
+    alpha = new Float32Array(ALPHA * ALPHA);
+    for (let y = 0; y < img.height; y++) for (let x = 0; x < img.width; x++) alpha[Math.floor(y / n) * ALPHA + Math.floor(x / n)] += px[(y * img.width + x) * 4 + 3] / 255 / (n * n);
+  }
+  const smooth = (a, b, x) => { const k = Math.min(1, Math.max(0, (x - a) / (b - a))); return k * k * (3 - 2 * k); };
+  function veil(p, view) {
+    if (!alpha) readAlpha();
+    pv.copy(p).applyMatrix4(view);
+    if (pv.z > -1) return 0;
+    const dr = U.uDrift.value, mist = 1 - 0.9 * U.uMist.value;
+    let clear = 1;
+    for (let i = B.k > 0.02 ? 0 : BANK; i < BANK + shown; i++) {
+      const s = sizes[i], x = c.x + (((offs[i * 3] + dr.x - c.x + SPAN / 2) % SPAN) + SPAN) % SPAN - SPAN / 2, z = c.z + (((offs[i * 3 + 2] + dr.y - c.z + SPAN / 2) % SPAN) + SPAN) % SPAN - SPAN / 2;
+      const far = 1 - smooth(SPAN * 0.32, SPAN * 0.5, Math.hypot(x - c.x, z - c.z));
+      if (far <= 0) continue;
+      cv.set(x, offs[i * 3 + 1], z).applyMatrix4(view);
+      if (cv.z <= pv.z || cv.z > -60) continue; // (behind her, or too near the eye to be drawn)
+      const k = cv.z / pv.z, u = (pv.x * k - cv.x) / (s * 1.6) + 0.5, v = (pv.y * k - cv.y) / s + 0.5;
+      if (u <= 0 || u >= 1 || v <= 0 || v >= 1) continue;
+      const a = alpha[Math.floor((1 - v) * ALPHA) * ALPHA + Math.floor(u * ALPHA)] * far * smooth(60, 260, -cv.z) * (i < BANK ? B.k : 1) * 0.9 * mist;
+      if (a >= 0.01) clear *= 1 - a;
+    }
+    return 1 - clear;
+  }
   // where cloud i is now (for tests: from 0, the bank's first)
   const positionOf = (i, out = new THREE.Vector3()) => {
     const dr = U.uDrift.value, w = (v, k) => c[k] + (((v + dr[k === 'x' ? 'x' : 'y'] - c[k] + SPAN / 2) % SPAN) + SPAN) % SPAN - SPAN / 2;
     return out.set(w(offs[i * 3], 'x'), offs[i * 3 + 1], w(offs[i * 3 + 2], 'z'));
   };
-  return { mesh, N, BANK, follow: (p) => c.copy(p), count: (n) => { shown = Math.max(0, Math.min(N, n)); ig.instanceCount = BANK + shown; }, inside, positionOf, sizeOf: (i) => sizes[i], bank: setBank, update, get banked() { return B.k; } };
+  return { mesh, N, BANK, follow: (p) => c.copy(p), count: (n) => { shown = Math.max(0, Math.min(N, n)); ig.instanceCount = BANK + shown; }, inside, veil, positionOf, sizeOf: (i) => sizes[i], bank: setBank, update, get banked() { return B.k; } };
 }

@@ -27,6 +27,7 @@ node tools/sim-fight.mjs manowar 6 cross 10 --runs 4   # the Man-o'-war against 
 node tools/sim-fight.mjs brig 8 cross --runs 6 --skilled   # a Captain who uses the tactics: dodging broadsides, changing shot, patching
 node tools/sim-fight.mjs frigate 1 cross 12 --owns galleon,manowar --policy fortress --shot auto   # a Frigate against a raider Man-o'-war, from over her stern
 node tools/sim-fight.mjs brig 8 cross --road storm   # taking the storm road whenever it's offered
+node tools/sim-fight.mjs brig 8 cross --runs 24 --jobs 2 --seed 2000   # 24 voyages, two at a time, each in a fresh page with its own dice (the same seed plays them again exactly)
 ```
 
 `tools/ship-art.mjs` and `tools/map-art.mjs` read Chris's pictures from the repository's `art/` folder, without

@@ -236,6 +236,7 @@ async function main() {
     looks.follow(player); looks.reset(ship); // (she sails as good as new)
     if (!zones.has(id)) zones.set(id, hitZones(ship));
     player.aimY = zones.get(id).aim.y;
+    if (!feet.has(id)) feet.set(id, footprint(ship)); player.foot = feet.get(id); // (her heights seen from above, for the view to look past her: placeCamera)
     // (and how far above that her sails' middle is, for a raider captain who shoots chain shot at them: tactics.js)
     { const Z = zones.get(id), m = Z.sails.filter((b) => !b.isEmpty()); player.sailUp = m.length ? m.reduce((a, b) => a + (b.min.y + b.max.y) / 2, 0) / m.length - Z.aim.y : R.length * 0.3; }
     gunnery = makeGunnery(ship, L.guns, player); loaded.port = loaded.starboard = 0; wasLocked = null;
@@ -332,8 +333,18 @@ async function main() {
     else banner('She\'s sinking, and fires everything', 'Her upper guns reach above her now · finish her from astern');
   });
   events.on('silenced', (e) => { if (fighting()) toast(`Six of her guns silenced: ${e.left} left`); });
-  // (the first of a wave coming up through the clouds bursting through, said with where: she may be low in the view)
-  events.on('burst', (e) => { if (fighting() && e.first) toast(`Rising through the clouds, ${sideWords(Math.atan2(e.at.x - player.pos.x, e.at.z - player.pos.z) - player.heading)}!`); });
+  // (the first of a wave coming up through the clouds bursting through, said with where: she may be low in the view, or
+  // off it, as on a phone held upright, whose view is narrow: then the toast points the way to look, an arrow on that
+  // side of its words; and the tag of each one bursting through glows a moment, at the edge too: BURST_GLOW, tags)
+  const burstAt = new THREE.Vector3();
+  events.on('burst', (e) => {
+    if (e.raider) e.raider.burstAt = time;
+    if (!fighting() || !e.first) return;
+    const words = `Rising through the clouds, ${sideWords(Math.atan2(e.at.x - player.pos.x, e.at.z - player.pos.z) - player.heading)}!`;
+    burstAt.copy(e.at).project(camera);
+    const rel = wrap(Math.atan2(e.at.x - camera.position.x, e.at.z - camera.position.z) - player.heading - cam.yaw), off = burstAt.z > 1 || Math.abs(burstAt.x) > 0.92;
+    toast(!off || Math.abs(rel) < 0.12 ? words : rel > 0 ? `\u2190 ${words}` : `${words} \u2192`);
+  });
   events.on('blowout', (e) => {
     const W2 = e.raider?.ship.wear;
     if (!fighting() || !e.raider.fort || !W2) return;
@@ -354,6 +365,50 @@ async function main() {
   // (how far behind her the view sits: further for a bigger ship, and a little further again past 40 m, so a Galleon or
   // a Man-o'-war sits wholly in the lower part of the view, her stern in sight, with the raiders clear above her masts)
   const camDistFor = (R) => R.length * 1.35 + 16 + Math.max(0, R.length - 40) * 0.4;
+  // looking down past her own ship: the point the view turns round (over her middle, `R.length * 0.42 + 2` up) moves out
+  // over her bow, her side or her stern, whichever way the view looks, just as far as the middle of the view must to
+  // pass over her rail with `clear` of her length to spare. So a raider below her, aimed at, is never behind her own
+  // ship (a Man-o'-war's long hull and tall masts hid one ahead and below), and the farther down it looks, the farther
+  // out the view moves, out to her rail at the most; and only as the view looks further down than it rests (pivot)
+  // ...over all of her as she stands, masts and sails too: her `footprint`, the highest point of her model in each
+  // square of a grid over her deck (squares a 30th of her length, made once for each ship as she's first sailed), and
+  // the squares that lie within `clear` of the line the view looks along count
+  const VIEW_PAST = { clear: 0.05, least: 0.5 }, feet = new Map();
+  function footprint(ship) {
+    const L = ship.recipe.length, cs = Math.max(1, L / 30), top = new Map(), v = new THREE.Vector3(), m = new THREE.Matrix4(), inv = new THREE.Matrix4();
+    ship.root.updateMatrixWorld(true); inv.copy(ship.root.matrixWorld).invert();
+    ship.body.traverse((o) => {
+      if (!o.isMesh || !o.visible) return;
+      const P = o.geometry.attributes.position; m.multiplyMatrices(inv, o.matrixWorld);
+      for (let i = 0; i < P.count; i++) {
+        v.fromBufferAttribute(P, i).applyMatrix4(m);
+        const k = `${Math.floor(v.x / cs)},${Math.floor(v.z / cs)}`;
+        if (!(top.get(k) >= v.y)) top.set(k, v.y);
+      }
+    });
+    const cells = new Float32Array(top.size * 3); let i = 0;
+    for (const [k, y] of top) { const [x, z] = k.split(',').map(Number); cells.set([(x + 0.5) * cs, (z + 0.5) * cs, y], i * 3); i++; }
+    return { cells, half: cs * 0.71 };
+  }
+  function pivot(yaw, pitch, out) {
+    const R = player.ship.recipe, h0 = R.length * 0.42 + 2, F = player.foot, a = player.heading + yaw;
+    out.copy(player.pos); out.y += h0;
+    const tp = Math.tan(pitch);
+    if (!F || tp <= 0.02) return out;
+    // (the look's way across her deck, in her own frame; and each square ahead that way, near the line: how far out
+    // the view must move to pass over it)
+    const dx = Math.sin(yaw), dz = Math.cos(yaw), clear = Math.max(VIEW_PAST.least, R.length * VIEW_PAST.clear), C = F.cells;
+    let past = 0;
+    for (let i = 0; i < C.length; i += 3) {
+      const along = C[i] * dx + C[i + 1] * dz, across = C[i + 1] * dx - C[i] * dz;
+      if (along <= 0 || Math.abs(across) > clear + F.half) continue;
+      const need = along - (h0 - C[i + 2] - clear) / tp;
+      if (need > past) past = need;
+    }
+    past *= THREE.MathUtils.smoothstep(pitch, 0.21, 0.36); // (as the view rests, a little down, never: a small ship's mast heads reach nearly as high)
+    out.x += Math.sin(a) * past; out.z += Math.cos(a) * past;
+    return out;
+  }
   // a Surge widens the view by `fov` degrees, with a jolt: a spring that overshoots a little, peaking about 0.15 s in
   // (with no overshoot for players whose device asks for less motion). The spring is worked out in steps of at most
   // `step` seconds, so it moves the same on a phone running slowly as on a fast laptop (in one big step it would fly off)
@@ -379,9 +434,9 @@ async function main() {
       cam.yaw = Math.atan2(Math.sin(cam.yaw), Math.cos(cam.yaw)) * (1 - k); cam.pitch += (0.2 - cam.pitch) * k;
     }
     // (a Surge drops the view back a little and lowers it, with the view's widening: surgeFov, 0 to about 1)
-    const a = player.heading + cam.yaw, R = player.ship.recipe, sk = surgeFov.x / SURGE_VIEW.fov, pitch = cam.pitch - 0.03 * sk;
+    const a = player.heading + cam.yaw, sk = surgeFov.x / SURGE_VIEW.fov, pitch = cam.pitch - 0.03 * sk;
     cam.look.set(Math.sin(a) * Math.cos(pitch), -Math.sin(pitch), Math.cos(a) * Math.cos(pitch));
-    target.copy(player.pos); target.y += R.length * 0.42 + 2;
+    pivot(cam.yaw, pitch, target); // (over her middle; looking down, out over her rail that way)
     camera.position.copy(target).addScaledVector(cam.look, -cam.dist * cam.zoom * (1 + 0.08 * sk));
     camera.lookAt(target);
     fx.applyCamera(camera, cam.look); // the guns' kick, and the shake from hits and blasts
@@ -628,14 +683,16 @@ async function main() {
     if (kind === 'hunt') { name(w, (m + 1) / 5 - 1, ROADS.hunt.bounty); w.huntFor = m; w.early = m - W.n; }
     return w;
   }
-  // the second way on, on the card: its name and what it brings, in a line ("The same raiders and a Cutter, in a storm:
-  // half as many shards again"; "The same raiders, and a treasure Brig to catch"; "The Sail-Ripper, two waves early: a
-  // quarter more on her head")
+  // the second way on, on the card: its name and what it brings, in a line ("The same raiders, in a storm: half as many
+  // shards again"; "The same raiders, and a treasure Brig to catch"; "The Sail-Ripper, two waves early: half as much
+  // again on her head")
   const capital = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+  const MULT_WORDS = { 1.5: 'half as many shards again', 2: 'twice the shards', 1.75: 'three quarters as many shards again', 1.25: 'a quarter more shards' };
+  const HEAD_WORDS = { 1.25: 'a quarter more', 1.5: 'half as much again', 2: 'twice as much' };
   function roadWords(alt, next) {
-    if (alt.road === 'storm') { const c = FLEET.find((s) => s.id === alt.ids.find((id) => alt.ids.filter((x) => x === id).length > next.ids.filter((x) => x === id).length)).cls; return [ROADS.storm.name, `The same raiders and a ${c}, in a storm: half as many shards again`]; }
+    if (alt.road === 'storm') { const c = FLEET.find((s) => s.id === alt.ids.find((id) => alt.ids.filter((x) => x === id).length > next.ids.filter((x) => x === id).length))?.cls; return [ROADS.storm.name, `The same raiders${c ? ` and a ${c}` : ''}, in a storm: ${MULT_WORDS[ROADS.storm.mult] ?? `${ROADS.storm.mult} times the shards`}`]; }
     if (alt.road === 'treasure') return [ROADS.treasure.name, `The same raiders, and a treasure ${FLEET.find((s) => s.id === alt.ids[alt.treasure[0] ?? alt.ids.indexOf('galleon')]).cls} to catch`];
-    return [`Hunt ${alt.who.name}`, `${capital(alt.who.title)}, ${alt.early > 1 ? `${NUMBER[alt.early]} waves` : 'a wave'} early: a quarter more on her head`];
+    return [`Hunt ${alt.who.name}`, `${capital(alt.who.title)}, ${alt.early > 1 ? `${NUMBER[alt.early]} waves` : 'a wave'} early: ${HEAD_WORDS[ROADS.hunt.bounty] ?? `${ROADS.hunt.bounty} times`} on her head`];
   }
   const NUM = new Intl.NumberFormat('en'), fmt = (n) => NUM.format(Math.round(n)); // (one formatter, made once: a phone is slow to make them)
   // a ship's price, in one piece on the screen (never "◆" at the end of one line and the number on the next); and the
@@ -1398,6 +1455,7 @@ async function main() {
   // each raider's tag: over it, or at the edge of the screen pointing to it (flashing red and saying "Broadside!" as she
   // readies a broadside, with a ring closing as she's about to fire); its distance and health ten times a second. (dt:
   // the frame's seconds, for a tag gliding to a new place)
+  const BURST_GLOW = 2.7; // (how long a raider's tag glows once she's burst up through the clouds, seconds)
   function tags(slow, dt = 0) {
     const W2 = view.w / 2, H2 = view.h / 2;
     if (TAG.sizes !== sizes) { TAG.sizes = sizes; TAG.measured = TAG.warned = false; for (const r of raiders.list) if (r.tag) r.tag._measure = true; } // (a new window size: tags measured again)
@@ -1461,6 +1519,8 @@ async function main() {
       if (el._edge !== edge) { el._edge = edge; el.classList.toggle('edge', edge); }
       if (el._warn !== warn) { el._warn = warn; el._measure = true; el.classList.toggle('warn', warn); if (warn && !TAG.warned && el.offsetHeight) { TAG.warned = true; TAG.warn = el.offsetHeight + 1; } }
       if (el._locked !== (r === locked)) { el._locked = r === locked; el.classList.toggle('locked', el._locked); }
+      const rose = time - (r.burstAt ?? -99) < BURST_GLOW; // (just burst up through the clouds: her tag glows, game.html)
+      if (el._rose !== rose) { el._rose = rose; el.classList.toggle('burst', rose); }
       if (el._lost !== r.lost) { el._lost = r.lost; el._measure = true; el.classList.toggle('lost', r.lost); if (r.lost) el.querySelector('.lost').textContent = r.smoke > 0 ? 'Lost in the smoke' : 'Lost in the cloud'; } // (the Ghost's smoke screen, or cloud)
       el._x = W2 + x; el._y = H2 + y; el._top = top; placed.push(el);
       el._box = el._ship = false; if (!edge && !r.lost) shipBox(r, el, W2, H2); // (her ship on the screen: tags keep off it)
@@ -1818,6 +1878,7 @@ async function main() {
     tactics: { SHOTS, SHOT_ORDER, RAKE, PATCH, SMART, rakeMul, NERVE, CAPTAINS, PLATE, FORT, LINE, ROADS, ROAD }, pickShot, nextShot: () => nextShot(), patchUp, // (shot, raking and patching)
     nextWave: (n) => nextWave(n), roadWave, bannerFor: (wave, arr) => waveBanner(wave, arr), BANNER_LINE, cardRisen, BOUNTY, CAPTAIN, // (a wave planned, its raider captain named, a second way on, and a wave's banner: foes worth remembering)
     fly: (id) => sail(id, true), // a voyage in any ship, owned or not (for tests)
+    pivot: (yaw = cam.yaw, pitch = cam.pitch, out = new THREE.Vector3()) => pivot(yaw, pitch, out), // (the point the view turns round, looking that way: placeCamera)
     get trial() { return trial; }, TRIAL, get fightSkies() { return skies().name; }, // (the ship on her sea trial, if one is out; the wave each is tried on; the skies the fights are in)
     words: { side: sideWords, wind: () => windWords() }, layout, edge: EDGE, // (directions in words, and the panels the edge tags keep clear of)
     get mapNames() { return NAMES_AT.at; }, // (the big map's names as placed, in its own pixels)

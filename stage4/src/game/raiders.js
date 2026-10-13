@@ -217,15 +217,15 @@ function finish(list, { captain: lead = false, storm = false, bank = false, how 
 // the same way, in the same weather) and a treasure ship sailing with them (a treasure Brig until the Captain owns a
 // Galleon), so it's richer and harder, not a small wave in place of a big one (with six already, she takes the
 // smallest one's place); or the hunt, the same ships led by the next raider captain, come early (main.js names her,
-// and her bounty is a quarter more), in a ship of her own: the biggest that fights, but never smaller than `lead` (a
+// and her bounty is half as much again: tactics.js ROADS), in a ship of her own: the biggest that fights, but never smaller than `lead` (a
 // Brig for the Cloud Fox, a Frigate from the Sail-Ripper on: the ship her own wave would give her). Each says which
 // road it is
 export function roadWave(kind, wave, giants = null, lead = 'brig') {
   const R = ROADS[kind];
   let w;
   if (kind === 'storm') {
-    const more = wave.list.some((e) => SIZE[e.id] >= SIZE.brig) ? 'cutter' : 'skiff';
-    w = finish([...wave.list.map((e) => ({ ...e })), { id: more }], { storm: true, bank: true, how: wave.how === 'line' ? 'line' : 'ahead' });
+    const more = !R.more ? [] : [{ id: wave.list.some((e) => SIZE[e.id] >= SIZE.brig) ? 'cutter' : 'skiff' }]; // (one ship more, or none: ROADS)
+    w = finish([...wave.list.map((e) => ({ ...e })), ...more], { storm: true, bank: true, how: wave.how === 'line' ? 'line' : 'ahead' });
   } else if (kind === 'treasure') {
     const list = wave.list.map((e) => ({ ...e }));
     if (list.length >= 6) list.splice(list.length - 1, 1); // (the list is biggest first: the smallest goes)
@@ -241,6 +241,14 @@ export function roadWave(kind, wave, giants = null, lead = 'brig') {
 }
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+// where crystal breakers aim on a class (in her own frame, worked out once, from her hit zones: damage.js): the middle of
+// what shows of her crystals `cb` over her rail, seen from her side (her rail found where they stand)
+function breakAt(Z, cb) {
+  const q = new THREE.Vector3(0, 0, (cb.min.z + cb.max.z) / 2);
+  let rail = cb.min.y;
+  for (let y = cb.min.y; y <= Z.hullBox.max.y + 0.5; y += 0.1) if (Z.inHull(q.setY(y))) rail = y;
+  return q.set((cb.min.x + cb.max.x) / 2, (Math.min(rail, cb.max.y) + cb.max.y) / 2, q.z);
+}
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 // The masts, cut out of a class's middle model once, as it's built (on a laptop: wrecks.js topples them when she's blown
@@ -444,12 +452,14 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
     f.sail = 0.85; f.speed = f.H.vmax * 0.6;
     // where the Captain's guns aim at her, by the shot they're loaded with (tactics.js): round shot at her hull's middle
     // (a treasure ship's fore sails: shoot them to catch her), chain shot at the middle of her middle mast's sails, and
-    // crystal breakers at the top of her middle crystals; at her hull once that part's gone
+    // crystal breakers at the middle of what shows of her middle crystals over her rail, where a level volley lands as
+    // well as one from above (aimed at their tops, most of a level volley flew over them); at her hull once that part's
+    // gone
     f.aimY = Tm.zones.aim.y;
     const Z = Tm.zones, hullAim = f.aimAt, at = new THREE.Vector3(), sb = new THREE.Box3();
     const masts = Z.sails.flatMap((b, i) => (b.isEmpty() ? [] : [i])), midMast = masts[masts.length >> 1], cb = Z.crystals[Z.crystals.length >> 1];
     const fore = role === 'prize' && masts.length ? Z.sails[masts[0]].getCenter(new THREE.Vector3()) : null;
-    const crown = cb ? new THREE.Vector3((cb.min.x + cb.max.x) / 2, cb.max.y, (cb.min.z + cb.max.z) / 2) : null;
+    const crown = cb ? (Z.breakAt ??= breakAt(Z, cb)) : null;
     f.aimAt = (shot = 'round') => {
       if (shot === 'chain' && midMast !== undefined && f.health.sails > 0) sailBox(Z, midMast, ship.U.uFold.value.x, sb).getCenter(at);
       else if (shot === 'breaker' && crown && f.health.crystals > 0) at.copy(crown);

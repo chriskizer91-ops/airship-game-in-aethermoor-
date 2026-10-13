@@ -323,6 +323,14 @@
   .tag.locked { border-color: #ffd36a; box-shadow: 0 0 10px rgba(255, 200, 90, 0.6); }
   .tag.captain { background: rgba(26, 18, 8, 0.82); border-color: #ffd36a; }
   .tag.captain b { color: #ffd36a; }
+  /* a raider just burst up through the clouds: her tag and its arrow pulse gold a few times (a ring that reads on the
+     white cloud she came out of, and on the sky), so the eye goes to her, at the edge of a phone's narrow view too
+     (main.js BURST_GLOW; a "Broadside!" flashes over it) */
+  .tag.burst { opacity: 1; border-color: #ffe08a; animation: tag-burst 0.45s ease-in-out 6 alternate; }
+  .tag.burst .arrow { color: #ffd36a; animation: arrow-burst 0.45s ease-in-out 6 alternate; }
+  @keyframes tag-burst { from { box-shadow: 0 0 0 3px rgba(255, 206, 84, 0.95), 0 0 14px rgba(255, 196, 70, 0.8); } to { box-shadow: 0 0 0 1px rgba(255, 206, 84, 0.5), 0 0 2px rgba(255, 196, 70, 0.2); } }
+  @keyframes arrow-burst { from { filter: drop-shadow(0 0 1px rgba(24, 4, 2, 0.95)) drop-shadow(0 0 1px rgba(24, 4, 2, 0.95)) drop-shadow(0 0 5px #ffc446); }
+    to { filter: drop-shadow(0 0 1px rgba(24, 4, 2, 0.95)) drop-shadow(0 0 1px rgba(24, 4, 2, 0.95)) drop-shadow(0 0 1px rgba(255, 196, 70, 0)); } }
   /* a raider off screen readying her broadside: her tag and its arrow flash red, and say "Broadside!" in place of her
      bars (main.js) */
   .tag .bs { display: none; grid-column: 1 / -1; font-size: 12px; font-weight: 600; color: #fff; text-align: center; }
@@ -341,7 +349,7 @@
     to { background-color: rgba(80, 8, 10, 0.88); border-color: #ff4636; box-shadow: 0 0 4px rgba(255, 50, 30, 0.4); } }
   @keyframes arrow-warn { from { filter: drop-shadow(0 0 1px #2a0402) drop-shadow(0 0 1px #2a0402) drop-shadow(0 0 5px #ff2a10); }
     to { filter: drop-shadow(0 0 1px #2a0402) drop-shadow(0 0 1px #2a0402) drop-shadow(0 0 1px rgba(255, 42, 16, 0)); } }
-  #tags.held .tag.warn, #tags.held .tag.warn .arrow { animation-play-state: paused; } /* (the game paused: no flashing behind the menu) */
+  #tags.held .tag.warn, #tags.held .tag.warn .arrow, #tags.held .tag.burst, #tags.held .tag.burst .arrow { animation-play-state: paused; } /* (the game paused: no flashing behind the menu) */
   /* a raider hidden in cloud far off: her tag stays where she was last seen, faded and dashed, saying so in place of
      her bars */
   /* what she's up to, by her name ("· running", "· help in 12", the Man-o'-war's "· 42 guns", "· below the clouds"), and
@@ -823,7 +831,7 @@
     .road b { font-size: 14px; }
     .road small { font-size: 11.5px; }
   }
-  @media (prefers-reduced-motion: reduce) { #region.on, #banner.on, #toast.on, #calm:not([hidden]) { animation-duration: 0.01s; } .tag.warn, .tag.warn .arrow { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { #region.on, #banner.on, #toast.on, #calm:not([hidden]) { animation-duration: 0.01s; } .tag.warn, .tag.warn .arrow, .tag.burst, .tag.burst .arrow { animation: none; } }
 </style>
 </head>
 <body>

@@ -17,7 +17,9 @@
 //   hiding              a ship deep in cloud is hidden: raiders more than a little way off can't see the Captain there
 //                       (raiders.js) until her own guns give her away for a few seconds (reveal), and the Captain's guns
 //                       can't lock on to a raider hidden far off (unless she's readying a broadside: her gun ports glow
-//                       through the cloud). Inside a cloud the raiders aim worse at her
+//                       through the cloud), and only while the cloud as it's drawn really hides most of her from the
+//                       camera (world.js veil: a ship nearer than a cloud's middle is drawn in front of it, and the
+//                       cloud's picture is thin at its edges). Inside a cloud the raiders aim worse at her
 //   and                 her shadow on the cloud floor with the glory round it, the sun's glare when you look into it
 // Its news (events.js): storm (coming, here, passing), lightning, gust and hidden. Nothing here is made while the game
 // runs; each frame only numbers are written.
@@ -28,9 +30,23 @@ import { WIND } from './flight.js';
 import { emit, payload } from './events.js';
 
 // hiding in cloud: how deep in it a ship must be (0 to 1), how near a raider can still see the Captain there on each
-// skies (raiders.js uses the skies' own `sight`), how near the Captain still sees a raider hidden in it, and how long the
-// Captain's guns give her away for
-export const HIDE = { thick: 0.6, near: 250, reveal: 4 };
+// skies (raiders.js uses the skies' own `sight`), how near the Captain still sees a raider hidden in it, how long the
+// Captain's guns give her away for, and how little of a raider deep in cloud must show through it, as it's drawn, for
+// her to be lost to the Captain's sight (`shows`: under the first share she's lost; she's found again over the second,
+// so her tag doesn't flicker between the two)
+export const HIDE = { thick: 0.6, near: 250, reveal: 4, shows: [0.3, 0.4] };
+// where a raider is looked for through the clouds, in her own frame, from her hit zones (damage.js): her hull's middle,
+// bow and stern, her sails' middle and their upper part, each weighing as much of her as it shows
+const SPOT_WEIGHT = [0.3, 0.2, 0.2, 0.2, 0.1];
+function spotsOf(Z) {
+  const h = Z.hullBox, s = new THREE.Box3(), V = THREE.Vector3;
+  for (const b of Z.sails) if (!b.isEmpty()) s.union(b);
+  const y = (h.min.y + h.max.y) / 2, z = (h.min.z + h.max.z) / 2, L = h.max.z - h.min.z;
+  const out = [new V(0, y, z), new V(0, y, z + L * 0.35), new V(0, y, z - L * 0.35)];
+  if (s.isEmpty()) out.push(new V(0, h.max.y, z), new V(0, h.max.y, z));
+  else out.push(new V(0, (s.min.y + s.max.y) / 2, (s.min.z + s.max.z) / 2), new V(0, s.min.y + (s.max.y - s.min.y) * 0.85, (s.min.z + s.max.z) / 2));
+  return out;
+}
 // the cloud floor's thickness: from 58 m under it to 16 m over it (fully between 40 under and 6 over), as thick as
 // the cloud there
 const FLOOR = { below: 58, under: 40, over: 6, above: 16 };
@@ -58,6 +74,20 @@ export function makeSky({ world, lights, scene, renderer, touch = false, fx = nu
     flashK: 1, rain: 0, motes: 0, kind: '', mist: 0, inCloud: 0, scud: 0, region: '', regionT: 0, hidden: false, revealUntil: -1, raiderT: 0 };
   const Q = { rain: 1, scud: 1 }; // the Settings card's picture: the share of rain streaks, and scud on or off
   const STORMP = payload('storm'), BOLTP = payload('lightning'), GUSTP = payload('gust'), HIDP = payload('hidden');
+  // how much of raider r shows through the clouds as they're drawn, seen from the camera (0 to 1): her spots, each
+  // through the cloud floor, the big clouds and the haze in front of it (world.js veil). The big clouds are drawn
+  // facing the way the camera looks, so which of them lie in front of her, and where, changes as it turns: on the
+  // screen she's looked at through the camera's own view; off it, as she'd be if the camera turned to look at her
+  const lookM = new THREE.Matrix4(), viewM = new THREE.Matrix4(), UP = new THREE.Vector3(0, 1, 0), spot = new THREE.Vector3();
+  function shows(r, camera) {
+    const S = (r.zones.spots ??= spotsOf(r.zones)), M = r.ship.body.matrixWorld, eye = camera.position;
+    spot.setFromMatrixPosition(M).project(camera);
+    let view = camera.matrixWorldInverse;
+    if (spot.z > 1 || Math.abs(spot.x) > 1 || Math.abs(spot.y) > 1) { lookM.lookAt(eye, spot.setFromMatrixPosition(M), UP).setPosition(eye); view = viewM.copy(lookM).invert(); }
+    let seen = 0;
+    for (let k = 0; k < S.length; k++) seen += SPOT_WEIGHT[k] * (1 - world.veil(eye, spot.copy(S[k]).applyMatrix4(M), view, scene.fog));
+    return seen;
+  }
   const mistColor = new THREE.Color(), fall = new THREE.Vector3(), rel = new THREE.Vector3(), top = new THREE.Vector3(), foot = new THREE.Vector3(), sunAt = new THREE.Vector3(), probe = new THREE.Vector3(), fwd = new THREE.Vector3();
   let clock = 0;
 
@@ -161,14 +191,16 @@ export function makeSky({ world, lights, scene, renderer, touch = false, fx = nu
     player.hidden = hidden;
     // the raiders, a third of them each frame: hidden deep in cloud, or in a smoke screen of her own (the Ghost's:
     // tactics.js), and lost to the Captain's sight more than a little way off, unless she's readying a broadside (her gun
-    // ports glow through the cloud and give her away); and where she last saw each
+    // ports glow through the cloud and give her away); one deep in cloud only while the cloud as drawn really hides
+    // her (`shows`: how much of her shows through it); and where she last saw each
     W.raiderT = (W.raiderT + 1) % 3;
     for (let i = 0; i < raiders.length; i++) {
       const r = raiders[i];
-      if (r.f.down) { r.hidden = r.lost = r.clouded = false; continue; }
-      if (i % 3 === W.raiderT || r.clouded === undefined) r.clouded = cloudAt(r.f.pos) > HIDE.thick;
+      if (r.f.down) { r.hidden = r.lost = r.clouded = false; r.shows = 1; continue; }
+      if (i % 3 === W.raiderT || r.clouded === undefined) { r.clouded = cloudAt(r.f.pos) > HIDE.thick; r.shows = r.clouded ? shows(r, camera) : 1; }
       r.hidden = r.clouded || r.smoke > 0;
-      r.lost = r.hidden && !r.charge?.b && r.f.pos.distanceTo(player.pos) > HIDE.near;
+      const veiled = r.smoke > 0 || (r.clouded && r.shows < HIDE.shows[r.lost ? 1 : 0]);
+      r.lost = veiled && !r.charge?.b && r.f.pos.distanceTo(player.pos) > HIDE.near;
       if (!r.lost) (r.seenAt ??= new THREE.Vector3()).copy(r.f.pos);
     }
 

@@ -204,6 +204,17 @@ which were made from this repository only):
    the steady raiders and adds the treasure ship, a hunted captain sails at least her own wave's class; 1 and 2 take a
    road only once the card has risen (`cardRisen`), and the mouse stays locked; held sideways the road button goes
    under Sail on (game.html), and the toast keeps over a tall card on a phone held upright (`--calm-top`).
+3b. **D3-touchups**: stage 4c's gate's open points. Built October 13 (`docs/game.md`, "Touch-ups" of October 13 and
+   "How hard it is"). Lost in cloud only while the cloud as drawn hides her: world.js `veil` (the big clouds' pictures in
+   front of a point, as the camera sees them, the cloud floor and the haze) and sky.js `shows` (five spots on her, the
+   camera's own view on screen, a view straight at her off it; `HIDE.shows` [0.3, 0.4] with a little hysteresis); checked
+   by painting her white then black (`CLOUD_LOST`). The sim: a fresh page and seeded dice per voyage (`--seed`, `--jobs`,
+   `--page`), brought-home shards, where each wave was fought, `--height`, `--set`. The roads' gap was the simulated
+   Captain's height carried over to wave 8's storm; the storm road now brings the same raiders (`ROADS.storm.more`) and
+   the hunt half as much again on her head (`ROADS.hunt.bounty` 1.5). The view past her own ship: main.js `pivot` (from
+   `footprint`, a height grid of her model; only past the resting pitch). Breakers aim at the middle of what shows of her
+   crystals over her rail (raiders.js `breakAt`); the white flag's dark hem (wrecks.js `FLAG_U`); the sea's softer glints
+   (world.js GLITTER); the burst's toast arrow and gold pulse on her tag (main.js `BURST_GLOW`, game.html `.tag.burst`).
 4. **D3-progression**: save version 2, a gentle first voyage, the homecoming summary, commendations and a Captain's
    log, ranks, records and stars, the quartermaster's advice, sail and pennant colours, harbour orders.
 
