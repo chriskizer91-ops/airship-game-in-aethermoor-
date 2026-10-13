@@ -168,7 +168,27 @@ which were made from this repository only):
    shot in flight at a fight's range shows as small violet sparks, its two heads too small to see; and the edge tags'
    arrows are small, nearly even triangles, so which way one points is hard to read at a glance.
 3. **D2b-fights-foes**: raiders with nerve, named captains, wave arrivals, the Man-o'-war's fortress battle, a line of
-   battle, choosing the road between waves.
+   battle, choosing the road between waves. Built October 13 (`docs/game.md`, "Foes worth remembering"). The rules live
+   in `src/game/tactics.js` (`NERVE`, `CAPTAINS` with `TRICK`, `WANTED`, `PLATE`, `FORT`, `LINE`, `ROADS`/`ROAD`); the
+   minds in raiders.js. Nerve: flight.js `s.strikes` is a rule each raider is given at `spawn` (a prize's, or a crew's),
+   so a hit that beats her makes her `down` with why `struck` (wrecks.js runs up a white flag, `flagToWarm` made ready
+   as a voyage starts); `startRun` (to thick cloud floor found with `sky.floorAt`, set in main.js), `fireFlare`/`answer`
+   (help joins from `later` after the update loop). Captains: `waveAt` returns `captain`/`standIn` and `how`; main.js
+   names them (`captainFor`: a wanted one first, then `CAPTAIN_ORDER`, never one met this voyage; `W.met`), and the save
+   keeps `captains: {id: {beaten, sank}}` (progress.js merges such maps whole; no import there, as the save check runs
+   it in a vm). Tricks: `trick()` takes her steering (`TK`); the Ghost's smoke sets `r.smoke`, which sky.js makes
+   `hidden`; the Sail-Ripper's chain shot goes through `ch.shot`. Arrivals: `HOW` for the first fifteen waves, `LATE`
+   after, `WAY` for a captain's own; `spawnWave` places them and returns `{a, how}` for the banner's words (`arrival()`
+   in main.js). The fortress: `makeFort` splits a raider Man-o'-war's broadside guns into eight blocks (`ySplit`,
+   `zSplit`), `blockHit` silences one (guns.js `silence`, which every battery's count and volley respect), main.js
+   `hitTest` plates her sides (`plateMul`) and doubles her stern windows; acts 2 and 3 in `update` (her upper deck's
+   guns get `g.up`, a higher reach). A line: `formLine`/`breakLine`, followers keep station on a static slot, fire in
+   turn by `firedAt` (or after `LINE.hold`). Roads: `roadFor(next)` in main.js picks one of storm/treasure/hunt in turn
+   (`roadWave` builds it), shown as `#btn-road` (keys 1 and 2 only while it's up; `body.roads` makes room on phones),
+   `sailOn(pick)` tells `road`. `tools/sim-fight.mjs` gained `--policy fortress` and `--road`, chases runners, and
+   reports nerve. The Sun-Diver first climbed straight up over the Captain after each broadside: out of reach and still
+   the nearest raider, she held off a plain Captain's Man-o'-war at wave 20 (beaten 4 times in 16); flying off towards
+   the sun instead, she's out of the fight a while and comes back diving (beaten 16 times in 16).
 4. **D3-progression**: save version 2, a gentle first voyage, the homecoming summary, commendations and a Captain's
    log, ranks, records and stars, the quartermaster's advice, sail and pennant colours, harbour orders.
 
@@ -176,7 +196,7 @@ Run them in that order (each builds on the last), with the gate's `shots` asking
 upright-phone and sideways-phone sizes.
 
 **First steps in a new session:** `npm install` in the repository's main folder; `cd polished && node tools/build.mjs &&
-node tools/check.mjs` and see it end "all good" (about 15 minutes after D0, about 20 since D2a's checks, more while another agent is busy; it was 25 before D0); read `docs/plan/chris-decisions.md` and the five
+node tools/check.mjs` and see it end "all good" (about 15 minutes after D0, about 20 since D2a's checks, about 25 since D2b's, more while another agent is busy; it was 25 before D0); read `docs/plan/chris-decisions.md` and the five
 specs; ask Chris whether anything has changed since October 7; then run stage 4.
 
 ## How the work has been run
@@ -201,8 +221,8 @@ specs; ask Chris whether anything has changed since October 7; then run stage 4.
 ## Things learned the hard way
 
 - **This machine has 4 CPUs**: a workflow runs 2 agents at a time, and the full check (`node tools/check.mjs`) takes
-  about 20 minutes in software rendering since D2a (15 after D0, 25 before it; with another agent busy it can take 25 or more, and a
-  starved run can trip the check's frame-time comparisons: run it again on its own; `--quick` about 6, `--ships` under 3). In software a
+  about 25 minutes in software rendering since D2b (20 after D2a, 15 after D0, 25 before it; with another agent busy it can take 25 or more, and a
+  starved run can trip the check's frame-time comparisons: run it again on its own; `--quick` about 12 since D2b, `--ships` under 3). In software a
   frame takes a second or more, so a check that waits on frames it doesn't look at wastes minutes: hold or skip them
   (the ships demo's `hold`, `undrawn` in the check). A stage of four packages took 6 to 15 hours
   (stage 3 took about 15).

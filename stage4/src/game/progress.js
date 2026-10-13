@@ -10,16 +10,16 @@
 // bigger); which waves bring a storm (`storms`: their numbers, from 1, and after the fifteenth, this share of them at
 // random: sky.js), how near a raider still sees the Captain hidden in cloud (`sight`, metres), how long a raider's gun
 // ports glow before her broadside (`warn`, seconds: her gunners aim where you'd be if you held your course, so it's time
-// to climb out of her red fan: raiders.js), and how smart the raiders fight (`smart`: 0 simply; 1 big ones
+// to climb out of her red fan: raiders.js), how smart the raiders fight (`smart`: 0 simply; 1 big ones
 // try to cross your bow and rake you; 2 also small ones coming at your stern, and raiders climbing or diving out of
-// your loaded broadside: tactics.js SMART)
+// your loaded broadside: tactics.js SMART), and the chance a hurt raider runs for the clouds (`flee`: tactics.js NERVE)
 export const SKIES = {
   fair: { name: 'Fair Winds', line: 'Raiders aim poorly, hit lightly and break easily. For learning the ropes.', aim: 1.8, reload: 1.35, damage: 0.45, toughness: 0.76, pace: 0.88, extra: 0, shards: 1, captain: 0,
-    storms: { waves: [], after: 0 }, sight: 180, warn: 1, smart: 0 },
+    storms: { waves: [], after: 0 }, sight: 180, warn: 1, smart: 0, flee: 0.3 },
   cross: { name: 'Crosswinds', line: 'A fair fight. Shards pay a quarter more.', aim: 1, reload: 1, damage: 1, toughness: 1, pace: 0.92, extra: 0, shards: 1.25, captain: 1,
-    storms: { waves: [8, 13], after: 0 }, sight: 250, warn: 0.8, smart: 1 },
+    storms: { waves: [8, 13], after: 0 }, sight: 250, warn: 0.8, smart: 1, flee: 0.5 },
   mael: { name: 'Maelstrom', line: 'Raiders hunt in bigger packs, hit harder and aim truer. Shards pay over half as much again.', aim: 0.8, reload: 0.92, damage: 1.15, toughness: 1.15, pace: 0.96, extra: 1, shards: 1.6, captain: 1,
-    storms: { waves: [4, 8, 12], after: 0.4 }, sight: 350, warn: 0.6, smart: 2 },
+    storms: { waves: [4, 8, 12], after: 0.4 }, sight: 350, warn: 0.6, smart: 2, flee: 0.6 },
 };
 // what each ship costs in port: the first four as the Captain climbs, and the Galleon and the Man-o'-war as her
 // late-game goals, after many voyages (tools/sim-fight.mjs; docs/game.md "The port")
@@ -36,7 +36,9 @@ const HELD = 600e3; // how long a voyage stays on this device's own list after t
 // `saved` is when this save was last changed; `synced` is the `saved` of the copy in the claude.ai store that this
 // device last read or wrote (so saved > synced means this device has changes the store hasn't got yet). `got` names
 // the voyages whose shards the store's copy holds (the latest 100). `shots`: the kinds of shot the Captain has besides
-// round shot (tactics.js: chain shot and crystal breakers, earned by deeds or bought in port), for every ship she sails. `banked` is this device's own voyages that the
+// round shot (tactics.js: chain shot and crystal breakers, earned by deeds or bought in port), for every ship she sails.
+// `captains`: for each raider captain met (by her id: tactics.js CAPTAINS), how many times the Captain has brought her
+// down, and how many times she has sunk the Captain's ship since and got away (the price on her head: main.js). `banked` is this device's own voyages that the
 // store hasn't got, or took less than ten minutes ago: { id, n: shards, sent: 1 once a write has carried it, at: when
 // the store took it }
 function fresh() {
@@ -44,15 +46,19 @@ function fresh() {
     v: 1, saved: 0, synced: 0, skies: 'fair', shards: 0, flying: 'skiff', best: { fair: 0, cross: 0, mael: 0 }, voyages: 0,
     ships: Object.fromEntries(IDS.map((id) => [id, { owned: id === 'skiff', power: 0, mods: { armour: 0, canvas: 0, drill: 0, crystals: 0 } }])),
     shots: { chain: false, breaker: false },
+    captains: {},
     got: [], banked: [],
   };
 }
-// fill in anything an older save is missing
+// fill in anything an older save is missing (an empty object in the fresh save is a list kept by name, `captains`:
+// taken whole)
+const isMap = (o) => !!o && typeof o === 'object' && !Array.isArray(o);
 function merge(base, d) {
   if (!d || typeof d !== 'object') return base;
   for (const k of Object.keys(base)) {
     if (!(k in d)) continue;
-    if (base[k] && typeof base[k] === 'object' && !Array.isArray(base[k])) base[k] = merge(base[k], d[k]);
+    if (isMap(base[k]) && !Object.keys(base[k]).length) { if (isMap(d[k])) base[k] = d[k]; }
+    else if (isMap(base[k])) base[k] = merge(base[k], d[k]);
     else if (typeof d[k] === typeof base[k] && Array.isArray(d[k]) === Array.isArray(base[k])) base[k] = d[k];
   }
   return base;

@@ -69,13 +69,15 @@ export function makeFlyer(ship, stats, start, tune = {}) {
     const P = s.patch; P.part = s.worst(); P.t = PATCH.time; P.cd = PATCH.time + PATCH.wait;
     return P.part;
   };
-  s.strikes = false; // a treasure ship strikes her colours (gives up) with no sails left, or a quarter of her hull
+  // whether she strikes her colours (gives up) as she stands, after a hit: a raider's own rule (raiders.js: a treasure
+  // ship with no sails left, or a quarter of her hull; a beaten crew: tactics.js NERVE), or none (the Captain never does)
+  s.strikes = null;
   s.hit = (part, damage) => {
     if (s.down) return;
     s.health[part] = Math.max(0, s.health[part] - damage);
     if (s.health.hull <= 0) s.down = { why: 'hull', t: 0, roll: Math.random() < 0.5 ? -1 : 1 };
     else if (s.health.crystals <= 0) s.down = { why: 'crystals', t: 0, roll: Math.random() < 0.5 ? -1 : 1 };
-    else if (s.strikes && (s.health.sails <= 0 || s.health.hull <= full.hull * 0.25)) s.down = { why: 'struck', t: 0, roll: Math.random() < 0.5 ? -1 : 1 };
+    else if (s.strikes?.(s)) s.down = { why: 'struck', t: 0, roll: Math.random() < 0.5 ? -1 : 1 };
   };
 
   // c: turn (-1 port .. 1 starboard), climb (-1 .. 1), and either sail (a rate, from the keys) or sailTo (set outright)

@@ -159,14 +159,15 @@ export function makeSky({ world, lights, scene, renderer, touch = false, fx = nu
     const hidden = shipIn > HIDE.thick && clock >= W.revealUntil && !player.down;
     if (hidden !== W.hidden) { W.hidden = hidden; HIDP.on = hidden; HIDP.why = hidden ? 'cloud' : clock < W.revealUntil ? 'guns' : 'out'; emit('hidden'); }
     player.hidden = hidden;
-    // the raiders, a third of them each frame: hidden deep in cloud (and lost to the Captain's sight more than a little
-    // way off, unless she's readying a broadside: her gun ports glow through the cloud and give her away), and where
-    // she last saw each
+    // the raiders, a third of them each frame: hidden deep in cloud, or in a smoke screen of her own (the Ghost's:
+    // tactics.js), and lost to the Captain's sight more than a little way off, unless she's readying a broadside (her gun
+    // ports glow through the cloud and give her away); and where she last saw each
     W.raiderT = (W.raiderT + 1) % 3;
     for (let i = 0; i < raiders.length; i++) {
       const r = raiders[i];
-      if (r.f.down) { r.hidden = r.lost = false; continue; }
-      if (i % 3 === W.raiderT || r.hidden === undefined) r.hidden = cloudAt(r.f.pos) > HIDE.thick;
+      if (r.f.down) { r.hidden = r.lost = r.clouded = false; continue; }
+      if (i % 3 === W.raiderT || r.clouded === undefined) r.clouded = cloudAt(r.f.pos) > HIDE.thick;
+      r.hidden = r.clouded || r.smoke > 0;
       r.lost = r.hidden && !r.charge?.b && r.f.pos.distanceTo(player.pos) > HIDE.near;
       if (!r.lost) (r.seenAt ??= new THREE.Vector3()).copy(r.f.pos);
     }

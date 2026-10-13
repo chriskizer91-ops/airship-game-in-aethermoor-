@@ -19,12 +19,14 @@ From this folder (run `npm install` once here first; it keeps its own `node_modu
 
 ```
 node tools/build.mjs    # makes dist/game.html and dist/hangar.html (and their .artifact.html copies)
-node tools/check.mjs    # plays the game in a hidden browser (about 20 minutes here, with no graphics card, and longer while the machine is busy); must end with "all good"
+node tools/check.mjs    # plays the game in a hidden browser (about 25 minutes here, with no graphics card, and longer while the machine is busy); must end with "all good"
 node tools/check.mjs --quick   # only the game page at laptop size, while working ("all good (quick)")
 node tools/check.mjs --ships   # only the ships demo, a couple of minutes ("all good (the ships demo only)")
 node tools/sim-fight.mjs brig 5 cross   # the simulated Captain, for tuning the fights
 node tools/sim-fight.mjs manowar 6 cross 10 --runs 4   # the Man-o'-war against waves 10 to 15, four voyages (--owns, --mods, --power too)
 node tools/sim-fight.mjs brig 8 cross --runs 6 --skilled   # a Captain who uses the tactics: dodging broadsides, changing shot, patching
+node tools/sim-fight.mjs frigate 1 cross 12 --owns galleon,manowar --policy fortress --shot auto   # a Frigate against a raider Man-o'-war, from over her stern
+node tools/sim-fight.mjs brig 8 cross --road storm   # taking the storm road whenever it's offered
 ```
 
 `tools/ship-art.mjs` and `tools/map-art.mjs` read Chris's pictures from the repository's `art/` folder, without
@@ -32,7 +34,7 @@ changing it.
 
 ## What's here
 
-- `docs/game.md`: how this version plays (the title screen, the skies, the port, voyages, the controls and settings, the tactics, battle scars, ships that move, storms and clouds, the sound and music, the raiders, and how hard it is)
+- `docs/game.md`: how this version plays (the title screen, the skies, the port, voyages, the controls and settings, the tactics, the foes worth remembering (raiders with nerve, named captains, the Man-o'-war's fortress battle, the road between waves), battle scars, ships that move, storms and clouds, the sound and music, the raiders, and how hard it is)
 - `docs/ships.md`, `docs/map.md`: the ships and the map, as in the main folders
 - `src/`: the game's code; `demos/`: the pages' HTML; `tools/`: building and checking
 - `src/audio/thareia/`: Chris's music and instruments, shared with the laptop version and kept exactly as he gave them

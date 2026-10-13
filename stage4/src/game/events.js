@@ -45,8 +45,24 @@
 //   port:shot       { shot }                     a kind of shot bought in port
 //   nearMiss        { pan, close, at }           a raider's shot just missing the Captain's ship: pan -1 (left of the
 //                                                view) to 1 (right), close 0 (barely) to 1 (a hair's breadth)
-//   raider:down     { raider, why, at }          'hull', 'crystals' or 'struck' (a treasure ship giving up)
-//   raider:escaped  { raider }                   a treasure ship got away
+//   raider:down     { raider, why, at }          'hull', 'crystals' or 'struck' (a treasure ship, or a beaten crew,
+//                                                giving up)
+//   raider:escaped  { raider }                   a treasure ship, or a raider who ran, got away
+//   raider:run      { raider }                   a hurt raider turning to run for the clouds (tactics.js NERVE)
+//   flare           { raider, at, stage }        a raider's flare: 'fired' (help comes if she isn't sunk in time),
+//                                                'answered' (help came: a Skiff or two joining the wave) or 'none'
+//                                                (she was sunk, or struck, first)
+//   trick           { raider, trick }            a raider captain playing her trick: 'cloud' (diving into the cloud
+//                                                floor), 'sun' (climbing back into the sun), 'smoke' (vanishing in
+//                                                a smoke screen): tactics.js CAPTAINS
+//   burst           { raider, at }               a raider bursting up through the cloud floor, in a ring of mist
+//   line            { raider, stage }            a line of battle's leader gone ('broken': the line breaks up)
+//   fortress        { raider, act }              the Man-o'-war's next act: 2 (she launches her boats) or 3 (sinking,
+//                                                she fires everything)
+//   silenced        { raider, block, left, at }  a block of six of the Man-o'-war's guns knocked out (which, from 0;
+//                                                how many broadside guns she has left; where)
+//   road            { kind }                     the way on chosen between waves: 'steady', 'storm', 'treasure' or
+//                                                'hunt'
 //   blowout         { raider, i, at }            one of a Man-o'-war's crystal columns giving out (which, from 0, and
 //                                                where its crystals were: looks.js)
 //   blast           { at, size, big, first }     an explosion (a raider blowing up, and each blast of the chain that
@@ -104,6 +120,14 @@ export const PAYLOAD = {
   nearMiss: { pan: 0, close: 0, at: v() },
   'raider:down': { raider: null, why: '', at: v() },
   'raider:escaped': { raider: null },
+  'raider:run': { raider: null },
+  flare: { raider: null, at: v(), stage: '' },
+  trick: { raider: null, trick: '' },
+  burst: { raider: null, at: v() },
+  line: { raider: null, stage: '' },
+  fortress: { raider: null, act: 0 },
+  silenced: { raider: null, block: 0, left: 0, at: v() },
+  road: { kind: '' },
   blowout: { raider: null, i: 0, at: v() },
   blast: { at: v(), size: 0, big: false, first: false },
   'wreck:deck': { at: v(), size: 0 },

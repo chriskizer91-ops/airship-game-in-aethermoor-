@@ -62,7 +62,7 @@ const UPGRADE = { armour: 'anvil', canvas: 'map-open', drill: 'crossbow', crysta
 // one of the ship's parts dropping below 30%
 const LOW = { hull: 'deck-alarm', crystals: 'doldrums', sails: 'rope-creak' };
 // the menu buttons' sounds (by id)
-const BUTTONS = { 'btn-to-port': 'ui-confirm', 'btn-skies': 'ui-back', 'btn-pause': 'ui-open', 'btn-resume': 'ui-close', 'btn-sail-on': 'ui-confirm', 'btn-go-port': 'ui-back', 'btn-abandon': 'ui-back',
+const BUTTONS = { 'btn-to-port': 'ui-confirm', 'btn-skies': 'ui-back', 'btn-pause': 'ui-open', 'btn-resume': 'ui-close', 'btn-sail-on': 'ui-confirm', 'btn-road': 'ui-confirm', 'btn-go-port': 'ui-back', 'btn-abandon': 'ui-back',
   'btn-settings-title': 'ui-open', 'btn-settings-port': 'ui-open', 'btn-settings-pause': 'ui-open', 'btn-settings-done': 'ui-close',
   'btn-howto': 'ui-open', 'btn-howto-done': 'ui-close', 'map-close': 'ui-close', 'pp-tab-ship': 'ui-cursor', 'pp-tab-upgrades': 'ui-cursor' };
 
@@ -302,6 +302,19 @@ export function makeSound({ audio, touch = false, where = () => null, weather = 
   cue('patch', (e) => { if (e.stage === 'start') fx('anvil', 'ui', 0, 0.55); });
   // a Man-o'-war's crystal column blowing out: a glassy shatter and crystals dying in falling bells, where it is
   cue('blowout', withCues((c, e) => c.blowout(e)));
+  // the raiders' nerve and tricks, and the Man-o'-war's acts (tactics.js), each where it happens: a raider running (her
+  // crystals pouring into her sails), a flare going up (Chris's notify, and his alert as help answers it), one bursting
+  // up through the clouds (his wind), a raider captain's smoke screen (his hex), a block of guns silenced (a blast), the
+  // Man-o'-war's next act (his boss sting) and a line of battle breaking up
+  const at = (p, wet = 0.4) => { if (!audio.mixer) return null; const P = M().at(p, wet); return P.cull ? null : P; };
+  cue('raider:run', (e) => { const P = at(e.raider.f.pos); if (P) audio.effect('haste', CHRIS.haste * 0.6, 'fx', P.delay); });
+  cue('flare', (e) => { if (e.stage === 'none') return; const P = at(e.at, 0.5); if (P) audio.effect(e.stage === 'fired' ? 'notify' : 'alert', (e.stage === 'fired' ? CHRIS.notify : CHRIS.alert) * 0.7, 'fx', P.delay); });
+  cue('burst', (e) => { const P = at(e.at, 0.5); if (P) audio.effect('wind', CHRIS.wind * 0.6, 'fx', P.delay); });
+  cue('trick', (e) => { if (e.trick !== 'smoke') return; const P = at(e.raider.f.pos, 0.5); if (P) audio.effect('hex', CHRIS.hex * 0.7, 'fx', P.delay); });
+  cue('silenced', withCues((c, e) => c.blast({ at: e.at, size: 20, big: false, first: true })));
+  cue('fortress', () => { fx('boss'); M()?.dipMusic(-6, 1.5); });
+  cue('line', () => fx('notify', 'ui', 0, 0.6));
+  cue('road', () => {}); // (its button's own sound answers it: BUTTONS)
   // crossing into another region (its name shown): a soft chord with a far bell
   cue('region', () => { if (!audio.mixer) return; M().here(0, 0.4); audio.effect('new-area', CHRIS['new-area'] * 0.6, 'fx'); });
   cue('surge', () => { if (!audio.mixer) return; M().here(0, 0.4); audio.effect('sails', CHRIS.sails, 'fx'); M().here(0, 0.2); audio.effect('haste', CHRIS.haste, 'fx'); });

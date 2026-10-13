@@ -245,13 +245,17 @@ export function makeBolts(scene, fx, max = 400, camera = null) {
 // A battery's guns go off one after another, bow first: a broadside one port every 55 ms (both decks together), the
 // whole side in at most 0.55 s; a pair of chasers 80 ms apart (RIPPLE, kept with the ship's parts: each gun on the
 // model kicks back at its own turn). Its first gun fires at once, and its reload starts then. Each battery counts its
-// volleys (`volleys`), so the ship's model can tell when one went off (looks.js)
+// volleys (`volleys`), so the ship's model can tell when one went off (looks.js).
+// Guns can be knocked out (`silence`: a block of the Man-o'-war's, tactics.js FORT): a dead gun never fires again, and
+// isn't counted; and a gun can be given a steeper tilt than its kind's (`up`, radians either way: her upper deck in her
+// last act)
 const PENDING = 32; // room for guns waiting their turn, at least, per ship (more if she has more guns: a Man-o'-war)
 export function makeGunnery(ship, { reload: slow = 1, damage = 1, kinds = null } = {}, flyer = null) {
   const B = gunsOf(ship), R = ship.recipe, ready = { bow: 0, stern: 0, port: 0, starboard: 0 }, volleys = { bow: 0, stern: 0, port: 0, starboard: 0 }, weight = damage * (GUN_WEIGHT[R.id] ?? 1);
   const world = new THREE.Vector3(), dirW = new THREE.Vector3(), nm = new THREE.Matrix3(), want = new THREE.Vector3(), arc = new THREE.Vector3();
   const M = { p: new THREE.Vector3(), d: new THREE.Vector3(), K: null }; // the muzzle last asked for (kept, not made each time)
   const reload = (b) => (B[b][0] ? KINDS[B[b][0].kind].reload * slow * (kinds?.[B[b][0].kind] ?? 1) * SHOTS[gunnery.shot].reload : 1);
+  const live = { bow: B.bow.length, stern: B.stern.length, port: B.port.length, starboard: B.starboard.length }; // (the guns not knocked out, each battery)
   // each gun's turn, after the battery's first (seconds), and the battery's guns in that order
   for (const b in B) {
     const list = B[b];
@@ -279,7 +283,7 @@ export function makeGunnery(ship, { reload: slow = 1, damage = 1, kinds = null }
     dirW.copy(g.d).applyMatrix3(nm).normalize();
     if (typeof c.aim === 'function') c.aim(world, K, want); else want.copy(c.aim);
     want.add(c.off).sub(world).normalize();
-    const bolt = c.bolts.fire(world, clampToArc(want, dirW, K.yaw, K.pitch, arc), g.kind, c.owner, c.inherit, weight, c.shot);
+    const bolt = c.bolts.fire(world, clampToArc(want, dirW, K.yaw, g.up ?? K.pitch, arc), g.kind, c.owner, c.inherit, weight, c.shot);
     if (bolt) bolt.from = gunnery.from;
     FIRE.owner = c.owner; FIRE.kind = g.kind; FIRE.battery = b; FIRE.p.copy(world); FIRE.dir.copy(dirW); FIRE.weight = weight; FIRE.ship = R.id;
     FIRE.vel.copy(c.inherit ?? V0); FIRE.i = i; FIRE.n = c.n; FIRE.raider = gunnery.from;
@@ -290,7 +294,13 @@ export function makeGunnery(ship, { reload: slow = 1, damage = 1, kinds = null }
   }
   const gunnery = {
     B, ready, volleys, reload, from: null, cap, shot: 'round', breakers: SHOTS.breaker.volleys,
-    count: (b) => B[b].length,
+    count: (b) => live[b],
+    // knock out these guns (gun objects of B): they never fire again; how many are left in all
+    silence(guns) {
+      for (const g of guns) g.dead = true;
+      for (const k in B) { let n = 0; for (const g of B[k]) if (!g.dead) n++; live[k] = n; }
+      return live.bow + live.stern + live.port + live.starboard;
+    },
     get pending() { return np; },
     // load another shot (false if it's already loaded): the old drawn, the new loaded, so every battery reloads (guns
     // still rippling off keep what they were loaded with)
@@ -320,9 +330,12 @@ export function makeGunnery(ship, { reload: slow = 1, damage = 1, kinds = null }
     // the middle gun of a battery, in the world: where it is, which way it points, and its kind (the same object each
     // time: read it before asking for another battery's)
     muzzle(b) {
-      const g = B[b][B[b].length >> 1]; if (!g) return null;
+      const list = B[b];
+      let g = list[list.length >> 1];
+      if (g?.dead) { g = null; for (let i = 0, j = list.length >> 1; i < list.length && !g; i++) { const h = list[(j + i) % list.length]; if (!h.dead) g = h; } } // (the next not knocked out)
+      if (!g) return null;
       nm.getNormalMatrix(ship.body.matrixWorld);
-      M.p.copy(g.p).applyMatrix4(ship.body.matrixWorld); M.d.copy(g.d).applyMatrix3(nm).normalize(); M.K = KINDS[g.kind];
+      M.p.copy(g.p).applyMatrix4(ship.body.matrixWorld); M.d.copy(g.d).applyMatrix3(nm).normalize(); M.K = KINDS[g.kind]; M.pitch = g.up ?? M.K.pitch;
       return M;
     },
     // can battery b reach this point? (inside its swing and tilt, and its range with the shot it's loaded with: chain
@@ -330,27 +343,29 @@ export function makeGunnery(ship, { reload: slow = 1, damage = 1, kinds = null }
     reaches(b, aim, m = this.muzzle(b)) {
       if (!m) return false;
       want.copy(aim).sub(m.p); const dist = want.length(), S = SHOTS[gunnery.shot]; want.normalize();
-      return dist < m.K.speed * S.speed * m.K.life * S.life * 0.92 && want.angleTo(clampToArc(want, m.d, m.K.yaw, m.K.pitch, arc)) < 0.02;
+      return dist < m.K.speed * S.speed * m.K.life * S.life * 0.92 && want.angleTo(clampToArc(want, m.d, m.K.yaw, m.pitch ?? m.K.pitch, arc)) < 0.02;
     },
     // fire battery b: `aim` is a point (world, read again as each gun's turn comes) or a function (from, K, out) that
     // works out where a gun at `from` should aim; `off` (optional) is added to it. Returns how many guns will fire
     fire(b, aim, bolts, owner, inherit, off) {
-      if (ready[b] > 0 || !B[b].length) return 0;
+      if (ready[b] > 0 || !live[b]) return 0;
       ship.root.updateWorldMatrix(true, true); // where the ship is now, not where it was last drawn
       nm.getNormalMatrix(ship.body.matrixWorld);
       const c = ctx[b], list = B[b];
-      c.aim = aim; c.bolts = bolts; c.owner = owner; c.inherit = inherit ?? null; c.n = list.length; c.shot = gunnery.shot;
+      c.aim = aim; c.bolts = bolts; c.owner = owner; c.inherit = inherit ?? null; c.n = live[b]; c.shot = gunnery.shot;
       if (c.shot === 'breaker') gunnery.breakers = Math.max(0, gunnery.breakers - 1);
       if (off) c.off.copy(off); else c.off.set(0, 0, 0);
-      VOLLEY.owner = owner; VOLLEY.battery = b; VOLLEY.count = list.length; VOLLEY.kind = list[0].kind; VOLLEY.ship = R.id;
+      VOLLEY.owner = owner; VOLLEY.battery = b; VOLLEY.count = live[b]; VOLLEY.kind = list[0].kind; VOLLEY.ship = R.id;
       VOLLEY.p.copy(list[list.length >> 1].p).applyMatrix4(ship.body.matrixWorld);
       emit('volley', VOLLEY);
-      for (let i = 0; i < list.length; i++) {
+      for (let i = 0, k = 0; i < list.length; i++) {
         const g = list[i];
-        if (g.delay > 0 && np < cap) { pg[np] = g; pt[np] = g.delay; pb[np] = b; pi[np++] = i; } else shot(g, b, i);
+        if (g.dead) continue;
+        if (g.delay > 0 && np < cap) { pg[np] = g; pt[np] = g.delay; pb[np] = b; pi[np++] = k; } else shot(g, b, k);
+        k++;
       }
       ready[b] = reload(b); volleys[b]++;
-      return list.length;
+      return live[b];
     },
   };
   return gunnery;

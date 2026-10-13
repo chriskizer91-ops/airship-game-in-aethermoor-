@@ -34,17 +34,17 @@ import * as THREE from 'three';
 import { loadShipArt } from '../ship/materials.js';
 import { buildShip } from '../ship/build.js';
 import { SHIPS, FLEET, GIANTS } from '../ships/index.js';
-import { makeWorld, regionAt, REGIONS, SUN, HAZE, MAP, THINNING, DAY, billowsFor } from './world.js';
+import { makeWorld, regionAt, REGIONS, SUN, HAZE, MAP, THINNING, DAY, CLOUD_Y, billowsFor } from './world.js';
 import { makeSky } from './sky.js';
 import { makeInput } from './input.js';
 import { makeFlyer, WIND, windHelp } from './flight.js';
 import { makeBolts, makeGunnery, batteryFor, BATTERY_NAMES, intercept, KINDS } from './guns.js';
-import { SHOTS, SHOT_ORDER, SHOT_ICON, RAKE, PATCH, SMART, rakeMul } from './tactics.js';
+import { SHOTS, SHOT_ORDER, SHOT_ICON, RAKE, PATCH, SMART, rakeMul, NERVE, CAPTAINS, CAPTAIN_ORDER, captainById, wantedMul, plateMul, fromAstern, PLATE, FORT, LINE, ROADS, ROAD } from './tactics.js';
 import { makeFx } from './fx.js';
 import { makeWrecks } from './wrecks.js';
 import { makeSurge } from './surge.js';
 import * as events from './events.js';
-import { makeRaiders, waveAt, hasTreasure, treasureShip, treasureCount } from './raiders.js';
+import { makeRaiders, waveAt, roadWave, hasTreasure, treasureShip, treasureCount, BOUNTY, CAPTAIN } from './raiders.js';
 import { makeProgress, SKIES, PRICES, NEEDS } from './progress.js';
 import { loadout } from './mods.js';
 import { makePickups } from './pickups.js';
@@ -117,6 +117,7 @@ async function main() {
   const raiders = makeRaiders(scene, art, bolts, skies, fx);
   const looks = makeLooks({ scene, touch, fx, camera }); // (every ship's scars, her life and her flames: looks.js)
   const sky = makeSky({ world, lights, scene, renderer, touch, fx }); // (the sky at sea and its weather: sky.js)
+  raiders.sky = sky; // (where the thick cloud is, for a raider running to hide in it)
   const wakes = makeWakes(scene, { touch }); // (every ship's wake of Aether, in one draw)
   // the Settings card's changes, at once: the sound; the picture; the camera shake; Fire on the left (a phone)
   function applyPicture() {
@@ -163,8 +164,11 @@ async function main() {
   let mode = '', paused = false, player = null, gunnery = null;
   const V = { shards: 0, downed: 0, hits: 0 }; // this voyage
   // the waves: which (n, from 0), what's happening between them, and the next wave once it's known (shown on the card);
-  // `news`: kinds of shot earned and not yet told in a banner (earn())
-  const W = { n: 0, state: 'calm', timer: 5, lost: 0, choose: 0, sunk: false, next: null, bonus: 0, bonusAt: 0, bonusShown: -1, news: [] };
+  // `news`: kinds of shot earned and not yet told in a banner (earn()). `alt`: the second way on the card offers, if any
+  // (roadFor); `wave`: the wave being fought (its road's shards and bonus); `met`: the raider captains met this voyage;
+  // `plainAt`: a captain wave whose captain was hunted down early (a plain wave now); `treasureAt`: the last wave with a
+  // treasure ship; `grudge`: a raider captain who sank her ship and got away, for its card
+  const W = { n: 0, state: 'calm', timer: 5, lost: 0, choose: 0, sunk: false, next: null, bonus: 0, bonusAt: 0, bonusShown: -1, news: [], alt: null, wave: null, met: [], plainAt: -1, treasureAt: -99, grudge: null };
   let told = null; // the screen the events were last told of
   // a new screen: the title's sky (or the afternoon's again), and a dip through the night as it changes. The change
   // itself is at once (the night covers it), then the new screen comes up out of the night over half a second
@@ -183,7 +187,7 @@ async function main() {
   // everything a voyage leaves behind, cleared for the next: the waves (and the next one, if a card was showing), the
   // hold, the raiders, shots, smoke and shards, wrecks and the holes they tore in the clouds, and the camera
   function resetVoyage() {
-    Object.assign(W, { n: 0, state: 'calm', timer: 5, lost: 0, choose: 0, sunk: false, next: null }); W.news.length = 0; newsUp.until = 0;
+    Object.assign(W, { n: 0, state: 'calm', timer: 5, lost: 0, choose: 0, sunk: false, next: null, alt: null, wave: null, plainAt: -1, treasureAt: -99, grudge: null }); W.news.length = 0; W.met.length = 0; newsUp.until = 0;
     Object.assign(V, { shards: 0, downed: 0, hits: 0 });
     raiders.clear(); bolts.clear(); pickups.clear(); fx.clear(); wrecks.clear(); world.clear(); surge.clear(); looks.clear(); wakes.clear(); sky.reset(); hideBounties(); calmUp(false); bigMap(false);
     document.body.classList.remove('sinking'); hidNote = -99; gaveAway = -99;
@@ -231,6 +235,8 @@ async function main() {
     looks.follow(player); looks.reset(ship); // (she sails as good as new)
     if (!zones.has(id)) zones.set(id, hitZones(ship));
     player.aimY = zones.get(id).aim.y;
+    // (and how far above that her sails' middle is, for a raider captain who shoots chain shot at them: tactics.js)
+    { const Z = zones.get(id), m = Z.sails.filter((b) => !b.isEmpty()); player.sailUp = m.length ? m.reduce((a, b) => a + (b.min.y + b.max.y) / 2, 0) / m.length - Z.aim.y : R.length * 0.3; }
     gunnery = makeGunnery(ship, L.guns, player); loaded.port = loaded.starboard = 0; wasLocked = null;
     player.gun = gunnery; // (her guns show on her model as they fire and reload: looks.js)
     player.locked = null; // (the raider her guns are locked on to, for the smartest raiders to dodge: raiders.js)
@@ -248,6 +254,7 @@ async function main() {
     // (a raider's red fan made ready for the sky at sea and her ship's lamps, so her first warning doesn't stutter a
     // phone making it then: raiders.js fanToWarm)
     renderer.compile(raiders.fanToWarm(), camera, scene);
+    renderer.compile(wrecks.flagToWarm(), camera, scene); // (and a struck ship's white flag: wrecks.js)
     // (her trial's wave, known now: a raider captain's ship in it is built as she sails, under the dip through the night,
     // not as the wave appears: a stutter on a phone)
     if (trial) { W.n = TRIAL[id]; W.next = nextWave(W.n); raiders.prepareWave(W.next); }
@@ -299,6 +306,35 @@ async function main() {
     if (mode !== 'voyage' || W.state !== 'fight') return; // (only worth saying with raiders about)
     if (e.on && time - hidNote > 25) { hidNote = time; toast('Hidden in the cloud: far-off raiders lose you'); }
     else if (!e.on && e.why === 'guns' && time - gaveAway > 12) { gaveAway = time; toast('Your guns gave you away'); }
+  });
+  // the raiders' nerve, their captains' tricks and the Man-o'-war's acts, said as they happen (tactics.js): a raider
+  // running (catch her), her flare (and whether help came), a line of battle breaking up, a raider captain's trick,
+  // the Man-o'-war launching her boats and sinking (a banner each), her guns silenced and her columns breaking
+  const fighting = () => mode === 'voyage' && W.state === 'fight' && !player?.down;
+  const named = (r) => (r.who ? r.who.name : `The ${r.R.cls}`);
+  events.on('raider:run', (e) => { if (fighting()) toast(`${named(e.raider)} is running for the clouds: catch her!`); });
+  events.on('flare', (e) => {
+    if (!fighting()) return;
+    if (e.stage === 'fired') toast(`${named(e.raider)} fires a flare: sink her in ${NERVE.wait} s or help comes`);
+    else if (e.stage === 'answered') toast(e.raider.flare.n > 1 ? `Help answers her flare: ${NUMBER[e.raider.flare.n]} ${skies().extra ? 'Cutters' : 'Skiffs'}` : `A ${skies().extra ? 'Cutter' : 'Skiff'} answers her flare`);
+  });
+  events.on('line', () => { if (fighting()) toast('The line breaks: each fights on alone'); });
+  events.on('trick', (e) => {
+    if (!fighting()) return;
+    if (e.trick === 'cloud') toast(`${e.raider.who.name} dives into the cloud floor: watch below you`);
+    else if (e.trick === 'smoke') toast(`${e.raider.who.name} vanishes in smoke: watch your other side`);
+  });
+  events.on('fortress', (e) => {
+    if (!fighting()) return;
+    if (e.act === 2) banner('She launches her boats', 'Two Skiffs from her stern · her plated sides still shrug off half');
+    else banner('She\'s sinking, and fires everything', 'Her upper guns reach above her now · finish her from astern');
+  });
+  events.on('silenced', (e) => { if (fighting()) toast(`Six of her guns silenced: ${e.left} left`); });
+  events.on('blowout', (e) => {
+    const W2 = e.raider?.ship.wear;
+    if (!fighting() || !e.raider.fort || !W2) return;
+    let n = 0; for (let i = 0; i < W2.clusters; i++) n += W2.blown[i];
+    toast(n >= W2.clusters ? 'Her last crystal column breaks' : `A crystal column breaks: ${W2.clusters - n} left`);
   });
   // a giant bought: what she brings to the sky, said as she's bought (Chris: giant raiders only once you own one)
   const BOUGHT = { galleon: 'from now on, the treasure ships are Galleons', manowar: 'from now on, raiders sail Men-o\'-war too' };
@@ -376,18 +412,32 @@ async function main() {
   // Each hit is told to the events (the sparks, shake and buzz answer it, fx.js), and marked on the HUD. A raider's
   // shot that only just misses flares and is told as a near miss. How hard it hits: its weight, times its shot's on the
   // part it hits (tactics.js SHOTS: chain shot shreds sails, breakers crack crystals), times half as much again for a
-  // broadside's shot raking her, down her length from across her bow or stern (rakeMul), either way
+  // broadside's shot raking her, down her length from across her bow or stern (rakeMul), either way. A plated ship's
+  // hull (the Man-o'-war's, Ironsides') shrugs off half a hit from her side, and a rake does double (plateMul); the
+  // Man-o'-war's stern windows take double from astern, and a hit in one of her blocks of guns hurts the block in full
+  // (raiders.js blockHit: at nothing left, its six guns are silenced)
   const HIT = payload('hit'), NEAR = payload('nearMiss'), LOW = payload('player:low');
+  const local = new THREE.Vector3(), inv = new THREE.Matrix4();
   function hitTest(b, a, c) {
     if (b.owner === 'player') {
       const h = raiders.hitBy(a, c);
       if (!h) return false;
-      const r = h.r, part = h.h.part, was = !!r.f.down, rake = b.K === KINDS.broadside ? rakeMul(b.v, r.ship.body) : 1, damage = b.damage * SHOTS[b.shot][part] * rake;
+      const r = h.r, part = h.h.part, was = !!r.f.down, along = b.K === KINDS.broadside && rakeMul(b.v, r.ship.body) > 1, shot = b.damage * SHOTS[b.shot][part];
+      let rake = along ? RAKE.mul : 1;
+      if (r.plated && part === 'hull') {
+        rake = plateMul(b.v, r.ship.body, along);
+        if (r.fort) {
+          local.copy(h.h.at).applyMatrix4(inv.copy(r.ship.body.matrixWorld).invert());
+          if (fromAstern(b.v, r.ship.body) && local.z < r.ship.hull.zs + PLATE.aft * r.R.length) rake = Math.max(rake, PLATE.stern);
+          else raiders.blockHit(r, local, shot);
+        }
+      }
+      const damage = shot * rake;
       r.f.hit(part, damage); V.hits++;
-      HIT.owner = 'player'; HIT.target = 'raider'; HIT.part = part; HIT.at.copy(h.h.at); HIT.damage = damage; HIT.raider = r; HIT.size = b.K.size; HIT.raked = rake > 1;
+      HIT.owner = 'player'; HIT.target = 'raider'; HIT.part = part; HIT.at.copy(h.h.at); HIT.damage = damage; HIT.raider = r; HIT.size = b.K.size; HIT.raked = along;
       HIT.dir.copy(b.v).normalize(); HIT.vel.copy(r.f.velocity); emit('hit');
       hitMark(part, !was && !!r.f.down); tagFlash(r, part);
-      if (rake > 1) raked('player', r, h.h.at);
+      if (along) raked('player', r, h.h.at);
       return true;
     }
     if (player.down) return false;
@@ -512,14 +562,15 @@ async function main() {
   }
 
   // ---------- the raiders come in waves; between them, sail on or go home ----------
-  // a wave in words: its raider captain's ship first, then its treasure ships, then the rest, biggest first ("a raider
-  // captain's Frigate, a treasure Brig, two Frigates and a Cutter")
-  function describe(wave) {
+  // a wave in words: its raider captain's ship first (by her name: "Senna Vale's Brig", or "her Brig" with `her`), then
+  // its treasure ships, then the rest, biggest first ("a raider captain's Frigate, a treasure Brig, two Frigates and a
+  // Cutter")
+  function describe(wave, her = false) {
     const groups = new Map(), plural = (c) => (c === 'Man-o\'-war' ? 'Men-o\'-war' : `${c}s`);
     const add = (key, order, one, many) => { const g = groups.get(key) ?? { order, n: 0, one, many }; g.n++; groups.set(key, g); };
     wave.ids.forEach((id, i) => {
       const c = FLEET.find((s) => s.id === id).cls;
-      if (i === wave.captain) add('captain', -1000, `a raider captain's ${c}`, '');
+      if (i === wave.captain) add('captain', -1000, wave.who ? `${her ? 'her' : `${wave.who.name}'s`} ${c}` : `a raider captain's ${c}`, '');
       else if (treasureShip(wave, i)) add('treasure:' + id, i - 100, `treasure ${c}`, `treasure ${plural(c)}`);
       else add(id, i, c, plural(c));
     });
@@ -529,12 +580,65 @@ async function main() {
   // which giants the Captain owns: only those sail among the raiders (raiders.js waveAt). Read as a voyage starts (she
   // can't buy one at sea)
   const giants = { galleon: false, manowar: false };
-  const nextWave = (n) => waveAt(n, skies().extra, trial ? null : skies().storms, giants); // (a sea trial in clear weather)
+  // the raider captain who leads a captain wave (tactics.js CAPTAINS; k: which captain wave of the voyage, from 0): one
+  // who sank the Captain's ship and is still loose (the highest price on her head first), or else the one for that
+  // wave in order, if she's not been met this voyage; failing that, the first not met yet (after the sixth, any not met
+  // at random), or any at random. A sea trial holds no grudges: it changes nothing in the save
+  const grudges = () => progress.data.captains ?? (progress.data.captains = {});
+  function captainFor(k) {
+    const C = grudges(), met = W.met, free = CAPTAIN_ORDER.filter((id) => !met.includes(id));
+    if (!trial) { let best = null; for (const id of free) if ((C[id]?.sank ?? 0) > (best ? C[best].sank : 0)) best = id; if (best) return captainById(best); }
+    if (free.includes(CAPTAIN_ORDER[k])) return captainById(CAPTAIN_ORDER[k]);
+    const pool = free.length ? free : CAPTAIN_ORDER;
+    return captainById(k < CAPTAIN_ORDER.length && free.length ? free[0] : pool[Math.floor(Math.random() * pool.length)]);
+  }
+  // her bounty: a quarter more for each time she's sunk the Captain's ship and got away (three times at the most), and
+  // the price on her head, in shards (before the skies' and the wave's bonus)
+  const sankBy = (who) => (trial || !who ? 0 : grudges()[who.id]?.sank ?? 0);
+  function name(w, k, more = 1) { w.who = captainFor(k); w.sank = sankBy(w.who); w.bounty = more * wantedMul(w.sank); return w; }
+  // the wave n: the skies' raiders, its storm (none on a sea trial), and its raider captain named (not a Man-o'-war's
+  // stand-in, who isn't one of them), or none if she was hunted down early (W.plainAt)
+  function nextWave(n) {
+    const w = waveAt(n, skies().extra, trial ? null : skies().storms, giants, n === W.plainAt);
+    return w.captain >= 0 && !w.standIn ? name(w, Math.floor((n + 1) / 5) - 1) : w;
+  }
+  // the second way on, beside the steady course `next` (tactics.js ROADS; raiders.js roadWave), from the card after
+  // wave 2: whichever of these the wave allows, in turn, by the wave's number: into the storm (not on Fair Winds, which
+  // never storms, nor when a storm's coming anyway), a treasure ship's trail (when none has come for three waves, and
+  // none is next) and hunting the next raider captain early (when her wave is within three). None when a raider
+  // captain or a Man-o'-war is next (she bars the way), or on a sea trial
+  function roadFor(next) {
+    if (trial || W.n < ROAD.from || next.captain >= 0 || next.ids.includes('manowar')) return null;
+    let m = W.n + 1; while ((m + 1) % 5) m++; // (the next captain wave after this one)
+    const kinds = [];
+    if (progress.data.skies !== 'fair' && !next.storm) kinds.push('storm');
+    if (!hasTreasure(next) && W.n - W.treasureAt > ROAD.treasureGap) kinds.push('treasure');
+    if (m - W.n <= ROAD.huntWithin && W.plainAt !== m) kinds.push('hunt');
+    if (!kinds.length) return null;
+    const kind = kinds[W.n % kinds.length], w = roadWave(kind, next, giants);
+    if (kind === 'hunt') { name(w, (m + 1) / 5 - 1, ROADS.hunt.bounty); w.huntFor = m; }
+    return w;
+  }
+  // the second way on, on the card: its name and what it brings, in a line
+  function roadWords(alt, next) {
+    if (alt.road === 'storm') { const c = FLEET.find((s) => s.id === alt.ids.find((id) => alt.ids.filter((x) => x === id).length > next.ids.filter((x) => x === id).length)).cls; return [ROADS.storm.name, `and a ${c}, for half as many shards again`]; }
+    if (alt.road === 'treasure') return [ROADS.treasure.name, describe(alt)];
+    return [`Hunt ${alt.who.name}`, `${alt.who.title}, early, for a quarter more`];
+  }
   const NUM = new Intl.NumberFormat('en'), fmt = (n) => NUM.format(Math.round(n)); // (one formatter, made once: a phone is slow to make them)
   // a ship's price, in one piece on the screen (never "◆" at the end of one line and the number on the next); and the
   // ship to own first, if the port sells her only after another (", once you own the Doldrums")
-  const price = (id) => `◆\u00a0${fmt(PRICES[id])}`;
+  const price = (id) => `◆ ${fmt(PRICES[id])}`;
   const needs = (id) => { const first = NEEDS[id] && !progress.data.ships[NEEDS[id]].owned ? SHIPS.find((s) => s.id === NEEDS[id]) : null; return first ? `, once you own the ${first.name}` : ''; };
+  // where a wave is coming from, in words (raiders.js spawnWave says how: `a` its bearing): ahead, from both sides (each
+  // side's words), up through the clouds below, out of the sun above, high and low, in a line
+  function arrival(arr) {
+    const side = sideWords(arr.a - player.heading);
+    return arr.how === 'pincer' ? `${side} and ${sideWords(arr.a + Math.PI - player.heading)}` : arr.how === 'below' ? `below you, ${side}` : arr.how === 'sun' ? `out of the sun, above you, ${side}`
+      : arr.how === 'stack' ? `above and below you, ${side}` : arr.how === 'line' ? `in a line, ${side}` : side;
+  }
+  // a wave's banner, by how it comes ("Wave 3: up through the clouds!")
+  const COMING = { ahead: '', pincer: 'from both sides!', below: 'up through the clouds!', sun: 'out of the sun!', stack: 'high and low!', line: 'a line of battle!' };
   const DOWN = payload('raider:down'), SPILL = payload('shards:spill');
   function waves(dt, gone) {
     for (const r of gone) {
@@ -544,21 +648,28 @@ async function main() {
       // that strikes to her, crystal breakers from the first raider captain's Frigate she sinks
       if (!trial && r.role === 'prize' && r.f.down.why === 'struck') earn('chain', 'Her crew left chain shot in the hold');
       if (!trial && r.captain && r.id === 'frigate') earn('breaker', 'Crystal breakers in her hold');
-      const who = r.captain ? `The captain's ${r.R.cls}` : `The ${r.R.cls}`, why = r.f.down.why;
-      if (trial) { toast(why === 'struck' ? `${who} strikes her colours!` : why === 'hull' ? `${r.captain ? who : r.R.cls} down!` : `${who} is sinking!`); continue; } // (a sea trial: no shards)
-      SPILL.at.copy(r.f.pos).setY(r.f.pos.y + 2); SPILL.total = r.bounty * skies().shards * (1 + 0.1 * W.n);
+      // a named raider captain brought down: remembered (and the price on her head is gone)
+      if (!trial && r.who) { const c = grudges()[r.who.id] ??= { beaten: 0, sank: 0 }; c.beaten++; c.sank = 0; progress.save(); }
+      const why = r.f.down.why, beaten = why === 'struck' && r.role !== 'prize'; // (a crew who struck her colours: half as many shards again)
+      const who = r.who ? r.who.name : r.captain ? `The captain's ${r.R.cls}` : `The ${r.R.cls}`, ship = r.who ? `${r.who.name}'s ${r.R.cls}` : who;
+      if (trial) { toast(why === 'struck' ? `${who} strikes her colours!` : why === 'hull' ? `${r.captain ? who : r.R.cls} down!` : `${ship} is sinking!`); continue; } // (a sea trial: no shards)
+      SPILL.at.copy(r.f.pos).setY(r.f.pos.y + 2); SPILL.total = r.bounty * skies().shards * (1 + 0.1 * W.n) * (W.wave?.mult ?? 1) * (beaten ? NERVE.prize : 1);
       pickups.spill(SPILL.at, r.f.velocity, SPILL.total); emit('shards:spill');
       bounty(r, SPILL.total, SPILL.at);
-      toast(why === 'struck' ? `${who} strikes her colours! Gather her treasure` : why === 'hull' ? `${r.captain ? who : r.R.cls} down! Fly through her shards` : `${who} is sinking! Fly through her shards`);
+      // (her flare's help never came; a line of battle's leader gone, and the line with her)
+      const early = r.flare?.cut ? ' before help came' : '', then = r.line && !r.leader && r.line.ships.length > 1 ? ' The line breaks: each fights on alone' : ' Fly through her shards';
+      toast(beaten ? `${who} strikes her colours${early}: half as many shards again` : why === 'struck' ? `${who} strikes her colours! Gather her treasure` : why === 'hull' ? `${r.who ? `${who} is` : r.captain ? who : r.R.cls} down${early}!${then}` : `${ship} is sinking${early}!${then}`);
     }
-    for (const r of raiders.escaped) { toast(`The ${r.R.cls} got away with her treasure`); payload('raider:escaped').raider = r; emit('raider:escaped'); }
+    for (const r of raiders.escaped) { toast(r.role === 'prize' ? `The ${r.R.cls} got away with her treasure` : `The ${r.R.cls} got away`); payload('raider:escaped').raider = r; emit('raider:escaped'); }
     if (W.news.length && W.state === 'fight' && raiders.list.some((r) => !r.f.down)) tellNews(); // (the fight goes on: said now)
     if (W.sunk) return;
     if (W.lost > 0) {
       if ((W.lost -= dt) <= 0) {
         W.sunk = true; bigMap(false); // (the card says so over everything: game.html)
         $('paused-title').textContent = `The ${player.ship.recipe.name} went down`;
-        $('paused-line').textContent = trial ? 'It was only her sea trial: it cost nothing, and she\'s back in port as good as new.' : V.shards ? `Your crew got her home with half this voyage's shards: ◆ ${fmt(V.shards / 2)}.` : 'Your crew got her home.';
+        // (and a raider captain who sank her, got away with a price on her head)
+        const grudge = W.grudge ? ` ${W.grudge.name} got away: the price on her head is up to ◆ ${fmt(W.grudge.price)}.` : '';
+        $('paused-line').textContent = trial ? 'It was only her sea trial: it cost nothing, and she\'s back in port as good as new.' : (V.shards ? `Your crew got her home with half this voyage's shards: ◆ ${fmt(V.shards / 2)}.` : 'Your crew got her home.') + grudge;
         $('btn-resume').hidden = true; $('btn-abandon').textContent = 'To port'; $('paused').hidden = false;
         input.active = false;
       }
@@ -567,27 +678,42 @@ async function main() {
     if (player.down) {
       W.lost = 4; calmUp(false); document.body.classList.add('sinking'); banner(`The ${player.ship.recipe.name} is going down`, 'All hands to the boats');
       gunnery.cancel(); payload('player:down').why = player.down.why; emit('player:down');
+      // a raider captain still afloat sank her: she gets away, the price on her head up (tactics.js WANTED), and comes
+      // back for her next wave (not a sea trial's: it changes nothing)
+      const cap = trial ? null : raiders.list.find((r) => r.who && !r.f.down);
+      if (cap) { const c = grudges()[cap.who.id] ??= { beaten: 0, sank: 0 }; c.sank++; progress.save(); W.grudge = { name: cap.who.name, price: BOUNTY[cap.id] * CAPTAIN.bounty * wantedMul(c.sank) * skies().shards }; }
       return;
     }
     if (W.state !== 'fight') { player.repair(dt * 0.12); looks.repair(player.ship, dt); } // between fights the crew patch her up (and her scars)
     if (W.state === 'calm') {
       if ((W.timer -= dt) <= 0) {
-        const wave = W.next ?? nextWave(W.n), a = raiders.spawnWave(wave, player);
-        W.next = null;
-        // a storm wave: the storm rolls in (its wind blowing from it); a storm wave, and every third, comes out of a
-        // bank of cloud on the raiders' way in, 500 to 800 m ahead of them
+        const wave = W.next ?? nextWave(W.n), arr = raiders.spawnWave(wave, player);
+        W.next = null; W.wave = wave;
+        if (wave.who && !W.met.includes(wave.who.id)) W.met.push(wave.who.id);
+        // a storm wave: the storm rolls in (its wind blowing from it); a storm wave, and every third, coming from far
+        // off comes out of a bank of cloud on the raiders' way in, 500 to 800 m ahead of them (raiders.js waveAt)
         if (wave.storm) sky.startStorm(); else sky.clearWeather();
         if (wave.bank) bankFor(raiders.list, player.pos);
         // (a treasure ship's wave: a Galleon's, or one with a treasure ship of another class, a treasure Brig before
         // the Captain owns a Galleon)
         const prize = hasTreasure(wave), rich = treasureCount(wave);
+        if (prize) W.treasureAt = W.n;
         const at = trial ? 'Sea trial' : `Wave ${W.n + 1}`; // (a sea trial's one fight isn't counted as a wave)
-        const title = prize ? `${at}: ${rich > 1 ? `${NUMBER[rich]} treasure ships` : 'a treasure ship'}` : wave.captain >= 0 ? `${at}: a raider captain` : wave.ids.includes('manowar') ? `${at}: a Man-o'-war` : trial ? 'Sea trial: raiders' : `Raiders, wave ${W.n + 1}`;
-        banner(title, `${describe(wave)}, ${sideWords(a - player.heading)} · ${windWords()}${prize ? (rich > 1 ? ' · shoot their sails to catch them' : ' · shoot her sails to catch her') : ''}`);
+        // the banner: a named raider captain's name and title, with her trick (and the price on her head); a treasure
+        // ship's; a raider captain's or a Man-o'-war's; or how it comes ("up through the clouds!"); and where it's
+        // coming from, in left and right words
+        const fort = wave.ids.includes('manowar'), where = arrival(arr), coming = arr.how === 'ahead' && wave.road === 'storm' ? 'into the storm!' : COMING[arr.how] ?? '';
+        // (a named captain's: "Wave 5: Senna Vale", "the Cloud Fox: hides in cloud, rises under you · ahead on your left"; one with
+        // a price on her head: "Wanted: Senna Vale", and the price in place of where she is. Short, to fit a phone)
+        const title = wave.who ? `${wave.sank && !trial ? 'Wanted' : at}: ${wave.who.name}` : prize ? `${at}: ${rich > 1 ? `${NUMBER[rich]} treasure ships` : 'a treasure ship'}` : wave.captain >= 0 ? `${at}: a raider captain` : fort ? `${at}: a Man-o'-war`
+          : coming ? `${at}: ${coming}` : trial ? 'Sea trial: raiders' : `Raiders, wave ${W.n + 1}`;
+        const line = wave.who ? `${wave.who.title}: ${wave.who.line} · ${wave.sank ? `◆ ${fmt(BOUNTY[wave.ids[wave.captain]] * CAPTAIN.bounty * wave.bounty * skies().shards)} on her head` : sideWords(arr.a - player.heading)}`
+          : `${describe(wave)}, ${where} · ${windWords()}${prize ? (rich > 1 ? ' · shoot their sails to catch them' : ' · shoot her sails to catch her') : fort ? ' · plated sides: go for her columns, her guns or her stern' : ''}`;
+        banner(title, line);
         W.state = 'fight';
         if ((W.n === 0 || trial) && !$('help').hidden) toggleHelp(); // (the keys fold away as the first wave comes, or her sea trial's)
         const E = payload('wave:start');
-        Object.assign(E, { n: W.n + 1, title, captain: wave.captain >= 0, prize, fortress: wave.ids.includes('manowar'), count: wave.ids.length });
+        Object.assign(E, { n: W.n + 1, title, captain: wave.captain >= 0, prize, fortress: fort, count: wave.ids.length });
         emit('wave:start');
       }
     } else if (W.state === 'fight') {
@@ -597,7 +723,7 @@ async function main() {
         const last = raiders.list.some((r) => r.f.down && r.f.down.t < 0.5);
         if (last) fx.slowmo(1.6, 0.25);
         W.n++;
-        const bonus = trial ? 0 : Math.round(20 * W.n * skies().shards);
+        const bonus = trial ? 0 : Math.round(20 * W.n * skies().shards * (W.wave?.bonus ?? 1)); // (a stormy road's bonus is double)
         V.shards += bonus;
         const E = payload('wave:cleared'); E.n = W.n; E.bonus = bonus; emit('wave:cleared');
         W.state = 'choose'; W.choose = 25;
@@ -607,7 +733,7 @@ async function main() {
         setText($('go-port-text'), trial ? `Back to port (${W.choose})` : 'Back to port');
         if (trial) {
           // her sea trial won: the card says so, with only the way home (by itself after 25 s), and what she costs
-          sky.clearWeather(); world.puffs.bank(null);
+          sky.clearWeather(); world.puffs.bank(null); W.alt = null; roadButton();
           $('calm-title').textContent = 'Sea trial over: she won';
           const id = player.ship.recipe.id;
           $('calm-line').textContent = `It cost nothing. She's ${price(id)} in port${needs(id)}.`;
@@ -627,7 +753,7 @@ async function main() {
         const news = W.news.length ? newsCard(W.news) : null;
         $('calm-title').textContent = news ? news.title : `Wave ${W.n} beaten`;
         const next = nextWave(W.n);
-        W.next = next;
+        W.next = next; W.alt = roadFor(next);
         // the weather: a storm wave next shows its storm on the horizon now (ahead of her, more or less), and says so on
         // the card; otherwise this wave's storm (if it had one) clears. The bank of cloud the wave came out of goes
         world.puffs.bank(null);
@@ -637,9 +763,10 @@ async function main() {
           storm = sky.weather.want ? ' The storm isn\'t done yet.' : ` A storm is rolling in from the ${COMPASS[Math.round(compassDeg(sky.weather.from) / 45) % 8]}.`;
         } else sky.clearWeather();
         // a captain's ship (and a treasure ship) is built now, while the card is up, not as the wave appears (a stutter
-        // on a phone)
-        raiders.prepareWave(next);
+        // on a phone): the second way's too
+        raiders.prepareWave(next); if (W.alt) raiders.prepareWave(W.alt);
         $('calm-line').innerHTML = `${news ? `Wave ${W.n} beaten${news.line}. ` : ''}◆ <b id="calm-bonus">0</b> for the wave · ◆ ${fmt(V.shards)} aboard. Next: ${describe(next)}.${storm}`;
+        roadButton(next);
         // (shown at once, for the game; it rises into view after the slow motion, and its bonus counts up as it does)
         $('calm').classList.toggle('late', last); calmUp(true);
         W.bonus = bonus; W.bonusShown = -1; W.bonusAt = performance.now() / 1000 + (last ? 1.4 : 0.1);
@@ -651,8 +778,27 @@ async function main() {
       if (W.choose <= 0) sailOn();
     }
   }
-  function sailOn() {
+  // the card's second way on (W.alt): its button, with its name and what it brings (and 2 to take it on a laptop); none
+  // when there's only the steady course. With a choice to make, the mouse is let go of, so the card can be clicked
+  const road = $('btn-road');
+  function roadButton(next = null) {
+    const alt = W.alt;
+    road.hidden = !alt; $('calm').classList.toggle('roads', !!alt); document.body.classList.toggle('roads', !!alt); // (held sideways, Fire and Surge wait meanwhile: game.html)
+    if (!alt) return;
+    const [title, line] = roadWords(alt, next);
+    road.dataset.road = alt.road;
+    road.innerHTML = `<b>${title}</b><small>${line}</small><kbd class="mouse-only">2</kbd>`;
+    if (document.pointerLockElement) document.exitPointerLock();
+  }
+  // on to the next wave: the steady course (0: Sail on, Enter, 1, or the card's countdown) or the second way (1: its
+  // button, or 2), told (`road`)
+  const ROAD_NEWS = payload('road');
+  function sailOn(pick = 0) {
     if (W.state !== 'choose' || trial) return;
+    const alt = pick === 1 ? W.alt : null;
+    if (alt) { W.next = alt; if (alt.huntFor !== undefined) W.plainAt = alt.huntFor; }
+    ROAD_NEWS.kind = alt ? alt.road : 'steady'; emit('road');
+    W.alt = null; roadButton();
     calmUp(false); W.state = 'calm'; W.timer = 4; newWind();
     if (W.news.length) tellNews(); // (a shot earned as the last wave ended: the banner now, with its button showing again)
   }
@@ -670,12 +816,13 @@ async function main() {
   // the card between waves up or down (while it's up there's nothing to fire at: the guns' label makes way for it, and
   // a laptop's keys fold away; the panels the edge tags keep clear of are measured again, with the label or without)
   function calmUp(on) {
-    $('calm').hidden = !on; document.body.classList.toggle('between', on);
+    $('calm').hidden = !on; document.body.classList.toggle('between', on); if (!on) document.body.classList.remove('roads');
     if (on && !$('help').hidden) toggleHelp();
     layout();
   }
   const goHome = () => { if (W.state === 'choose') endVoyage(1); };
-  $('btn-sail-on').addEventListener('click', sailOn);
+  $('btn-sail-on').addEventListener('click', () => sailOn(0));
+  road.addEventListener('click', () => sailOn(1));
   $('btn-go-port').addEventListener('click', goHome);
   // paused or going again, told whenever it changes (pause() below, and leaving a paused voyage for port)
   function setPaused(on) { if (paused === on) return; paused = on; payload('pause').on = on; emit('pause'); }
@@ -826,7 +973,7 @@ async function main() {
   }
   // the bar for the part hit flashes on the raider's tag
   const FLASH = [{ filter: 'brightness(2.6)' }, { filter: 'brightness(1)' }];
-  function tagFlash(r, part) { const m = r.tag?._m[PARTS.indexOf(part)]; if (m) m.parentElement.animate(FLASH, 150); }
+  function tagFlash(r, part) { const m = r.tag?._m[PARTS.indexOf(part)] ?? (part === 'crystals' ? r.tag?._pips[0]?.parentElement : null); if (m) m.parentElement.animate(FLASH, 150); }
   // a hit on you: a red arc on a ring round the middle of the screen pointing where the shot came from (the oldest of
   // four reused), the red at the screen's edge leaning that way, and the row for what was hit flashing in your panel
   const arcs = [...document.querySelectorAll('#incoming i')], from = new THREE.Vector3(), FADE = { duration: 1200, easing: 'ease-in' };
@@ -1215,12 +1362,19 @@ async function main() {
     for (const r of raiders.list) {
       let el = r.tag;
       if (!el) {
-        el = r.tag = document.createElement('div'); el.className = r.captain ? 'tag captain' : r.role === 'prize' ? 'tag captain prize' : 'tag';
-        el.innerHTML = `<span class="arrow"></span><b>${r.captain ? 'Captain · ' : r.role === 'prize' ? 'Treasure · ' : ''}${r.R.cls}</b> <span class="d"></span>${PARTS.map((k) => `<span class="meter ${k}"><b></b><i></i></span>`).join('')}<span class="bs"><i class="ring"></i>Broadside!</span><span class="lost">Lost in the cloud</span>`;
+        // (a named raider captain's tag gives her name; the Man-o'-war's shows her five crystal columns, each with what's
+        // left of it, in place of the crystals' bar, and how many guns she has left by her name)
+        el = r.tag = document.createElement('div'); el.className = r.captain ? 'tag captain' : r.role === 'prize' ? 'tag captain prize' : r.fort ? 'tag fort' : 'tag';
+        const bars = (r.fort ? PARTS.slice(0, 2) : PARTS).map((k) => `<span class="meter ${k}"><b></b><i></i></span>`).join('') + (r.fort ? `<span class="pips">${'<span><i></i></span>'.repeat(r.R.clusters.length)}</span>` : '');
+        el.innerHTML = `<span class="arrow"></span><b>${r.who ? `${r.who.name} · ` : r.captain ? 'Captain · ' : r.role === 'prize' ? 'Treasure · ' : ''}${r.R.cls}<i class="st"></i></b> <span class="d"></span>${bars}<span class="bs"><i class="ring"></i>Broadside!</span><span class="lost">Lost in the cloud</span>`;
         el._d = el.querySelector('.d'); el._m = [...el.querySelectorAll('.meter i')].map(chip); el._arrow = el.querySelector('.arrow'); el._fresh = true; el._hw = 42; el._ox = el._oy = 0; el._had = false; el._homeAt = -1;
+        el._say = el.querySelector('.st'); el._pips = [...el.querySelectorAll('.pips i')];
         H.tags.append(el); // (raiders.js takes it away with its raider)
       }
       if (r.f.down) { el.remove(); continue; }
+      // (one coming out of the sun: no tag till she's out of its glare, raiders.js)
+      if (el._unseen !== r.unseen > 0) { el._unseen = r.unseen > 0; el.classList.toggle('unseen', el._unseen); el._measure = true; }
+      if (el._unseen) continue;
       // (one hidden in cloud far off: her tag stays where she was last seen, saying so, with how far off that is; one
       // readying a broadside there isn't lost, sky.js, so a "Broadside!" at the edge points to where she really is)
       proj.copy(r.lost ? r.seenAt : r.f.pos); proj.y += r.R.length * 0.45 + 3; proj.project(camera);
@@ -1252,7 +1406,7 @@ async function main() {
       if (el._edge !== edge) { el._edge = edge; el.classList.toggle('edge', edge); }
       if (el._warn !== warn) { el._warn = warn; el._measure = true; el.classList.toggle('warn', warn); if (warn && !TAG.warned && el.offsetHeight) { TAG.warned = true; TAG.warn = el.offsetHeight + 1; } }
       if (el._locked !== (r === locked)) { el._locked = r === locked; el.classList.toggle('locked', el._locked); }
-      if (el._lost !== r.lost) { el._lost = r.lost; el._measure = true; el.classList.toggle('lost', r.lost); }
+      if (el._lost !== r.lost) { el._lost = r.lost; el._measure = true; el.classList.toggle('lost', r.lost); if (r.lost) el.querySelector('.lost').textContent = r.smoke > 0 ? 'Lost in the smoke' : 'Lost in the cloud'; } // (the Ghost's smoke screen, or cloud)
       el._x = W2 + x; el._y = H2 + y; el._top = top; placed.push(el);
       el._box = el._ship = false; if (!edge && !r.lost) shipBox(r, el, W2, H2); // (her ship on the screen: tags keep off it)
       if (edge) el._had = false; // (back over her ship, her tag starts afresh)
@@ -1262,7 +1416,12 @@ async function main() {
         const d = Math.round((r.lost ? r.seenAt : r.f.pos).distanceTo(player.pos) / 10) * 10; // (one lost in cloud: how far off she was last seen, where her tag is)
         if (el._dist !== d) { el._dist = d; el._d.textContent = `${d} m`; el._measure = true; }
         if (!TAG.measured && !el._warn && el.offsetHeight) { TAG.measured = true; TAG.h = el.offsetHeight + 1; }
-        for (let i = 0; i < 3; i++) setWidth(el._m[i], r.f.frac(PARTS[i]));
+        for (let i = 0; i < el._m.length; i++) setWidth(el._m[i], r.f.frac(PARTS[i]));
+        // (what she's up to, by her name: running; her flare's help coming in so many seconds; the Man-o'-war's guns left;
+        // still below the clouds, coming up)
+        const st = r.mode === 'run' ? ' · running' : r.flare?.left > 0 ? ` · help in ${Math.ceil(r.flare.left)}` : r.fort ? ` · ${r.fort.guns} guns` : r.rising && r.f.pos.y < CLOUD_Y - 20 ? ' · below the clouds' : '';
+        if (el._said !== st) { el._said = st; el._say.textContent = st; el._measure = true; }
+        if (el._pips.length) { const Wr = r.ship.wear, n = el._pips.length, each = r.f.full.crystals / n; for (let i = 0; i < n; i++) setWidth(el._pips[i], Wr ? (Wr.blown[i] ? 0 : Math.max(0, 1 - Wr.dmg[i] / each)) : 1); }
       }
     }
     // (each tag's width, measured again whenever its words change: all of them at once, so the page is laid out once.
@@ -1523,6 +1682,7 @@ async function main() {
       else if (k === 'r') { if (player.startSurge()) { toast('Surge!'); emit('surge'); } }
       else if (k === 'Enter') sailOn();
       else if (k === 'b') goHome();
+      else if ((k === '1' || k === '2') && W.state === 'choose' && W.alt) sailOn(+k - 1); // (between waves with a second way on, 1 and 2 take a way)
       else if (k === '1' || k === '2' || k === '3') pickShot(SHOT_ORDER[+k - 1]);
       else if (k === 'shot' || k === 'v') cycleShot();
       else if (k === 'x') patchUp();
@@ -1600,7 +1760,8 @@ async function main() {
     fx, events, wrecks, surge, looks, wakes, get lastArc() { return lastArc; }, get time() { return time; }, audio, sound, settings,
     progress, port, title, sail, endVoyage, pause, sailOn, wind: WIND, sky, waveAt, treasureShip, SKIES, get mode() { return mode; }, get paused() { return paused; },
     giants, describe, // (which giants sail among the raiders this voyage, and a wave in words)
-    tactics: { SHOTS, SHOT_ORDER, RAKE, PATCH, SMART, rakeMul }, pickShot, nextShot: () => nextShot(), patchUp, // (shot, raking and patching)
+    tactics: { SHOTS, SHOT_ORDER, RAKE, PATCH, SMART, rakeMul, NERVE, CAPTAINS, PLATE, FORT, LINE, ROADS, ROAD }, pickShot, nextShot: () => nextShot(), patchUp, // (shot, raking and patching)
+    nextWave: (n) => nextWave(n), roadWave, // (a wave planned, its raider captain named; and a second way on: foes worth remembering)
     fly: (id) => sail(id, true), // a voyage in any ship, owned or not (for tests)
     get trial() { return trial; }, TRIAL, get fightSkies() { return skies().name; }, // (the ship on her sea trial, if one is out; the wave each is tried on; the skies the fights are in)
     words: { side: sideWords, wind: () => windWords() }, layout, edge: EDGE, // (directions in words, and the panels the edge tags keep clear of)

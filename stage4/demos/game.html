@@ -180,6 +180,18 @@
   #calm.late:not([hidden]) { animation-delay: 1.4s; }
   @keyframes calm-in { from { opacity: 0; visibility: hidden; translate: -50% 24px; } to { opacity: 1; visibility: visible; translate: -50% 0; } }
   #calm-bonus { font-weight: 500; color: var(--gold); }
+  /* a second way on (main.js roadFor): a button beside Sail on with its name and what it brings, coloured by the road
+     (slate for the storm, wine and gold for a treasure ship's trail, crimson for a hunt); the card puts its buttons in
+     a row under its words then */
+  #calm.roads { grid-template-columns: 1fr; }
+  #calm.roads .choices { justify-content: flex-start; flex-wrap: wrap; }
+  .road { display: grid; grid-template-columns: auto auto; align-items: center; justify-content: start; gap: 0 6px; min-height: 44px; padding: 6px 12px; text-align: left; border-radius: 10px;
+    color: var(--ink); background: linear-gradient(#4b5a78, #2c3650); border: 2px solid #c9d6ef; box-shadow: 0 0 0 3px var(--plum), 0 8px 24px rgba(0, 0, 0, 0.5); }
+  .road[data-road='treasure'] { background: linear-gradient(#7a2440, #4a1228); border-color: #f2d389; }
+  .road[data-road='hunt'] { background: linear-gradient(#8a2a1c, #4e130c); border-color: #ffd36a; }
+  .road b { font: 600 16px/1.15 var(--body); }
+  .road small { grid-column: 1; max-width: 250px; font-size: 12.5px; line-height: 1.2; color: var(--cream); }
+  .road kbd { grid-row: 1 / span 2; grid-column: 2; }
   #btn-pause { position: fixed; top: var(--top); right: calc(var(--gutter) + var(--map-w) + 10px); width: 44px; height: 44px; padding: 0; display: grid; place-items: center; }
   #btn-pause svg { width: 16px; height: 16px; }
 
@@ -327,6 +339,17 @@
   #tags.held .tag.warn, #tags.held .tag.warn .arrow { animation-play-state: paused; } /* (the game paused: no flashing behind the menu) */
   /* a raider hidden in cloud far off: her tag stays where she was last seen, faded and dashed, saying so in place of
      her bars */
+  /* what she's up to, by her name ("· running", "· help in 12", the Man-o'-war's "· 42 guns", "· below the clouds"), and
+     the Man-o'-war's five crystal columns in place of her crystals' bar, each with what's left of it; one coming out of
+     the sun has no tag till she's out of its glare */
+  .tag b .st { font-style: normal; font-weight: 400; color: #ffd8cc; }
+  .tag.captain b .st { color: #ffe9b0; }
+  .tag .pips { grid-column: 1 / -1; display: flex; gap: 3px; width: 66px; height: 3px; }
+  .tag .pips span { flex: 1; position: relative; border-radius: 2px; background: rgba(236, 220, 184, 0.15); overflow: hidden; }
+  .tag .pips i { display: block; height: 100%; width: 100%; background: #ff9f45; }
+  .tag.warn .pips { display: none; }
+  .tag.lost .pips { display: none; }
+  .tag.unseen { display: none; }
   .tag .lost { display: none; grid-column: 1 / -1; font-size: 12px; color: #dcecff; text-align: center; }
   .tag.lost { opacity: 0.6; border-style: dashed; }
   .tag.lost .lost { display: block; }
@@ -768,6 +791,22 @@
     #pp-mods-part { order: -1; }
     #pp-mods-part h3 { display: none; }
   }
+  /* a second way on, on a phone: across the card, over Sail on and Back to port; held sideways, a little smaller, and the
+     card with it reaches down past Fire and Surge, which wait meanwhile (there's nothing to fire at between waves) */
+  @media (max-width: 700px), (max-height: 500px) {
+    #calm.roads .choices { flex-wrap: wrap; }
+    #calm.roads #btn-road { order: -1; flex: 1 1 100%; }
+  }
+  /* (and the toast, between waves with a second way on, out of the taller card's way: upright, just under the region's
+     name; held sideways, at the foot of the screen between the thumbs) */
+  @media (max-width: 700px) and (min-height: 501px) { body.between.roads #toast { top: calc(var(--top) + 196px); } }
+  @media (max-height: 500px) {
+    body.between.roads #toast { top: auto; bottom: calc(var(--bottom) + 6px); }
+    body.between.roads #btn-fire, body.between.roads #btn-surge { visibility: hidden; }
+    .road { min-height: 36px; padding: 4px 10px; }
+    .road b { font-size: 14px; }
+    .road small { font-size: 11.5px; }
+  }
   @media (prefers-reduced-motion: reduce) { #region.on, #banner.on, #toast.on, #calm:not([hidden]) { animation-duration: 0.01s; } .tag.warn, .tag.warn .arrow { animation: none; } }
 </style>
 </head>
@@ -899,7 +938,7 @@
 <!-- between waves: sail on, or go back to port and keep the shards -->
 <section id="calm" class="panel" hidden>
   <div><h2 id="calm-title">Wave 1 beaten</h2><p id="calm-line"></p></div>
-  <div class="choices"><button id="btn-sail-on" class="big" type="button"><span id="sail-on-text">Sail on</span><kbd class="mouse-only">Enter</kbd></button><button id="btn-go-port" class="plain" type="button"><span id="go-port-text">Back to port</span><kbd class="mouse-only">B</kbd></button></div>
+  <div class="choices"><button id="btn-sail-on" class="big" type="button"><span id="sail-on-text">Sail on</span><kbd class="mouse-only">Enter</kbd></button><button id="btn-road" class="road" type="button" hidden></button><button id="btn-go-port" class="plain" type="button"><span id="go-port-text">Back to port</span><kbd class="mouse-only">B</kbd></button></div>
 </section>
 </div>
 <!-- paused, or the ship lost -->

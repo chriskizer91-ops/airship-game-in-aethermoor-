@@ -7,8 +7,9 @@
 //                                their sails, break away and tumble down through the clouds trailing smoke); she rolls
 //                                over and falls, trailing a thick column of black smoke and fire
 //   crystals dead                no blasts: her crystals sputter, shatter and go dark, and she sinks upright in grey smoke
-//   struck her colours           (a treasure ship giving up) no blasts: her pennants come down their masts, gold glints
-//                                from her hold, and she settles away (sinking faster and faster: flight.js)
+//   struck her colours           (a treasure ship, or a beaten crew, giving up) no blasts: her pennants come down their
+//                                masts and a white flag goes up her tallest, gold glints from a treasure ship's hold,
+//                                and she settles away (sinking faster and faster: flight.js)
 // Falling through the cloud deck, every wreck tears it open and throws up a ring of cloud; a burning one glows orange
 // through the cloud a moment after she's gone. Each explosion is told as `blast` (the shake, and the sound).
 // At most two wrecks play their blasts and fire at once; another gets the flash and the smoke; and at most two ships'
@@ -30,6 +31,14 @@ export const WRECK = { crystals: [0.4, 1.6], sails: 0.6, full: 2, puff: [0.07, 0
 export const MASTS = { from: 0.7, every: 0.5, breaks: 1.0, ships: 2, life: 12, fade: 0.6 };
 const MAX = 8, UP = new THREE.Vector3(0, 1, 0), ZERO = new THREE.Vector3(), FALL = ['wood', 'brass', 'canvas'];
 const FIRE = [0xff7a2a, 0xffc04a, 0xffe8a0], AMBER = 0xffc061, GOLD = 0xffd27a;
+// the white flag a ship that strikes her colours runs up her tallest mast: one shape for every wreck (1 m along its pole,
+// flying out from it), a share `size` of her length (`least` metres at the least), going up over `up` seconds once her
+// pennants are down, to fly just over her mast head (above the smoke of her wounds), so it reads across a fight. Its
+// drawing is made ready as each voyage starts (flagToWarm: main.js), so the first ship to strike doesn't stutter a phone
+export const WHITE_FLAG = { size: 0.3, least: 4.5, up: 1.8, color: 0xf6f2e8 };
+const FLAG_GEO = new THREE.PlaneGeometry(1, 0.62).translate(0.5, -0.31, 0);
+const flagMat = new THREE.MeshBasicMaterial({ color: WHITE_FLAG.color, side: THREE.DoubleSide });
+flagMat.name = 'white flag';
 
 // `tear(x, z, radius)` opens a hole in the cloud deck (world.js); falling masts are added to `scene` once they break away
 export function makeWrecks({ fx, tear = null, scene = null }) {
@@ -56,7 +65,7 @@ export function makeWrecks({ fx, tear = null, scene = null }) {
       // the first two burning at once get the whole show; another, the flash and the smoke
       let busy = 0;
       for (const o of list) if (o.full && o.t < o.busy) busy++;
-      Object.assign(w, { r, why, t: 0, full: why === 'hull' && busy < WRECK.full, chain: Math.min(9, 2 + Math.round(L / 12)), fired: 0, next: 0.35, puff: 0, flick: 0, flames: 0,
+      Object.assign(w, { r, why, flag: null, t: 0, full: why === 'hull' && busy < WRECK.full, chain: Math.min(9, 2 + Math.round(L / 12)), fired: 0, next: 0.35, puff: 0, flick: 0, flames: 0,
         lastY: f.pos.y, crossed: false, gone: -1, told: false, burnt: false, dark: false, glint: 0, cut: false, s: THREE.MathUtils.clamp(L / 22, 0.7, 3) });
       // her masts fall (a laptop's, drawn close enough for her middle model, two ships at a time, and room for them all,
       // counting the masts of wrecks about to fall). The ships whose masts are falling: those still to crack, and those
@@ -180,6 +189,19 @@ export function makeWrecks({ fx, tear = null, scene = null }) {
   }
   function struck(w, dt) {
     const r = w.r, flags = r.ship.parts.flags, t = w.t;
+    // her white flag: run up her tallest mast as her pennants come down, streaming aft and fluttering
+    if (t >= 2.5) {
+      if (!w.flag) {
+        const M = r.R.masts.reduce((a, m) => (m.height > a.height ? m : a), r.R.masts[0]), L = r.R.length;
+        const size = Math.max(WHITE_FLAG.least, L * WHITE_FLAG.size);
+        w.flag = new THREE.Mesh(FLAG_GEO, flagMat); w.flag.name = 'white flag'; w.flag.scale.setScalar(size);
+        w.flagTop = r.ship.hull.deckY(M.z) + M.height + size * 0.62; w.flag.position.set(0, w.flagTop * 0.55, M.z);
+        r.ship.body.add(w.flag);
+      }
+      const k = Math.min(1, (t - 2.5) / WHITE_FLAG.up);
+      w.flag.position.y = w.flagTop * (0.55 + 0.45 * k);
+      w.flag.rotation.y = Math.PI / 2 + Math.sin(t * 5.3) * 0.22; w.flag.rotation.x = Math.sin(t * 7.1) * 0.08;
+    }
     if (t < 2.6) {
       for (const m of flags) {
         if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
@@ -188,7 +210,7 @@ export function makeWrecks({ fx, tear = null, scene = null }) {
         if (t >= 2.5) m.visible = false;
       }
     }
-    if (t < 4 && (w.glint -= dt) <= 0) {
+    if (r.role === 'prize' && t < 4 && (w.glint -= dt) <= 0) {
       w.glint = 0.3 + Math.random() * 0.3;
       inBox(r, r.zones.hullBox); p.y += 1;
       fx.spark(p, r.f.velocity, 0.4, 3 + r.R.length * 0.08, GOLD, 0);
@@ -301,5 +323,7 @@ export function makeWrecks({ fx, tear = null, scene = null }) {
   // high its foot is and how tall it is (metres), and its size (1, or less as it shrinks away)
   const falling = () => fallers.map((m, i) => ({ m, i })).filter((x) => x.m.r).map(({ m, i }) => ({ i, free: m.free, fell: +(m.top0 - tm.set(0, m.H - 1, 0).applyMatrix4(m.g.matrixWorld).y).toFixed(1),
     y: +m.g.getWorldPosition(tm).y.toFixed(1), H: +m.H.toFixed(1), s: +m.g.scale.x.toFixed(2) }));
-  return { list, update, clear, start, falling };
+  // (a white flag of its own, never drawn, for main.js to have its drawing made ready as each voyage starts)
+  const warmFlag = new THREE.Mesh(FLAG_GEO, flagMat);
+  return { list, update, clear, start, falling, flagToWarm: () => warmFlag };
 }
