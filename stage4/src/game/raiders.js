@@ -72,38 +72,57 @@ export const FAN = { color: 0xff3a2a, opacity: 0.5, reach: KINDS.broadside.speed
 // she's inside it or just above it, its broad faces seen nearly edge-on): crisp red lines a pixel or two wide whatever
 // the distance (worked out on the screen: fwidth), with only a faint wash of red between them, faintest where a face is
 // seen edge-on, so it never lies over the sky as a pink haze. The lines: spokes running out from her guns along its top,
-// its bottom and its two sides, rings rippling out from her side (faster as she's about to fire), its far rim, and a
-// brighter, thicker ring where it reaches the Captain's ship (`uHit`: how far out that is, as a share of its reach;
-// below 0 when she's outside it). The wash is strongest close to her (but not over her own ship) and fades out along
-// it. (Gun's own frame: +z the way the gun points, its swing and tilt given)
-const FAN_VERT = `uniform float uReach; varying vec3 vP; varying vec3 vV; varying float vR;
-  void main() { vP = position; vR = length(position) / uReach; vec4 mv = modelViewMatrix * vec4(position, 1.0); vV = mv.xyz; gl_Position = projectionMatrix * mv; }`;
-const FAN_FRAG = `uniform vec3 uColor; uniform float uK; uniform float uTime; uniform float uYaw; uniform float uPitch; uniform float uHit; uniform float uOwn; uniform float uPx;
-  varying vec3 vP; varying vec3 vV; varying float vR;
-  // (a line px pixels wide, d from its middle, w how much d changes from one pixel to the next)
-  float line(float d, float w, float px) { px *= uPx; return 1.0 - smoothstep(px * 0.5 - 0.5, px * 0.5 + 0.5, d / max(w, 1e-5)); }
+// its bottom and its two sides, rings rippling out from her side (faster as she's about to fire), its far rim, and,
+// with the Captain inside it (`uHit`: how far out her ship is, as a share of its reach; below 0 when she's outside it),
+// a brighter, thicker ring where it reaches her ship and its spokes burning hotter and thicker all the way from her guns
+// to there, hottest by her: from behind her ship, where that ring is all round the view and off the screen, the hot
+// spokes running at her still say it's her the fan has found. The wash is strongest close to her (but not over her own
+// ship) and fades out along it. (Gun's own frame: +z the way the gun points, its swing and tilt given)
+// Cheap for a phone: every ring is round, worked out on each pixel from how far it is from her gun (one length), and
+// every spoke is where a flat plane through her gun cuts the fan, so how far a pixel is off it is a sum of products of
+// where it is (no angles worked out); how squarely each face is seen comes from the corners' `normal` (fanGeometry),
+// worked out once a corner; only three things are measured across the screen (fwidth), and each line's soft edge is a
+// straight ramp a pixel wide; its colours are given as the screen shows them (uColor turned to the screen's colours
+// once, not on every pixel). `uCut`: the planes of the spokes along its top and bottom near their corners (62% of its
+// swing: cos, sin) and of the sides' (60%: cos, sin); `uTilt`: where the top and bottom begin (55% of its tilt: sin)
+const FAN_VERT = `uniform float uReach; varying vec3 vP; varying vec3 vV; varying float vD;
+  void main() { vP = position / uReach; vec4 mv = modelViewMatrix * vec4(position, 1.0); vV = mv.xyz; vD = dot(normalize(normalMatrix * normal), mv.xyz); gl_Position = projectionMatrix * mv; }`;
+const FAN_FRAG = `uniform vec3 uColor; uniform float uK; uniform float uTime; uniform float uReach; uniform vec4 uCut; uniform float uTilt; uniform float uHit; uniform float uOwn; uniform float uPx;
+  varying vec3 vP; varying vec3 vV; varying float vD;
+  // (a line px pixels wide, d pixels from its middle)
+  float line(float d, float px) { return clamp(px * uPx * 0.5 + 0.5 - d, 0.0, 1.0); }
   void main() {
-    float R = vR, u = atan(vP.x, vP.z) / uYaw, v = asin(clamp(vP.y / max(length(vP), 1e-3), -1.0, 1.0)) / uPitch, au = abs(u), av = abs(v);
-    float wR = fwidth(R);
+    // how far out (R: a share of its reach), and how far off its spokes (mu: the middle one along its top and bottom, or
+    // the two near their corners; mv: the sides' middles), as the sine of the angle from each, seen from her gun; and
+    // how much each changes from one pixel to the next (measured before any abs(), whose fold would read as no change at
+    // all on a spoke's middle)
+    float L2 = max(dot(vP, vP), 1e-8), iL = inversesqrt(L2), R = L2 * iL, xu = vP.x * iL, yv = vP.y * iL, ax = abs(xu), mv = abs(yv);
+    float mu = min(ax, abs(ax * uCut.x - vP.z * iL * uCut.y));
+    vec3 per = 1.0 / max(fwidth(vec3(R, xu, yv)), vec3(1e-6));
+    float pR = per.x, pu = per.y, pv = per.z, V2 = dot(vV, vV), iv = inversesqrt(V2), dv = V2 * iv;
+    // (nothing over her own ship, seen past the fan's first few metres from her gun: from a quarter of her length out
+    // to one and a half, slowly at first, uOwn being 1 over 1.25 lengths, as a share of its reach; and nothing right by
+    // the camera, where a line would sweep across the whole view)
+    float near = clamp(R * uOwn - 0.2, 0.0, 1.0) * clamp((dv - 10.0) * 0.02, 0.0, 1.0);
+    near *= near;
+    if (near < 0.002) discard;
+    // (the stretch from her guns to the Captain's ship, while she's in it: hottest by her, a third as hot half its
+    // reach nearer her guns, gone just past her)
+    float hot = uHit > 0.0 ? clamp((uHit + 0.005 - R) * 50.0, 0.0, 1.0) * (1.0 - 1.3 * min(0.5, uHit - R)) : 0.0;
     // spokes: three along the top and the bottom (its middle and near its corners), one along each side's middle
-    float spokes = max(line(min(au, abs(au - 0.62)), fwidth(u), 1.8) * step(0.55, av), line(av, fwidth(v), 1.8) * step(0.6, au));
-    // the rings rippling out (fainter seen edge-on), its far rim, and the ring where it reaches the Captain's ship
-    float s = R * 5.0 - uTime * (0.6 + 1.6 * uK);
-    vec3 n = normalize(cross(dFdx(vV), dFdy(vV)));
-    float face = smoothstep(0.05, 0.45, abs(dot(n, normalize(vV)))), q = 1.0 - R;
-    float rings = line(abs(fract(s) - 0.5), fwidth(s), 1.4) * (0.35 + 0.65 * face);
-    float rim = line(1.0 - R, wR, 2.2);
-    float hit = uHit > 0.0 ? line(abs(R - uHit), wR, 3.2) : 0.0;
+    float spokes = line(min(step(uTilt, mv) > 0.5 ? mu * pu : 1e4, step(vP.z * iL * uCut.w, ax * uCut.z) > 0.5 ? mv * pv : 1e4), 1.8 + 1.8 * hot);
+    // the rings rippling out (fainter seen edge-on), its far rim, and the ring where it reaches the Captain's ship;
+    // nothing but the far rim's outer half past its reach
+    float s = R * 5.0 - uTime * (0.6 + 1.6 * uK), face = clamp((abs(vD) * iv - 0.05) * 2.5, 0.0, 1.0), q = 1.0 - R, inside = step(R, 1.0);
+    float rings = line(abs(fract(s) - 0.5) * pR * 0.2, 1.4) * (0.35 + 0.65 * face);
+    float rim = line(abs(q) * pR, 2.2);
+    float hit = uHit > 0.0 ? line(abs(R - uHit) * pR, 3.2) : 0.0;
     // the wash: faint, strongest near her, fading along it, and fainter seen edge-on
     float q3 = q * q * q, wash = (0.03 + 0.55 * q3 * q3) * face;
-    float lines = max(max(spokes * (1.0 - 0.5 * R), rings * 0.75 * q * q), max(rim * 0.8, hit));
-    // (nothing over her own ship, seen past the fan's first few metres from her gun: uOwn, her length as a share of its
-    // reach; and nothing right by the camera, where a line would sweep across the whole view)
-    float near = smoothstep(uOwn * 0.25, uOwn * 1.5, R) * smoothstep(10.0, 60.0, length(vV));
-    float a = clamp(uK * near * (wash + 1.9 * lines), 0.0, 1.0);
+    float lines = max(max(spokes * (1.0 - 0.5 * R) * (1.0 + 0.9 * hot), rings * 0.75 * q * q * (1.0 + 0.6 * hot)) * inside, max(rim * 0.8, hit));
+    float a = clamp(uK * near * (wash * inside + 1.9 * lines), 0.0, 1.0);
     if (a < 0.004) discard;
-    gl_FragColor = vec4(mix(uColor, vec3(1.0, 0.72, 0.5), 0.4 * hit), a);
-    #include <colorspace_fragment>
+    gl_FragColor = vec4(mix(uColor, vec3(1.0, 0.87, 0.74), 0.4 * max(hit, 0.6 * hot * spokes)), a);
   }`;
 // a raider captain's edge over her crew (times as tough, as hard-hitting, as long to reload), all of it on most skies
 // and none on Fair Winds (the skies' `captain`), and her bounty
@@ -763,10 +782,11 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
   // two (port and starboard) made the first time she readies that side, children of her ship's body at her middle gun on
   // that side, pointing its way, so they lean and roll with her. Each has its own copy of the one material (its strength
   // is its own: the copies share one shader), drawn after the ships, tinting red what's behind it without hiding it
-  const fanGeo = fanGeometry(KINDS.broadside, FAN.reach), FWD = new THREE.Vector3(0, 0, 1), fanTime = { value: 0 }, fanPx = { value: 1 };
+  const fanGeo = fanGeometry(KINDS.broadside, FAN.reach), BY = KINDS.broadside.yaw, FWD = new THREE.Vector3(0, 0, 1), fanTime = { value: 0 }, fanPx = { value: 1 };
   const fanMat = new THREE.ShaderMaterial({ vertexShader: FAN_VERT, fragmentShader: FAN_FRAG, transparent: true, depthWrite: false, side: THREE.DoubleSide,
-    uniforms: { uColor: { value: new THREE.Color(FAN.color) }, uK: { value: 0 }, uTime: fanTime, uYaw: { value: KINDS.broadside.yaw }, uPitch: { value: KINDS.broadside.pitch }, uReach: { value: FAN.reach },
-      uHit: { value: -1 }, uOwn: { value: 0.05 }, uPx: fanPx } });
+    uniforms: { uColor: { value: new THREE.Color(FAN.color).convertLinearToSRGB() }, uK: { value: 0 }, uTime: fanTime, uReach: { value: FAN.reach },
+      uCut: { value: new THREE.Vector4(Math.cos(0.62 * BY), Math.sin(0.62 * BY), Math.cos(0.6 * BY), Math.sin(0.6 * BY)) }, uTilt: { value: Math.sin(0.55 * KINDS.broadside.pitch) },
+      uHit: { value: -1 }, uOwn: { value: 16 }, uPx: fanPx } });
   fanMat.name = 'danger fan';
   // (its shader made ready before any warning, never drawn: main.js has three.js make it as each voyage starts, for a
   // fan of its own (fanToWarm) with a fresh copy of the material, lit as the sky at sea is then. three.js makes a new
@@ -787,7 +807,7 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
       const g = r.gun.B[b][r.gun.B[b].length >> 1];
       m = r.fans[b] = new THREE.Mesh(fanGeo, fanMat.clone()); m.name = 'danger fan'; m.renderOrder = 4; m.visible = false;
       m.material.uniforms.uTime = fanTime; m.material.uniforms.uPx = fanPx; // (one clock for every fan, and one size of pixel)
-      m.material.uniforms.uOwn.value = r.R.length / FAN.reach;
+      m.material.uniforms.uOwn.value = FAN.reach / (1.25 * r.R.length);
       m.position.copy(g.p); m.quaternion.setFromUnitVectors(FWD, g.d);
       r.ship.body.add(m);
     }

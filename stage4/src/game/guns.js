@@ -76,24 +76,47 @@ export function clampToArc(want, axis, yawMax, pitchMax, out = new THREE.Vector3
 // The red danger fan a raider shows while she readies a broadside (raiders.js): where that side's guns can reach, as a
 // fan in the gun's own frame (+z the way it points, +y up), out to `reach` metres: a cone flattened to her guns' swing
 // (K.yaw each way) and tilt (K.pitch up and down), round in section, a little squarer than an ellipse (so it nearly
-// fills the corners of the swing and tilt), in `segs` slices round and `rings` rings out from her side (so the glow
-// drawn on it can fade out along it, raiders.js). Round, not boxy: seen from inside it, as the Captain she's aiming at
-// always sees it, its bands of red are rings round her, not frames, and no flat side stands across the view. Made
-// once (one shape for every raider), about 170 triangles
-export function fanGeometry(K, reach, segs = 24, rings = 4) {
-  const pos = [0, 0, 0], idx = [], sq = (v) => Math.sign(v) * Math.abs(v) ** 0.8;
-  for (let j = 1; j <= rings; j++) {
-    const r = (reach * j) / rings;
-    for (let i = 0; i < segs; i++) {
-      const th = (2 * Math.PI * i) / segs, a = K.yaw * sq(Math.cos(th)), p = K.pitch * sq(Math.sin(th));
-      pos.push(Math.sin(a) * Math.cos(p) * r, Math.sin(p) * r, Math.cos(a) * Math.cos(p) * r);
-    }
+// fills the corners of the swing and tilt). Round, not boxy: seen from inside it, as the Captain she's aiming at always
+// sees it, its bands of red are rings round her, not frames, and no flat side stands across the view. Made once (one
+// shape for every raider): `segs` long thin slices from her gun out to its reach, one triangle each, as its rings and
+// far rim are worked out on each pixel from how far it is from her gun (raiders.js), so they're round however long
+// and straight the slices are. The slices are closest where its section turns sharpest (its sides, where the flattened
+// cone turns from its top to its side), so no fold between two of them shows as a corner in a ring seen edge-on from
+// behind the Captain; each corner carries the way its surface faces (`normal`: the two slices' either side of it,
+// averaged, so the wash fades smoothly where it's seen edge-on), and the corner at her gun is one for each slice. The
+// far corners sit a little past the reach, far enough that the far rim's line at the reach is never cut where a
+// slice's straight edge falls inside it
+export function fanGeometry(K, reach, segs = 48) {
+  const sq = (v) => Math.sign(v) * Math.abs(v) ** 0.8;
+  const dir = (th, v = V(0, 0, 0)) => { const a = K.yaw * sq(Math.cos(th)), p = K.pitch * sq(Math.sin(th)); return v.set(Math.sin(a) * Math.cos(p), Math.sin(p), Math.cos(a) * Math.cos(p)); };
+  // (where the slices' edges fall round a quarter of it: at even steps of how much its surface turns from one fine
+  // step to the next, plus half how far it sweeps; then mirrored to the other three quarters)
+  const fine = 240, n = segs / 4, ths = [0], d0 = V(0, 0, 0), d1 = V(0, 0, 0), d2 = V(0, 0, 0), f0 = V(0, 0, 0), f1 = V(0, 0, 0), step = Math.PI / 2 / fine, m = [0];
+  for (let k = 0; k < fine; k++) {
+    const th = k * step;
+    dir(th - step, d0); dir(th, d1); dir(th + step, d2);
+    f0.crossVectors(d0, d1).normalize(); f1.crossVectors(d1, d2).normalize();
+    m.push(m[k] + Math.acos(Math.min(1, f0.dot(f1))) * (k ? 1 : 0.5) + 0.5 * Math.acos(Math.min(1, d1.dot(d2))));
   }
-  const at = (j, i) => 1 + (j - 1) * segs + (i % segs);
-  for (let i = 0; i < segs; i++) idx.push(0, at(1, i), at(1, i + 1));
-  for (let j = 2; j <= rings; j++) for (let i = 0; i < segs; i++) idx.push(at(j - 1, i), at(j, i), at(j, i + 1), at(j - 1, i), at(j, i + 1), at(j - 1, i + 1));
+  for (let j = 1, k = 0; j < n; j++) { const want = (m[fine] * j) / n; while (m[k + 1] < want) k++; ths.push((k + (want - m[k]) / (m[k + 1] - m[k])) * step); }
+  ths.push(Math.PI / 2);
+  const round = [];
+  for (let j = 0; j < n; j++) round.push(ths[j]);
+  for (let j = n; j > 0; j--) round.push(Math.PI - ths[j]);
+  for (let j = 0; j < n; j++) round.push(Math.PI + ths[j]);
+  for (let j = n; j > 0; j--) round.push(2 * Math.PI - ths[j]);
+  const D = round.map((th) => dir(th)), F = [];
+  let fold = 1;
+  for (let i = 0; i < segs; i++) { const b = D[(i + 1) % segs]; F.push(V(0, 0, 0).crossVectors(D[i], b).normalize()); fold = Math.min(fold, Math.sqrt((1 + D[i].dot(b)) / 2)); }
+  const far = (reach * 1.03) / fold, pos = [], nor = [], idx = [];
+  for (let i = 0; i < segs; i++) { pos.push(0, 0, 0); nor.push(F[i].x, F[i].y, F[i].z); }
+  for (let i = 0; i < segs; i++) {
+    const nm = V(0, 0, 0).addVectors(F[(i + segs - 1) % segs], F[i]).normalize();
+    pos.push(D[i].x * far, D[i].y * far, D[i].z * far); nor.push(nm.x, nm.y, nm.z);
+  }
+  for (let i = 0; i < segs; i++) idx.push(i, segs + i, segs + ((i + 1) % segs));
   const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx);
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); g.setIndex(idx);
   g.computeBoundingSphere();
   return g;
 }
@@ -115,8 +138,9 @@ export function upload(attr, n) {
 // full time without hitting anything burns out in a little wisp of sparks.
 // Glowing streaks add their light to what's behind them, so over the bright cloud floor every colour burns out to
 // white: the Captain's chain shot and breakers also get a core of solid colour over their glow (`tint`, drawn after it,
-// violet and sky blue), and chain shot its chain (`links`): a violet bar between its two heads, whirling with them, and
-// a violet ball at each end (a breaker gets a blue ball at its head). All
+// violet and sky blue), and chain shot its chain (`links`, drawn after the heads' glows): a violet bar between its two
+// heads, whirling with them, and a violet ball at each end (a breaker gets a blue ball at its head, its glow blue too and
+// little bigger than the ball). All
 // are sized to how far off the shot is (`camera`), so at fight range, 150 to 250 m, chain shot is still a violet streak
 // with its chain whirling at its head, and breakers a pale blue streak, never a white spark; close up they're their own
 // size.
@@ -154,6 +178,7 @@ export function makeBolts(scene, fx, max = 400, camera = null) {
   // balls are one shape, 1 m across and long, along y: a ball is as long as it's wide; three for each bolt at most)
   const tint = solid(new THREE.CylinderGeometry(0.26, 0.1, 1, 6, 1, true).rotateX(Math.PI / 2), fade, max), links = solid(new THREE.CylinderGeometry(0.5, 0.5, 1, 6, 1), null, max * 3);
   tint.name = 'shot colour'; links.name = 'chain shot\'s chain';
+  links.renderOrder = 5; // (the chain and the balls drawn over the heads' glows, fx.js: so their colour sits on the glow's white core)
   const COL = {}, HEAD = {}, TC = { chain: new THREE.Color(TINT.chain), breaker: new THREE.Color(TINT.breaker) };
   for (const k in BOLT_COLORS) { COL[k] = new THREE.Color(BOLT_COLORS[k]); HEAD[k] = COL[k].clone().lerp(new THREE.Color(0xffffff), 0.3); }
   // (metres across that n of the page's pixels cover, d metres from the camera: main.js keeps the camera's pixel scale,
@@ -208,10 +233,11 @@ export function makeBolts(scene, fx, max = 400, camera = null) {
       const d = camera ? b.p.distanceTo(camera.position) : 0, w = Math.max(K.size * 0.75, px(TINT.streak, d) / 0.52);
       m4.compose(mid, q, size3.set(w, w, len)); tint.setMatrixAt(nt, m4); tint.setColorAt(nt++, solidCol);
       if (b.shot !== 'chain') {
-        // (a breaker: a ball of its colour at its head, like a chunk of crystal, under its glow)
+        // (a breaker: a ball of its colour at its head, like a chunk of crystal, over its glow; the glow in its own blue
+        // and hardly bigger than the ball, so it never burns the ball out to a white spark)
         const ball = Math.max(0.9 * K.size, px(TINT.ball, d));
         m4.compose(b.p, q, size3.set(ball, ball, ball)); links.setMatrixAt(nl, m4); links.setColorAt(nl++, solidCol);
-        fx.glowAt(b.p, h.r, h.g, h.b, Math.max(size * TINT.glow, px(TINT.head, d))); continue;
+        fx.glowAt(b.p, solidCol.r, solidCol.g, solidCol.b, Math.min(size * TINT.glow, Math.max(1.3 * ball, px(TINT.head * 0.6, d)))); continue;
       }
       // chain shot: two heads spinning round its path, opposite each other (s1, s2: two ways across it), at least
       // TINT.apart pixels apart, and the chain between them
@@ -231,7 +257,13 @@ export function makeBolts(scene, fx, max = 400, camera = null) {
   // (a batch drawing its first n, or not drawn at all with none)
   function shown(m, n) { m.count = n; m.visible = n > 0; upload(m.instanceMatrix, n); upload(m.instanceColor, n); }
   const clear = () => { for (const b of bolts) { b.from = null; free.push(b); } bolts.length = 0; mesh.count = 0; tint.count = links.count = 0; tint.visible = links.visible = false; };
-  return { fire, update, bolts, clear, mesh, tint, links };
+  // (the batches' drawings made ready as each voyage starts, never drawn: main.js has three.js make them then, for one
+  // of each batch with a colour of its own, as theirs have; made the first time the Captain's chain shot or breakers fly,
+  // mid-fight, they'd stutter a phone)
+  const warm = new THREE.Group();
+  for (const m of [mesh, tint, links]) { const w = new THREE.InstancedMesh(m.geometry, m.material, 1); w.setColorAt(0, new THREE.Color()); w.frustumCulled = false; warm.add(w); }
+  warm.name = 'shots, made ready';
+  return { fire, update, bolts, clear, mesh, tint, links, toWarm: () => warm };
 }
 
 // A ship's gunnery: reload clocks per battery, and firing the battery that faces the aim point.

@@ -115,16 +115,21 @@
 //                     (laptop, and a phone upright): a raider Frigate 300 m off the beam readying her broadside, seen from
 //                     the chase view (aimed at her, looking ahead, and between; on the phone aimed at her), her red fan
 //                     changing the picture as crisp red lines on 0.4% of the screen or more with a faint wash over a
-//                     quarter of it at most, her ship's box hardly changed, its ring at the Captain's distance, and none
-//                     with the Captain 200 m above it; round shot, chain shot and breakers at fight range (110 to 280 m)
-//                     changing pixels gold, violet and pale blue as they should, and round shot drawing nothing extra; the
+//                     quarter of it at most, her ship's box hardly changed, its ring at the Captain's distance and its
+//                     mark of where it reaches her (hot spokes) on 1% of the screen under the panels (a Skiff and a
+//                     Frigate), and none with the Captain 200 m above it; from above, its far rim within a pixel of a
+//                     smooth curve; on a phone, the fan drawn on its own at most a fifth dearer than the soft fan it was
+//                     (timed in turns); the first chain shot and breakers of a voyage making no new drawing; round shot,
+//                     chain shot and breakers at fight range (110 to 280 m) changing pixels gold, violet and pale blue as
+//                     they should, the nearer ones (100 to 170 m) too, and round shot drawing nothing extra; the
 //                     edge tags' arrows with raiders all round, judged from their own pixels (the 3D view hidden): each a
-//                     slim dart (1.4 times as long as wide or more) pointing within 20 degrees of the way she is, in the
+//                     slim dart (1.4 times as long as wide or more) pointing within 20 degrees of her bearing from the
+//                     way the view looks (up ahead, down behind), in the
 //                     room kept for it, a "Broadside!" tag's bigger arrow too (and on a phone held sideways); and the
 //                     Captain's broadside smoke at a raider Frigate 380 m off and 42 m lower, locked on: her box hidden
 //                     10% at most at 2.5, 3.5 and 4.5 s, where the same smoke left as it was (the same luck) hides 20% or
-//                     more, with most of the smoke still there, and a raider's own broadside smoke across the same line
-//                     never thinned. Foes worth remembering (tactics.js NERVE, CAPTAINS, PLATE, FORT, LINE, ROADS): a
+//                     more, with most of the smoke still there, each puff keeping its own picture and turn, and a
+//                     raider's own broadside smoke across the same line never thinned. Foes worth remembering (tactics.js NERVE, CAPTAINS, PLATE, FORT, LINE, ROADS): a
 //                     frozen crew Cutter at 40% hull, her sails shot away, striking her colours (half as many shards
 //                     again, with the wave's and the skies' bonus, said so), her pennants down and a white flag up her
 //                     mast; a fighting Brig, the last of her wave, striking under 15% of her hull; a lone Skiff at 30%
@@ -1630,15 +1635,22 @@ async function keepVoyages(page, fn) {
   try { return await fn(); } finally { await page.evaluate((v) => window.__game.settings.keep('voyages', v), v); }
 }
 // The red danger fan seen from the chase view: the usual fight, a raider Frigate level and 300 m off the Captain's beam
-// readying her broadside at her, looked at with the view aimed at her, looking ahead, and between. Drawn with and
-// without her fan, what it changes: a faint wash (the pink haze it was, seen nearly edge-on) over a quarter of the
-// screen at most, crisp red lines on 0.4% of it or more, little of her own ship's box changed (not hidden), and its
-// bright ring where it reaches the Captain's ship at her distance (as a share of its reach); and none with the Captain
-// out of it, 200 m above
-const FAN_CHASE = (views) => {
+// readying her broadside at her (the Captain in `ship`), looked at with the view aimed at her, looking ahead, and
+// between. Drawn with and without her fan, what it changes: a faint wash (the pink haze it was, seen nearly edge-on)
+// over a quarter of the screen at most, crisp red lines on 0.4% of it or more, little of her own ship's box changed (not
+// hidden), and the fan knowing where it reaches the Captain's ship (its `uHit` at her distance, as a share of its
+// reach); and drawn with and without that mark, how much of the screen under the panels along the top it changes (its
+// spokes burning hotter from her guns to the Captain: the ring through her ship is all round the view, off the screen,
+// so it must show some other way), 1% of it or more (the ring alone: none at all in a Skiff, half a percent in a Frigate, on a
+// laptop, nearly all of it in a thin arc at the top); none with the Captain out of it, 200 m above. And
+// seen from high above (the first look only), how its far rim runs: the top edge of what the fan changes, column by
+// column, against the smoothest fourth-power curve through it, out to 26 degrees either way of its middle: within a
+// pixel nearly everywhere, round (the straight-edged fan's rim strayed from it by 2 to 3 pixels: a chain of straight
+// lines with corners, which seen edge-on from behind the Captain was a zigzag)
+const FAN_CHASE = ([views, ship]) => {
   const g = window.__game, out = {}, d = g.progress.data, skies = d.skies; d.skies = 'cross';
   for (const look of views) {
-    g.fly('frigate'); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false); g.waves.state = 'fight';
+    g.fly(ship); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false); g.waves.state = 'fight';
     const P = g.player; P.pos.set(2000, 900, 1500); P.heading = 0.6; P.speed = 20; P.sail = 0.5; P.full.hull = P.health.hull = 1e6;
     const f = P.forward(), side = { x: Math.cos(0.6), y: 0, z: -Math.sin(0.6) };
     const r = g.raiders.spawn('frigate', P.pos.clone().addScaledVector(side, -300).addScaledVector(f, 20), P.heading, false); g.raiders.setAI(true);
@@ -1651,39 +1663,108 @@ const FAN_CHASE = (views) => {
     const fan = r.fans[r.charge.b], U = fan.material.uniforms, gl = g.renderer.getContext(), Wd = g.renderer.domElement.width, Ht = g.renderer.domElement.height;
     const frame = () => { g.renderer.render(g.scene, g.camera); const px = new Uint8Array(Wd * Ht * 4); gl.readPixels(0, 0, Wd, Ht, gl.RGBA, gl.UNSIGNED_BYTE, px); return px; };
     const a = frame(); fan.visible = false; const b = frame(); fan.visible = true;
+    const hit = U.uHit.value; U.uHit.value = -1; const c0 = frame(); U.uHit.value = hit;
     // (her box on the screen: her length either way of her middle, and half that up and down)
     const fw = r.f.forward(), c = r.f.pos.clone().project(g.camera), e1 = r.f.pos.clone().addScaledVector(fw, r.R.length / 2).project(g.camera), e2 = r.f.pos.clone().addScaledVector(fw, -r.R.length / 2).project(g.camera);
     const cx = (c.x + 1) / 2 * Wd, cy = (c.y + 1) / 2 * Ht, hw = Math.max(6, Math.abs(e1.x - e2.x) / 4 * Wd), hh = Math.max(4, hw * 0.5), on = c.z < 1 && Math.abs(c.x) < 0.95 && Math.abs(c.y) < 0.95;
-    let weak = 0, strong = 0, boxN = 0, boxCh = 0;
+    // (the panels along the top: the lowest of them, in the picture's pixels, counted from its bottom row)
+    const k = Wd / innerWidth, panels = ['ship', 'compass', 'btn-pause', 'minimap', 'score'].map((id) => document.getElementById(id)).filter((el) => el && el.offsetParent !== null).map((el) => el.getBoundingClientRect()).filter((q) => q.width && q.top < innerHeight * 0.4);
+    const under = Ht - Math.max(0, ...panels.map((q) => q.bottom)) * k;
+    let weak = 0, strong = 0, boxN = 0, boxCh = 0, marked = 0;
     for (let y = 0; y < Ht; y++) for (let x = 0; x < Wd; x++) {
       const i = (y * Wd + x) * 4, dd = Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]);
       if (dd > 12 && dd <= 60) weak++;
       if (dd > 60 && a[i] - Math.max(a[i + 1], a[i + 2]) > 40) strong++;
       if (on && Math.abs(x - cx) < hw && Math.abs(y - cy) < hh) { boxN++; if (dd > 24) boxCh++; }
+      if (y < under && Math.abs(a[i] - c0[i]) + Math.abs(a[i + 1] - c0[i + 1]) + Math.abs(a[i + 2] - c0[i + 2]) > 30) marked++;
     }
     const want = fan.worldToLocal(P.pos.clone()).length() / U.uReach.value;
-    out[look] = { weak: +(weak / (Wd * Ht)).toFixed(3), strong: +(strong / (Wd * Ht)).toFixed(4), box: on ? +(boxCh / Math.max(1, boxN)).toFixed(3) : null, hit: +U.uHit.value.toFixed(3), want: +want.toFixed(3), tris: fan.geometry.index.count / 3 };
-    if (look === views[0]) { P.pos.y += 200; P.vy = 0; g.step(1 / 60, {}); P.pos.y = 1100; g.step(1 / 60, {}); out.above = +U.uHit.value.toFixed(3); }
+    out[look] = { weak: +(weak / (Wd * Ht)).toFixed(3), strong: +(strong / (Wd * Ht)).toFixed(4), box: on ? +(boxCh / Math.max(1, boxN)).toFixed(3) : null, hit: +U.uHit.value.toFixed(3), want: +want.toFixed(3),
+      marked: Math.round((marked / (Wd * Ht)) * 1e6), tris: fan.geometry.index.count / 3 };
+    if (look === views[0]) {
+      // (from high above, its gun's way up the screen: the top edge of what the fan changes, column by column, over the
+      // middle of its far rim)
+      const C = g.camera, V3 = C.position.constructor, o = fan.getWorldPosition(new V3()), ax = fan.getWorldDirection(new V3()); ax.y = 0; ax.normalize();
+      const reach = U.uReach.value, mid = o.clone().addScaledVector(ax, reach * 0.5);
+      C.position.set(mid.x, o.y + reach * 1.6, mid.z); C.up.copy(ax); C.lookAt(mid); C.updateMatrixWorld(); C.up.set(0, 1, 0);
+      const sx = (yaw) => (fan.localToWorld(new V3(Math.sin(yaw) * reach, 0.15 * reach, Math.cos(yaw) * reach)).project(C).x + 1) / 2 * Wd;
+      const p = frame(); fan.visible = false; const q = frame(); fan.visible = true;
+      const x0 = Math.max(0, Math.ceil(Math.min(sx(-0.45), sx(0.45)))), x1 = Math.min(Wd - 1, Math.floor(Math.max(sx(-0.45), sx(0.45)))), xs = [], ys = [];
+      for (let x = x0; x <= x1; x++) for (let y = Ht - 1; y >= 0; y--) { const i = (y * Wd + x) * 4; if (Math.abs(p[i] - q[i]) + Math.abs(p[i + 1] - q[i + 1]) + Math.abs(p[i + 2] - q[i + 2]) > 40) { xs.push(x); ys.push(Ht - 1 - y); break; } }
+      out.rim = { columns: xs.length };
+      if (xs.length >= 40) {
+        // (the smoothest fourth-power curve through them: least squares)
+        const m0 = (xs[0] + xs[xs.length - 1]) / 2, h = (xs[xs.length - 1] - xs[0]) / 2, M = Array.from({ length: 5 }, () => new Array(6).fill(0));
+        for (let j = 0; j < xs.length; j++) { const t = (xs[j] - m0) / h, pw = [1, t, t * t, t ** 3, t ** 4]; for (let u = 0; u < 5; u++) { for (let w = 0; w < 5; w++) M[u][w] += pw[u] * pw[w]; M[u][5] += pw[u] * ys[j]; } }
+        for (let u = 0; u < 5; u++) { let best = u; for (let w = u + 1; w < 5; w++) if (Math.abs(M[w][u]) > Math.abs(M[best][u])) best = w; [M[u], M[best]] = [M[best], M[u]]; for (let w = u + 1; w < 5; w++) { const z = M[w][u] / M[u][u]; for (let n = u; n < 6; n++) M[w][n] -= z * M[u][n]; } }
+        const wt = new Array(5); for (let u = 4; u >= 0; u--) { let sum = M[u][5]; for (let w = u + 1; w < 5; w++) sum -= M[u][w] * wt[w]; wt[u] = sum / M[u][u]; }
+        const off = xs.map((x, j) => { const t = (x - m0) / h; return Math.abs(ys[j] - (wt[0] + wt[1] * t + wt[2] * t * t + wt[3] * t ** 3 + wt[4] * t ** 4)); }).sort((e, f2) => e - f2);
+        Object.assign(out.rim, { rise: Math.max(...ys) - Math.min(...ys), off: +off[Math.floor(off.length * 0.95)].toFixed(2) });
+      }
+      g.step(1 / 60, {});
+      P.pos.y += 200; P.vy = 0; g.step(1 / 60, {}); P.pos.y = 1100; g.step(1 / 60, {}); out.above = +U.uHit.value.toFixed(3);
+    }
     g.raiders.setAI(false); g.raiders.clear();
   }
   d.skies = skies;
   return out;
 };
-const fanChase = (page, views) => page.evaluate(FAN_CHASE, views);
+const fanChase = (page, views, ship = 'frigate') => page.evaluate(FAN_CHASE, [views, ship]);
 function fanChaseProblems(F, where) {
-  const say = Object.entries(F).filter(([k]) => k !== 'above').map(([k, v]) => (v ? `${k}: a faint wash over ${Math.round(v.weak * 100)}% of the screen, crisp red lines on ${(v.strong * 100).toFixed(1)}%${v.box !== null ? `, her ship's box ${Math.round(v.box * 100)}% changed` : ''}, its ring at ${v.hit} (she's at ${v.want})` : `${k}: NEVER READIED`)).join('; ');
-  console.log(`${where}, the danger fan from the chase view: ${say}; with the Captain 200 m above it, ${F.above < 0 ? 'no ring' : `A RING AT ${F.above}`}`);
+  const say = Object.entries(F).filter(([k]) => k !== 'above' && k !== 'rim').map(([k, v]) => (v ? `${k}: a faint wash over ${Math.round(v.weak * 100)}% of the screen, crisp red lines on ${(v.strong * 100).toFixed(1)}%${v.box !== null ? `, her ship's box ${Math.round(v.box * 100)}% changed` : ''}, it knows it reaches her at ${v.hit} (she's at ${v.want}), and that changes ${(v.marked / 1e4).toFixed(1)}% of the screen under the panels` : `${k}: NEVER READIED`)).join('; ');
+  console.log(`${where}, the danger fan from the chase view: ${say}; with the Captain 200 m above it, ${F.above < 0 ? 'no ring' : `A RING AT ${F.above}`}; seen from above, its far rim (${F.rim?.columns} columns, rising ${F.rim?.rise} pixels) strays ${F.rim?.off} pixels from a smooth curve`);
   for (const [k, v] of Object.entries(F)) {
-    if (k === 'above') continue;
-    if (!v || v.weak > 0.25 || v.strong < 0.004 || (v.box !== null && v.box > 0.25) || Math.abs(v.hit - v.want) > 0.02 || v.tris > 200) problems.push(`${where}: a raider's red fan seen from the chase view (${k}) should be crisp red lines with only a faint wash of red between them (not a pink haze over a quarter of the screen or more), leave her own ship clear, and ring where it reaches the Captain's ship, at no more cost: ${JSON.stringify(v)}`);
+    if (k === 'above' || k === 'rim') continue;
+    if (!v || v.weak > 0.25 || v.strong < 0.004 || (v.box !== null && v.box > 0.25) || Math.abs(v.hit - v.want) > 0.02 || v.tris > 64) problems.push(`${where}: a raider's red fan seen from the chase view (${k}) should be crisp red lines with only a faint wash of red between them (not a pink haze over a quarter of the screen or more), leave her own ship clear, and know where it reaches the Captain's ship, at no more cost: ${JSON.stringify(v)}`);
+    if (v && !(v.marked >= 10000)) problems.push(`${where}: where a raider's red fan reaches the Captain's ship should show from behind her (${k}), on 1% of the screen under the panels or more: ${JSON.stringify(v)}`);
   }
   if (!(F.above < 0)) problems.push(`${where}: with the Captain out of a raider's red fan (200 m above it) it should show no ring where it reaches her: ${F.above}`);
+  if (!(F.rim?.columns >= 40) || !(F.rim.rise >= 10) || !(F.rim.off <= 1)) problems.push(`${where}: a raider's red fan seen from above should have a round far rim, not a chain of straight lines with corners: ${JSON.stringify(F.rim)}`);
 }
+// What a raider's red fan costs a phone to draw: the fan on its own (a raider Frigate 300 m off the Captain's beam
+// readying her side, the view a little off her), against the same fan drawn the way it was before these touch-ups (a
+// soft wash with bands, its angle worked out at each corner: OLD_FAN) and against drawing nothing; timed in turns
+// (TURNS, below), each turn's fan's own time set against the old one's next to it, and the middle of those shares is
+// what counts: a fifth more at the most, as the software drawing here is uneven (it measures about a twentieth more;
+// the first crisp-lined fan, its angles worked out on every pixel, half as much again)
+const OLD_FAN = {
+  vertex: `uniform float uYaw; uniform float uReach; varying float vA; varying float vR;
+    void main() { vR = length(position) / uReach; vA = abs(atan(position.x, position.z)) / uYaw; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragment: `uniform vec3 uColor; uniform float uK; uniform float uTime; varying float vA; varying float vR;
+    void main() {
+      float fade = 1.0 - pow(vR, 2.5), edge = smoothstep(0.86, 1.0, vA), band = 0.5 + 0.5 * sin((vR * 9.0 - uTime * (1.5 + 3.0 * uK)) * 6.2832);
+      band *= band; band *= band;
+      gl_FragColor = vec4(uColor, clamp(uK * fade * (0.14 + 0.6 * edge + 0.34 * band), 0.0, 1.0));
+      #include <colorspace_fragment>
+    }`,
+};
+const FAN_COST = ([TURNS, OLD]) => {
+  const g = window.__game, turns = eval(TURNS), d = g.progress.data, skies = d.skies; d.skies = 'cross';
+  try {
+    g.fly('frigate'); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false); g.waves.state = 'fight';
+    const P = g.player; P.pos.set(2000, 900, 1500); P.heading = 0.6; P.speed = 20; P.sail = 0.5; P.full.hull = P.health.hull = 1e6;
+    const f = P.forward(), side = { x: Math.cos(0.6), y: 0, z: -Math.sin(0.6) };
+    const r = g.raiders.spawn('frigate', P.pos.clone().addScaledVector(side, -300).addScaledVector(f, 20), P.heading, false); g.raiders.setAI(true);
+    for (let i = 0; i < 600 && !r.charge.b; i++) { g.step(1 / 60, {}); P.pos.y = 900; r.f.pos.y = 900; }
+    if (!r.charge.b) return null;
+    r.charge.T = 1e9; r.charge.t = 0.3e9; // (held while it's timed)
+    const v = r.f.pos.clone().sub(P.pos); g.cam.yaw = Math.atan2(v.x, v.z) - P.heading - 0.3; g.cam.pitch = 0.15; g.input.lastLook = performance.now() / 1000 + 120; g.step(1 / 60, {});
+    const fan = r.fans[r.charge.b], now = fan.material, U = now.uniforms, empty = new g.scene.constructor();
+    const old = new now.constructor({ vertexShader: OLD.vertex, fragmentShader: OLD.fragment, transparent: true, depthWrite: false, side: now.side,
+      uniforms: { uColor: { value: U.uColor.value.clone().convertSRGBToLinear() }, uK: U.uK, uTime: U.uTime, uYaw: { value: 0.75 }, uReach: U.uReach } });
+    const drawn = (m) => ({ set: () => { fan.material = m; }, frame: () => g.renderer.render(fan, g.camera) });
+    const out = turns({ nothing: { set: () => {}, frame: () => g.renderer.render(empty, g.camera) }, old: drawn(old), now: drawn(now) }, 3, 10);
+    fan.material = now; old.dispose();
+    const share = out.shares.now.map((x, i) => (x - 1) / Math.max(1e-3, out.shares.old[i] - 1)).sort((p, q) => p - q);
+    return { ms: out.ms, share: +((share[(share.length - 1) >> 1] + share[share.length >> 1]) / 2).toFixed(2), shares: share.map((x) => +x.toFixed(2)) };
+  } finally { g.raiders.setAI(false); g.raiders.clear(); d.skies = skies; }
+};
 // The Captain's three kinds of shot in flight at fight range, from the chase view (aimed at a raider Brig 260 m off her
 // beam, the shots 110 to 280 m from the camera, over bright white cloud): drawn with and without the shots, the colour of
 // what they change, per million of the screen's pixels: chain shot violet (150 or more, five times its blue and gold
 // together), breakers pale blue (80 or more, four times their violet and gold), round shot gold (hardly any violet or
-// blue); and with round shot only, no solid-colour shots or chains drawn at all
+// blue); and with round shot only, no solid-colour shots or chains drawn at all. Round the nearer shots alone (100 to
+// 170 m off), chain shot violet and breakers blue, twice as much as anything else (white above all)
 const SHOT_COLOURS = () => {
   const g = window.__game, out = {}, d = g.progress.data, was = { skies: d.skies, shots: { ...d.shots } }; d.skies = 'cross'; d.shots.chain = d.shots.breaker = true;
   for (const shot of ['round', 'chain', 'breaker']) {
@@ -1698,14 +1779,25 @@ const SHOT_COLOURS = () => {
     const hide = [g.bolts.mesh, g.bolts.tint, g.bolts.links, g.fx.points], was = hide.map((m) => m.visible), extra = g.bolts.tint.visible || g.bolts.links.visible;
     g.world.time.value = 150; // (the cloud floor under them as it drifts by at one moment: bright white there, where a glow burns out to white)
     const a = frame(); hide.forEach((m) => { m.visible = false; }); const b = frame(); hide.forEach((m, i) => { m.visible = was[i]; });
-    const c = { violet: 0, blue: 0, gold: 0, other: 0 };
+    // (and the same only round the shots 100 to 170 m from the camera, the nearer half of fight range: a box 9 of the
+    // page's pixels either way of each, so the far ones, by the raider, don't speak for them)
+    const close = new Uint8Array(Wd * Ht), box = Math.round(9 * Wd / innerWidth), at = new g.camera.position.constructor();
+    let nClose = 0;
+    for (const bolt of g.bolts.bolts) {
+      const dd = bolt.p.distanceTo(g.camera.position); if (dd < 100 || dd > 170) continue;
+      at.copy(bolt.p).project(g.camera); if (at.z > 1 || Math.abs(at.x) > 1 || Math.abs(at.y) > 1) continue;
+      nClose++; const px = Math.round((at.x + 1) / 2 * Wd), py = Math.round((at.y + 1) / 2 * Ht);
+      for (let y = Math.max(0, py - box); y <= Math.min(Ht - 1, py + box); y++) for (let x = Math.max(0, px - box); x <= Math.min(Wd - 1, px + box); x++) close[y * Wd + x] = 1;
+    }
+    const c = { violet: 0, blue: 0, gold: 0, other: 0 }, cc = { violet: 0, blue: 0, gold: 0, other: 0 };
     for (let i = 0; i < a.length; i += 4) {
       if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) <= 30) continue;
-      const R = a[i], G = a[i + 1], B = a[i + 2];
-      if (B > G + 30 && R > G + 5) c.violet++; else if (B > R + 25 && G > R + 10) c.blue++; else if (R > B + 40) c.gold++; else c.other++;
+      const R = a[i], G = a[i + 1], B = a[i + 2], kind = B > G + 30 && R > G + 5 ? 'violet' : B > R + 25 && G > R + 10 ? 'blue' : R > B + 40 ? 'gold' : 'other';
+      c[kind]++; if (close[i >> 2]) cc[kind]++;
     }
     const k = (Wd * Ht) / 1e6;
-    out[shot] = { n: dist.length, near: Math.round(Math.min(...dist)), far: Math.round(Math.max(...dist)), violet: Math.round(c.violet / k), blue: Math.round(c.blue / k), gold: Math.round(c.gold / k), white: Math.round(c.other / k), extra };
+    out[shot] = { n: dist.length, near: Math.round(Math.min(...dist)), far: Math.round(Math.max(...dist)), violet: Math.round(c.violet / k), blue: Math.round(c.blue / k), gold: Math.round(c.gold / k), white: Math.round(c.other / k), extra,
+      close: { n: nClose, violet: cc.violet, blue: cc.blue, gold: cc.gold, white: cc.other } };
     g.bolts.clear();
   }
   g.pickShot('round'); d.skies = was.skies; d.shots = was.shots;
@@ -1718,15 +1810,23 @@ function shotColourProblems(S, where) {
   const range = (k) => S[k].n >= 6 && S[k].near >= 90 && S[k].far <= 320;
   if (!range('chain') || S.chain.violet < 150 || S.chain.violet < 5 * (S.chain.blue + S.chain.gold)) problems.push(`${where}: chain shot at fight range should read violet (its streak, its chain and its balls): ${JSON.stringify(S.chain)}`);
   if (!range('breaker') || S.breaker.blue < 80 || S.breaker.blue < 4 * (S.breaker.violet + S.breaker.gold)) problems.push(`${where}: crystal breakers at fight range should read pale blue: ${JSON.stringify(S.breaker)}`);
+  // (and round the nearer shots alone, 100 to 170 m from the camera, where breakers were still white sparks: mostly
+  // their own colour, twice as much of it as of anything else)
+  const C = (k) => S[k].close, rest = (k, own) => Object.entries(C(k)).filter(([q]) => q !== 'n' && q !== own).reduce((a, [, n]) => a + n, 0);
+  console.log(`${where}, round the shots 100 to 170 m off: chain shot (${C('chain').n} of them) violet ${C('chain').violet}, anything else ${rest('chain', 'violet')}; breakers (${C('breaker').n}) blue ${C('breaker').blue}, anything else ${rest('breaker', 'blue')} (pixels)`);
+  if (!(C('chain').n >= 2) || !(C('chain').violet >= 2 * rest('chain', 'violet'))) problems.push(`${where}: chain shot should read violet close up as well, 100 to 170 m off: ${JSON.stringify(C('chain'))}`);
+  if (!(C('breaker').n >= 2) || !(C('breaker').blue >= 2 * rest('breaker', 'blue'))) problems.push(`${where}: crystal breakers should read pale blue close up as well, 100 to 170 m off, not white sparks: ${JSON.stringify(C('breaker'))}`);
   if (!range('round') || S.round.gold < 50 || S.round.violet > 10 || S.round.blue > S.round.gold / 3 || S.round.extra) problems.push(`${where}: round shot at fight range should read gold, not violet or blue, drawn as before: ${JSON.stringify(S.round)}`);
 }
 // The edge tags' arrows: raiders all round the Captain off the screen (ahead to either side, abeam, behind to either
 // side, a little higher or lower), the 3D view hidden so only the page's own pixels are looked at, a picture with the
 // arrows and one without: each arrow's own pixels, how long it is against how wide (a slim dart, never the squat
 // triangle that turned a third of the way round looks just as it did), and which way it points (its tip: the end its
-// mass tapers out to) against the way she really is from the middle of the screen (within 20 degrees); each in the room
-// kept for it over its tag (ARROW_ROOM: how far up and to either side, more saying "Broadside!")
-const ARROW_ROOM = { up: 24, side: 11, warnUp: 25, warnSide: 12 };
+// mass tapers out to) against her bearing from the way the view looks, level (within 20 degrees: up for ahead, down for
+// behind, either side for abeam; pointed by where she is on the screen, they squeezed everything from ahead of the beam
+// to well abaft it into one way); each in the room kept for it over its tag (ARROW_ROOM: how far up and to either side,
+// more saying "Broadside!"). (One ahead within the view's width but above or below it points straight at her)
+const ARROW_ROOM = { up: 24, side: 11, warnUp: 26, warnSide: 14 };
 const ARROWS_SET = () => {
   const g = window.__game;
   g.fly('frigate'); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false); g.waves.state = 'fight';
@@ -1741,11 +1841,14 @@ const ARROWS_SET = () => {
 const ARROWS_READ = (warn) => {
   const g = window.__game, W2 = innerWidth / 2, H2 = innerHeight / 2, v = g.player.pos.clone(), list = g.raiders.list.filter((r) => r.tag?.classList.contains('edge'));
   if (warn && list[0]) { list[0].charge.b = 'port'; list[0].charge.T = 1e9; list[0].charge.t = 0.5e9; g.placeTags(); }
+  // (the way the view looks, level, and its right)
+  const E = g.camera.matrixWorld.elements, fl = Math.hypot(E[8], E[10]), fx = -E[8] / fl, fz = -E[10] / fl;
   const out = list.map((r) => {
     v.copy(r.f.pos); v.y += r.R.length * 0.45 + 3; v.project(g.camera);
     const s = v.z > 1 ? -1 : 1, x = v.x * W2 * s, y = -v.y * H2 * s, n = Math.hypot(x, y) || 1, el = r.tag.querySelector('.arrow');
+    const tx = r.f.pos.x - g.camera.position.x, tz = r.f.pos.z - g.camera.position.z, bearing = Math.atan2(-tx * fz + tz * fx, tx * fx + tz * fz);
     const a = el.getBoundingClientRect(), t = r.tag.getBoundingClientRect();
-    return { name: `${r.R.cls} ${Math.round((Math.atan2(r.f.pos.x - g.player.pos.x, r.f.pos.z - g.player.pos.z) * 180) / Math.PI)}°`, want: [x / n, y / n], warn: r.tag.classList.contains('warn'),
+    return { name: `${r.R.cls} ${Math.round((Math.atan2(r.f.pos.x - g.player.pos.x, r.f.pos.z - g.player.pos.z) * 180) / Math.PI)}°`, want: v.z <= 1 && Math.abs(v.x) <= 1 ? [x / n, y / n] : [Math.sin(bearing), -Math.cos(bearing)], warn: r.tag.classList.contains('warn'),
       arrow: [a.left, a.top, a.right, a.bottom], tag: [t.left, t.top, t.right, t.bottom] };
   });
   if (warn && list[0]) { list[0].charge.b = null; g.placeTags(); }
@@ -1761,10 +1864,11 @@ async function arrowsAt(page) {
   const B = await raw(await page.screenshot({ timeout: 120000 }));
   await css.evaluate((el) => el.remove());
   for (const t of tags) {
-    // (its own pixels: where the two pictures differ, in its box and a little round it)
+    // (its own pixels: where the two pictures differ, in its box and a little round it, but not into its tag below it,
+    // whose edge can shift a hair as it settles between the two pictures)
     let n = 0, sx = 0, sy = 0; const pts = [];
-    const [l, tp, r, b] = t.arrow.map((q) => q * dpr), m = 2 * dpr;
-    for (let y = Math.max(0, Math.floor(tp - m)); y < Math.ceil(b + m); y++) for (let x = Math.max(0, Math.floor(l - m)); x < Math.min(A.w, Math.ceil(r + m)); x++) {
+    const [l, tp, r, b] = t.arrow.map((q) => q * dpr), m = 2 * dpr, low = Math.min(Math.ceil(b + m), Math.floor(t.tag[1] * dpr));
+    for (let y = Math.max(0, Math.floor(tp - m)); y < low; y++) for (let x = Math.max(0, Math.floor(l - m)); x < Math.min(A.w, Math.ceil(r + m)); x++) {
       const i = (y * A.w + x) * A.ch;
       if (Math.abs(A.data[i] - B.data[i]) + Math.abs(A.data[i + 1] - B.data[i + 1]) + Math.abs(A.data[i + 2] - B.data[i + 2]) > 90) { pts.push(x, y); n++; sx += x; sy += y; }
     }
@@ -1833,6 +1937,13 @@ const SMOKE_CLEAR = (off) => {
         if (Math.abs(x - cx) < hw && Math.abs(y - cy) < hh) { n++; if (dd > 60) hid++; }
       }
       out.at.push({ T, hidden: +(hid / Math.max(1, n)).toFixed(2), smoke: +(all / (Wd * Ht)).toFixed(3), locked: g.locked === r });
+      // (and each puff still drawn with its own picture, turned its own way, while her smoke keeps clear: the pictures
+      // and turns sent to the graphics card, how many different ones, and none of it written anywhere else, as on the camera)
+      if (T === 2.5) {
+        const L = g.fx.smoke.points.geometry.attributes.look.array, k = g.fx.smoke.count, seen = new Set();
+        for (let i = 0; i < k; i++) seen.add(L[i]);
+        out.looks = { puffs: k, different: seen.size, zero: seen.size === 1 && seen.has(0), onCamera: Object.keys(g.camera).filter((q) => /^\d+$/.test(q)).length };
+      }
     }
     out.thinned = thinned;
     g.raiders.clear(); g.fx.smoke.clear();
@@ -1847,6 +1958,9 @@ function smokeClearProblems({ on, off }, where) {
   if (on.at.some((x) => x.hidden > 0.1 || !x.locked) || !(on.thinned > 0)) problems.push(`${where}: the Captain's own gunsmoke should keep the raider she's locked on to in sight: ${JSON.stringify(on)}`);
   if (!(most(off) >= 0.2)) problems.push(`${where}: the gunsmoke test should be a case where her smoke left as it was hides the raider (it hid ${most(off)} at the most): ${JSON.stringify(off)}`);
   if (!(smoke(on) >= 0.55 * smoke(off))) problems.push(`${where}: the Captain's own gunsmoke should mostly stay, only thinning near her line of sight: ${JSON.stringify({ on: on.at, off: off.at })}`);
+  const L = on.looks;
+  console.log(`${where}, her gunsmoke's pictures while it keeps clear: ${L.puffs} puffs, ${L.different} different pictures and turns${L.zero ? ' (ALL NONE)' : ''}${L.onCamera ? `, ${L.onCamera} WRITTEN ON THE CAMERA` : ''}`);
+  if (!(L.puffs >= 10) || !(L.different >= Math.min(L.puffs, 10)) || L.zero || L.onCamera) problems.push(`${where}: each puff of smoke should keep its own picture and turn while her smoke keeps clear of her target (and nothing be written on the camera): ${JSON.stringify(L)}`);
   if (on.raiderThinned || !(on.raiderPuffs > 0)) problems.push(`${where}: a raider's gunsmoke should never be thinned: ${JSON.stringify({ puffs: on.raiderPuffs, thinned: on.raiderThinned })}`);
 }
 const mode = (page) => page.evaluate(() => window.__game.mode);
@@ -2024,7 +2138,7 @@ if (!demoOnly) {
   if (!opened || !settingsKept.closed || settingsKept.saved.music !== 0 || settingsKept.gain >= 0.01 || settingsKept.playing !== null) problems.push(`the Settings card should open from the port, silence and stop the music at nothing, save it and close: ${JSON.stringify({ opened, ...settingsKept })}`);
   // the first voyage here: a raider's first broadside warning makes no new drawing as her red fan first shows (its
   // drawing was made as the voyage began, lit by the sky at sea and her lamps, not the title screen's): the shaders
-  // made counted with the raider drawn, before her fan shows, and as it shows; the fan about 170 triangles
+  // made counted with the raider drawn, before her fan shows, and as it shows; the fan about 50 triangles
   const fanFirst = await page.evaluate(async () => {
     const g = window.__game, frames = async (n) => { for (let i = 0; i < n; i++) await new Promise(requestAnimationFrame); };
     g.fly('brig'); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false); g.waves.state = 'fight';
@@ -2041,7 +2155,26 @@ if (!demoOnly) {
     return out;
   });
   console.log(`the first danger fan of a voyage: ${fanFirst.fan ? 'showing' : 'NOT SHOWING'} (${fanFirst.triangles} triangles), ${fanFirst.after - fanFirst.before ? `${fanFirst.after - fanFirst.before} NEW DRAWING${fanFirst.after - fanFirst.before > 1 ? 'S' : ''} MADE as it shows (a stutter)` : 'no new drawing made as it shows'} (${fanFirst.before} made before)`);
-  if (!fanFirst.drawn || !fanFirst.fan || fanFirst.after !== fanFirst.before || !(fanFirst.triangles > 100 && fanFirst.triangles <= 200)) problems.push(`a raider's first red fan of a voyage should need no new drawing made as it shows (and be about 170 triangles): ${JSON.stringify(fanFirst)}`);
+  if (!fanFirst.drawn || !fanFirst.fan || fanFirst.after !== fanFirst.before || !(fanFirst.triangles >= 40 && fanFirst.triangles <= 64)) problems.push(`a raider's first red fan of a voyage should need no new drawing made as it shows (and be about 50 triangles): ${JSON.stringify(fanFirst)}`);
+  // and her first chain shot and breakers of a voyage make no new drawing as they fly (their solid colours and chain
+  // shot's chain were made ready as the voyage began): the shaders made counted after a volley of round shot, then as a
+  // volley of chain shot flies, then one of breakers
+  const shotFirst = await page.evaluate(async () => {
+    const g = window.__game, frames = async (n) => { for (let i = 0; i < n; i++) await new Promise(requestAnimationFrame); }, d = g.progress.data, had = { ...d.shots };
+    d.shots.chain = d.shots.breaker = true;
+    try {
+      g.fly('brig'); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false); g.waves.state = 'fight';
+      const P = g.player; P.pos.set(0, 900, 0); P.heading = 0; P.full.hull = P.health.hull = 1e6;
+      g.cam.yaw = Math.PI / 2; g.cam.pitch = 0.05; g.input.lastLook = performance.now() / 1000 + 120;
+      const volley = async (shot) => { g.pickShot(shot); g.step(1 / 60, {}); for (const k in g.gunnery.ready) g.gunnery.ready[k] = 0; g.step(1 / 60, { fire: true }); g.step(0.3, {}); await frames(4); return g.renderer.info.programs.length; };
+      await frames(3);
+      const out = { drawn: g.scene.visible, round: await volley('round') };
+      out.chain = await volley('chain'); out.chainShown = g.bolts.links.visible; out.breaker = await volley('breaker'); out.breakerShown = g.bolts.tint.visible;
+      return out;
+    } finally { g.bolts.clear(); g.pickShot('round'); d.shots = had; }
+  });
+  console.log(`the first chain shot and breakers of a voyage: ${shotFirst.chain - shotFirst.round ? `${shotFirst.chain - shotFirst.round} NEW DRAWING(S) MADE as chain shot flies` : 'no new drawing as chain shot flies'}${shotFirst.chainShown ? '' : ' (ITS CHAIN NOT SHOWING)'}, ${shotFirst.breaker - shotFirst.chain ? `${shotFirst.breaker - shotFirst.chain} NEW DRAWING(S) MADE as breakers fly` : 'none as breakers fly'}${shotFirst.breakerShown ? '' : ' (THEIR COLOUR NOT SHOWING)'} (${shotFirst.round} made by then)`);
+  if (!shotFirst.drawn || !shotFirst.chainShown || !shotFirst.breakerShown || shotFirst.chain !== shotFirst.round || shotFirst.breaker !== shotFirst.chain) problems.push(`the Captain's first chain shot and breakers of a voyage should need no new drawing made as they fly: ${JSON.stringify(shotFirst)}`);
   // the Settings card's other rows, chosen on the card at sea, each taking effect at once: the picture (Smooth: one
   // screen pixel to each of the page's, small shadows, half the cloud puffs, raiders' far models sooner, fewer sparks,
   // half the rain, no scud, no sun's rays and no glitter on the sea; Sharp, a laptop's own, back as it was), aim speed
@@ -4111,6 +4244,7 @@ if (!demoOnly) {
   // (each starts a voyage of its own: the device's count of voyages, which folds the keys away, is put back after)
   await keepVoyages(page, async () => {
     fanChaseProblems(await fanChase(page, ['aim', 'ahead', 'quarter']), 'laptop');
+    fanChaseProblems(await fanChase(page, ['aim'], 'skiff'), 'laptop, in a Skiff');
     shotColourProblems(await shotColours(page), 'laptop');
     arrowProblems(await arrowsAt(page), 'laptop');
     smokeClearProblems(await smokeClearAt(page), 'laptop');
@@ -4738,6 +4872,7 @@ if (!quick && !demoOnly) {
   // (each starts a voyage of its own: the device's count of voyages, which hides the touch hint, is put back after)
   await keepVoyages(page, async () => {
     fanChaseProblems(await fanChase(page, ['aim']), 'phone');
+    fanChaseProblems(await fanChase(page, ['aim'], 'skiff'), 'phone, in a Skiff');
     shotColourProblems(await shotColours(page), 'phone');
     arrowProblems(await arrowsAt(page), 'phone');
     await sized(page, 844, 390, 'phone'); arrowProblems(await arrowsAt(page), 'phone held sideways'); await sized(page, 390, 844, 'phone');
@@ -4991,6 +5126,10 @@ if (!quick && !demoOnly) {
   console.log(`phone, the weather: a frame of clear sky ${weatherTimes.clear} ms (${weatherTimes.calls.clear} draws), in a storm ${weatherTimes.storm} ms (${weatherTimes.calls.storm} draws), inside a cloud ${weatherTimes.cloud} ms (${weatherTimes.calls.cloud} draws), looking at a bank of cloud ${weatherTimes.bank} ms (${weatherTimes.calls.bank} draws, ${weatherTimes.calls.banked} of it in sight); timed in turns against clear sky, a storm's frames ${weatherTimes.share.storm} of its (the middle of ${weatherTimes.shares.storm.join(', ')}), a cloud's ${weatherTimes.share.cloud} (${weatherTimes.shares.cloud.join(', ')}), a bank's ${weatherTimes.share.bank} (${weatherTimes.shares.bank.join(', ')}); on Smooth ${weatherTimes.calls.smoothRain} of the rain, on Balanced ${weatherTimes.calls.balancedRain}`);
   if (!(weatherTimes.share.storm <= 1.2) || !(weatherTimes.share.cloud <= 1.2) || !(weatherTimes.share.bank <= 1.2) || weatherTimes.calls.banked !== 1 || weatherTimes.calls.storm > weatherTimes.calls.clear + 2) problems.push(`phone: the weather should cost little more than a clear sky: ${JSON.stringify(weatherTimes)}`);
   if (Math.abs(weatherTimes.calls.smoothRain - 0.5) > 0.01 || weatherTimes.calls.balancedRain !== 1) problems.push(`phone: the Smooth picture should draw half the rain: ${JSON.stringify(weatherTimes.calls)}`);
+  // (a raider's red fan: what it costs to draw, against the soft fan it was: FAN_COST)
+  const fanCost = await keepVoyages(page, () => page.evaluate(FAN_COST, [TURNS, OLD_FAN]));
+  console.log(`phone, what a raider's red fan costs to draw: ${fanCost ? `${fanCost.ms.now} ms on its own, the soft fan it was ${fanCost.ms.old} ms, nothing ${fanCost.ms.nothing} ms; timed in turns, ${fanCost.share} of the old one's (the middle of ${fanCost.shares.join(', ')})` : 'NEVER READIED'}`);
+  if (!fanCost || !(fanCost.share <= 1.2)) problems.push(`phone: a raider's red fan should cost little more to draw than the soft fan it was: ${JSON.stringify(fanCost)}`);
   // the title on phones upright and sideways, small ones too (an iPhone SE's, with the browser's bars showing): raiders
   // in sight, her ship clear of the card, and the card fitting the screen
   const phoneTitles = [];

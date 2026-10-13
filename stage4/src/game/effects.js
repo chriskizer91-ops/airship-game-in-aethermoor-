@@ -128,9 +128,9 @@ export function makeSmoke(scene, max = 900, cap = 700) {
       ang[i] = Math.max(-3, Math.min(3, ang[i] + spin[i] * dt));
     }
     // (the line from the camera to the raider her guns are locked on to: from (cx, cy, cz) along (lx, ly, lz), D long)
-    const look = seeing && camera;
+    const keeping = seeing && camera;
     let cx = 0, cy = 0, cz = 0, lx = 0, ly = 0, lz = 0, D = 0;
-    if (look) { const c = camera.position; cx = c.x; cy = c.y; cz = c.z; lx = sight.x - cx; ly = sight.y - cy; lz = sight.z - cz; D = Math.hypot(lx, ly, lz); if (D > 1) { lx /= D; ly /= D; lz /= D; } }
+    if (keeping) { const c = camera.position; cx = c.x; cy = c.y; cz = c.z; lx = sight.x - cx; ly = sight.y - cy; lz = sight.z - cz; D = Math.hypot(lx, ly, lz); if (D > 1) { lx /= D; ly /= D; lz /= D; } }
     thinned = 0;
     for (let i = 0; i < n; i++) {
       const k = 1 - life[i] / full[i], K = kind[i], G = GROW[K];
@@ -141,7 +141,7 @@ export function makeSmoke(scene, max = 900, cap = 700) {
       // her own gunsmoke across the line to her target: how far it is from the line, against how far it must be to
       // keep off it (its own heap, a little under half its size across, and the raider as she looks from there); thinned
       // the nearer it is, and pushed off it
-      if (look && own[i] && D > 1) {
+      if (keeping && own[i] && D > 1) {
         const dx = px[i] - cx, dy = py[i] - cy, dz = pz[i] - cz, t = dx * lx + dy * ly + dz * lz;
         if (t > 0 && t < D) {
           const ex = dx - lx * t, ey = dy - ly * t, ez = dz - lz * t, d = Math.sqrt(ex * ex + ey * ey + ez * ez), keep = (size[i] * 0.45 + sightR * 0.5 * t / D) * CLEAR.margin;

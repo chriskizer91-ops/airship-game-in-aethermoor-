@@ -255,6 +255,7 @@ async function main() {
     // phone making it then: raiders.js fanToWarm)
     renderer.compile(raiders.fanToWarm(), camera, scene);
     renderer.compile(wrecks.flagToWarm(), camera, scene); // (and a struck ship's white flag: wrecks.js)
+    renderer.compile(bolts.toWarm(), camera, scene); // (and the shots' streaks, chain shot's chain and the solid colours: guns.js)
     // (her trial's wave, known now: a raider captain's ship in it is built as she sails, under the dip through the night,
     // not as the wave appears: a stutter on a phone)
     if (trial) { W.n = TRIAL[id]; W.next = nextWave(W.n); raiders.prepareWave(W.next); }
@@ -989,7 +990,7 @@ async function main() {
     const row = H[`row-${part}`];
     row._dt.animate(ROW, 300); row._bar.animate(BAR, 300);
   }
-  const proj = new THREE.Vector3(), corner = new THREE.Vector3(), placed = [], edges = [], over = [], byY = (a, b) => a._y - b._y;
+  const proj = new THREE.Vector3(), lookF = new THREE.Vector3(), lookR = new THREE.Vector3(), corner = new THREE.Vector3(), placed = [], edges = [], over = [], byY = (a, b) => a._y - b._y;
   // a tag's height in pixels, and saying "Broadside!" in place of its bars (and a pixel to spare): measured on the first
   // tags shown (the fonts decide them), until then a fair guess
   const TAG = { h: 42, warn: 44, measured: false, warned: false, sizes: 0 };
@@ -999,7 +1000,7 @@ async function main() {
   // bigger) or the bottom (layout()), for any panel within half the widest tag (a treasure ship's, far off) of it
   // (the arrow: a slim dart turned to point at her, so it reaches up to ARROW px over the tag's top and ARROW_HW px either
   // side of its middle whichever way it points; more saying "Broadside!", when it's bigger: game.html)
-  const TAG_HALF = 52, TAG_EDGE = 6, TAG_REACH = 86, ARROW = 24, ARROW_WARN = 25, ARROW_HW = 11, ARROW_WARN_HW = 12;
+  const TAG_HALF = 52, TAG_EDGE = 6, TAG_REACH = 86, ARROW = 24, ARROW_WARN = 26, ARROW_HW = 11, ARROW_WARN_HW = 14;
   const arrowHW = (warn) => (warn ? ARROW_WARN_HW : ARROW_HW);
   const edgeX = (el, W2) => W2 - Math.max(TAG_HALF, el._hw + TAG_EDGE); // (the furthest from the middle its bottom middle goes)
   const tagUp = (warn) => (warn ? TAG.warn + ARROW_WARN : TAG.h + ARROW);
@@ -1359,6 +1360,9 @@ async function main() {
     const offShip = OFF.length; // (and the crosshair, for the tags at the edge only: those over ships keep just over them)
     CROSS.l = W2 - 27; CROSS.r = W2 + 27; CROSS.t = H2 - 27; CROSS.b = H2 + 27; OFF.push(CROSS); offN = OFF.length;
     placed.length = 0;
+    // (the way the view looks, level, and its right, for the arrows at the edge)
+    const E = camera.matrixWorld.elements;
+    lookF.set(-E[8], 0, -E[10]); if (lookF.lengthSq() < 1e-6) lookF.set(E[4], 0, E[6]); lookF.normalize(); lookR.set(-lookF.z, 0, lookF.x);
     for (const r of raiders.list) {
       let el = r.tag;
       if (!el) {
@@ -1381,8 +1385,11 @@ async function main() {
       // in pixels from the middle of the screen; off screen (or behind), pinned to the edge in its direction
       const behind = proj.z > 1;
       let x = proj.x * W2 * (behind ? -1 : 1), y = -proj.y * H2 * (behind ? -1 : 1);
-      // (an arrow at the edge points the way she really is from the middle of the screen, wherever its tag ends up)
-      const turn = Math.round(Math.atan2(x, -y) * 50) / 50;
+      // (an arrow at the edge points the way she is from where you're looking, wherever its tag ends up: by her bearing
+      // from the way the view looks, level, so up is ahead, down behind and either side abeam; or, for one ahead and
+      // within the view's width but above or below it, straight at her)
+      const at = r.lost ? r.seenAt : r.f.pos, tx = at.x - camera.position.x, tz = at.z - camera.position.z;
+      const turn = Math.round((!behind && Math.abs(proj.x) <= 1 ? Math.atan2(x, -y) : Math.atan2(tx * lookR.x + tz * lookR.z, tx * lookF.x + tz * lookF.z)) * 50) / 50;
       // (off screen: pinned where the line to her meets the edge, then kept between the panels at the top and bottom)
       const ax = edgeX(el, W2), k = Math.max(Math.abs(x) / ax, y < 0 ? -y / (H2 - tagUp(false) - 6) : y / (H2 - 6));
       const edge = behind || k > 1;
