@@ -59,6 +59,11 @@ function puffAtlas() {
 //           her side as she sails on
 export const PUFF = { pour: 0, billow: 1, gun: 2, vapour: 3, bank: 4 };
 const DRAG = [0.6, 0.6, 1.5, 0.6, 0.45], GROW = [0, 1, 2, 1, 2], SHOW = [6, 14, 25, 14, 25], LINGER = [0, 0, 1, 0, 1];
+// The Captain's own gunsmoke (`mine`) keeps out of her way: where a puff of it lies across the line from the camera to
+// the raider her guns are locked on to (`keepClear`), it thins to a CLEAR share of itself and drifts aside off that
+// line, so a volley's hits can be seen landing through her own smoke; the rest of the bank stays as thick as ever, and
+// raiders' smoke is never touched
+export const CLEAR = { thin: 0.15, push: 9, margin: 1.25 };
 // `max` puffs at once; `cap`: the most pixels across one may be drawn (a phone's limit is how much it fills)
 export function makeSmoke(scene, max = 900, cap = 700) {
   const pos = new Float32Array(max * 3), size = new Float32Array(max), shade = new Float32Array(max), alpha = new Float32Array(max), look = new Float32Array(max), heat = new Float32Array(max);
@@ -95,20 +100,24 @@ export function makeSmoke(scene, max = 900, cap = 700) {
   // picture and how it turns, and how hot
   const F = () => new Float32Array(max);
   const px = F(), py = F(), pz = F(), vx = F(), vy = F(), vz = F(), life = F(), full = F(), s0 = F(), s1 = F(), sh = F(), al = F(), kind = new Uint8Array(max), rise = F(),
-    pic = F(), ang = F(), spin = F(), hot = F();
+    pic = F(), ang = F(), spin = F(), hot = F(), own = new Uint8Array(max);
   let n = 0, cursor = 0, dropped = 0;
+  // (the line kept clear of the Captain's own smoke: to `sight`, a raider `sightR` metres across, while `seeing`)
+  const sight = new THREE.Vector3();
+  let seeing = false, sightR = 0, thinned = 0;
   // a puff at p drifting with v, growing from a to b metres across over its life; shade 0 is black, 1 pale grey; `kind`
-  // (PUFF: how it slows, grows and fades); rise: how fast it lifts as it drifts (m/s each second); heat 0 to 1
-  function emit(p, v, lifeS, a, b, shadeOf, op = 0.75, kindOf = 0, riseBy = 1.5, heatOf = 0) {
+  // (PUFF: how it slows, grows and fades); rise: how fast it lifts as it drifts (m/s each second); heat 0 to 1; `mine`:
+  // the Captain's own gunsmoke
+  function emit(p, v, lifeS, a, b, shadeOf, op = 0.75, kindOf = 0, riseBy = 1.5, heatOf = 0, mine = false) {
     let i;
     if (n < max) i = n++;
     else { i = cursor; cursor = (cursor + 1) % max; dropped++; }
     px[i] = p.x; py[i] = p.y; pz[i] = p.z; vx[i] = v.x; vy[i] = v.y; vz[i] = v.z;
-    life[i] = full[i] = lifeS; s0[i] = a; s1[i] = b; sh[i] = shadeOf; al[i] = op; kind[i] = kindOf; rise[i] = riseBy; hot[i] = heatOf;
+    life[i] = full[i] = lifeS; s0[i] = a; s1[i] = b; sh[i] = shadeOf; al[i] = op; kind[i] = kindOf; rise[i] = riseBy; hot[i] = heatOf; own[i] = mine ? 1 : 0;
     pic[i] = (kindOf === 3 ? (Math.random() < 0.5 ? 3 : 7) : ((Math.random() * 3) | 0) + (Math.random() < 0.5 ? 4 : 0)) * 8;
     ang[i] = (Math.random() - 0.5) * 1.2; spin[i] = (Math.random() - 0.5) * 0.5;
   }
-  const ARR = [px, py, pz, vx, vy, vz, life, full, s0, s1, sh, al, kind, rise, pic, ang, spin, hot];
+  const ARR = [px, py, pz, vx, vy, vz, life, full, s0, s1, sh, al, kind, rise, pic, ang, spin, hot, own];
   const kill = (i) => { const j = --n; if (i !== j) for (let a = 0; a < ARR.length; a++) ARR[a][i] = ARR[a][j]; };
   function update(dt, camera) {
     for (let i = n - 1; i >= 0; i--) {
@@ -118,12 +127,32 @@ export function makeSmoke(scene, max = 900, cap = 700) {
       vx[i] *= d; vy[i] *= d; vz[i] *= d; vy[i] += dt * rise[i];
       ang[i] = Math.max(-3, Math.min(3, ang[i] + spin[i] * dt));
     }
+    // (the line from the camera to the raider her guns are locked on to: from (cx, cy, cz) along (lx, ly, lz), D long)
+    const look = seeing && camera;
+    let cx = 0, cy = 0, cz = 0, lx = 0, ly = 0, lz = 0, D = 0;
+    if (look) { const c = camera.position; cx = c.x; cy = c.y; cz = c.z; lx = sight.x - cx; ly = sight.y - cy; lz = sight.z - cz; D = Math.hypot(lx, ly, lz); if (D > 1) { lx /= D; ly /= D; lz /= D; } }
+    thinned = 0;
     for (let i = 0; i < n; i++) {
       const k = 1 - life[i] / full[i], K = kind[i], G = GROW[K];
       const u = 1 - k, u3 = u * u * u, g = G === 0 ? Math.sqrt(k) : G === 2 ? 0.8 * (1 - u3 * u3) + 0.2 * k : 1 - u3;
       pos[i * 3] = px[i]; pos[i * 3 + 1] = py[i]; pos[i * 3 + 2] = pz[i];
       size[i] = s0[i] + (s1[i] - s0[i]) * g; shade[i] = sh[i];
       alpha[i] = al[i] * Math.min(1, k * SHOW[K]) * (LINGER[K] ? 1 - k * k : u);
+      // her own gunsmoke across the line to her target: how far it is from the line, against how far it must be to
+      // keep off it (its own heap, a little under half its size across, and the raider as she looks from there); thinned
+      // the nearer it is, and pushed off it
+      if (look && own[i] && D > 1) {
+        const dx = px[i] - cx, dy = py[i] - cy, dz = pz[i] - cz, t = dx * lx + dy * ly + dz * lz;
+        if (t > 0 && t < D) {
+          const ex = dx - lx * t, ey = dy - ly * t, ez = dz - lz * t, d = Math.sqrt(ex * ex + ey * ey + ez * ez), keep = (size[i] * 0.45 + sightR * 0.5 * t / D) * CLEAR.margin;
+          if (d < keep) {
+            const f = d / keep;
+            alpha[i] *= CLEAR.thin + (1 - CLEAR.thin) * f * f * (3 - 2 * f); thinned++;
+            const p = (CLEAR.push * (1 - f) * dt) / Math.max(d, 0.5);
+            if (d > 0.01) { vx[i] += ex * p; vy[i] += ey * p; vz[i] += ez * p; } else vy[i] += CLEAR.push * dt;
+          }
+        }
+      }
       look[i] = pic[i] + ang[i] + 3.14159;
       const h = 1 - k * 3; heat[i] = h > 0 ? hot[i] * h * h : 0; // (the glow from below fades in the first third of its life)
     }
@@ -131,11 +160,14 @@ export function makeSmoke(scene, max = 900, cap = 700) {
     for (let a = 0; a < ATTRS.length; a++) upload(geo.attributes[ATTRS[a]], n);
     if (camera) mat.uniforms.uScale.value = camera.userData.pixelScale ?? 500;
   }
-  const clear = () => { n = 0; cursor = 0; geo.setDrawRange(0, 0); };
+  const clear = () => { n = 0; cursor = 0; seeing = false; geo.setDrawRange(0, 0); };
   // room for smoke that can be left out (a wreck's column, a damaged ship's smoke, vapour trails): only while the batch
   // is less than this full, so gunsmoke and blasts always find room
   const room = (share = 0.85) => n < max * share;
-  return { emit, update, clear, room, max, get count() { return n; }, get dropped() { return dropped; } };
+  // the raider the Captain's guns are locked on to (her middle, and how long she is), or none (main.js, each step)
+  function keepClear(at, length = 0) { seeing = !!at; if (at) { sight.copy(at); sightR = length; } }
+  // (for tests: the batch itself, how her smoke keeps clear, and how many of her puffs were thinned this frame)
+  return { emit, update, clear, room, keepClear, max, points, clearing: CLEAR, get count() { return n; }, get dropped() { return dropped; }, get thinned() { return thinned; } };
 }
 
 // Debris: what a shot knocks off a ship, by what it hit. Splinters of wood tumble and fall fast; torn scraps of canvas,

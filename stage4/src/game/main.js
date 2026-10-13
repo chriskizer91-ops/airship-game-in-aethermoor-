@@ -112,7 +112,7 @@ async function main() {
   // the sound: made at the first touch, set by the Settings card (kept on this device), answering the game's news
   const audio = makeAudio({ touch, settings: () => settings.data });
   const sound = makeSound({ audio, touch, where: () => player?.pos, weather: () => sky?.weather });
-  const fx = makeFx({ scene, camera, touch }), bolts = makeBolts(scene, fx), pickups = makePickups(scene);
+  const fx = makeFx({ scene, camera, touch }), bolts = makeBolts(scene, fx, 400, camera), pickups = makePickups(scene);
   const wrecks = makeWrecks({ fx, tear: world.tear, scene }), surge = makeSurge({ scene, fx });
   const raiders = makeRaiders(scene, art, bolts, skies, fx);
   const looks = makeLooks({ scene, touch, fx, camera }); // (every ship's scars, her life and her flames: looks.js)
@@ -739,9 +739,10 @@ async function main() {
     renderer.setSize(w, h, false);
     camera.aspect = w / h; camera.fov = viewFov = w < h ? 68 : 55; camera.updateProjectionMatrix();
     camera.userData.pixelScale = renderer.domElement.height / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
+    camera.userData.pixelRatio = renderer.getPixelRatio(); // (the screen's own pixels to the page's: the shots' colours, guns.js)
     billowsFor(THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * camera.aspect))); // (a storm's billows, as many as suit the view's width)
     for (const s of built.values()) s.glow.material.uniforms.uScale.value = camera.userData.pixelScale;
-    raiders.setScale(camera.userData.pixelScale); // (and the raiders' glows, the same)
+    raiders.setScale(camera.userData.pixelScale, renderer.getPixelRatio()); // (and the raiders' glows, the same, and their danger fans' lines)
     sizes++; // (the tags measured again: a phone turned may give their words other sizes, as on the smallest phones)
     port.resize(); title.resize(); layout();
     if (mini.classList.contains('big')) placeMapClose();
@@ -849,7 +850,10 @@ async function main() {
   // least 52 px in from the sides, until it's been measured): not over the panels along the top (with its arrow: up px
   // above that, its height and the arrow's reach over its top, more for a tag saying "Broadside!", whose arrow is
   // bigger) or the bottom (layout()), for any panel within half the widest tag (a treasure ship's, far off) of it
-  const TAG_HALF = 52, TAG_EDGE = 6, TAG_REACH = 86, ARROW = 18, ARROW_WARN = 22;
+  // (the arrow: a slim dart turned to point at her, so it reaches up to ARROW px over the tag's top and ARROW_HW px either
+  // side of its middle whichever way it points; more saying "Broadside!", when it's bigger: game.html)
+  const TAG_HALF = 52, TAG_EDGE = 6, TAG_REACH = 86, ARROW = 24, ARROW_WARN = 25, ARROW_HW = 11, ARROW_WARN_HW = 12;
+  const arrowHW = (warn) => (warn ? ARROW_WARN_HW : ARROW_HW);
   const edgeX = (el, W2) => W2 - Math.max(TAG_HALF, el._hw + TAG_EDGE); // (the furthest from the middle its bottom middle goes)
   const tagUp = (warn) => (warn ? TAG.warn + ARROW_WARN : TAG.h + ARROW);
   const tagH = (a) => (a._warn ? TAG.warn : TAG.h); // (a tag's height: taller saying "Broadside!")
@@ -975,7 +979,7 @@ async function main() {
         const b = list[j], bh = b._warn ? TAG.warn : TAG.h;
         if (Math.abs(x - b._x) < hw + b._hw + TAG_GAP && y > b._y - bh - TAG_GAP && y - h < b._y + TAG_GAP) { v = dir < 0 ? b._y - bh - TAG_GAP : b._y + TAG_GAP + h; to = dir < 0 ? Math.min(to, v) : Math.max(to, v); }
         // (an edge tag's arrow, just over its middle)
-        if (!pass) { const au = b._warn ? ARROW_WARN : ARROW, aw = b._warn ? 10 : 8; if (Math.abs(x - b._x) < hw + aw + TAG_GAP && y > b._y - bh - au - TAG_GAP && y - h < b._y - bh + TAG_GAP) { v = dir < 0 ? b._y - bh - au - TAG_GAP : b._y - bh + TAG_GAP + h; to = dir < 0 ? Math.min(to, v) : Math.max(to, v); } }
+        if (!pass) { const au = b._warn ? ARROW_WARN : ARROW, aw = arrowHW(b._warn); if (Math.abs(x - b._x) < hw + aw + TAG_GAP && y > b._y - bh - au - TAG_GAP && y - h < b._y - bh + TAG_GAP) { v = dir < 0 ? b._y - bh - au - TAG_GAP : b._y - bh + TAG_GAP + h; to = dir < 0 ? Math.min(to, v) : Math.max(to, v); } }
       }
     }
     if (ships) {
@@ -990,15 +994,17 @@ async function main() {
     }
     return Number.isFinite(to) ? to : NaN;
   }
-  // tag a at the edge, its bottom middle at (x, y), slid up past the first n tags at the edge in its way, and past the
-  // Captain's ship and the warning (OFF: the tag with its arrow over it), no higher than `top` (the panels along the top);
-  // NaN if there's no room
+  // tag a at the edge, its bottom middle at (x, y), slid up past the first n tags at the edge in its way (each, and a
+  // itself, with its arrow over it), and past the Captain's ship and the warning (OFF: the tag with its arrow over it), no
+  // higher than `top` (the panels along the top); NaN if there's no room
   let offN = 0; // (how many of OFF it keeps off: all of them; the crosshair, last, left out; or none, for a tag with nowhere clear of both her and the other tags)
+  let arrowRoom = true; // (whether the tags at the edge keep clear of each other's arrows too, or, with no room for that, of each other's tags only)
+  const edgeUp = (a) => (arrowRoom ? tagUp(a._warn) : tagH(a)); // (how far up from its bottom a tag at the edge keeps others off)
   function edgeSlide(a, x, y, n, top) {
-    const h = a._warn ? TAG.warn : TAG.h, up = tagUp(a._warn), nOff = offN;
+    const h = a._warn ? TAG.warn : TAG.h, up = tagUp(a._warn), au = edgeUp(a), nOff = offN;
     for (let k = 0; k <= n + nOff; k++) {
       let to = Infinity;
-      for (let j = 0; j < n; j++) { const c = edges[j], ch = c._warn ? TAG.warn : TAG.h; if (Math.abs(x - c._x) < a._hw + c._hw + TAG_GAP && y > c._y - ch - TAG_GAP && y - h < c._y + TAG_GAP) to = Math.min(to, c._y - ch - TAG_GAP); }
+      for (let j = 0; j < n; j++) { const c = edges[j], cu = edgeUp(c); if (Math.abs(x - c._x) < a._hw + c._hw + TAG_GAP && y > c._y - cu - TAG_GAP && y - au < c._y + TAG_GAP) to = Math.min(to, c._y - cu - TAG_GAP); }
       for (let j = 0; j < nOff; j++) { const o = OFF[j]; if (offHit(o, a, x, y, h, up)) to = Math.min(to, o.t - TAG_GAP); }
       if (to === Infinity) return y;
       if ((y = to) < top) return NaN;
@@ -1008,7 +1014,7 @@ async function main() {
   // (whether tag a at the edge, its bottom middle at (x, y), h high and up with its arrow, lands on o: the tag, or its
   // arrow just over its middle; and whether it lands on any of OFF: her ship, the warning or the crosshair)
   const offHit = (o, a, x, y, h, up) => (y > o.t - TAG_GAP && y - h < o.b + TAG_GAP && x + a._hw > o.l - TAG_GAP && x - a._hw < o.r + TAG_GAP)
-    || (y - h > o.t - TAG_GAP && y - up < o.b + TAG_GAP && x + (a._warn ? 10 : 8) > o.l - TAG_GAP && x - (a._warn ? 10 : 8) < o.r + TAG_GAP);
+    || (y - h > o.t - TAG_GAP && y - up < o.b + TAG_GAP && x + arrowHW(a._warn) > o.l - TAG_GAP && x - arrowHW(a._warn) < o.r + TAG_GAP);
   const onOff = (a, x, y) => { const h = tagH(a), up = tagUp(a._warn); for (let j = 0; j < OFF.length; j++) if (offHit(OFF[j], a, x, y, h, up)) return true; return false; };
   // tag a at the edge (the i-th from the top) moved beside the tags in its way, half a tag's width at a time, towards the
   // middle first, then the other way, still on the screen and between the panels there, and rising no higher than
@@ -1088,9 +1094,9 @@ async function main() {
     return false;
   };
   function clearHere(a, i, x, y, h, up, nOff) {
-    const l = x - a._hw, r = x + a._hw, t = y - up, aw = a._warn ? 10 : 8;
+    const l = x - a._hw, r = x + a._hw, t = y - up, aw = arrowHW(a._warn);
     if (hitsPanel(l, r, y - h, y) || hitsPanel(x - aw, x + aw, t, y - h)) return false;
-    for (let j = 0; j < i; j++) { const c = edges[j], ch = c._warn ? TAG.warn : TAG.h; if (Math.abs(x - c._x) < a._hw + c._hw + TAG_GAP && y > c._y - ch - TAG_GAP && y - h < c._y + TAG_GAP) return false; }
+    for (let j = 0, au = edgeUp(a); j < i; j++) { const c = edges[j], cu = edgeUp(c); if (Math.abs(x - c._x) < a._hw + c._hw + TAG_GAP && y > c._y - cu - TAG_GAP && y - au < c._y + TAG_GAP) return false; }
     for (let j = 0; j < nOff; j++) if (offHit(OFF[j], a, x, y, h, up)) return false;
     return true;
   }
@@ -1148,6 +1154,52 @@ async function main() {
     if (best === Infinity) return false;
     a._x = bx; a._y = by; return true;
   }
+  // the tags at the edge placed, top to bottom (edges, sorted by where they're pinned): stacked along it, from the bottom
+  // up, the higher of two pushed up by the lower one's height (and its arrow's, unless arrowRoom is off; one saying
+  // "Broadside!" may be a little taller); then from the top down, one pushed up past the highest it may be (into the
+  // panels along the top) comes back down, and any stacked under it move down to make room (but never on to the panels
+  // along the bottom). False if one found no room anywhere
+  function placeEdges(W2) {
+    let fits = true;
+    for (let i = edges.length - 2; i >= 0; i--) {
+      const a = edges[i];
+      for (let j = edges.length - 1; j > i; j--) { const b = edges[j], h = edgeUp(b); if (Math.abs(a._x - b._x) < a._hw + b._hw && b._y - a._y < h) a._y = b._y - h; }
+    }
+    for (let i = 0; i < edges.length; i++) {
+      const a = edges[i], h = edgeUp(a), keep = arrowRoom;
+      a._y = Math.max(a._y, a._top);
+      for (let j = 0; j < i; j++) { const b = edges[j]; if (Math.abs(a._x - b._x) < a._hw + b._hw) a._y = Math.max(a._y, b._y + h); }
+      a._y = Math.min(a._y, edgeBottom(a._x, a._warn, a._hw));
+      // (no room left for it along the edge, as down the right of a phone held sideways, where the panels leave room for
+      // a tag or two: it goes up past the tags in its way, or beside them, half a tag's width at a time, towards the
+      // middle first, then the other way, still on the screen and between the panels there)
+      // (and one landing on the Captain's ship, the warning or the crosshair, OFF, moves off them the same way: first where
+      // it rises at most two and a half tags from where it's pinned, so it stays by its edge, beside her ship; then the
+      // nearest place to there (edgeNear). On a screen too crowded for that, a tag on another hides more than one on her
+      // ship: it keeps clear of the tags only)
+      if (edgeSlide(a, a._x, a._y, i, -Infinity) !== a._y) {
+        const on = onOff(a, a._x, a._y);
+        if (!edgeFind(a, i, W2, on ? a._y - 2.5 * TAG.h : -Infinity) && !(on && edgeNear(a, i, W2))) {
+          // (no room clear of all of them by the edge with the other tags' arrows kept clear too: the same again with
+          // their arrows left out, so on a crowded screen an arrow may lie under the tag above it rather than a tag lie
+          // on her ship or the crosshair. Then clear of her ship and the warning there, the crosshair left out; failing
+          // that, anywhere on the screen clear of them all, or of her ship and the warning; and only then clear of the
+          // other tags only, by the edge or anywhere)
+          arrowRoom = false;
+          if (edgeSlide(a, a._x, a._y, i, -Infinity) !== a._y && !edgeFind(a, i, W2, on ? a._y - 2.5 * TAG.h : -Infinity) && !(on && edgeNear(a, i, W2))) {
+            offN = OFF.length - 1;
+            if (edgeSlide(a, a._x, a._y, i, -Infinity) !== a._y && !edgeFind(a, i, W2, -Infinity) && !edgeAnywhere(a, i, 0, 1)) {
+              offN = 0;
+              if (edgeSlide(a, a._x, a._y, i, -Infinity) !== a._y && !edgeFind(a, i, W2, -Infinity) && !edgeAnywhere(a, i, 2, 2)) fits = false;
+            }
+            offN = OFF.length;
+          }
+          arrowRoom = keep;
+        }
+      }
+    }
+    return fits;
+  }
   // each raider's tag: over it, or at the edge of the screen pointing to it (flashing red and saying "Broadside!" as she
   // readies a broadside, with a ring closing as she's about to fire); its distance and health ten times a second. (dt:
   // the frame's seconds, for a tag gliding to a new place)
@@ -1175,6 +1227,8 @@ async function main() {
       // in pixels from the middle of the screen; off screen (or behind), pinned to the edge in its direction
       const behind = proj.z > 1;
       let x = proj.x * W2 * (behind ? -1 : 1), y = -proj.y * H2 * (behind ? -1 : 1);
+      // (an arrow at the edge points the way she really is from the middle of the screen, wherever its tag ends up)
+      const turn = Math.round(Math.atan2(x, -y) * 50) / 50;
       // (off screen: pinned where the line to her meets the edge, then kept between the panels at the top and bottom)
       const ax = edgeX(el, W2), k = Math.max(Math.abs(x) / ax, y < 0 ? -y / (H2 - tagUp(false) - 6) : y / (H2 - 6));
       const edge = behind || k > 1;
@@ -1202,7 +1256,6 @@ async function main() {
       el._x = W2 + x; el._y = H2 + y; el._top = top; placed.push(el);
       el._box = el._ship = false; if (!edge && !r.lost) shipBox(r, el, W2, H2); // (her ship on the screen: tags keep off it)
       if (edge) el._had = false; // (back over her ship, her tag starts afresh)
-      const turn = Math.round(Math.atan2(x, -y) * 50) / 50;
       if (edge && el._turn !== turn) { el._turn = turn; el._arrow.style.transform = `rotate(${turn}rad)`; }
       if (slow || el._fresh) {
         el._fresh = false;
@@ -1222,45 +1275,21 @@ async function main() {
       if (w && !el._warn && !TAG.measured) { TAG.measured = true; TAG.h = el.offsetHeight + 1; }
       if (el._edge) { const ax = edgeX(el, W2); el._x = W2 + Math.max(-ax, Math.min(ax, el._x - W2)); }
     }
-    // tags that would land on another tag, or on a raider's ship, find somewhere clear instead. Those at the edge of the
-    // screen are stacked along it: from the bottom up, the higher of two is pushed up by the lower one's height (one
-    // saying "Broadside!" may be a little taller); then from the top down, one pushed up past the highest it may be (into
-    // the panels along the top) comes back down, and any stacked under it move down to make room (but never on to the
-    // panels along the bottom). The warning is always drawn on top (game.html)
+    // tags that would land on another tag, or on a raider's ship, find somewhere clear instead: those at the edge of the
+    // screen stacked along it (placeEdges). The warning is always drawn on top (game.html)
     edges.length = over.length = 0;
     for (let i = 0; i < placed.length; i++) (placed[i]._edge ? edges : over).push(placed[i]);
+    // (a tag at the edge counts with its arrow over it, so the one above never hides the arrow of the one below. On a
+    // screen too crowded for that, the smallest phone with raiders all round readying broadsides, where some tag would
+    // find no room at all, they're all placed again from where they were pinned, packed by their tags alone)
     edges.sort(byY);
-    for (let i = edges.length - 2; i >= 0; i--) {
-      const a = edges[i];
-      for (let j = edges.length - 1; j > i; j--) { const b = edges[j], h = b._warn ? TAG.warn : TAG.h; if (Math.abs(a._x - b._x) < a._hw + b._hw && b._y - a._y < h) a._y = b._y - h; }
+    for (let i = 0; i < edges.length; i++) { edges[i]._ex = edges[i]._x; edges[i]._ey = edges[i]._y; }
+    for (let pass = 0; pass < 2; pass++) {
+      arrowRoom = pass === 0;
+      if (pass) for (let i = 0; i < edges.length; i++) { edges[i]._x = edges[i]._ex; edges[i]._y = edges[i]._ey; }
+      if (placeEdges(W2)) break;
     }
-    for (let i = 0; i < edges.length; i++) {
-      const a = edges[i], h = a._warn ? TAG.warn : TAG.h;
-      a._y = Math.max(a._y, a._top);
-      for (let j = 0; j < i; j++) { const b = edges[j]; if (Math.abs(a._x - b._x) < a._hw + b._hw) a._y = Math.max(a._y, b._y + h); }
-      a._y = Math.min(a._y, edgeBottom(a._x, a._warn, a._hw));
-      // (no room left for it along the edge, as down the right of a phone held sideways, where the panels leave room for
-      // a tag or two: it goes up past the tags in its way, or beside them, half a tag's width at a time, towards the
-      // middle first, then the other way, still on the screen and between the panels there)
-      // (and one landing on the Captain's ship, the warning or the crosshair, OFF, moves off them the same way: first where
-      // it rises at most two and a half tags from where it's pinned, so it stays by its edge, beside her ship; then the
-      // nearest place to there (edgeNear). On a screen too crowded for that, a tag on another hides more than one on her
-      // ship: it keeps clear of the tags only)
-      if (edgeSlide(a, a._x, a._y, i, -Infinity) !== a._y) {
-        const on = onOff(a, a._x, a._y);
-        if (!edgeFind(a, i, W2, on ? a._y - 2.5 * TAG.h : -Infinity) && !(on && edgeNear(a, i, W2))) {
-          // (no room clear of all of them by the edge: clear of her ship and the warning there, the crosshair left out;
-          // failing that, anywhere on the screen clear of them all, or of her ship and the warning; and only then clear
-          // of the other tags only, by the edge or anywhere)
-          offN = OFF.length - 1;
-          if (edgeSlide(a, a._x, a._y, i, -Infinity) !== a._y && !edgeFind(a, i, W2, -Infinity) && !edgeAnywhere(a, i, 0, 1)) {
-            offN = 0;
-            if (edgeSlide(a, a._x, a._y, i, -Infinity) !== a._y && !edgeFind(a, i, W2, -Infinity)) edgeAnywhere(a, i, 2, 2);
-          }
-          offN = OFF.length;
-        }
-      }
-    }
+    arrowRoom = true;
     // those over their ships, from the highest on the screen down, each in the first clear place (placeOver): the
     // highest just over her ship, one that would land on it (or on her ship: two raiders far off, one just over the
     // other) over it, so every ship of a stack shows under all its tags; one that can't rise there (under the panels
@@ -1535,6 +1564,7 @@ async function main() {
     }
     waves(dt, gone);
     wrecks.update(dt); surge.update(dt); world.update(dt);
+    fx.smoke.keepClear(locked && !locked.f.down ? locked.f.pos : null, locked ? locked.R.length : 0); // (her own gunsmoke keeps off her view of her target)
     fx.update(dt); // (after everything that makes sparks, smoke or glows this frame)
     // the view: wider on a phone held upright; a Surge widens it with a jolt (a spring), slow motion narrows it a
     // little, and each of your guns punches it wider for a moment

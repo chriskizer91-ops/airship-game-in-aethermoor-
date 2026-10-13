@@ -18,8 +18,8 @@
 // blackened iron, crimson crystals, red eyes at her bow and a great swallow-tailed banner. How sharp the raiders are
 // depends on the skies the Captain chose (progress.js); on Fair Winds a captain is no tougher than her crew, hits no
 // harder and reloads no faster.
-// Before a raider's broadside goes off, her gun ports glow red, brightening to gold, a soft red fan opens off her side
-// showing where her guns can reach (guns.js fanGeometry), and the lids on that side fly open and her guns run out
+// Before a raider's broadside goes off, her gun ports glow red, brightening to gold, a red fan of crisp lines opens off
+// her side showing where her guns can reach (guns.js fanGeometry), and the lids on that side fly open and her guns run out
 // (looks.js): for the skies' warning time (progress.js `warn`: 1 s on Fair Winds, 0.8 on Crosswinds, 0.6 on the
 // Maelstrom; a little longer on the two big ships). Her gunners aim then, where the Captain will be when the side goes
 // off if she holds her course, and that's where it goes: climb out of the red and it misses (dive, and about half of
@@ -56,16 +56,41 @@ export const WARN = { big: 0.15 }, WARN_FROM = new THREE.Color(0xff4636), WARN_T
 // her red danger fan while she readies a broadside: its colour, and how strong it is as she's about to fire (it grows
 // from a third of that as her ports start to glow); out to where she'd fire at all (shoot: 70% of the guns' reach)
 export const FAN = { color: 0xff3a2a, opacity: 0.5, reach: KINDS.broadside.speed * KINDS.broadside.life * 0.7 };
-// how it's drawn: a red glow, strongest along its two edges and near her, fading out to its far end, with bands of red
-// rippling out from her side, faster as she's about to fire, so it reads as a fan even seen from inside it (gun's own
-// frame: +z the way the gun points, its swing and tilt given)
-const FAN_VERT = `uniform float uYaw; uniform float uReach; varying float vA; varying float vR;
-  void main() { vR = length(position) / uReach; vA = abs(atan(position.x, position.z)) / uYaw; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
-const FAN_FRAG = `uniform vec3 uColor; uniform float uK; uniform float uTime; varying float vA; varying float vR;
+// how it's drawn, so it reads as a fan of danger from anywhere, the chase view behind the Captain above all (there
+// she's inside it or just above it, its broad faces seen nearly edge-on): crisp red lines a pixel or two wide whatever
+// the distance (worked out on the screen: fwidth), with only a faint wash of red between them, faintest where a face is
+// seen edge-on, so it never lies over the sky as a pink haze. The lines: spokes running out from her guns along its top,
+// its bottom and its two sides, rings rippling out from her side (faster as she's about to fire), its far rim, and a
+// brighter, thicker ring where it reaches the Captain's ship (`uHit`: how far out that is, as a share of its reach;
+// below 0 when she's outside it). The wash is strongest close to her (but not over her own ship) and fades out along
+// it. (Gun's own frame: +z the way the gun points, its swing and tilt given)
+const FAN_VERT = `uniform float uReach; varying vec3 vP; varying vec3 vV; varying float vR;
+  void main() { vP = position; vR = length(position) / uReach; vec4 mv = modelViewMatrix * vec4(position, 1.0); vV = mv.xyz; gl_Position = projectionMatrix * mv; }`;
+const FAN_FRAG = `uniform vec3 uColor; uniform float uK; uniform float uTime; uniform float uYaw; uniform float uPitch; uniform float uHit; uniform float uOwn; uniform float uPx;
+  varying vec3 vP; varying vec3 vV; varying float vR;
+  // (a line px pixels wide, d from its middle, w how much d changes from one pixel to the next)
+  float line(float d, float w, float px) { px *= uPx; return 1.0 - smoothstep(px * 0.5 - 0.5, px * 0.5 + 0.5, d / max(w, 1e-5)); }
   void main() {
-    float fade = 1.0 - pow(vR, 2.5), edge = smoothstep(0.86, 1.0, vA), band = 0.5 + 0.5 * sin((vR * 9.0 - uTime * (1.5 + 3.0 * uK)) * 6.2832);
-    band *= band; band *= band;
-    gl_FragColor = vec4(uColor, clamp(uK * fade * (0.14 + 0.6 * edge + 0.34 * band), 0.0, 1.0));
+    float R = vR, u = atan(vP.x, vP.z) / uYaw, v = asin(clamp(vP.y / max(length(vP), 1e-3), -1.0, 1.0)) / uPitch, au = abs(u), av = abs(v);
+    float wR = fwidth(R);
+    // spokes: three along the top and the bottom (its middle and near its corners), one along each side's middle
+    float spokes = max(line(min(au, abs(au - 0.62)), fwidth(u), 1.8) * step(0.55, av), line(av, fwidth(v), 1.8) * step(0.6, au));
+    // the rings rippling out (fainter seen edge-on), its far rim, and the ring where it reaches the Captain's ship
+    float s = R * 5.0 - uTime * (0.6 + 1.6 * uK);
+    vec3 n = normalize(cross(dFdx(vV), dFdy(vV)));
+    float face = smoothstep(0.05, 0.45, abs(dot(n, normalize(vV)))), q = 1.0 - R;
+    float rings = line(abs(fract(s) - 0.5), fwidth(s), 1.4) * (0.35 + 0.65 * face);
+    float rim = line(1.0 - R, wR, 2.2);
+    float hit = uHit > 0.0 ? line(abs(R - uHit), wR, 3.2) : 0.0;
+    // the wash: faint, strongest near her, fading along it, and fainter seen edge-on
+    float q3 = q * q * q, wash = (0.03 + 0.55 * q3 * q3) * face;
+    float lines = max(max(spokes * (1.0 - 0.5 * R), rings * 0.75 * q * q), max(rim * 0.8, hit));
+    // (nothing over her own ship, seen past the fan's first few metres from her gun: uOwn, her length as a share of its
+    // reach; and nothing right by the camera, where a line would sweep across the whole view)
+    float near = smoothstep(uOwn * 0.25, uOwn * 1.5, R) * smoothstep(10.0, 60.0, length(vV));
+    float a = clamp(uK * near * (wash + 1.9 * lines), 0.0, 1.0);
+    if (a < 0.004) discard;
+    gl_FragColor = vec4(mix(uColor, vec3(1.0, 0.72, 0.5), 0.4 * hit), a);
     #include <colorspace_fragment>
   }`;
 // a raider captain's edge over her crew (times as tough, as hard-hitting, as long to reload), all of it on most skies
@@ -108,6 +133,8 @@ const ALONE = { galleon: { id: 'brig', treasure: true }, manowar: { id: 'frigate
 // Maelstrom skies add `extra` Skiffs or Cutters from the third wave on. `storms` (the skies', progress.js) says whether
 // it brings a storm; a storm wave, and every third, comes out of a bank of cloud (main.js)
 const SIZE = { skiff: 0, cutter: 1, brig: 2, frigate: 3, galleon: 4, manowar: 5 };
+// (whether a battery has broadside guns in it, not only light swivels: a Skiff's sides have only swivels)
+const broadsideIn = (guns) => { for (let i = 0; i < guns.length; i++) if (guns[i].kind === 'broadside') return true; return false; };
 export function waveAt(n, extra = 0, storms = null, giants = null) {
   const owns = (id) => !STAND_IN[id] || !!giants?.[id];
   let list;
@@ -445,12 +472,13 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
       sailTo = 0.75;
     }
     // (smartest: one the foe's guns are locked on to, with a loaded broadside pointed at her, may climb or dive out of it;
-    // a broadside only, not her bow or stern guns, a few light guns she shrugs off)
+    // a broadside only, not her bow or stern guns, nor a Skiff's light swivels on her side: a few light guns she shrugs
+    // off)
     // (her height over the foe kept, to come back to after the dodge; the foe's guns' reach and aim for the shot they're
     // loaded with)
     if (smart >= 2 && r.sees && foe.locked === r && r.dodge <= 0 && Math.random() < SMART.dodge * dt) {
       const g = foe.gun, b = g && batteryFor(wrap(Math.atan2(-dx, -dz) - foe.heading));
-      if ((b === 'port' || b === 'starboard') && g.ready[b] === 0 && g.count(b) && g.reaches(b, me.aimAt(g.shot))) { r.dodge = SMART.hold; r.alt0 = r.alt; r.alt += (r.alt > 0 ? -1 : 1) * SMART.alt; }
+      if ((b === 'port' || b === 'starboard') && g.ready[b] === 0 && broadsideIn(g.B[b]) && g.reaches(b, me.aimAt(g.shot))) { r.dodge = SMART.hold; r.alt0 = r.alt; r.alt += (r.alt > 0 ? -1 : 1) * SMART.alt; }
     }
     if (r.dodge > 0 && (r.dodge -= dt) <= 0) r.alt = r.alt0;
     // keep clear of the other raiders
@@ -507,9 +535,10 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
   // two (port and starboard) made the first time she readies that side, children of her ship's body at her middle gun on
   // that side, pointing its way, so they lean and roll with her. Each has its own copy of the one material (its strength
   // is its own: the copies share one shader), drawn after the ships, tinting red what's behind it without hiding it
-  const fanGeo = fanGeometry(KINDS.broadside, FAN.reach), FWD = new THREE.Vector3(0, 0, 1), fanTime = { value: 0 };
+  const fanGeo = fanGeometry(KINDS.broadside, FAN.reach), FWD = new THREE.Vector3(0, 0, 1), fanTime = { value: 0 }, fanPx = { value: 1 };
   const fanMat = new THREE.ShaderMaterial({ vertexShader: FAN_VERT, fragmentShader: FAN_FRAG, transparent: true, depthWrite: false, side: THREE.DoubleSide,
-    uniforms: { uColor: { value: new THREE.Color(FAN.color) }, uK: { value: 0 }, uTime: fanTime, uYaw: { value: KINDS.broadside.yaw }, uReach: { value: FAN.reach } } });
+    uniforms: { uColor: { value: new THREE.Color(FAN.color) }, uK: { value: 0 }, uTime: fanTime, uYaw: { value: KINDS.broadside.yaw }, uPitch: { value: KINDS.broadside.pitch }, uReach: { value: FAN.reach },
+      uHit: { value: -1 }, uOwn: { value: 0.05 }, uPx: fanPx } });
   fanMat.name = 'danger fan';
   // (its shader made ready before any warning, never drawn: main.js has three.js make it as each voyage starts, for a
   // fan of its own (fanToWarm) with a fresh copy of the material, lit as the sky at sea is then. three.js makes a new
@@ -529,18 +558,29 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
     if (!m) {
       const g = r.gun.B[b][r.gun.B[b].length >> 1];
       m = r.fans[b] = new THREE.Mesh(fanGeo, fanMat.clone()); m.name = 'danger fan'; m.renderOrder = 4; m.visible = false;
-      m.material.uniforms.uTime = fanTime; // (one clock for every fan)
+      m.material.uniforms.uTime = fanTime; m.material.uniforms.uPx = fanPx; // (one clock for every fan, and one size of pixel)
+      m.material.uniforms.uOwn.value = r.R.length / FAN.reach;
       m.position.copy(g.p); m.quaternion.setFromUnitVectors(FWD, g.d);
       r.ship.body.add(m);
     }
     return m;
   }
-  // (shown for the side being readied, growing as her ports brighten; the other hidden)
+  // (shown for the side being readied, growing as her ports brighten; the other hidden. With the Captain inside it, its
+  // bright ring marks where it reaches her ship: how far out she is, in its own frame, and whether that's inside its
+  // swing, tilt and reach, with a little to spare for her size)
+  const fanAt = new THREE.Vector3();
   function showFans(r) {
     const ch = r.charge;
     if (ch.b === 'port' || ch.b === 'starboard') {
-      const m = fanFor(r, ch.b), k = ch.T > 0 ? 1 - Math.max(0, ch.t) / ch.T : 1;
-      m.visible = true; m.material.uniforms.uK.value = FAN.opacity * (0.35 + 0.65 * k);
+      const m = fanFor(r, ch.b), k = ch.T > 0 ? 1 - Math.max(0, ch.t) / ch.T : 1, U = m.material.uniforms;
+      m.visible = true; U.uK.value = FAN.opacity * (0.35 + 0.65 * k);
+      let hit = -1;
+      if (foeNow && !foeNow.down) {
+        m.updateWorldMatrix(true, false); m.worldToLocal(fanAt.copy(foeNow.pos));
+        const d = fanAt.length(), L = foeNow.ship.recipe.length, spare = Math.atan(L * 0.4 / Math.max(d, 1));
+        if (d < FAN.reach && fanAt.z > 0 && Math.abs(Math.atan2(fanAt.x, fanAt.z)) < KINDS.broadside.yaw + spare && Math.abs(Math.asin(fanAt.y / Math.max(d, 1e-3))) < KINDS.broadside.pitch + spare) hit = d / FAN.reach;
+      }
+      U.uHit.value = hit;
     }
     if (r.fans) for (const b in r.fans) if (b !== ch.b) r.fans[b].visible = false;
   }
@@ -616,7 +656,8 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
   // (for the check: how many paintings the title's raiders were coloured from, and how many still hold their pixels)
   const read = () => ({ read: paintings.size, held: [...paintings.values()].filter((p) => p.d).length });
   // the screen's scale changed (main.js, as the window changes): every class's models, and every raider in the sky
-  function setScale(px) {
+  function setScale(px, ratio = 1) {
+    fanPx.value = ratio; // (and the danger fans' lines, as wide on any screen)
     if (!(px > 0) || px === scale) return;
     scale = px;
     for (const k in T) { glowsOf(T[k].mid.body, px); glowsOf(T[k].far.body, px); }

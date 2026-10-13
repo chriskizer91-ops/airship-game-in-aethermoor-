@@ -298,9 +298,12 @@
   .tag b { font-weight: 500; color: #ffb4a0; }
   .tag .d { color: var(--dim); text-align: right; }
   .tag .meter { grid-column: 1 / -1; width: 66px; height: 3px; margin: 0; }
-  /* (the arrow is drawn, not a letter, so it looks the same in every font; it takes its colour from `color`) */
-  .tag .arrow { display: none; position: absolute; left: 50%; top: -15px; margin-left: -6px; width: 12px; height: 12px; color: #ff6a50; }
-  .tag .arrow::before { content: ''; position: absolute; left: 1px; top: 2px; border: 5px solid transparent; border-top: 0; border-bottom: 9px solid currentColor; }
+  /* (the arrow is drawn, not a letter, so it looks the same in every font; it takes its colour from `color`. It's a slim
+     dart, nearly twice as long as it's wide with a notch in its tail, so whichever way main.js turns it, it plainly points
+     one way (a squat triangle turned a third of the way round looks just as it did), with a dark edge to show on bright
+     sky. It turns round its own middle, 13 px over the tag: main.js keeps room for it there whichever way it points) */
+  .tag .arrow { display: none; position: absolute; left: 50%; top: -21px; margin-left: -5px; width: 10px; height: 18px; color: #ff6a50; filter: drop-shadow(0 0 1px rgba(24, 4, 2, 0.95)); }
+  .tag .arrow::before { content: ''; position: absolute; inset: 0; background: currentColor; clip-path: polygon(50% 0, 100% 100%, 50% 70%, 0 100%); }
   .tag.edge .arrow { display: block; }
   .tag.edge { opacity: 0.85; }
   .tag.locked { border-color: #ffd36a; box-shadow: 0 0 10px rgba(255, 200, 90, 0.6); }
@@ -313,7 +316,7 @@
   .tag.warn .bs { display: block; }
   .tag.warn .meter { display: none; } /* (in place of her bars, so the tag is no taller and fits between the panels) */
   .tag.warn b, .tag.warn .d { color: #ffe2d8; }
-  .tag.warn .arrow { color: #ff3a28; scale: 1.5; filter: drop-shadow(0 0 4px #ff2a10); animation: arrow-warn 0.22s ease-in-out infinite alternate; }
+  .tag.warn .arrow { color: #ff3a28; scale: 1.15; filter: drop-shadow(0 0 1px #2a0402) drop-shadow(0 0 4px #ff2a10); animation: arrow-warn 0.22s ease-in-out infinite alternate; }
   /* (and a ring beside the word, closing as she's about to fire: --k, 0 to 1, from main.js) */
   .tag .bs .ring { display: inline-block; width: 11px; height: 11px; margin-right: 5px; vertical-align: -1px; border-radius: 50%;
     background: conic-gradient(#fff calc((1 - var(--k, 0)) * 360deg), rgba(255, 255, 255, 0.2) 0);

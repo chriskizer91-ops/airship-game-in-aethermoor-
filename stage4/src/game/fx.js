@@ -2,7 +2,8 @@
 // batch with the bolts' heads), the smoke and the debris (effects.js), and the camera's shake and kick, and it listens
 // to the game's news (events.js) to answer it:
 //   a gun going off      a tongue of flame out of its muzzle and a billow of white-grey gunsmoke; the Captain's own guns
-//                        shove the view back a little each (a broadside rolls like thunder), and buzz an Android phone
+//                        shove the view back a little each (a broadside rolls like thunder), and buzz an Android phone,
+//                        and their smoke thins and drifts aside where it lies across her view of her target
 //   a shot landing       a burst of sparks the colour of what it hit, and what it knocks off: splinters from the hull
 //                        and a puff of dust, scraps of canvas in her sails' colour, or glittering crystal shards; hits
 //                        on the Captain's ship shake the view (the hull hardest), lurch it towards the side hit, and
@@ -159,14 +160,15 @@ export function makeFx({ scene, camera, touch = false }) {
     // wide, and (on a laptop) a slower cloud behind it that keeps more of her speed, so the bank she leaves rolls back
     // along her side as she sails on. Thick at first, it thins away over five seconds. (A phone gets the jet alone, as
     // many puffs as ever but each much bigger, rising a little more and lasting longer, so a broadside still leaves a
-    // bank of smoke along her side that shows over her deck; and it smokes every other port of a big raider broadside)
+    // bank of smoke along her side that shows over her deck; and it smokes every other port of a big raider broadside).
+    // The Captain's own is marked as hers, so it keeps off the line to the raider her guns are locked on to (effects.js)
     if (!(touch && !mine && e.n > 8 && e.i % 2)) {
       const s = big * (0.85 + Math.random() * 0.3);
       fv.copy(e.vel).multiplyScalar(0.7).addScaledVector(e.dir, 32 * big); fv.y += 2.5;
-      smoke.emit(fp.copy(e.p).addScaledVector(e.dir, 1.5), fv, touch ? 7 : 4.5, (touch ? 4.5 : 3) * s, (touch ? 36 : 19) * s, 0.52 + Math.random() * 0.14, mine ? (touch ? 0.95 : 0.92) : 0.85, PUFF.gun, touch ? 1.1 : 0.7);
+      smoke.emit(fp.copy(e.p).addScaledVector(e.dir, 1.5), fv, touch ? 7 : 4.5, (touch ? 4.5 : 3) * s, (touch ? 36 : 19) * s, 0.52 + Math.random() * 0.14, mine ? (touch ? 0.95 : 0.92) : 0.85, PUFF.gun, touch ? 1.1 : 0.7, 0, mine);
       if (!touch) {
         fv.copy(e.vel).multiplyScalar(0.95).addScaledVector(e.dir, 10 * big).add(sp.set(Math.random() - 0.5, Math.random() * 0.6, Math.random() - 0.5).multiplyScalar(5));
-        smoke.emit(fp.copy(e.p).addScaledVector(e.dir, 3), fv, 5.5, 4 * s, 25 * s, 0.6 + Math.random() * 0.14, 0.8, PUFF.bank, 1);
+        smoke.emit(fp.copy(e.p).addScaledVector(e.dir, 3), fv, 5.5, 4 * s, 25 * s, 0.6 + Math.random() * 0.14, 0.8, PUFF.bank, 1, 0, mine);
       }
     }
     if (mine) { kick(0.22 * e.weight * (e.kind === 'broadside' ? 1 : 0.5), 0.004, 0.35); trauma(0.015); }
@@ -264,6 +266,7 @@ export function makeFx({ scene, camera, touch = false }) {
     // the Captain's ship (flight.js), for the blasts near her and the glints at her hold
     follow: (flyer) => { ship = flyer; focus = flyer.pos; },
     get dial() { return dial; }, get timeScaleNow() { return dial; },
+    points: glows, // (the batch of glows itself: tests hide it to see what a shot's own streaks draw)
     // how far into a slow motion the game is, 0 (none) to 1 (as slow as it gets): the view narrows with it
     get slowness() { return st < 0 ? 0 : Math.min(1, (1 - dial) / 0.75); },
     // for tests: how many sparks, puffs and pieces of debris are alive, the most sparks seen, and how many were cut

@@ -113,6 +113,13 @@ export function upload(attr, n) {
 // own speed and reach). Each streak tapers from its head and fades out along its tail
 // (grown out of the muzzle as it flies, so it never pokes back through the ship that fired it). A bolt that flies its
 // full time without hitting anything burns out in a little wisp of sparks.
+// Glowing streaks add their light to what's behind them, so over the bright cloud floor every colour burns out to
+// white: the Captain's chain shot and breakers also get a core of solid colour over their glow (`tint`, drawn after it,
+// violet and sky blue), and chain shot its chain (`links`): a violet bar between its two heads, whirling with them, and
+// a violet ball at each end (a breaker gets a blue ball at its head). All
+// are sized to how far off the shot is (`camera`), so at fight range, 150 to 250 m, chain shot is still a violet streak
+// with its chain whirling at its head, and breakers a pale blue streak, never a white spark; close up they're their own
+// size.
 // The bolts are a handful of objects used over and over (`bolts` is the ones in flight), so firing makes nothing new.
 // Each remembers who fired it (`from`: the raider, set by her gunnery; null for the Captain's), for whoever it hits.
 export const BOLT_COLORS = { player: SHOTS.round.color, raider: 0xff4636, chain: SHOTS.chain.color, breaker: SHOTS.breaker.color };
@@ -120,8 +127,12 @@ export const BOLT_COLORS = { player: SHOTS.round.color, raider: 0xff4636, chain:
 // head: small and far enough apart to read as two balls on a chain from behind your ship, turning slowly enough to see
 // it on a phone's 30 frames a second)
 const SPIN = { r: 2.2, turns: 6, size: 0.55 };
+// (the solid colours over the glow: deeper than the glow's, so they read over white cloud; and how many of the page's
+// pixels across each is at the least, however far off: the streak's head, the chain, its balls, how far apart they
+// are, and a head's glow; and how big a head's glow is against a round shot's, so it doesn't burn the colour out)
+export const TINT = { chain: 0x8f5ff5, breaker: 0x52c8ff, streak: 4.5, link: 3.2, ball: 6, apart: 14, head: 12, glow: 0.6 };
 export const TAIL = 36; // the longest tail, in metres (times the shot's size: a broadside's is heavier)
-export function makeBolts(scene, fx, max = 400) {
+export function makeBolts(scene, fx, max = 400, camera = null) {
   const geo = new THREE.CylinderGeometry(0.26, 0.05, 1, 6, 1, true).rotateX(Math.PI / 2); // thick at the head (+z)
   const ramp = new Uint8Array(32 * 4); // the fade along the tail: nothing at its end, full at the head
   for (let i = 0; i < 32; i++) ramp.fill(Math.round((i / 31) ** 2 * 255), i * 4, i * 4 + 4);
@@ -131,8 +142,23 @@ export function makeBolts(scene, fx, max = 400) {
   mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); mesh.frustumCulled = false; mesh.count = 0;
   mesh.setColorAt(0, new THREE.Color()); mesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
   scene.add(mesh);
-  const COL = {}, HEAD = {};
+  // (the solid colour over the Captain's chain shot and breakers, and chain shot's whirling chain: one draw each, and
+  // none at all while none are flying)
+  const solid = (g, alphaMap, cap) => {
+    const m = new THREE.InstancedMesh(g, new THREE.MeshBasicMaterial({ color: 0xffffff, alphaMap, transparent: true, opacity: 0.92, depthWrite: false, toneMapped: false }), cap);
+    m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); m.frustumCulled = false; m.count = 0; m.visible = false; m.renderOrder = 1;
+    m.setColorAt(0, new THREE.Color()); m.instanceColor.setUsage(THREE.DynamicDrawUsage);
+    scene.add(m); return m;
+  };
+  // (the colour's streak tapers less than the glow's, so it carries its colour further down the tail; the chain and its
+  // balls are one shape, 1 m across and long, along y: a ball is as long as it's wide; three for each bolt at most)
+  const tint = solid(new THREE.CylinderGeometry(0.26, 0.1, 1, 6, 1, true).rotateX(Math.PI / 2), fade, max), links = solid(new THREE.CylinderGeometry(0.5, 0.5, 1, 6, 1), null, max * 3);
+  tint.name = 'shot colour'; links.name = 'chain shot\'s chain';
+  const COL = {}, HEAD = {}, TC = { chain: new THREE.Color(TINT.chain), breaker: new THREE.Color(TINT.breaker) };
   for (const k in BOLT_COLORS) { COL[k] = new THREE.Color(BOLT_COLORS[k]); HEAD[k] = COL[k].clone().lerp(new THREE.Color(0xffffff), 0.3); }
+  // (metres across that n of the page's pixels cover, d metres from the camera: main.js keeps the camera's pixel scale,
+  // in the screen's own pixels, and how many of those make one of the page's)
+  const px = (n, d) => (camera?.userData.pixelScale ? (n * d * (camera.userData.pixelRatio ?? 1)) / camera.userData.pixelScale : 0);
 
   const bolts = [], free = [];
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), FWD = V(0, 0, 1), UP = V(0, 1, 0), mid = new THREE.Vector3(), size3 = new THREE.Vector3(), sv = new THREE.Vector3();
@@ -167,24 +193,45 @@ export function makeBolts(scene, fx, max = 400) {
       }
       if (hit(b, b.prev, b.p)) drop(i);
     }
+    let nt = 0, nl = 0;
     for (let i = 0; i < bolts.length; i++) {
       const b = bolts[i], K = b.K, len = Math.min(Math.min(TAIL, b.v.length() * 0.075) * K.size, b.flown + 1);
       q.setFromUnitVectors(FWD, sc.copy(b.v).normalize());
       m4.compose(mid.copy(b.p).addScaledVector(sc, -len / 2), q, size3.set(K.size, K.size, len));
       mesh.setMatrixAt(i, m4); mesh.setColorAt(i, COL[b.col]);
       const h = HEAD[b.col], size = (K === KINDS.broadside ? 6 : 4.5) * K.size * (b.flare > 0 ? 2.5 : 1); // (a near miss flares)
-      if (b.shot === 'chain') {
-        // chain shot: two heads spinning round its path, opposite each other (s1, s2: two ways across it)
-        s1.crossVectors(sc, UP); if (s1.lengthSq() < 1e-6) s1.set(1, 0, 0); s1.normalize(); s2.crossVectors(s1, sc);
-        const a = b.age * SPIN.turns * Math.PI * 2, c = Math.cos(a) * SPIN.r, s = Math.sin(a) * SPIN.r;
-        fx.glowAt(hp.copy(b.p).addScaledVector(s1, c).addScaledVector(s2, s), h.r, h.g, h.b, size * SPIN.size);
-        fx.glowAt(hp.copy(b.p).addScaledVector(s1, -c).addScaledVector(s2, -s), h.r, h.g, h.b, size * SPIN.size);
-      } else fx.glowAt(b.p, h.r, h.g, h.b, size);
+      const solidCol = TC[b.col];
+      if (!solidCol) { fx.glowAt(b.p, h.r, h.g, h.b, size); continue; }
+      // the Captain's chain shot and breakers: a core of solid colour along the streak, never thinner than TINT.streak
+      // pixels at its head (the streak is 0.52 m across there, times its size); a breaker's head glows smaller than a
+      // round shot's, but at least TINT.head pixels across
+      const d = camera ? b.p.distanceTo(camera.position) : 0, w = Math.max(K.size * 0.75, px(TINT.streak, d) / 0.52);
+      m4.compose(mid, q, size3.set(w, w, len)); tint.setMatrixAt(nt, m4); tint.setColorAt(nt++, solidCol);
+      if (b.shot !== 'chain') {
+        // (a breaker: a ball of its colour at its head, like a chunk of crystal, under its glow)
+        const ball = Math.max(0.9 * K.size, px(TINT.ball, d));
+        m4.compose(b.p, q, size3.set(ball, ball, ball)); links.setMatrixAt(nl, m4); links.setColorAt(nl++, solidCol);
+        fx.glowAt(b.p, h.r, h.g, h.b, Math.max(size * TINT.glow, px(TINT.head, d))); continue;
+      }
+      // chain shot: two heads spinning round its path, opposite each other (s1, s2: two ways across it), at least
+      // TINT.apart pixels apart, and the chain between them
+      s1.crossVectors(sc, UP); if (s1.lengthSq() < 1e-6) s1.set(1, 0, 0); s1.normalize(); s2.crossVectors(s1, sc);
+      const r = Math.max(SPIN.r, px(TINT.apart, d) / 2), a = b.age * SPIN.turns * Math.PI * 2, c = Math.cos(a), s = Math.sin(a), hs = Math.max(size * SPIN.size * TINT.glow, px(TINT.head * 0.5, d));
+      fx.glowAt(hp.copy(b.p).addScaledVector(s1, c * r).addScaledVector(s2, s * r), h.r, h.g, h.b, hs);
+      fx.glowAt(hp.copy(b.p).addScaledVector(s1, -c * r).addScaledVector(s2, -s * r), h.r, h.g, h.b, hs);
+      const t = Math.max(0.3 * K.size, px(TINT.link, d)), ball = Math.max(0.9 * K.size, px(TINT.ball, d));
+      q.setFromUnitVectors(UP, hp.copy(s1).multiplyScalar(c).addScaledVector(s2, s));
+      m4.compose(b.p, q, size3.set(t, 2 * r, t)); links.setMatrixAt(nl, m4); links.setColorAt(nl++, solidCol);
+      m4.compose(mid.copy(b.p).addScaledVector(hp, r), q, size3.set(ball, ball, ball)); links.setMatrixAt(nl, m4); links.setColorAt(nl++, solidCol);
+      m4.compose(mid.copy(b.p).addScaledVector(hp, -r), q, size3); links.setMatrixAt(nl, m4); links.setColorAt(nl++, solidCol);
     }
     mesh.count = bolts.length; upload(mesh.instanceMatrix, bolts.length); upload(mesh.instanceColor, bolts.length);
+    shown(tint, nt); shown(links, nl);
   }
-  const clear = () => { for (const b of bolts) { b.from = null; free.push(b); } bolts.length = 0; mesh.count = 0; };
-  return { fire, update, bolts, clear, mesh };
+  // (a batch drawing its first n, or not drawn at all with none)
+  function shown(m, n) { m.count = n; m.visible = n > 0; upload(m.instanceMatrix, n); upload(m.instanceColor, n); }
+  const clear = () => { for (const b of bolts) { b.from = null; free.push(b); } bolts.length = 0; mesh.count = 0; tint.count = links.count = 0; tint.visible = links.visible = false; };
+  return { fire, update, bolts, clear, mesh, tint, links };
 }
 
 // A ship's gunnery: reload clocks per battery, and firing the battery that faces the aim point.
