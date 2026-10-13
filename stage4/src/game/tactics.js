@@ -156,8 +156,10 @@ export const LINE = { gap: 3.2, ahead: 2, wide: 80, turn: 0.7, sail: 0.85, hold:
 
 // the roads between waves: beside the steady course (the wave planned), a second way on (raiders.js roadWave), from the
 // card after wave `from`: into the storm (the same and one more ship, a little sturdier, in a storm: shards `mult` times,
-// the wave's bonus `bonus` times), a treasure ship's trail (a treasure ship and two Cutters, when none has come for
-// three waves) or hunting the next raider captain early (her bounty `bounty` times; her own wave is then a plain one).
+// the wave's bonus `bonus` times), a treasure ship's trail (the same raiders, coming the same way, and a treasure ship
+// with them, when none has come for `treasureGap` waves; with six already, she takes the smallest one's place) or
+// hunting the next raider captain early, within `huntWithin` waves of hers (her bounty `bounty` times; her own wave is
+// then a plain one).
 // A wave led by a raider captain or a Man-o'-war leaves only the one way on (it bars the way)
 export const ROADS = {
   storm: { name: 'Into the storm', mult: 1.5, bonus: 2, tough: 1.1 },

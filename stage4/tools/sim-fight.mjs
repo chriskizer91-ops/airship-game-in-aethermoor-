@@ -48,8 +48,10 @@ const page = await browser.newPage({ viewport: { width: 640, height: 400 } });
 page.on('pageerror', (e) => console.log('ERR', e.message));
 await page.goto('file://' + root + 'dist/game.html');
 await page.waitForFunction(() => window.__game?.ready, null, { timeout: 180000 });
-const tools = [dodge && `dodging ${react} s after a warning`, shotArg !== 'round' && `${shotArg} shot`, patch && 'patching', policy === 'cross' && 'crossing bows', policy === 'fortress' && 'over a Man-o\'-war\'s stern quarter', road && `taking the ${road} road`].filter(Boolean);
-console.log(`${smartArg !== null || warnArg !== null || rakeArg !== null ? `(tuning: ${smartArg !== null ? `smart ${smartArg} ` : ''}${warnArg !== null ? `warning ${warnArg} s ` : ''}${rakeArg !== null ? `raking ×${rakeArg}` : ''}) ` : ''}the ${ship}, waves ${first} to ${first + waves - 1} on ${skies}, owning ${owns.length ? owns.join(' and ') : 'no giants'}, upgrades ${mods} of 3, crystal power ${power}; ${tools.length ? `a skilled Captain (${tools.join(', ')})` : 'a plain Captain (no dodging, round shot only, no patching)'}`);
+// (her tactics make her a skilled Captain; how she steers and the road she takes are said after, either way)
+const tools = [dodge && `dodging ${react} s after a warning`, shotArg !== 'round' && `${shotArg} shot`, patch && 'patching'].filter(Boolean);
+const ways = [policy === 'cross' && 'crossing bows', policy === 'fortress' && 'over a Man-o\'-war\'s stern quarter', road && `taking the ${road} road`].filter(Boolean);
+console.log(`${smartArg !== null || warnArg !== null || rakeArg !== null ? `(tuning: ${smartArg !== null ? `smart ${smartArg} ` : ''}${warnArg !== null ? `warning ${warnArg} s ` : ''}${rakeArg !== null ? `raking ×${rakeArg}` : ''}) ` : ''}the ${ship}, waves ${first} to ${first + waves - 1} on ${skies}, owning ${owns.length ? owns.join(' and ') : 'no giants'}, upgrades ${mods} of 3, crystal power ${power}; ${tools.length ? `a skilled Captain (${tools.join(', ')})` : 'a plain Captain (no dodging, round shot only, no patching)'}${ways.length ? `; ${ways.join(', ')}` : ''}`);
 const results = [];
 for (let run = 0; run < runs; run++) {
   const res = await page.evaluate(([ship, waves, skies, first, owns, mods, power, dodge, patch, shotArg, policy, react, smartArg, warnArg, rakeArg, road]) => {

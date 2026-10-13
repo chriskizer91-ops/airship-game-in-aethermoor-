@@ -8,7 +8,7 @@ The game is one page, `dist/game.html`, with everything inside it, so it works w
 2. **The port.** Your ship turns slowly in a quiet void, on a round stone berth with a brass rim (Chris: a racing game's garage); drag her to turn her round. Pick which ship to sail, buy ships and upgrades with Crystal Shards, and set where the crystals' power goes (see [The port](#the-port)).
 3. **A voyage.** Set sail over Aethermoor and fight off waves of raiders, each harder than the last (see [A voyage](#a-voyage)). Downed raiders spill Crystal Shards; fly through them to gather them. After each wave, sail on for more or go back to port to keep what you've gathered. If your ship goes down, the crew get her home with half.
 
-What's built, step by step (October 6 to 8). First, the game this version was copied from:
+What's built, step by step (October 6 to 13). First, the game this version was copied from:
 
 - **Flying.** The Captain's ships fly over Chris's map.
 - **Raiders.** Enemy ships in waves, and damage to the hull, sails and crystals.
@@ -246,7 +246,7 @@ Your guns can load three kinds of shot (Chris chose all three):
 - **Her gunners aim where you're heading**: they lay their guns as the warning starts, on the spot you'll be at if you hold your course. **Climb out of her fan, and the whole side goes where you would have been.** Diving works about half the time (her shots may still find your sails). In a Skiff or a Cutter a hard turn away works too; a bigger ship turns too slowly to get clear in time, and turning towards her only makes it worse. Hold your course and it hits as hard as ever.
 - **How long the warning lasts** depends on the skies: 1 second on Fair Winds, 0.8 on Crosswinds, 0.6 on the Maelstrom (and 0.15 s longer from a Galleon or a Man-o'-war). Raiders' broadside crews reload a fifth quicker than they used to, so they fire their sides as often as before (about every 3.9 s on Crosswinds).
 - Bow and stern guns, and the Skiff's light swivels, still fire without a warning.
-- **What it costs a phone**: each fan is one shape of 48 long thin triangles shared by every raider, drawn in one go, only while she readies her side (most of a second in every four), with its lines worked out on the graphics card with a few sums for each pixel (no angles: the sums that need working out only once a corner are done once a corner). Timed here, drawing it costs about what the old soft fan with no lines did (about a twentieth more; the first crisp-lined version cost half as much again). Where the wash is too faint to see, nothing is painted, though the sums for those pixels are still done. Its drawing is made ready as each voyage starts, so the first warning never stutters.
+- **What it costs a phone**: each fan is one shape of 48 long thin triangles shared by every raider, drawn in one go, only while she readies her side (most of a second in every four), with its lines worked out on the graphics card with a few sums for each pixel (no angles, and whatever can be worked out once for each corner of its triangles is). Timed here, drawing it costs about what the old soft fan with no lines did (about a twentieth more; the first crisp-lined version cost half as much again). Where the wash is too faint to see, nothing is painted, though the sums for those pixels are still done. Its drawing is made ready as each voyage starts, so the first warning never stutters.
 
 ### Raking fire
 
