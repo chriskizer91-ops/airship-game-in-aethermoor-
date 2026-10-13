@@ -55,8 +55,10 @@
 //   trick           { raider, trick }            a raider captain playing her trick: 'cloud' (diving into the cloud
 //                                                floor), 'sun' (climbing back into the sun), 'smoke' (vanishing in
 //                                                a smoke screen): tactics.js CAPTAINS
-//   burst           { raider, at }               a raider bursting up through the cloud floor, in a ring of mist
-//   line            { raider, stage }            a line of battle's leader gone ('broken': the line breaks up)
+//   burst           { raider, at, first }        a raider bursting up through the cloud floor, in a ring of mist (first:
+//                                                the first of her wave to)
+//   line            { raider, stage, why }       a line of battle breaking up ('broken'), and why: its leader down
+//                                                ('down'), running ('run') or the Man-o'-war leading it sinking ('sinking')
 //   fortress        { raider, act }              the Man-o'-war's next act: 2 (she launches her boats) or 3 (sinking,
 //                                                she fires everything)
 //   silenced        { raider, block, left, at }  a block of six of the Man-o'-war's guns knocked out (which, from 0;
@@ -123,8 +125,8 @@ export const PAYLOAD = {
   'raider:run': { raider: null },
   flare: { raider: null, at: v(), stage: '' },
   trick: { raider: null, trick: '' },
-  burst: { raider: null, at: v() },
-  line: { raider: null, stage: '' },
+  burst: { raider: null, at: v(), first: false },
+  line: { raider: null, stage: '', why: '' },
   fortress: { raider: null, act: 0 },
   silenced: { raider: null, block: 0, left: 0, at: v() },
   road: { kind: '' },

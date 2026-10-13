@@ -33,11 +33,14 @@ const MAX = 8, UP = new THREE.Vector3(0, 1, 0), ZERO = new THREE.Vector3(), FALL
 const FIRE = [0xff7a2a, 0xffc04a, 0xffe8a0], AMBER = 0xffc061, GOLD = 0xffd27a;
 // the white flag a ship that strikes her colours runs up her tallest mast: one shape for every wreck (1 m along its pole,
 // flying out from it), a share `size` of her length (`least` metres at the least), going up over `up` seconds once her
-// pennants are down, to fly just over her mast head (above the smoke of her wounds), so it reads across a fight. Its
-// drawing is made ready as each voyage starts (flagToWarm: main.js), so the first ship to strike doesn't stutter a phone
-export const WHITE_FLAG = { size: 0.3, least: 4.5, up: 1.8, color: 0xf6f2e8 };
+// pennants are down, to fly just over her mast head (above the smoke of her wounds), so it reads across a fight. It
+// turns about its pole to face the camera, streaming out sideways as it's seen (towards her stern where it can), so it
+// never shows edge-on, from her bow or her stern; and from further off than `near` metres it grows with the distance,
+// up to `most` times its size, as the far wakes and her holes do. Its drawing is made ready as each voyage starts
+// (flagToWarm: main.js), so the first ship to strike doesn't stutter a phone
+export const WHITE_FLAG = { size: 0.3, least: 4.5, up: 1.8, color: 0xf6f2e8, near: 180, most: 2.2 };
 const FLAG_GEO = new THREE.PlaneGeometry(1, 0.62).translate(0.5, -0.31, 0);
-const flagMat = new THREE.MeshBasicMaterial({ color: WHITE_FLAG.color, side: THREE.DoubleSide });
+const flagMat = new THREE.MeshBasicMaterial({ color: WHITE_FLAG.color, side: THREE.DoubleSide }), flagEye = new THREE.Vector3();
 flagMat.name = 'white flag';
 
 // `tear(x, z, radius)` opens a hole in the cloud deck (world.js); falling masts are added to `scene` once they break away
@@ -100,7 +103,9 @@ export function makeWrecks({ fx, tear = null, scene = null }) {
     }
   }
 
-  function update(dt) {
+  let cam = null; // (the camera, this frame: the white flags face it)
+  function update(dt, camera = null) {
+    cam = camera;
     toppling(dt);
     for (let i = list.length - 1; i >= 0; i--) {
       const w = list[i], r = w.r;
@@ -194,13 +199,24 @@ export function makeWrecks({ fx, tear = null, scene = null }) {
       if (!w.flag) {
         const M = r.R.masts.reduce((a, m) => (m.height > a.height ? m : a), r.R.masts[0]), L = r.R.length;
         const size = Math.max(WHITE_FLAG.least, L * WHITE_FLAG.size);
-        w.flag = new THREE.Mesh(FLAG_GEO, flagMat); w.flag.name = 'white flag'; w.flag.scale.setScalar(size);
-        w.flagTop = r.ship.hull.deckY(M.z) + M.height + size * 0.62; w.flag.position.set(0, w.flagTop * 0.55, M.z);
+        w.flag = new THREE.Mesh(FLAG_GEO, flagMat); w.flag.name = 'white flag'; w.flag.scale.setScalar(size); w.flagSize = size;
+        w.flagTop = r.ship.hull.deckY(M.z) + M.height + size * 0.62; w.flag.position.set(0, w.flagTop * 0.55, M.z); w.flagYaw = Math.PI / 2;
         r.ship.body.add(w.flag);
       }
-      const k = Math.min(1, (t - 2.5) / WHITE_FLAG.up);
-      w.flag.position.y = w.flagTop * (0.55 + 0.45 * k);
-      w.flag.rotation.y = Math.PI / 2 + Math.sin(t * 5.3) * 0.22; w.flag.rotation.x = Math.sin(t * 7.1) * 0.08;
+      const k = Math.min(1, (t - 2.5) / WHITE_FLAG.up), F = w.flag;
+      F.position.y = w.flagTop * (0.55 + 0.45 * k);
+      // (turned to face the camera: streaming out square to the way it's seen from, aft rather than forward; eased, so
+      // it swings round rather than flipping as the camera passes her bow or stern; and grown with the distance)
+      let yaw = Math.PI / 2, grow = 1;
+      if (cam) {
+        r.ship.body.worldToLocal(flagEye.copy(cam.position));
+        const ex = flagEye.x - F.position.x, ez = flagEye.z - F.position.z, e = Math.hypot(ex, ez);
+        if (e > 1) { const sx = ez / e, sz = -ex / e, aft = sz > 0 ? -1 : 1; yaw = Math.atan2(-sz * aft, sx * aft); }
+        grow = THREE.MathUtils.clamp(cam.position.distanceTo(r.f.pos) / WHITE_FLAG.near, 1, WHITE_FLAG.most);
+      }
+      w.flagYaw += Math.atan2(Math.sin(yaw - w.flagYaw), Math.cos(yaw - w.flagYaw)) * (1 - Math.exp(-dt * 4));
+      F.rotation.y = w.flagYaw + Math.sin(t * 5.3) * 0.22; F.rotation.x = Math.sin(t * 7.1) * 0.08;
+      F.scale.setScalar(w.flagSize * grow);
     }
     if (t < 2.6) {
       for (const m of flags) {

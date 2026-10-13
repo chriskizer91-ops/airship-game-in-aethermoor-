@@ -39,7 +39,8 @@
 // Every raider captain has a name, a title and a trick (tactics.js CAPTAINS, played in steer and shoot); the Man-o'-war
 // fights in three acts (FORT): her plated sides shrug off half a hit from the side, her blocks of six guns can be
 // silenced, at two-thirds of her hull she launches two Skiffs from her stern, and with three columns blown out she's
-// sinking and fires everything, her upper deck's guns tilting up to reach above her.
+// sinking (under the cloud floor within a minute) and fires everything, her upper deck's guns tilting up to reach above
+// her.
 // Waves come in different ways (waveAt's `how`: spawnWave): ahead, from both sides, up through the clouds below (in a
 // ring of mist as they burst through), out of the sun (their tags hidden in its glare at first), high and low, or a line
 // of battle: big raiders nose to tail, each keeping station on the one ahead and firing after her, down the line, until
@@ -56,6 +57,7 @@ import { hitZones, firstHit, sailBox } from './damage.js';
 import { CLOUD_Y, SUN, THINNING } from './world.js';
 import { emit, payload } from './events.js';
 import { SMART, NERVE, TRICK, FORT, LINE, ROADS } from './tactics.js';
+import { PUFF } from './effects.js';
 
 // How the raiders compare with the Captain, before the skies' own settings: reload half as slowly again, and aim a
 // little off (by this much for every metre to the target); and her broadside crews reload in this share of that time,
@@ -211,17 +213,30 @@ function finish(list, { captain: lead = false, storm = false, bank = false, how 
 }
 // the second way on, between waves (tactics.js ROADS), beside the steady course `wave` (the wave planned, which has no
 // raider captain): into the storm, the same and one more ship (a Cutter, or a Skiff with only small raiders), in
-// a storm, out of a bank of cloud, a little sturdier and worth more; a treasure ship's trail, a treasure ship (a
-// treasure Brig until the Captain owns a Galleon) and two Cutters, ahead; or the hunt, the same ships led by the next
-// raider captain, come early (main.js names her, and her bounty is a quarter more). Each says which road it is
-export function roadWave(kind, wave, giants = null) {
+// a storm, out of a bank of cloud, a little sturdier and worth more; a treasure ship's trail, the same raiders (coming
+// the same way, in the same weather) and a treasure ship sailing with them (a treasure Brig until the Captain owns a
+// Galleon), so it's richer and harder, not a small wave in place of a big one (with six already, she takes the
+// smallest one's place); or the hunt, the same ships led by the next raider captain, come early (main.js names her,
+// and her bounty is a quarter more), in a ship of her own: the biggest that fights, but never smaller than `lead` (a
+// Brig for the Cloud Fox, a Frigate from the Sail-Ripper on: the ship her own wave would give her). Each says which
+// road it is
+export function roadWave(kind, wave, giants = null, lead = 'brig') {
   const R = ROADS[kind];
   let w;
   if (kind === 'storm') {
     const more = wave.list.some((e) => SIZE[e.id] >= SIZE.brig) ? 'cutter' : 'skiff';
     w = finish([...wave.list.map((e) => ({ ...e })), { id: more }], { storm: true, bank: true, how: wave.how === 'line' ? 'line' : 'ahead' });
-  } else if (kind === 'treasure') w = finish([giants?.galleon ? { id: 'galleon' } : { ...STAND_IN.galleon[0] }, { id: 'cutter' }, { id: 'cutter' }], { how: 'ahead' });
-  else w = finish(wave.list.map((e) => ({ ...e })), { captain: true });
+  } else if (kind === 'treasure') {
+    const list = wave.list.map((e) => ({ ...e }));
+    if (list.length >= 6) list.splice(list.length - 1, 1); // (the list is biggest first: the smallest goes)
+    list.push(giants?.galleon ? { id: 'galleon' } : { ...STAND_IN.galleon[0] });
+    w = finish(list, { storm: wave.storm, bank: wave.bank, how: wave.how ?? 'ahead' });
+  } else {
+    const list = wave.list.map((e) => ({ ...e })), big = list.find((e) => e.id !== 'manowar' && !e.treasure && ROLE[e.id] !== 'prize');
+    if (big && SIZE[big.id] < SIZE[lead]) big.id = lead;
+    else if (!big) list.push({ id: lead });
+    w = finish(list, { captain: true });
+  }
   return Object.assign(w, { road: kind, mult: R.mult, bonus: R.bonus, tough: R.tough, bounty: R.bounty ?? 1 });
 }
 
@@ -463,7 +478,7 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
       // floor; `unseen` in the sun's glare, seconds; `arrive`: the height she holds till she's `near`); her place in a
       // line of battle (its leader, the ship ahead of her, and when she last fired her side); `toY`: a height she makes
       // for this frame, whatever the foe's; `fort`: the Man-o'-war's fortress battle
-      ran: false, flare: null, flares: 0, who: captain ? opt?.who ?? null : null, tk: null, smoke: 0, plated: id === 'manowar' || (captain && opt?.who?.trick === 'iron'),
+      ran: false, flare: null, flares: 0, who: captain ? opt?.who ?? null : null, tk: null, smoke: 0, puffT: 0, puffAt: null, plated: id === 'manowar' || (captain && opt?.who?.trick === 'iron'),
       rising: false, lastY: pos.y, unseen: 0, arrive: null, leader: null, ahead: null, firedAt: -1, wait: 0, hid: 0, haven: null, fort: null, gunRate: 1 };
     // her nerve: a treasure ship strikes her colours with no sails left or a quarter of her hull; a crew (not a raider
     // captain's, nor a Man-o'-war's) with her sails shot away and her hull under half, or, fighting as the last of her
@@ -490,7 +505,8 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
   // own way: WAY):
   //   ahead   1.5 to 1.9 km ahead of the Captain, more or less, at her height
   //   pincer  in two groups, on either side of her, 1.3 to 1.6 km off
-  //   below   700 to 900 m off, under the cloud floor, climbing up through it at her
+  //   below   1.3 to 1.6 km off, under the cloud floor, holding there till she's within BELOW.rise metres (across the
+  //           sky), then climbing up through it at her: far enough off that she bursts through in view, ahead and low
   //   sun     out of the sun, 900 to 1,100 m off and 600 m above her, holding 150 m over her till they're 700 m off,
   //           their tags lost in its glare for 6 s (or till they're 700 m off)
   //   stack   high and low: the small ones 140 m above her and 140 m below by turns, till they're 300 m off (a big
@@ -501,12 +517,12 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
   // Captain's path. Her colours are a captain's if she leads the wave, or else a treasure ship's. Coming in high or low
   // (the sun, the stack), each holds her height ARRIVE seconds at the most. Returns the way they come from (a bearing),
   // and how
-  const OUT = { a: 0, how: 'ahead' }, ARRIVE = 30;
+  const OUT = { a: 0, how: 'ahead' }, ARRIVE = 30, BELOW = { from: 1300, more: 300, rise: 1250, hold: 90 };
   function spawnWave(wave, foe) {
     const base = foe.heading + (Math.random() - 0.5) * 1.4, ids = wave.ids, how = wave.how ?? 'ahead', sun = Math.atan2(SUN.x, SUN.z);
     const line = [];
     let k = 0, lead = null;
-    OUT.a = how === 'sun' ? sun : base; OUT.how = how;
+    OUT.a = how === 'sun' ? sun : base; OUT.how = how; burstYet = false;
     ids.forEach((id, i) => {
       const runs = treasureShip(wave, i), cap = i === wave.captain, who = cap ? wave.who ?? null : null;
       let way = runs ? 'cross' : cap && who ? WAY[who.trick] ?? (how === 'line' ? 'ahead' : how) : how;
@@ -517,7 +533,7 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
       let a = base + spread, d = 1500 + Math.random() * 400, y = clamp(foe.pos.y + (Math.random() - 0.5) * 160, 200, 2000), alt = null, near = 0;
       if (way === 'cross') { d = 1100 + Math.random() * 250; }
       else if (way === 'pincer') { a = base + (k % 2) * Math.PI + (Math.floor(k / 2) - 0.5) * 0.2; d = 1300 + Math.random() * 300; k++; }
-      else if (way === 'below') { a = base + spread * 1.5; d = 700 + Math.random() * 200; y = Math.max(120, CLOUD_Y - 110); }
+      else if (way === 'below') { a = base + spread * 1.5; d = BELOW.from + Math.random() * BELOW.more; y = Math.max(120, CLOUD_Y - 110); }
       else if (way === 'sun') { a = sun + spread * 0.6; d = 900 + Math.random() * 200; y = Math.min(THINNING - 150, foe.pos.y + 600); alt = 150; near = 700; }
       else if (way === 'stack') { const up = k++ % 2 ? -1 : 1; y = clamp(foe.pos.y + up * 140, 150, 2200); alt = up * 140; near = 300; d = 1300 + Math.random() * 300; }
       else if (way === 'line') { a = base; d = 1500 + Math.random() * 200; }
@@ -543,20 +559,32 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
     const L = { ships, leader: ships[0], broken: false };
     ships.forEach((r, i) => { r.line = L; r.leader = i ? ships[0] : null; r.ahead = i ? ships[i - 1] : null; r.slot = i; });
   }
-  // the line broken up: its leader sunk, or struck her colours (told), and every ship of it fights on her own
+  // the line broken up (told, and why: `down`, its leader sunk or struck her colours; `run`, she ran for the clouds;
+  // `sinking`, the Man-o'-war leading it in her last act), and every ship of it fights on her own
   const LINE_NEWS = payload('line');
-  function breakLine(L) {
+  function breakLine(L, why = 'down') {
     if (L.broken) return;
-    L.broken = true;
+    L.broken = true; L.why = why;
     for (const r of L.ships) { r.leader = r.ahead = null; }
-    LINE_NEWS.raider = L.leader; LINE_NEWS.stage = 'broken'; emit('line'); LINE_NEWS.raider = null;
+    LINE_NEWS.raider = L.leader; LINE_NEWS.stage = 'broken'; LINE_NEWS.why = why; emit('line'); LINE_NEWS.raider = null;
   }
-  // the ship she keeps station on in her line (the next afloat ahead of her), or none
+  // (a ship out of her line: going down, gone, running for the clouds, or a Man-o'-war sinking in her last act: the
+  // ships behind her keep station on the one ahead of her instead, never following her away)
+  const outOfLine = (A) => !!A.f.down || A.gone || A.mode === 'run' || A.fort?.act === 3;
+  // the ship she keeps station on in her line (the next still in it ahead of her), or none
   function lineAhead(r) {
     if (!r.leader) return null;
     let A = r.ahead;
-    while (A && A.f.down && A.ahead) A = A.ahead;
-    return A && !A.f.down ? A : null;
+    while (A && outOfLine(A) && A.ahead) A = A.ahead;
+    return A && !outOfLine(A) ? A : null;
+  }
+  // a ship leaving her line (running, or her last act): its leader breaks it up; any other, the ship behind her closes
+  // up on the one ahead of her
+  function leaveLine(r, why) {
+    const L = r.line;
+    if (!L || L.broken) return;
+    if (L.leader === r) { breakLine(L, why); return; }
+    for (const o of L.ships) if (o.ahead === r) o.ahead = r.ahead;
   }
   // whether she's the only one of her wave still fighting
   const lastAfloat = (r) => { for (const o of list) if (o !== r && !o.f.down && !o.gone) return false; return true; };
@@ -650,6 +678,9 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
       if ((b === 'port' || b === 'starboard') && g.ready[b] === 0 && broadsideIn(g.B[b]) && g.reaches(b, me.aimAt(g.shot))) { r.dodge = SMART.hold; r.alt0 = r.alt; r.alt += (r.alt > 0 ? -1 : 1) * SMART.alt; }
     }
     if (r.dodge > 0 && (r.dodge -= dt) <= 0) r.alt = r.alt0;
+    // (coming up through the clouds: under the cloud floor till she's within BELOW.rise of the foe across the sky, then
+    // up through it, so she bursts through ahead of her, in view)
+    if (r.rising && toY === null && me.pos.y < CLOUD_Y && Math.hypot(dx, dz) > BELOW.rise) toY = CLOUD_Y - BELOW.hold;
     // (the Man-o'-war in her last act: sinking, whatever she'd like)
     if (r.fort?.act === 3) toY = me.pos.y - 100;
     // keep clear of the other raiders (but not of her own line's ships, nose to tail)
@@ -701,18 +732,31 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
       const at = TRICK.help.at[tk.bells];
       if (at !== undefined && me.frac('hull') < at) { tk.bells++; fireFlare(r, skies().captain ? TRICK.help.count : 1); }
     } else if (how === 'smoke') {
-      // the Ghost: at half her hull, a smoke screen; hidden in it, she surges round to the foe's other side
-      if (!tk.done && me.frac('hull') < TRICK.smoke.at) {
-        tk.done = true; r.smoke = TRICK.smoke.hide; me.startSurge(); smokeScreen(r);
-        tk.to.copy(foe.pos).addScaledVector(fw.copy(me.pos).sub(foe.pos).setY(0).normalize(), -TRICK.smoke.far);
+      // the Ghost: at half her hull, a smoke screen; hidden in it (laying more as she goes: trail), she surges round the
+      // foe to her other side, beam to beam: circling her, round her bow or her stern (whichever she's nearer), `far`
+      // metres off (or as near as she is, but never within 300 m, where she'd be seen), to the place across the foe's
+      // keel from where she vanished
+      const S = TRICK.smoke;
+      if (!tk.done && me.frac('hull') < S.at) {
+        tk.done = true; r.smoke = S.hide; r.puffT = 0; me.startSurge(); smokeScreen(r);
+        const a = wrap(Math.atan2(me.pos.x - foe.pos.x, me.pos.z - foe.pos.z) - foe.heading);
+        tk.a0 = a; tk.dir = (Math.abs(a) < Math.PI / 2 ? -1 : 1) * (a >= 0 ? 1 : -1); // (round her bow: towards 0; round her stern: towards pi)
+        tk.rad = clamp(Math.hypot(me.pos.x - foe.pos.x, me.pos.z - foe.pos.z), 300, S.far);
         tell(r, 'smoke');
       }
-      if (r.smoke > 0) { TK.want = Math.atan2(tk.to.x - me.pos.x, tk.to.z - me.pos.z); return TK; }
+      if (r.smoke > 0) {
+        // (where she is round the foe now; once she's across the foe's keel and as far round as she began, she makes for
+        // that place; till then for a point a little further round the circle)
+        const a = wrap(Math.atan2(me.pos.x - foe.pos.x, me.pos.z - foe.pos.z) - foe.heading), there = Math.sign(a) === -Math.sign(tk.a0) && (tk.dir * Math.sign(tk.a0) < 0 ? Math.abs(a) >= Math.abs(tk.a0) : Math.abs(a) <= Math.abs(tk.a0));
+        const to = foe.heading + (there ? -tk.a0 : a + tk.dir * S.lead);
+        tk.to.set(foe.pos.x + Math.sin(to) * tk.rad, me.pos.y, foe.pos.z + Math.cos(to) * tk.rad);
+        TK.want = Math.atan2(tk.to.x - me.pos.x, tk.to.z - me.pos.z); return TK;
+      }
     }
     return null;
   }
   // the Ghost's smoke screen: big pale puffs all round her (fewer on a phone), hanging a while
-  const sp = new THREE.Vector3(), sv = new THREE.Vector3();
+  const sp = new THREE.Vector3(), sv = new THREE.Vector3(), tp = new THREE.Vector3(), tv = new THREE.Vector3();
   function smokeScreen(r) {
     const n = TRICK.smoke.puffs[fx.touch ? 1 : 0], L = r.R.length;
     for (let i = 0; i < n; i++) {
@@ -721,6 +765,21 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
       sv.set(Math.sin(a) * 4, 1, Math.cos(a) * 4);
       fx.smoke.emit(sp, sv, 9 + Math.random() * 2, L * 1.2, L * 2.6 + 40, 0.85, 0.9, 0, 0.4);
     }
+  }
+  // (and while she's hidden, more as she goes, so she's never out of it: every `trail` seconds a thick puff or two that
+  // hangs (fewer on a phone), one by her and one on the foe's side of her, where she's seen from; her tag, lost in the
+  // smoke, follows the smoke she's in: main.js puts it where she was last seen)
+  function trail(r, foe, dt) {
+    if ((r.puffT -= dt) > 0) return;
+    const S = TRICK.smoke, touch = fx.touch, L = r.R.length;
+    r.puffT = S.trail[touch ? 1 : 0];
+    tv.copy(foe.pos).sub(r.f.pos).setY(0).normalize();
+    for (let k = touch ? 1 : 0; k < 2; k++) {
+      tp.copy(r.f.pos).addScaledVector(tv, L * (k ? (touch ? 0.45 : 0.7) : 0.15)).add(sp.set((Math.random() - 0.5) * L * 0.5, (Math.random() - 0.3) * L * 0.3, (Math.random() - 0.5) * L * 0.5));
+      sv.copy(r.f.velocity).multiplyScalar(0.3); sv.y += 1;
+      fx.smoke.emit(tp, sv, 6 + Math.random(), L * 1.3, L * 2.4 + 30, 0.85, 0.92, PUFF.bank, 0.4);
+    }
+    (r.seenAt ??= new THREE.Vector3()).copy(r.f.pos); r.puffAt = (r.puffAt ?? new THREE.Vector3()).copy(tp);
   }
 
   // fire every battery that can reach where the foe will be, a little off. A broadside of three guns or more is readied
@@ -783,6 +842,7 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
   // that side, pointing its way, so they lean and roll with her. Each has its own copy of the one material (its strength
   // is its own: the copies share one shader), drawn after the ships, tinting red what's behind it without hiding it
   const fanGeo = fanGeometry(KINDS.broadside, FAN.reach), BY = KINDS.broadside.yaw, FWD = new THREE.Vector3(0, 0, 1), fanTime = { value: 0 }, fanPx = { value: 1 };
+  const FAN_TALL = Math.tan(FORT.tilt) / Math.tan(KINDS.broadside.pitch); // (how much taller a fan is in the Man-o'-war's last act)
   const fanMat = new THREE.ShaderMaterial({ vertexShader: FAN_VERT, fragmentShader: FAN_FRAG, transparent: true, depthWrite: false, side: THREE.DoubleSide,
     uniforms: { uColor: { value: new THREE.Color(FAN.color).convertLinearToSRGB() }, uK: { value: 0 }, uTime: fanTime, uReach: { value: FAN.reach },
       uCut: { value: new THREE.Vector4(Math.cos(0.62 * BY), Math.sin(0.62 * BY), Math.cos(0.6 * BY), Math.sin(0.6 * BY)) }, uTilt: { value: Math.sin(0.55 * KINDS.broadside.pitch) },
@@ -809,6 +869,7 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
       m.material.uniforms.uTime = fanTime; m.material.uniforms.uPx = fanPx; // (one clock for every fan, and one size of pixel)
       m.material.uniforms.uOwn.value = FAN.reach / (1.25 * r.R.length);
       m.position.copy(g.p); m.quaternion.setFromUnitVectors(FWD, g.d);
+      if (r.fort?.act === 3) m.scale.y = FAN_TALL; // (the Man-o'-war's last act: her upper deck reaching above her)
       r.ship.body.add(m);
     }
     return m;
@@ -849,6 +910,7 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
   const RUN = payload('raider:run'), probe = new THREE.Vector3();
   function startRun(r, foe) {
     r.mode = 'run'; r.f.startSurge(); r.charge.b = null;
+    leaveLine(r, 'run'); // (a line's leader running breaks it up; any other leaves a gap the ship behind her closes)
     let best = Infinity;
     if (api.sky) for (let k = 0; k < 12; k++) for (const d of [NERVE.haven / 3, NERVE.haven * 2 / 3, NERVE.haven]) {
       const a = (k / 12) * Math.PI * 2;
@@ -864,17 +926,47 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
   function fireFlare(r, n = 1) {
     const top = Math.max(...r.R.masts.map((m) => r.ship.hull.deckY(m.z) + m.height));
     if (r.flare && r.flare.left > 0) n += r.flare.n; // (a flare still waiting for its help: the new one brings both)
-    r.flare = { left: NERVE.wait, n, age: 0, p: new THREE.Vector3(0, top, 0).applyMatrix4(r.ship.body.matrixWorld), burst: false };
+    r.flare = { left: NERVE.wait, n, age: 0, top, p: new THREE.Vector3(0, top, 0).applyMatrix4(r.ship.body.matrixWorld), burst: false, fade: 0 };
     r.flares++;
     flareNews(r, 'fired');
   }
   function flareNews(r, stage) { FLARE.raider = r; FLARE.at.copy(r.flare?.p ?? r.f.pos); FLARE.stage = stage; emit('flare'); FLARE.raider = null; }
-  // (its light: a red star climbing, a burst of red sparks, then a red glow sinking slowly, flickering)
-  function flareLight(F, dt) {
+  // Its light: a red star climbing from her mast head with a short trail of red sparks, bursting a little way over her
+  // (NERVE `rise` metres a second for `burst` seconds: low enough to burst in view in the chase view, a few hundred
+  // metres off or more), then a red star hanging `hang` metres over her mast head, flickering, while her help is coming,
+  // and fading once it's come (or she's down). The stars are drawn as solid red (STARS: blended over the sky, not added
+  // to it, which over blue sky reads pink), `star` metres across, in one batch for every flare
+  const STAR_MAX = 48, starPos = new Float32Array(STAR_MAX * 3), starSize = new Float32Array(STAR_MAX), starA = new Float32Array(STAR_MAX), starHot = new Float32Array(STAR_MAX);
+  const starGeo = new THREE.BufferGeometry(), dynamic = (a, n) => new THREE.BufferAttribute(a, n).setUsage(THREE.DynamicDrawUsage);
+  starGeo.setAttribute('position', dynamic(starPos, 3)); starGeo.setAttribute('size', dynamic(starSize, 1)); starGeo.setAttribute('alpha', dynamic(starA, 1)); starGeo.setAttribute('hot', dynamic(starHot, 1));
+  starGeo.setDrawRange(0, 0);
+  const starScale = { value: scale };
+  const starMat = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, uniforms: { uScale: starScale, uMax: { value: fx.touch ? 160 : 240 } },
+    vertexShader: 'attribute float size; attribute float alpha; attribute float hot; uniform float uScale; uniform float uMax; varying float vA; varying float vH; void main() { vA = alpha; vH = hot; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = max(3.0, min(size * uScale / -mv.z, uMax)); gl_Position = projectionMatrix * mv; }',
+    fragmentShader: 'varying float vA; varying float vH; void main() { float r = length(gl_PointCoord - 0.5) * 2.0; if (r > 1.0) discard; float a = (1.0 - smoothstep(0.45, 1.0, r)) * vA; if (a < 0.01) discard; vec3 c = mix(vec3(0.86, 0.05, 0.03), vec3(1.0, 0.78, 0.55), (1.0 - smoothstep(0.0, 0.5, r)) * vH); gl_FragColor = vec4(c, a);\n#include <colorspace_fragment>\n}' });
+  starMat.name = 'flare stars';
+  const stars = new THREE.Points(starGeo, starMat); stars.name = 'flare stars'; stars.frustumCulled = false; stars.renderOrder = 4; scene.add(stars);
+  let starN = 0;
+  const star = (p, size, a, hot) => { if (starN >= STAR_MAX) return; starPos[starN * 3] = p.x; starPos[starN * 3 + 1] = p.y; starPos[starN * 3 + 2] = p.z; starSize[starN] = size; starA[starN] = a; starHot[starN++] = hot; };
+  const hangAt = new THREE.Vector3(), trailAt = new THREE.Vector3();
+  function flareLight(r, dt) {
+    const F = r.flare, S = NERVE.star;
     F.age += dt;
-    if (F.age < NERVE.burst) { F.p.y += NERVE.rise * dt; fx.glowAt(F.p, 3, 0.35, 0.25, 16); if (fx.room()) fx.spark(F.p, sv.set(0, -6, 0), 0.8, 5, 0xff6040, 1, 0); }
-    else if (!F.burst) { F.burst = true; fx.burst(F.p, 0xff3a2a, 40, 2.5); }
-    else if (F.age < NERVE.burst + 10) { F.p.y -= 4 * dt; fx.glowAt(F.p, 3, 0.3, 0.2, 26 * (0.85 + 0.15 * Math.sin(F.age * 23))); }
+    if (F.age < NERVE.burst) {
+      // (climbing, a short trail of fading stars and sparks under it)
+      F.p.y += NERVE.rise * dt;
+      star(F.p, S * 0.75, 1, 1);
+      for (let k = 1; k <= 4; k++) star(trailAt.copy(F.p).setY(F.p.y - k * S * 0.35), S * (0.5 - k * 0.08), 0.75 - k * 0.15, 0.3);
+      if (fx.room()) fx.spark(F.p, sv.set((Math.random() - 0.5) * 3, -8, (Math.random() - 0.5) * 3), 0.7, 4, 0xff3a1a, 1, 0);
+      return;
+    }
+    if (!F.burst) { F.burst = true; fx.burst(F.p, 0xff2a1a, 70, 3, 1); }
+    // (hanging over her while her help is coming, easing there from where it burst; fading once that's over)
+    if (F.left <= 0 || r.f.down) F.fade += dt;
+    if (F.fade > 2) return;
+    if (!r.f.down) { hangAt.set(0, F.top + NERVE.hang, 0).applyMatrix4(r.ship.body.matrixWorld); F.p.addScaledVector(r.f.velocity, dt).lerp(hangAt, 1 - Math.exp(-dt * 1.2)); } // (carried along with her)
+    const b = F.age - NERVE.burst, swell = b < 0.5 ? 1 + 1.6 * Math.sin((b / 0.5) * Math.PI) : 1, flicker = 0.88 + 0.12 * Math.sin(F.age * 23);
+    star(F.p, S * swell * flicker, (1 - F.fade / 2) * (b < 0.5 ? 1 : 0.9), b < 0.5 ? 1 : 0.55);
   }
   // help answering her flare: `n` ships, 1.4 km beyond her from the foe, heading in (joining the wave)
   function answer(r, foe) {
@@ -941,11 +1033,20 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
       FORTP.raider = r; FORTP.act = 2; emit('fortress'); FORTP.raider = null;
     }
     if (F.act === 2 && F.broken >= FORT.sinking) {
-      F.act = 3; r.gunRate = FORT.rate;
+      F.act = 3; F.t3 = 0; r.gunRate = FORT.rate;
       const ys = F.blocks.flatMap((b) => b.guns.map((g) => g.p.y)), top = Math.max(...ys);
       for (const b of F.blocks) for (const g of b.guns) if (g.p.y > top - 1) g.up = FORT.tilt;
-      if (r.fans) for (const k in r.fans) r.fans[k].scale.y = Math.tan(FORT.tilt) / Math.tan(KINDS.broadside.pitch); // (her fans as tall as her upper deck now reaches)
+      if (r.fans) for (const k in r.fans) r.fans[k].scale.y = FAN_TALL; // (her fans as tall as her upper deck now reaches; one made later is too: fanFor)
+      leaveLine(r, 'sinking'); // (leading a line of battle, she breaks it up: her followers don't sink with her)
       FORTP.raider = r; FORTP.act = 3; emit('fortress'); FORTP.raider = null;
+    }
+    // (sinking: at least FORT.sink metres a second, and faster from high up, so she's under the cloud floor FORT.last
+    // seconds after her last act began, whatever height it began at. Her height is steered down (steer); here she's
+    // made to fall at least that fast, her climb set so the next frame carries her down at that rate)
+    if (F.act === 3 && !r.frozen) {
+      F.t3 += dt;
+      const rate = Math.max(FORT.sink, (f.pos.y - (CLOUD_Y - FORT.under)) / Math.max(1, FORT.last - F.t3));
+      if (f.vy > -rate) f.vy = -rate;
     }
     for (const b of F.blocks) if (b.dead && (b.puff -= dt) <= 0 && fx.smoke.room()) {
       b.puff = 0.3 / fx.q;
@@ -955,8 +1056,10 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
     if (F.act === 3 && !r.frozen && f.pos.y < CLOUD_Y - FORT.under) f.down = { why: 'crystals', t: 0, roll: Math.random() < 0.5 ? -1 : 1 };
   }
 
-  // a raider coming up through the cloud floor: a ring of pale mist thrown out round her as she bursts through (told)
+  // a raider coming up through the cloud floor: a ring of pale mist thrown out round her as she bursts through (told,
+  // and whether she's the first of her wave to: main.js says where)
   const BURST = payload('burst');
+  let burstYet = false; // (one of this wave has burst through: spawnWave)
   function burstUp(r) {
     const L = r.R.length;
     for (let i = 0; i < 8; i++) {
@@ -965,13 +1068,13 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
       sv.set(Math.sin(a) * 9, 3, Math.cos(a) * 9);
       fx.smoke.emit(sp, sv, 3, 20, 70, 1, 0.7, 0, 0.5);
     }
-    BURST.raider = r; BURST.at.copy(r.f.pos); emit('burst'); BURST.raider = null;
+    BURST.raider = r; BURST.at.copy(r.f.pos); BURST.first = !burstYet; burstYet = true; emit('burst'); BURST.raider = null;
   }
 
   // every frame: steer, fly, fire, pick the detail level; returns the raiders that went down this frame
   const downed = []; // (kept, and read straight away by main.js)
   function update(dt, foe, camera) {
-    downed.length = 0; escaped.length = 0; foeNow = foe; clock += dt; fanTime.value = clock; smart = skies().smart ?? 0;
+    downed.length = 0; escaped.length = 0; foeNow = foe; clock += dt; fanTime.value = clock; smart = skies().smart ?? 0; starN = 0;
     const toScreen = 1 / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)), sight = skies().sight ?? 250, flee = skies().flee ?? 0;
     for (const r of list) {
       const live = !r.f.down, fighting = live && ai && !r.frozen && !foe.down;
@@ -986,7 +1089,7 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
       if (r.f.down && !r.counted) {
         r.counted = true; r.gun.cancel(); downed.push(r);
         if (r.flare && r.flare.left > 0) { r.flare.left = 0; r.flare.cut = true; flareNews(r, 'none'); } // (sunk before help came)
-        if (r.line && !r.leader) breakLine(r.line); // (a line's leader gone: the line breaks up)
+        if (r.line?.leader === r) breakLine(r.line, 'down'); // (a line's leader gone: the line breaks up)
       }
       r.gun.update(dt, r.gunRate);
       if (fighting) { shoot(r, foe, dt); if (r.charge.b) glowPorts(r); } else { r.charge.b = null; r.charge.aimed = false; }
@@ -998,8 +1101,8 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
         if (h < NERVE.low || (h < NERVE.alone && lastAfloat(r))) { r.ran = true; if (Math.random() < flee) startRun(r, foe); }
       }
       if (fighting && !r.flares && !r.captain && r.role !== 'prize' && NERVE.flares.includes(r.id) && r.f.frac('hull') < NERVE.flare) fireFlare(r, 1);
-      if (r.flare) { flareLight(r.flare, dt); if (live && r.flare.left > 0 && (r.flare.left -= dt) <= 0) answer(r, foe); }
-      if (r.smoke > 0) r.smoke = Math.max(0, r.smoke - dt);
+      if (r.flare) { flareLight(r, dt); if (live && r.flare.left > 0 && (r.flare.left -= dt) <= 0) answer(r, foe); }
+      if (r.smoke > 0) { r.smoke = Math.max(0, r.smoke - dt); if (live) trail(r, foe, dt); } // (the Ghost hidden in her smoke, laying more)
       // how she came in: up through the cloud floor (a ring of mist as she bursts through it), or in the sun's glare
       if (r.rising && live) { if (r.lastY < CLOUD_Y && r.f.pos.y >= CLOUD_Y) { r.rising = false; burstUp(r); } r.lastY = r.f.pos.y; }
       if (r.unseen > 0 && ((r.unseen -= dt) <= 0 || dist < 700)) r.unseen = 0;
@@ -1018,7 +1121,10 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
       const size = (r.R.length / Math.max(1, camera.position.distanceTo(r.f.pos))) * toScreen;
       r.ship.detail(size < detailAt ? 'far' : 'middle');
     }
-    for (let i = list.length - 1; i >= 0; i--) if (list[i].gone) { const r = list[i]; if (r.line && !r.leader) breakLine(r.line); drop(r); list.splice(i, 1); }
+    for (let i = list.length - 1; i >= 0; i--) if (list[i].gone) { const r = list[i]; if (r.line?.leader === r) breakLine(r.line, r.escaped ? 'run' : 'down'); drop(r); list.splice(i, 1); }
+    // (the flares' stars drawn this frame)
+    starGeo.setDrawRange(0, starN);
+    if (starN) for (const k of ['position', 'size', 'alpha', 'hot']) starGeo.attributes[k].needsUpdate = true;
     // (the ships that joined the wave this frame: a flare's help, a Man-o'-war's boats)
     while (later.length) { const L = later.shift(), r = spawn(L.id, L.pos, L.heading); r.seen = foe.pos.clone(); r.boat = !!L.boat; }
     return downed;
@@ -1038,7 +1144,7 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
   // a raider taken away, with her tag on screen (main.js) if she has one; cleared away (a fresh voyage, or a test),
   // she's marked so, and her wreck (wrecks.js) stops at once
   function drop(r) { scene.remove(r.ship.root); r.tag?.remove(); }
-  function clear() { for (const r of list) { r.gone = r.cleared = true; drop(r); } list.length = 0; }
+  function clear() { for (const r of list) { r.gone = r.cleared = true; drop(r); } list.length = 0; starGeo.setDrawRange(0, 0); }
   // build a class's models ahead of time (a captain's, before her wave), so nothing is built mid-fight
   const prepare = (id, captain = false, treasure = false) => { template(id, captain ? 'captain' : treasure ? 'treasure' : 'crew'); };
   // (a wave's: its captain's ship, and its treasure ships)
@@ -1058,7 +1164,7 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
   function setScale(px, ratio = 1) {
     fanPx.value = ratio; // (and the danger fans' lines, as wide on any screen)
     if (!(px > 0) || px === scale) return;
-    scale = px;
+    scale = starScale.value = px;
     for (const k in T) { glowsOf(T[k].mid.body, px); glowsOf(T[k].far.body, px); }
     for (const r of list) r.ship.scale(px);
   }

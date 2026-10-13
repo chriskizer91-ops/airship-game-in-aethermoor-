@@ -183,12 +183,26 @@ which were made from this repository only):
    `zSplit`), `blockHit` silences one (guns.js `silence`, which every battery's count and volley respect), main.js
    `hitTest` plates her sides (`plateMul`) and doubles her stern windows; acts 2 and 3 in `update` (her upper deck's
    guns get `g.up`, a higher reach). A line: `formLine`/`breakLine`, followers keep station on a static slot, fire in
-   turn by `firedAt` (or after `LINE.hold`). Roads: `roadFor(next)` in main.js picks one of storm/treasure/hunt in turn
+   turn by `firedAt` (or after `LINE.hold`). Roads: `roadFor(next)` in main.js picks one of storm/treasure/hunt
    (`roadWave` builds it), shown as `#btn-road` (keys 1 and 2 only while it's up; `body.roads` makes room on phones),
    `sailOn(pick)` tells `road`. `tools/sim-fight.mjs` gained `--policy fortress` and `--road`, chases runners, and
    reports nerve. The Sun-Diver first climbed straight up over the Captain after each broadside: out of reach and still
    the nearest raider, she held off a plain Captain's Man-o'-war at wave 20 (beaten 4 times in 16); flying off towards
-   the sun instead, she's out of the fight a while and comes back diving (beaten 16 times in 16).
+   the sun instead, she's out of the fight a while and comes back diving (beaten 16 times in 16). Polished after review
+   (October 13): a line's ship that runs (`startRun`), is gone, or is a Man-o'-war in her last act is out of it
+   (`outOfLine`, `leaveLine`: its leader breaks it up, `breakLine(L, why)`, said once by main.js from `line.why`); the
+   Man-o'-war's last act is driven by `FORT.sink` and capped at `FORT.last` (her climb set each frame in `fortress`),
+   and a fan made in it is tall too (`FAN_TALL`); the Ghost lays smoke as she goes (`trail`, `TRICK.smoke.trail`) and
+   circles the Captain beam to beam (`tk.a0`, `tk.dir`); flares are a red star in their own batch (`stars`, normally
+   blended so they read red over the sky), bursting `NERVE.rise × burst` over her and hanging `NERVE.hang` over her
+   mast while help comes; raiders from below start 1.3 to 1.6 km off and hold under the floor till `BELOW.rise` (the
+   first to burst through is told, `burst.first`, and toasted); the white flag faces the camera (wrecks.js `update(dt,
+   camera)`). Banners: `waveBanner` keeps the line to `BANNER_LINE` (hints over it, and the Man-o'-war's, come as a
+   toast after, `W.hint`); check.mjs `longestBanner` sweeps every wave's line and layoutAt tries the longest. Roads:
+   `roadFor` offers the allowed kind offered longest ago (`W.offered`, first in `ROAD_ORDER`), the treasure road keeps
+   the steady raiders and adds the treasure ship, a hunted captain sails at least her own wave's class; 1 and 2 take a
+   road only once the card has risen (`cardRisen`), and the mouse stays locked; held sideways the road button goes
+   under Sail on (game.html), and the toast keeps over a tall card on a phone held upright (`--calm-top`).
 4. **D3-progression**: save version 2, a gentle first voyage, the homecoming summary, commendations and a Captain's
    log, ranks, records and stars, the quartermaster's advice, sail and pennant colours, harbour orders.
 

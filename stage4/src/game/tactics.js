@@ -80,9 +80,11 @@ export const SMART = { facing: 0.52, near: 700, ahead: 250, stern: 200, dodge: 0
 // firing only her stern guns; she gets away `far` metres off, or hidden deep in the cloud floor more than `hidden`
 // metres off for `hide` seconds. A crew Brig or Frigate (`flares`) whose hull falls under `flare` fires a red flare,
 // once: sink her (or make her strike) within `wait` seconds or help comes, `help` metres beyond her: a Skiff (a Cutter
-// on the Maelstrom)
+// on the Maelstrom). Her flare climbs `rise` metres a second for `burst` seconds (so it bursts in view, a few hundred
+// metres off or more), a red star `star` metres across, then hangs `hang` metres over her mast head while help comes
+// (high enough to show over her tag, a few hundred metres off)
 export const NERVE = { sails: 0.5, last: 0.15, prize: 1.5, runs: ['skiff', 'cutter', 'brig'], alone: 0.35, low: 0.2, haven: 1200, far: 2400, hidden: 700, hide: 6,
-  flares: ['brig', 'frigate'], flare: 0.5, wait: 20, help: 1400, rise: 120, burst: 2.5 };
+  flares: ['brig', 'frigate'], flare: 0.5, wait: 20, help: 1400, rise: 40, burst: 1.6, star: 26, hang: 58 };
 
 // the raider captains (placeholders for Chris to rename: they're meant to fit Aethermoor, and none uses a name from
 // the Magpie's page or the Witch's), each with a title and a trick (raiders.js plays it):
@@ -94,7 +96,9 @@ export const NERVE = { sails: 0.5, last: 0.15, prize: 1.5, runs: ['skiff', 'cutt
 //           `climb` metres over the Captain, then turns and dives back on her
 //   iron    her sides are plated, as the Man-o'-war's are (PLATE)
 //   smoke   at `at` of her hull she vanishes in a smoke screen (`puffs` big pale puffs, fewer on a phone), hidden for
-//           `hide` seconds while she surges round to the Captain's other side, `far` metres off
+//           `hide` seconds while she surges round the Captain to her other side, beam to beam, `far` metres off at most
+//           (steering for a point `lead` radians further round), laying a thick puff or two every `trail` seconds
+//           (laptop, phone) so she stays in her smoke
 // (each `line` short, after her title on a banner: "the Cloud Fox: hides in cloud, rises under you", to fit a phone.)
 // Waves 5, 10 and 15 are led by the first three in ORDER, the next three by the next three, then any at random; one who
 // has sunk the Captain's ship and is still loose leads her next wave (main.js)
@@ -108,7 +112,7 @@ export const CAPTAINS = [
 ];
 export const CAPTAIN_ORDER = CAPTAINS.map((c) => c.id), captainById = (id) => CAPTAINS.find((c) => c.id === id) ?? null;
 export const TRICK = { cloud: { hurt: 0.7, every: 45, hide: 3, under: 60, near: 300 }, sun: { climb: 160, hold: 8 }, help: { at: [0.66, 0.33], count: 2 },
-  smoke: { at: 0.5, puffs: [14, 8], hide: 8, far: 600 } };
+  smoke: { at: 0.5, puffs: [14, 8], hide: 8, far: 600, lead: 0.6, trail: [0.35, 0.5] } };
 // a raider captain who sinks the Captain's ship gets away, and her price goes up by `rise` times each time, `most` times
 // at the most: she leads her next wave, with her bigger bounty, until the Captain brings her down
 export const WANTED = { rise: 1.25, most: 3 };
@@ -138,10 +142,11 @@ export function fromAstern(v, body) {
 // as it gives out: looks.js), her eight blocks of six guns (each side's upper and lower deck, fore and aft), each worth
 // `block` (times the skies' toughness) before its guns are silenced, and her stern windows (PLATE). A hit in a block
 // hurts the block in full and her hull as her plating allows. Act 2, at `boats` of her hull or her first column broken:
-// she launches two Skiffs from her stern. Act 3, with `sinking` columns broken: she's sinking, `sink` metres a second,
-// and fires everything: her upper deck's guns tilt up to `tilt` radians (above her, as below) and reload `rate` times as
-// fast; she goes down when she sinks under the cloud floor (`under` metres below it)
-export const FORT = { block: 450, boats: 0.66, sinking: 3, sink: 4, tilt: 0.45, rate: 1.25, under: 60 };
+// she launches two Skiffs from her stern. Act 3, with `sinking` columns broken: she's sinking, at least `sink` metres a
+// second and faster from high up, so she's under the cloud floor (`under` metres below it, where she goes down) `last`
+// seconds after it began, whatever her height then; and she fires everything: her upper deck's guns tilt up to `tilt`
+// radians (above her, as below) and reload `rate` times as fast
+export const FORT = { block: 450, boats: 0.66, sinking: 3, sink: 5, last: 60, tilt: 0.45, rate: 1.25, under: 60 };
 
 // a line of battle (raiders.js): each ship of it `gap` of her length (and the next's) behind the one ahead, steering for
 // where that place will be `ahead` seconds on; the leader fights abeam `wide` metres further off than a lone raider,

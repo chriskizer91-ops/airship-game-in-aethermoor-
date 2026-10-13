@@ -132,43 +132,54 @@
 //                     raider's own broadside smoke across the same line never thinned. Foes worth remembering (tactics.js NERVE, CAPTAINS, PLATE, FORT, LINE, ROADS): a
 //                     frozen crew Cutter at 40% hull, her sails shot away, striking her colours (half as many shards
 //                     again, with the wave's and the skies' bonus, said so), her pennants down and a white flag up her
-//                     mast; a fighting Brig, the last of her wave, striking under 15% of her hull; a lone Skiff at 30%
-//                     (the dice made to say so) running for the clouds (her tag saying "running", said so) and getting
-//                     away within 45 s, spilling nothing; a Brig at 45% firing a flare (her tag counting down "help in
-//                     20"), a Skiff joining 21 s on (said so), and one sunk 10 s after her flare bringing none (the toast
-//                     saying it came too late); the raider captains in order on waves 5 to 30; wave 5's, the Cloud Fox,
-//                     named in her banner with her trick and where she is, and on her gold tag; the Sail-Ripper's
-//                     broadsides chain shot every other time; the Ghost at 49% hidden in smoke, not to be locked on to
-//                     from 400 m, out of it 8 s later; the Bell's flare bringing two Skiffs; the Cloud Fox, hurt, under
-//                     the cloud floor within 40 s and up again; the Sun-Diver climbing 80 m or more after her
-//                     broadside, heading within 20 degrees of the sun; each trick told; Ironsides' side taking half the hull damage of a hit 30 degrees off
-//                     her stern quarter; a raider captain who sinks the Captain getting away (the card saying so, the
-//                     price on her head up), leading wave 5 of the next voyage again ("Wanted", her bounty 1.25 times,
-//                     said in her banner), and brought down, remembered and wanted no more; waves arriving up through
-//                     the clouds (under the cloud floor, over it 30 s on, bursting through it), out of the sun (300 m
-//                     or more over her, within 30 degrees of the sun's bearing, their tags hidden at first and shown 7 s
-//                     on), from both sides (about 180 degrees apart) and high and low (140 m over and under), each
-//                     banner saying so in left and right words; a line of three Brigs keeping station (within 60 m of
-//                     their places, heading within 20 degrees of the leader, 20 s on), readying their sides in order
-//                     down the line, and breaking up at once when the leader is sunk (told, said); a frozen raider
-//                     Man-o'-war's eight blocks of six guns and five pips on her tag, a hull hit from her side doing half
-//                     (within 15%) of one 30 degrees off her quarter and her stern windows double, volleys into one block
-//                     silencing six guns (said, her tag and her next broadside six fewer), two Skiffs launched from her
-//                     stern at 60% of her hull (a banner), and three columns blown out sinking her (a banner), her upper
-//                     deck then reaching 25 degrees above her (not before) and her pips showing them gone; the road
-//                     between waves: a second way on after wave 2 (the mouse let go of), the storm road after wave 6
-//                     taken with its button (one ship more, in a storm, shards 1.5 times and the wave's bonus double)
-//                     and with the real 2 key, the countdown taking the steady course, a hunt bringing the Sail-Ripper
-//                     early (her bounty a quarter more, her own wave then plain), a treasure ship's trail, no second way
-//                     before a raider captain's wave, and never a storm road on Fair Winds; pictures of a named
-//                     captain's banner, a raider striking, a flare, a wave up through the clouds and one out of the sun,
-//                     a line of battle, the Man-o'-war's guns silenced, her boats and her sinking, and the road between
+//                     mast, turned to the camera so it shows seen along her length; a fighting Brig, the last of her
+//                     wave, striking under 15% of her hull; a lone Skiff at 30% (the dice made to say so) running for
+//                     the clouds (her tag saying "running", said so) and getting away within 45 s, spilling nothing; a
+//                     Brig at 45% firing a flare (her tag counting down "help in 20") that bursts in the chase view 400
+//                     and 900 m off and hangs over her, a Skiff joining 21 s on (said so), and one sunk 10 s after her
+//                     flare bringing none (the toast saying it came too late); the raider captains in order on waves 5
+//                     to 30; wave 5's, the Cloud Fox, named in her banner with her trick and where she is (below you),
+//                     and on her gold tag; the Sail-Ripper's broadsides chain shot every other time; the Ghost at 49%
+//                     hidden in smoke, not to be locked on to from 400 m, staying in the smoke she lays as she slips
+//                     round the Captain (her tag on it), out of it 8 s later; the Bell's flare bringing two Skiffs; the
+//                     Cloud Fox, hurt, under the cloud floor within 40 s and up again; the Sun-Diver climbing 80 m or
+//                     more after her broadside, heading within 20 degrees of the sun; each trick told; Ironsides' side
+//                     taking half the hull damage of a hit 30 degrees off her stern quarter; the Sail-Ripper, leading
+//                     wave 10, sinking the Captain and getting away (the card saying so, the price on her head up),
+//                     leading wave 5 of the next voyage ("Wanted", her bounty 1.25 times, said in her banner), wave 10
+//                     then another's, and brought down, remembered and wanted no more; waves arriving up through the
+//                     clouds (under the cloud floor, over it 30 s on, the first bursting through 800 m off or more, in
+//                     the chase view, said in a toast), out of the sun (300 m or more over her, within 30 degrees of the
+//                     sun's bearing, their tags hidden at first and shown 7 s on), from both sides (about 180 degrees
+//                     apart) and high and low (140 m over and under), each banner saying so in left and right words (not
+//                     saying how twice); every wave's banner line kept to its limit, the longest tried in every layout;
+//                     a line of three Brigs keeping station (within 60 m of their places, heading within 20 degrees of
+//                     the leader, 20 s on), readying their sides in order down the line, and breaking up at once when
+//                     the leader is sunk (told, said once); a ship running out of the middle of a line and getting away
+//                     (the one behind her closing up and fighting on), and a line's leader running (breaking it up, her
+//                     follower not following her down); a frozen raider Man-o'-war's eight blocks of six guns and five
+//                     pips on her tag, a hull hit from her side doing half (within 15%) of one 30 degrees off her
+//                     quarter and her stern windows double, volleys into one block silencing six guns (said, her tag and
+//                     her next broadside six fewer), two Skiffs launched from her stern at 60% of her hull (a banner),
+//                     and three columns blown out sinking her (a banner), her upper deck then reaching 25 degrees above
+//                     her (not before) and her pips showing them gone; her last act begun 2 km up: a tall fan on a side
+//                     first readied in it, and under the cloud floor within a minute or so; the road between waves, in
+//                     a real voyage: none after wave 1, a treasure ship's trail after wave 2 (the steady raiders and a
+//                     treasure Brig; the mouse kept locked), a hunt for the Cloud Fox in a Brig after wave 3 (the
+//                     countdown taking the steady course), none before her wave, the storm road after wave 5 (one ship
+//                     more, in a storm, shards 1.5 times and the wave's bonus double), a hunt for the Sail-Ripper in a
+//                     Frigate after wave 6 (her bounty a quarter more, her own wave then plain), never a storm road on
+//                     Fair Winds; the real 2 key loading chain shot until the card has risen, then taking the road;
+//                     pictures of a named captain's banner, a raider striking, a flare, each way a wave arrives, a line
+//                     of battle, the Man-o'-war's guns silenced, her boats and her sinking, and the road between
 //                     waves. On a phone: the shot button hidden with round shot only, shown with
 //                     chain shot and loading it with a tap; Patch hidden at full health, shown at hull 60%, a tap starting
 //                     the crew patching, then staying (dimmed, its ring filling) until they're ready again, and going;
 //                     a raider's "Broadside!" tag at the edge never in the lower 30% on the stick's side as the view
 //                     swings round; both buttons measured in every phone layout, the shot button's name inside its ring
-//                     for each shot and the badge with the breakers left clear of the guns' label; a picture of both
+//                     for each shot and the badge with the breakers left clear of the guns' label; between waves held
+//                     sideways, Sail on and Back to port where they always are with a second way on (it goes under
+//                     them; upright, over them); a picture of both
 //                     wrecks worth watching: debris matching the part hit, a 60-shot barrage fitting its batches with
 //                     not a piece cut short and all fallen 4 s later, and canvas scraps keeping their own flapping beat;
 //                     a raider Brig blown apart in three blasts or more within 3 s, her crystals dark by 2 s, through
@@ -774,7 +785,36 @@ function earnedProblems(E, where, touch) {
   if (E.mid.banner !== 'Chain shot!' || !(E.mid.cut >= 3170) || E.mid.state !== 'choose' || E.mid.card !== 'Chain shot is yours!' || E.mid.again !== 'Chain shot!') problems.push(`${where}: a shot's banner still up as the wave ends should be cut short as the card rises, its news on the card and in a banner again as she sails on: ${JSON.stringify(E.mid)}`);
   return `the card says "${E.card}" (no banner under it), then sailing on "${E.after.banner}" ("${E.after.line}")${touch ? `, the shot button ${E.after.button ? 'showing' : 'HIDDEN'}` : ''}; earned mid-wave, its banner cut to ${E.mid.cut} ms of 4400 as the wave ends`;
 }
-const layoutAt = (page, HUD, PANELS, sink = false, { shot = true, hurt = true, left = false } = {}) => page.evaluate(({ HUD, PANELS, sink, shot, hurt, left }) => {
+// The banner and the toast are tried with the longest the game writes (`say`: longestBanner, and LONGEST_TOAST)
+// the longest line a wave's banner has (main.js waveBanner, which keeps it to BANNER_LINE letters), from every wave of the
+// first 36 (those after the fifteenth drawn at random, three times each) and its roads (into the storm, a treasure ship's
+// trail), owning neither giant and both, each way in, from the bearings with the longest words (from both sides: behind
+// you on one side and ahead on the other) and with each wind; its title, and any line longer than the limit
+const longestBanner = (page) => page.evaluate(() => {
+  const g = window.__game, d = g.progress.data, W = g.waves, out = { title: '', line: '', over: [], lines: 0, limit: g.BANNER_LINE };
+  const had = { galleon: d.ships.galleon.owned, manowar: d.ships.manowar.owned, n: W.n, wind: g.wind.dir };
+  for (const own of [false, true]) {
+    d.ships.galleon.owned = d.ships.manowar.owned = own; g.fly('brig'); g.waves.timer = 1e9; g.raiders.setAI(false);
+    const P = g.player, giants = { galleon: own, manowar: own };
+    for (let n = 0; n < 36; n++) for (let k = 0; k < (n < 15 ? 1 : 3); k++) {
+      W.n = n;
+      const wave = g.nextWave(n), waves = [wave];
+      if (wave.captain < 0 && !wave.ids.includes('manowar')) waves.push(g.roadWave('storm', wave, giants), g.roadWave('treasure', wave, giants));
+      for (const w of waves) for (const how of ['ahead', 'pincer', 'below', 'sun', 'stack', 'line']) for (const a of [-2.44, 2.44, 0.7]) for (const wind of [-Math.PI / 2, Math.PI / 2, 0]) {
+        g.wind.dir = P.heading + Math.PI + wind;
+        const b = g.bannerFor(w, { a: P.heading + a, how }); out.lines++;
+        if (b.line.length > out.line.length) { out.line = b.line; out.title = b.title; }
+        if (b.line.length > g.BANNER_LINE && out.over.length < 6) out.over.push(b.line);
+      }
+    }
+  }
+  d.ships.galleon.owned = had.galleon; d.ships.manowar.owned = had.manowar; g.fly('brig'); W.n = had.n; g.wind.dir = had.wind; g.waves.timer = 1e9;
+  return out;
+});
+// (the longest toast the game writes: main.js. The Bell's flare; as long: a crew striking her colours, "The Frigate
+// strikes her colours: half as many shards again", and "No crystal breakers yet: earn it at sea, or buy it in port")
+const LONGEST_TOAST = 'Hesper Quayle fires a flare: sink her in 20 s or help comes';
+const layoutAt = (page, HUD, PANELS, sink = false, { shot = true, hurt = true, left = false, say: sayLongest = null } = {}) => page.evaluate(({ HUD, PANELS, sink, shot, hurt, left, sayLongest, LONGEST_TOAST }) => {
   const g = window.__game, $ = (id) => document.getElementById(id), out = { laps: [], tags: [], off: [], pause: [] };
   const box = (id) => { const el = $(id); if (!el || el.hidden || getComputedStyle(el).display === 'none' || getComputedStyle(el).visibility === 'hidden') return null; const b = el.getBoundingClientRect(); return b.width && b.height ? b : null; };
   const lap = (a, b) => a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
@@ -800,7 +840,7 @@ const layoutAt = (page, HUD, PANELS, sink = false, { shot = true, hurt = true, l
     g.raiders.spawn('cutter', P.pos.clone().addScaledVector(f, a * 400).addScaledVector(s, b * 400).add({ x: 0, y: up, z: 0 }), P.heading, true);
   }
   g.cam.yaw = 0; g.cam.pitch = 0.15; g.step(0.2, {});
-  const say = { toast: 'The captain\'s Frigate is sinking! Fly through her shards', warn: 'Nearing the Thinning: the crystals can\'t lift you higher', 'region-name': 'The Sunscorch Wastes', 'region-air': 'Cold, clear air, and snow on the wind', 'banner-title': 'Wave 20: Talia Brightling', 'banner-line': 'the Sail-Ripper: chain shot every other broadside · behind you on your right' };
+  const say = { toast: LONGEST_TOAST, warn: 'Nearing the Thinning: the crystals can\'t lift you higher', 'region-name': 'The Sunscorch Wastes', 'region-air': 'Cold, clear air, and snow on the wind', 'banner-title': sayLongest?.title || 'Wave 20: Talia Brightling', 'banner-line': sayLongest?.line || 'the Sun-Diver: dives on you out of the sun · above you, behind you on your right' };
   for (const [id, t] of Object.entries(say)) $(id).textContent = t;
   $('warn').hidden = false;
   look(HUD.filter((id) => id !== 'region' && id !== 'calm'), 'a battle');
@@ -863,8 +903,13 @@ const layoutAt = (page, HUD, PANELS, sink = false, { shot = true, hurt = true, l
   $('calm-line').innerHTML = 'Wave 14 beaten. ◆ <b id="calm-bonus">1,234</b> for the wave · ◆ 12,345 aboard. Next: a raider captain\'s Frigate, a Frigate, a Brig and a Cutter. A storm is rolling in from the north-east.';
   // (with a second way on beside Sail on at its longest: a storm for a big wave)
   const road = $('btn-road'), roadWas = [road.hidden, road.innerHTML, road.dataset.road];
-  road.hidden = false; road.dataset.road = 'storm'; road.innerHTML = '<b>Into the storm</b><small>and a Frigate, for half as many shards again</small><kbd class="mouse-only">2</kbd>'; $('calm').classList.add('roads'); document.body.classList.add('roads');
+  road.hidden = false; road.dataset.road = 'storm'; road.innerHTML = '<b>Into the storm</b><small>The same raiders and a Cutter, in a storm: half as many shards again</small><kbd class="mouse-only">2</kbd>'; $('calm').classList.add('roads'); document.body.classList.add('roads');
+  g.layout(); // (as the game does once it's changed the card: calmUp)
+  // (and the score in the corner at its longest, late in a long voyage: on a phone held sideways the card is beside it)
+  const scoreWas = ['score-n', 'wave-n', 'voyage-n'].map((id) => $(id).textContent);
+  $('score-n').textContent = '128'; $('wave-n').textContent = '30'; $('voyage-n').textContent = '123,456';
   look(HUD.filter((id) => id !== 'region' && id !== 'banner'), 'between waves, the card at its tallest');
+  ['score-n', 'wave-n', 'voyage-n'].forEach((id, i) => { $(id).textContent = scoreWas[i]; });
   [$('calm-title').textContent, $('calm-line').innerHTML] = card;
   [road.hidden, road.innerHTML, road.dataset.road] = roadWas; $('calm').classList.toggle('roads', !road.hidden); document.body.classList.toggle('roads', !road.hidden);
   g.pause(true); onTop('paused between waves'); g.pause(false);
@@ -897,7 +942,7 @@ const layoutAt = (page, HUD, PANELS, sink = false, { shot = true, hurt = true, l
   $('warn').hidden = true; g.raiders.clear();
   if (left) g.settings.set('leftFire', false);
   return out;
-}, { HUD, PANELS, sink, shot, hurt, left });
+}, { HUD, PANELS, sink, shot, hurt, left, sayLongest, LONGEST_TOAST });
 // what layoutAt found, as problems
 function layoutProblems(L, where) {
   if (L.laps.length || L.off.length) problems.push(`${where}: the HUD's pieces land on each other or off the screen: ${[...L.laps, ...L.off].join('; ')}`);
@@ -4285,9 +4330,16 @@ if (!demoOnly) {
     let spilled = 0; const off1 = E.on('shards:spill', (e) => { spilled = e.total; });
     g.step(0.1, {}); off1();
     out.strike = { why: cut.f.down?.why, spilled: Math.round(spilled), want: Math.round(cut.bounty * g.SKIES.cross.shards * (1 + 0.1 * g.waves.n) * g.tactics.NERVE.prize), toast: $('toast').textContent };
-    g.step(4.5, {});
+    g.cam.yaw = 0; g.cam.pitch = 0.15; g.input.lastLook = 0; g.step(4.5, {});
     const flag = cut.ship.body.children.find((o) => o.name === 'white flag');
     out.strike.flag = !!flag && flag.position.y > 0; out.strike.pennants = cut.ship.parts.flags.every((m) => !m.visible);
+    // (her flag seen from her stern, along her length, 300 m off: turned to face the camera, never edge-on; its size on
+    // the screen, in pixels)
+    if (flag) {
+      flag.updateWorldMatrix(true, false); const xs = [], ys = [];
+      for (const [u, v] of [[0, 0], [1, 0], [0, -0.62], [1, -0.62]]) { const q = P.pos.clone().set(u, v, 0).applyMatrix4(flag.matrixWorld).project(g.camera); xs.push((q.x + 1) / 2 * innerWidth); ys.push((1 - q.y) / 2 * innerHeight); }
+      out.strike.flagPx = [Math.round(Math.max(...xs) - Math.min(...xs)), Math.round(Math.max(...ys) - Math.min(...ys))];
+    }
     // (the last of her wave, fighting: struck under 15%; a frozen one, a test's target, isn't fighting and doesn't)
     P = voyage('brig');
     const last = g.raiders.spawn('brig', P.pos.clone().add({ x: 0, y: 0, z: 1600 }), 0, false); g.raiders.setAI(true); g.step(0.1, {});
@@ -4306,13 +4358,23 @@ if (!demoOnly) {
     let t = 0; while (t < 45 && g.raiders.list.includes(sk)) { still(P); g.step(1, {}); t++; }
     offE(); offS();
     Object.assign(out.run, { after: t, escaped: !!sk.escaped, told: esc, spilled: spill2, gone: $('toast').textContent });
-    // flares
-    P = voyage('brig');
+    // flares (and where the flare bursts on the screen, in the chase view: from 900 m off, and from 400 m; and where
+    // it hangs while help is coming, over her)
+    P = voyage('brig'); g.cam.yaw = 0; g.cam.pitch = 0.2; g.cam.zoom = 1; g.input.lastLook = 0;
+    const onScreen = (p) => { const q = p.clone().project(g.camera); return q.z < 1 && Math.abs(q.x) <= 1 && Math.abs(q.y) <= 1 ? +q.y.toFixed(2) : null; };
+    const near = g.raiders.spawn('brig', P.pos.clone().add({ x: 60, y: 0, z: 400 }), 2.4, false); near.f.health.hull = near.f.full.hull * 0.45;
+    g.raiders.setAI(true); g.step(0.1, {}); g.raiders.setAI(false); near.frozen = true;
+    let burstAt = null; for (let k = 0; k < 40 && !near.flare.burst; k++) { g.step(0.05, {}); burstAt = onScreen(near.flare.p); }
+    out.flareNear = { burst: burstAt, up: Math.round(near.flare.p.y - near.f.pos.y) };
+    P = voyage('brig'); g.cam.yaw = 0; g.cam.pitch = 0.2; g.input.lastLook = 0;
     let br = g.raiders.spawn('brig', P.pos.clone().add({ x: 0, y: 0, z: 900 }), 0, false); br.f.health.hull = br.f.full.hull * 0.45;
     const flares = [], offF = E.on('flare', (e) => flares.push(e.stage));
     g.raiders.setAI(true); g.step(0.1, {}); g.placeTags();
     out.flare = { left: Math.round(br.flare?.left ?? 0), tag: br.tag?.querySelector('b').textContent ?? '', toast: $('toast').textContent };
-    for (let k = 0; k < 21; k++) { still(P); g.step(1, {}); }
+    for (let k = 0; k < 40 && !br.flare.burst; k++) g.step(0.05, {});
+    out.flare.burst = onScreen(br.flare.p); still(P); g.step(5, {});
+    out.flare.hang = { above: Math.round(br.flare.p.y - br.f.pos.y), across: Math.round(Math.hypot(br.flare.p.x - br.f.pos.x, br.flare.p.z - br.f.pos.z)), screen: onScreen(br.flare.p) };
+    for (let k = 0; k < 15; k++) { still(P); g.step(1, {}); } // (21 s on, all told)
     out.flare.skiffs = g.raiders.list.filter((r) => r.id === 'skiff').length; out.flare.answer = $('toast').textContent;
     P = voyage('brig');
     br = g.raiders.spawn('brig', P.pos.clone().add({ x: 0, y: 0, z: 900 }), 0, false); br.f.health.hull = br.f.full.hull * 0.45;
@@ -4323,9 +4385,11 @@ if (!demoOnly) {
     return out;
   });
   {
-    const { strike: S, run: R, flare: F } = nerve;
-    console.log(`raiders with nerve: a Cutter with her sails shot away ${S.why} ("${S.toast}", ◆ ${S.spilled} of ${S.want}), her white flag ${S.flag ? 'up' : 'NOT UP'} and her pennants ${S.pennants ? 'down' : 'UP'}; the last of her wave ${S.last} under 15%; a lone Skiff at 30% ${R.mode === 'run' ? `ran ("${R.tag}")` : 'DIDN\'T RUN'}, ${R.escaped ? `got away after ${R.after} s ("${R.gone}")` : 'NEVER GOT AWAY'}; a Brig at 45% fired a flare ("${F.tag}"), ${F.skiffs} Skiff 21 s on ("${F.answer}"); sunk first: ${F.second} ("${F.late}")`);
+    const { strike: S, run: R, flare: F, flareNear: FN } = nerve;
+    console.log(`raiders with nerve: a Cutter with her sails shot away ${S.why} ("${S.toast}", ◆ ${S.spilled} of ${S.want}), her white flag ${S.flag ? 'up' : 'NOT UP'} (${S.flagPx?.join(' by ')} px seen from her stern) and her pennants ${S.pennants ? 'down' : 'UP'}; the last of her wave ${S.last} under 15%; a lone Skiff at 30% ${R.mode === 'run' ? `ran ("${R.tag}")` : 'DIDN\'T RUN'}, ${R.escaped ? `got away after ${R.after} s ("${R.gone}")` : 'NEVER GOT AWAY'}; a Brig at 45% fired a flare ("${F.tag}"), bursting ${F.burst ?? 'OFF THE SCREEN'} up the screen from 900 m (${FN.burst ?? 'OFF THE SCREEN'} from 400 m, ${FN.up} m over her), then hanging ${F.hang.above} m over her; ${F.skiffs} Skiff 21 s on ("${F.answer}"); sunk first: ${F.second} ("${F.late}")`);
     if (S.why !== 'struck' || Math.abs(S.spilled - S.want) > 1 || !S.toast.includes('strikes her colours: half as many shards again') || !S.flag || !S.pennants) problems.push(`a crew raider with her sails shot away and her hull under half should strike her colours (half as many shards again, a white flag going up as her pennants come down): ${JSON.stringify(S)}`);
+    if (!(S.flagPx?.[0] >= 12 && S.flagPx[1] >= 8)) problems.push(`a struck raider's white flag should show seen from along her length (turned to the camera, never edge-on), at least 12 by 8 pixels 300 m off: ${JSON.stringify(S.flagPx)}`);
+    if (F.burst === null || FN.burst === null || !(F.burst < 0.9 && FN.burst < 0.9) || !(F.hang.above > 40 && F.hang.above < 110 && F.hang.across < 30) || F.hang.screen === null) problems.push(`a flare should burst in view in the chase view, 400 m and 900 m off, then hang over her in view: ${JSON.stringify({ near: FN, burst: F.burst, hang: F.hang })}`);
     if (S.last !== 'struck') problems.push(`the last raider of a wave, fighting, should strike her colours under 15% of her hull: ${S.last}`);
     if (R.mode !== 'run' || !R.tag.includes('running') || !R.toast.includes('running for the clouds') || !R.escaped || R.told !== 1 || R.spilled || R.gone !== 'The Skiff got away') problems.push(`a lone hurt Skiff should be able to run for the clouds and get away with her shards: ${JSON.stringify(R)}`);
     if (F.left !== 20 || !F.tag.includes('help in 20') || !F.toast.includes('fires a flare') || F.skiffs !== 1 || !F.answer.includes('answers her flare') || F.second !== 0 || !F.late.includes('before help came') || F.stages !== 'fired answered fired none') problems.push(`a hurt Brig's flare should bring a Skiff 20 s on, unless she's sunk first: ${JSON.stringify(F)}`);
@@ -4362,7 +4426,16 @@ if (!demoOnly) {
     g.raiders.setAI(true); g.step(0.1, {}); gh.f.health.hull = gh.f.full.hull * 0.49; g.step(0.5, {});
     const v = gh.f.pos.clone().sub(P.pos); g.cam.yaw = Math.atan2(v.x, v.z) - P.heading; g.cam.pitch = 0.05; g.step(1 / 60, {});
     out.ghost = { hidden: gh.hidden, lost: gh.lost, locked: g.locked === gh, toast: $('toast').textContent, d: Math.round(gh.f.pos.distanceTo(P.pos)) };
-    for (let k = 0; k < 8; k++) { still(P); g.step(1, {}); } out.ghost.after = gh.hidden;
+    // (while she's hidden, each second: how far she is from the last puff of smoke she laid, and from where her tag is,
+    // and how far round the Captain she's come, the way she's going round, from where she vanished)
+    const round = () => { const a = Math.atan2(gh.f.pos.x - P.pos.x, gh.f.pos.z - P.pos.z) - P.heading; return Math.atan2(Math.sin(a), Math.cos(a)); };
+    const a0 = gh.tk.a0, dir = gh.tk.dir; out.ghost.inSmoke = []; out.ghost.tag = [];
+    for (let k = 0; k < 8; k++) {
+      still(P); g.step(1, {});
+      if (gh.smoke > 0) { out.ghost.inSmoke.push(Math.round(gh.puffAt.distanceTo(gh.f.pos))); out.ghost.tag.push(Math.round(gh.seenAt.distanceTo(gh.f.pos))); }
+      if (k === 6) out.ghost.round = Math.round(Math.atan2(Math.sin(round() - a0), Math.cos(round() - a0)) * dir * 180 / Math.PI);
+    }
+    out.ghost.after = gh.hidden; out.ghost.length = gh.R.length;
     g.raiders.setAI(false);
     // the Bell
     P = voyage('brig');
@@ -4393,39 +4466,44 @@ if (!demoOnly) {
     P = voyage('brig');
     const iron = g.raiders.spawn('frigate', P.pos.clone().add({ x: 400, y: 0, z: 0 }), 0, true, true, false, { who: who('iron') }); tough(iron.f); g.step(1 / 60, {});
     out.iron = window.__sideAndQuarter(g, iron);
-    // the wanted: the Cloud Fox sinks the Captain's ship
+    // the wanted: the Sail-Ripper, leading wave 10, sinks the Captain's ship; next voyage she leads wave 5 (the first
+    // raider captain's wave, not hers), her price up; and once she's been met, wave 10 goes to another
     P = voyage('brig');
-    Object.assign(g.waves, { n: 4, state: 'calm', timer: 0.1, next: null }); g.step(0.2, {});
-    const c1 = g.raiders.list.find((r) => r.captain), b1 = c1.bounty;
+    Object.assign(g.waves, { n: 9, state: 'calm', timer: 0.1, next: null }); g.step(0.2, {});
+    const c1 = g.raiders.list.find((r) => r.captain);
+    out.wanted = { first: c1?.who?.id };
     g.player.hit('hull', 1e9); g.step(6, {});
-    out.wanted = { sank: d.captains.fox?.sank ?? 0, card: $('paused-line').textContent };
+    Object.assign(out.wanted, { sank: d.captains.ripper?.sank ?? 0, card: $('paused-line').textContent });
     g.endVoyage(0.5);
     P = voyage('brig');
     Object.assign(g.waves, { n: 4, state: 'calm', timer: 0.1, next: null }); g.step(0.2, {});
     const c2 = g.raiders.list.find((r) => r.captain);
-    Object.assign(out.wanted, { who: c2?.who?.id, more: +(c2.bounty / b1).toFixed(2), title: $('banner-title').textContent, line: $('banner-line').textContent });
+    Object.assign(out.wanted, { who: c2?.who?.id, ship: c2?.id, more: +(c2.bounty / (g.BOUNTY[c2.id] * g.CAPTAIN.bounty)).toFixed(2), title: $('banner-title').textContent, line: $('banner-line').textContent, ten: g.nextWave(9).who?.id });
     c2.f.hit('hull', 1e9); g.step(0.2, {});
-    out.wanted.after = { ...d.captains.fox };
+    out.wanted.after = { ...d.captains.ripper };
     g.endVoyage(1); g.raiders.clear();
     return out;
   });
   {
     const N = named;
-    console.log(`named raider captains: waves 5 to 30 led by ${N.order}; wave 5 "${N.w5.title}" ("${N.w5.line}", her tag "${N.w5.tag}"); the Sail-Ripper's broadsides ${N.ripper}; the Ghost ${N.ghost.hidden && !N.ghost.locked ? 'hidden in smoke' : 'NOT HIDDEN'} (${N.ghost.d} m), out again ${N.ghost.after ? 'NOT' : ''} 8 s later; the Bell's flare brings ${N.bell.skiffs} Skiffs; the Cloud Fox under the clouds ${N.fox.under} s after she's hurt, up again at ${N.fox.up} s; the Sun-Diver ${N.diver} m over her, heading within ${N.toSun} degrees of the sun; Ironsides' side hit ${N.iron.side} against ${N.iron.quarter} off her quarter; tricks told: ${N.tricks}`);
-    console.log(`the wanted: the Cloud Fox sank her (${N.wanted.sank}: "${N.wanted.card}"), led wave 5 next voyage (${N.wanted.who}, her bounty ${N.wanted.more} times: "${N.wanted.line}"), brought down: ${JSON.stringify(N.wanted.after)}`);
+    console.log(`named raider captains: waves 5 to 30 led by ${N.order}; wave 5 "${N.w5.title}" ("${N.w5.line}", her tag "${N.w5.tag}"); the Sail-Ripper's broadsides ${N.ripper}; the Ghost ${N.ghost.hidden && !N.ghost.locked ? 'hidden in smoke' : 'NOT HIDDEN'} (${N.ghost.d} m), ${N.ghost.inSmoke.join(', ')} m from the last puff she laid each second, her tag ${Math.max(...N.ghost.tag)} m from her at most, ${N.ghost.round}° round the Captain; out again ${N.ghost.after ? 'NOT' : ''} 8 s later; the Bell's flare brings ${N.bell.skiffs} Skiffs; the Cloud Fox under the clouds ${N.fox.under} s after she's hurt, up again at ${N.fox.up} s; the Sun-Diver ${N.diver} m over her, heading within ${N.toSun} degrees of the sun; Ironsides' side hit ${N.iron.side} against ${N.iron.quarter} off her quarter; tricks told: ${N.tricks}`);
+    console.log(`the wanted: the ${N.wanted.first} led wave 10 and sank her (${N.wanted.sank}: "${N.wanted.card}"), led wave 5 next voyage (${N.wanted.who} in a ${N.wanted.ship}, her bounty ${N.wanted.more} times: "${N.wanted.title}", "${N.wanted.line}"), wave 10 then led by the ${N.wanted.ten}; brought down: ${JSON.stringify(N.wanted.after)}`);
     if (N.order !== 'fox ripper bell diver iron ghost') problems.push(`the raider captains should lead waves 5 to 30 in order: ${N.order}`);
-    if (N.w5.who !== 'fox' || N.w5.title !== 'Wave 5: Senna Vale' || !N.w5.line.startsWith('the Cloud Fox: hides in cloud, rises under you') || !/· (dead ahead|ahead on|off your|behind you)/.test(N.w5.line) || !N.w5.tag.startsWith('Senna Vale · Brig')) problems.push(`wave 5's raider captain should be named in her banner, with her trick, and on her tag: ${JSON.stringify(N.w5)}`);
+    if (N.w5.who !== 'fox' || N.w5.title !== 'Wave 5: Senna Vale' || !N.w5.line.startsWith('the Cloud Fox: hides in cloud, rises under you') || !/· below you, (dead ahead|ahead on)/.test(N.w5.line) || !N.w5.tag.startsWith('Senna Vale · Brig')) problems.push(`wave 5's raider captain should be named in her banner, with her trick and where she is (below you, coming up through the clouds), and on her tag: ${JSON.stringify(N.w5)}`);
     if (N.ripper !== 'chain round chain round') problems.push(`the Sail-Ripper's broadsides should be chain shot every other time: ${N.ripper}`);
     if (!N.ghost.hidden || !N.ghost.lost || N.ghost.locked || !N.ghost.toast.includes('vanishes in smoke') || N.ghost.after) problems.push(`the Ghost at half her hull should vanish in smoke for 8 s (not to be locked on to): ${JSON.stringify(N.ghost)}`);
+    if (N.ghost.inSmoke.length < 6 || N.ghost.inSmoke.some((d) => d > N.ghost.length * 1.6) || N.ghost.tag.some((d) => d > 20) || !(N.ghost.round >= 25)) problems.push(`the Ghost hidden in her smoke should stay in it (laying more as she goes, her tag on the smoke she's in) as she slips round the Captain: ${JSON.stringify(N.ghost)}`);
     if (N.bell.n !== 2 || N.bell.skiffs !== 2) problems.push(`the Bell's flare should bring two Skiffs: ${JSON.stringify(N.bell)}`);
     if (!(N.fox.under > 0 && N.fox.under <= 40) || !(N.fox.up > N.fox.under)) problems.push(`the Cloud Fox, hurt, should dive under the cloud floor within 40 s and come up again: ${JSON.stringify(N.fox)}`);
     if (!(N.diver >= 80) || !(N.toSun <= 20) || N.tricks !== 'cloud smoke sun') problems.push(`the Sun-Diver should climb away towards the sun after her broadside, and each trick be told: ${N.diver} m over, heading within ${N.toSun} degrees of the sun, ${N.tricks}`);
     if (!(Math.abs(N.iron.side / N.iron.quarter - 0.5) < 0.08)) problems.push(`Ironsides' plated sides should take half a hit from the side: ${JSON.stringify(N.iron)}`);
     const Wd = N.wanted;
-    if (Wd.sank !== 1 || !Wd.card.includes('Senna Vale got away') || Wd.who !== 'fox' || Wd.more !== 1.25 || !Wd.line.includes('◆ 375 on her head') || Wd.title !== 'Wanted: Senna Vale' || Wd.after.sank !== 0 || Wd.after.beaten !== 1) problems.push(`a raider captain who sinks the Captain should come back with a price on her head until she's brought down: ${JSON.stringify(Wd)}`);
+    if (Wd.first !== 'ripper' || Wd.sank !== 1 || !Wd.card.includes('Corra Dunmore got away') || Wd.who !== 'ripper' || Wd.more !== 1.25 || !Wd.line.includes('◆ 375 on her head') || Wd.title !== 'Wanted: Corra Dunmore' || !Wd.ten || Wd.ten === 'ripper' || Wd.after.sank !== 0 || Wd.after.beaten !== 1) problems.push(`a raider captain who sinks the Captain (the Sail-Ripper, at wave 10) should come back for the first captain's wave of the next voyage with a price on her head, until she's brought down: ${JSON.stringify(Wd)}`);
   }
   // waves arriving in different ways (raiders.js spawnWave), two Cutters each time, said in the banner with left and
-  // right: up through the clouds (under the cloud floor, then over it 30 s on, bursting up through it in a ring of mist),
+  // right (and not again how they come, which its title says): up through the clouds (under the cloud floor, then over
+  // it 30 s on, bursting up through it in a ring of mist, the first 800 m off or more, so in the chase view, said in a
+  // toast),
   // out of the sun (300 m or more over the Captain, within 30 degrees of the sun's bearing, their tags hidden in its glare
   // at first), from both sides (about half the circle apart), and high and low (140 m over her and 140 m under)
   const arrivals = await page.evaluate(() => {
@@ -4435,14 +4513,17 @@ if (!demoOnly) {
     const sun = Math.atan2(g.sun.position.x - g.sun.target.position.x, g.sun.position.z - g.sun.target.position.z);
     for (const how of ['below', 'sun', 'pincer', 'stack']) {
       g.fly('brig'); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.clear(); const P = g.player; P.pos.set(0, 900, 0); P.heading = 0; still(P); g.raiders.setAI(true);
-      let bursts = 0; const off = E.on('burst', () => bursts++);
+      g.cam.yaw = 0; g.cam.pitch = 0.2; g.cam.zoom = 1; g.input.lastLook = 0;
+      // (the first to burst up through the clouds: how far off, and how far up the screen in the chase view; and the
+      // toast then)
+      let bursts = 0, first = null; const off = E.on('burst', (e) => { bursts++; if (e.first && !first) { const q = e.at.clone().project(g.camera); first = { d: Math.round(Math.hypot(e.at.x - P.pos.x, e.at.z - P.pos.z)), y: +q.y.toFixed(2), toast: '' }; } });
       Object.assign(g.waves, { n: 3, state: 'calm', timer: 0.1, next: { ids: ['cutter', 'cutter'], captain: -1, treasure: [], how } }); g.step(0.2, {}); g.placeTags();
       const R = g.raiders.list, wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
       const o = { title: $('banner-title').textContent, line: $('banner-line').textContent, up: R.map((r) => Math.round(r.f.pos.y - P.pos.y)), y: R.map((r) => Math.round(r.f.pos.y)), alt: R.map((r) => r.alt),
         bearing: R.map((r) => Math.atan2(r.f.pos.x - P.pos.x, r.f.pos.z - P.pos.z)), tags: R.map((r) => !!r.tag && getComputedStyle(r.tag).display !== 'none') };
       o.apart = R.length === 2 ? Math.round(Math.abs(wrap(o.bearing[0] - o.bearing[1])) * 180 / Math.PI) : 0;
       o.fromSun = Math.round(Math.max(...o.bearing.map((b) => Math.abs(wrap(b - sun)))) * 180 / Math.PI);
-      if (how === 'below') { for (let k = 0; k < 30; k++) { still(P); g.step(1, {}); } o.after = R.map((r) => Math.round(r.f.pos.y)); o.bursts = bursts; }
+      if (how === 'below') { for (let k = 0; k < 300; k++) { still(P); g.step(0.1, {}); if (first && !first.toast) first.toast = $('toast').textContent; } o.after = R.map((r) => Math.round(r.f.pos.y)); o.bursts = bursts; o.first = first; }
       if (how === 'sun') { for (let k = 0; k < 7; k++) { still(P); g.step(1, {}); } g.placeTags(); o.later = R.map((r) => !!r.tag && getComputedStyle(r.tag).display !== 'none'); }
       delete o.bearing; off(); out[how] = o; g.raiders.setAI(false); g.raiders.clear();
     }
@@ -4450,15 +4531,19 @@ if (!demoOnly) {
   });
   {
     const A = arrivals, B = A.below, S = A.sun, Pn = A.pincer, St = A.stack;
-    console.log(`waves arriving: "${B.title}" ("${B.line}") at ${B.y.join(', ')} m, then ${B.after.join(', ')} m (${B.bursts} bursts through the clouds); "${S.title}" ("${S.line}") ${S.up.join(', ')} m over her, within ${S.fromSun}° of the sun, tags ${S.tags.some(Boolean) ? 'SHOWING' : 'hidden'} then ${S.later.every(Boolean) ? 'shown' : 'STILL HIDDEN'}; "${Pn.title}" ("${Pn.line}") ${Pn.apart}° apart; "${St.title}" ("${St.line}") at ${St.alt.join(' and ')} m`);
-    if (!B.y.every((y) => y < 430) || !B.after.every((y) => y > 430) || B.bursts < 2 || B.title !== 'Wave 4: up through the clouds!' || !B.line.includes('below you')) problems.push(`a wave up through the clouds should start under the cloud floor and burst up through it: ${JSON.stringify(B)}`);
-    if (!S.up.every((u) => u > 300) || S.fromSun > 30 || S.tags.some(Boolean) || !S.later.every(Boolean) || S.title !== 'Wave 4: out of the sun!' || !S.line.includes('above you')) problems.push(`a wave out of the sun should come from high in the sun's direction, their tags hidden in its glare at first: ${JSON.stringify(S)}`);
-    if (Math.abs(Pn.apart - 180) > 30 || Pn.title !== 'Wave 4: from both sides!' || !/(left|right|ahead|behind).* and .*(left|right|ahead|behind)/.test(Pn.line)) problems.push(`a wave from both sides should come in two groups on either side: ${JSON.stringify(Pn)}`);
-    if (St.alt.join() !== '140,-140' || St.title !== 'Wave 4: high and low!' || !St.line.includes('above and below you')) problems.push(`a wave high and low should come 140 m above and below the Captain: ${JSON.stringify(St)}`);
+    console.log(`waves arriving: "${B.title}" ("${B.line}") at ${B.y.join(', ')} m, then ${B.after.join(', ')} m (${B.bursts} bursts through the clouds, the first ${B.first?.d} m off, ${B.first?.y} up the screen: "${B.first?.toast}"); "${S.title}" ("${S.line}") ${S.up.join(', ')} m over her, within ${S.fromSun}° of the sun, tags ${S.tags.some(Boolean) ? 'SHOWING' : 'hidden'} then ${S.later.every(Boolean) ? 'shown' : 'STILL HIDDEN'}; "${Pn.title}" ("${Pn.line}") ${Pn.apart}° apart; "${St.title}" ("${St.line}") at ${St.alt.join(' and ')} m`);
+    // (the banner's line says where they are, but not again how they come when its title says it)
+    const again = (line) => /through the clouds|out of the sun|both sides|high and low|above and below|below you/.test(line);
+    if (!B.y.every((y) => y < 430) || !B.after.every((y) => y > 430) || B.bursts < 2 || B.title !== 'Wave 4: up through the clouds!' || again(B.line)) problems.push(`a wave up through the clouds should start under the cloud floor and burst up through it (its banner's line not saying so twice): ${JSON.stringify(B)}`);
+    if (!(B.first?.d >= 800) || !(B.first.y > -0.95) || !B.first.toast.startsWith('Rising through the clouds')) problems.push(`the first of a wave up through the clouds should burst through far enough off to be in the chase view (not under your own ship), said in a toast: ${JSON.stringify(B.first)}`);
+    if (!S.up.every((u) => u > 300) || S.fromSun > 30 || S.tags.some(Boolean) || !S.later.every(Boolean) || S.title !== 'Wave 4: out of the sun!' || !S.line.includes('above you') || again(S.line)) problems.push(`a wave out of the sun should come from high in the sun's direction, their tags hidden in its glare at first (its banner's line saying above you, but not out of the sun again): ${JSON.stringify(S)}`);
+    if (Math.abs(Pn.apart - 180) > 30 || Pn.title !== 'Wave 4: from both sides!' || !/(left|right|ahead|behind).* and .*(left|right|ahead|behind)/.test(Pn.line) || again(Pn.line)) problems.push(`a wave from both sides should come in two groups on either side: ${JSON.stringify(Pn)}`);
+    if (St.alt.join() !== '140,-140' || St.title !== 'Wave 4: high and low!' || again(St.line)) problems.push(`a wave high and low should come 140 m above and below the Captain: ${JSON.stringify(St)}`);
   }
   // a line of battle: three raider Brigs nose to tail, the Captain still 1.5 km off: after 20 s each follower within
   // 60 m of her place behind the ship ahead and heading within 20 degrees of the leader; close in, the line fires its
-  // sides one after another, down the line; the leader sunk, the line breaks up at once (told, and said)
+  // sides one after another, down the line; the leader sunk, the line breaks up at once (told, and said, but not again
+  // as the next is sunk); a ship running out of a line, or its leader running (lineOf.runner, leaderRan)
   const lineOf = await page.evaluate(() => {
     const g = window.__game, E = g.events, out = {}, $ = (id) => document.getElementById(id);
     g.progress.reset(); g.progress.data.skies = 'cross';
@@ -4479,11 +4564,30 @@ if (!demoOnly) {
     let told = 0; const offL = E.on('line', () => told++);
     L[0].f.hit('hull', 1e9); g.step(1 / 60, {});
     out.broken = L.slice(1).every((r) => r.leader === null && r.ahead === null); out.told = told; out.toast = $('toast').textContent;
-    offL(); g.raiders.setAI(false); g.raiders.clear();
+    // (and the next of them sunk: the line's already broken, so said no more)
+    g.step(3, {}); L[1].f.hit('hull', 1e9); g.step(1 / 60, {}); out.toast2 = $('toast').textContent;
+    offL();
+    // a ship in the middle of a line running for the clouds, and getting away: the one behind her closes up on the
+    // leader and fights on, never following her away (over a minute: her distance from the Captain, and her shots);
+    // and a two-ship line's leader running breaks it up (said), her follower not diving after her into the clouds
+    const line = (ids) => { g.raiders.clear(); P.pos.set(0, 900, 0); Object.assign(g.waves, { n: 12, state: 'calm', timer: 0.1, next: { ids, captain: -1, treasure: [], how: 'line' } }); g.step(0.2, {}); const S = g.raiders.list.slice(); for (let k = 0; k < 10; k++) { still(P); g.step(1, {}); } return S; };
+    let S = line(['frigate', 'brig', 'brig']);
+    g.raiders.startRun(S[1]); out.runner = { closed: S[2].ahead === S[0] && !S[0].line.broken };
+    S[1].f.pos.x += 3000; g.step(0.2, {}); out.runner.gone = S[1].gone;
+    let shots = 0; const offS = E.on('fire', (e) => { if (e.raider === S[2]) shots++; });
+    const d0 = S[2].f.pos.distanceTo(P.pos); for (let k = 0; k < 60; k++) { still(P); g.step(1, {}); }
+    offS(); Object.assign(out.runner, { d: [Math.round(d0), Math.round(S[2].f.pos.distanceTo(P.pos))], shots });
+    S = line(['brig', 'brig']);
+    const y0 = S[1].f.pos.y; g.raiders.startRun(S[0]); g.step(1 / 60, {});
+    out.leaderRan = { broken: S[0].line.broken, toast: $('toast').textContent };
+    for (let k = 0; k < 25; k++) { still(P); g.step(1, {}); }
+    out.leaderRan.fell = Math.round(y0 - S[1].f.pos.y);
+    g.raiders.setAI(false); g.raiders.clear();
     return out;
   });
-  console.log(`a line of battle ("${lineOf.title}", leaders ${lineOf.leaders}): after 20 s (${lineOf.d} m off) the followers ${lineOf.slots.join(' and ')} m from their places, turned ${lineOf.turned.join(' and ')}° from the leader; their sides readied in the order ${lineOf.order}; the leader sunk: ${lineOf.broken ? 'broken up' : 'STILL IN LINE'} ("${lineOf.toast}")`);
-  if (lineOf.title !== 'Wave 13: a line of battle!' || lineOf.leaders !== '-1 0 0' || lineOf.slots.some((s) => s > 60) || lineOf.turned.some((t) => t > 20) || lineOf.order !== '0 1 2' || !lineOf.broken || lineOf.told !== 1 || !lineOf.toast.includes('The line breaks')) problems.push(`a line of battle should keep station nose to tail, fire down the line, and break up when its leader goes: ${JSON.stringify(lineOf)}`);
+  console.log(`a line of battle ("${lineOf.title}", leaders ${lineOf.leaders}): after 20 s (${lineOf.d} m off) the followers ${lineOf.slots.join(' and ')} m from their places, turned ${lineOf.turned.join(' and ')}° from the leader; their sides readied in the order ${lineOf.order}; the leader sunk: ${lineOf.broken ? 'broken up' : 'STILL IN LINE'} ("${lineOf.toast}"), the next sunk: "${lineOf.toast2}"; the middle ship running and getting away: the last ${lineOf.runner.closed ? 'closed up on the leader' : 'STILL ON HER'}, ${lineOf.runner.d.join(' then ')} m off, ${lineOf.runner.shots} shots in a minute; a two-ship line's leader running: ${lineOf.leaderRan.broken ? 'broken up' : 'STILL IN LINE'} ("${lineOf.leaderRan.toast}"), her follower ${lineOf.leaderRan.fell} m lower 25 s on`);
+  if (lineOf.title !== 'Wave 13: a line of battle!' || lineOf.leaders !== '-1 0 0' || lineOf.slots.some((s) => s > 60) || lineOf.turned.some((t) => t > 20) || lineOf.order !== '0 1 2' || !lineOf.broken || lineOf.told !== 1 || !lineOf.toast.includes('The line breaks') || lineOf.toast2.includes('The line breaks')) problems.push(`a line of battle should keep station nose to tail, fire down the line, and break up when its leader goes (said once): ${JSON.stringify(lineOf)}`);
+  if (!lineOf.runner.closed || !lineOf.runner.gone || !(lineOf.runner.d[1] < 1000) || !(lineOf.runner.shots > 0) || !lineOf.leaderRan.broken || !lineOf.leaderRan.toast.includes('the line breaks') || !(lineOf.leaderRan.fell < 150)) problems.push(`a ship of a line running for the clouds should leave it (the ship behind her closing up and fighting on; its leader running breaks it up, her follower not following her down): ${JSON.stringify({ runner: lineOf.runner, leaderRan: lineOf.leaderRan })}`);
   // the Man-o'-war's fortress battle (tactics.js FORT, PLATE), a frozen raider Man-o'-war 400 m off: a hit on her hull
   // from her side doing half (within 15%) what one 30 degrees off her stern quarter does, and one from astern into her
   // stern windows double; volleys into one of her blocks of guns silencing six (said, her tag counting her guns, a
@@ -4522,6 +4626,17 @@ if (!demoOnly) {
     const W = mw.ship.wear; for (let i = 0; i < 3; i++) W.dmg[i] = mw.f.full.crystals / 5 + 1; mw.f.health.crystals = mw.f.full.crystals * 0.39; g.step(0.3, {}); g.placeTags();
     out.act3 = { act: mw.fort.act, broken: mw.fort.broken, banner: $('banner-title').textContent, reachBefore, reach: mw.gun.reaches('port', above), pips: [...mw.tag.querySelectorAll('.pips i')].map((i) => i.style.width).join(' '), acts: acts.join(' ') };
     offF(); g.raiders.clear();
+    // her last act fought high, 2 km up, fighting: her first broadside readied after it began shows a fan as tall as her
+    // upper deck now reaches; and she sinks under the cloud floor within FORT.last seconds (and a few more), whatever
+    // her height
+    P.pos.set(0, 2000, 0); for (const k of ['hull', 'sails', 'crystals']) P.full[k] = P.health[k] = 1e6;
+    const hi = g.raiders.spawn('manowar', P.pos.clone().add({ x: 400, y: 0, z: 0 }), 0, false); g.step(1 / 60, {});
+    const W2 = hi.ship.wear; for (let i = 0; i < 3; i++) W2.dmg[i] = hi.f.full.crystals / 5 + 1; hi.f.health.crystals = hi.f.full.crystals * 0.39; g.step(0.1, {});
+    g.raiders.setAI(true); hi.charge.b = 'starboard'; hi.charge.t = hi.charge.T = 0.8; g.step(1 / 60, {});
+    out.high = { act: hi.fort.act, fan: +(hi.fans?.starboard?.scale.y ?? 0).toFixed(2) };
+    let t = 0; while (t < 100 && !hi.f.down) { P.speed = 0.01; P.vy = 0; g.step(1, {}); t++; }
+    Object.assign(out.high, { down: hi.f.down?.why ?? 'still up', t, last: g.tactics.FORT.last });
+    g.raiders.setAI(false); g.raiders.clear();
     return out;
   });
   {
@@ -4532,58 +4647,82 @@ if (!demoOnly) {
     if (!F.block.dead || F.block.port !== 18 || F.block.silenced !== 1 || F.block.toast !== 'Six of her guns silenced: 42 left' || !F.block.tag.includes('42 guns') || F.block.before - F.block.after !== 6) problems.push(`volleys into a block of the Man-o'-war's guns should silence six of them: ${JSON.stringify(F.block)}`);
     if (F.act2.act !== 2 || F.act2.boats !== 'skiff skiff' || !F.act2.astern || F.act2.banner !== 'She launches her boats') problems.push(`at two-thirds of her hull the Man-o'-war should launch two Skiffs from her stern: ${JSON.stringify(F.act2)}`);
     if (F.act3.act !== 3 || F.act3.broken !== 3 || !F.act3.banner.startsWith('She\'s sinking') || F.act3.reachBefore || !F.act3.reach || F.act3.pips !== '0% 0% 0% 100% 100%' || F.act3.acts !== '2 3') problems.push(`with three columns blown out the Man-o'-war should sink, her upper guns reaching above her: ${JSON.stringify(F.act3)}`);
+    console.log(`the Man-o'-war's last act begun 2 km up: her first fan after it ${F.high.fan} times as tall, under the cloud floor (${F.high.down}) ${F.high.t} s on (at most ${F.high.last} s, and a few more)`);
+    if (F.high.act !== 3 || !(F.high.fan > 2.5) || F.high.down !== 'crystals' || !(F.high.t <= F.high.last + 5)) problems.push(`the Man-o'-war's last act should show a tall fan on a side first readied in it, and she should be under the cloud floor within a minute, however high it began: ${JSON.stringify(F.high)}`);
   }
-  // the road between waves (tactics.js ROADS): the card after wave 2 with a second way on beside Sail on, the mouse let
-  // go so it can be clicked; after wave 6 the storm road, clicked: one ship more, in a storm, shards half as much again
-  // and the wave's bonus double; again with the real 2 key; the countdown taking the steady course; a hunt taking the
-  // next raider captain early (her bounty a quarter more), her own wave then a plain one; a treasure ship's trail; no
-  // second way before a raider captain's wave (she bars the way), nor on Fair Winds into a storm
+  // the road between waves (tactics.js ROADS), in a real voyage on Crosswinds, each wave sent as the game sends it and
+  // sunk in turn: no second way on after wave 1; after wave 2 a treasure ship's trail (the steady course's raiders and a
+  // treasure Brig with them), the mouse kept locked to the view (2 takes it), taken: they come; after wave 3 a hunt for
+  // the Cloud Fox in a Brig (not the steady course's Cutter), the countdown taking the steady course; none before her
+  // wave; after wave 5 the storm road, clicked: one ship more, in a storm, shards half as much again and the wave's bonus
+  // double; after wave 6 a hunt for the Sail-Ripper in a Frigate, taken (her bounty a quarter more), her own wave then a
+  // plain one; a storm road's wave coming ahead says "into the storm!"; and on Fair Winds never a storm, but a treasure
+  // ship's trail. Then the real 2 key: pressed as the wave's last raider goes down, before the card has risen, it loads
+  // chain shot as ever and takes no road; once it's risen, it takes the second way on
   const roads = await page.evaluate(() => {
-    const g = window.__game, E = g.events, out = {}, $ = (id) => document.getElementById(id);
-    g.progress.reset(); g.progress.data.skies = 'cross';
-    g.fly('brig'); g.waves.timer = 1e9; g.raiders.setAI(false);
+    const g = window.__game, E = g.events, out = {}, $ = (id) => document.getElementById(id), W = g.waves;
     const kinds = [], offR = E.on('road', (e) => kinds.push(e.kind));
-    const card = (n) => { g.raiders.clear(); Object.assign(g.waves, { n, state: 'fight', next: null }); g.step(0.05, {}); $('calm').getAnimations().forEach((a) => a.finish());
-      return { state: g.waves.state, shown: !$('btn-road').hidden, road: $('btn-road').hidden ? '' : `${$('btn-road').querySelector('b').textContent}: ${$('btn-road').querySelector('small').textContent}`, kind: g.waves.alt?.road ?? '', next: g.waves.next.ids.length, alt: g.waves.alt?.ids.length ?? 0 }; };
-    // (the mouse locked to the view as the card comes up: let go of)
-    let let_go = 0; const realExit = document.exitPointerLock; const canvas = $('stage');
-    Object.defineProperty(document, 'pointerLockElement', { configurable: true, get: () => canvas }); document.exitPointerLock = () => { let_go++; };
-    try { out.first = card(1); } finally { delete document.pointerLockElement; document.exitPointerLock = realExit; }
-    out.first.letGo = let_go; g.sailOn();
-    out.storm = card(5); // (after wave 6: a Frigate next, or into the storm)
-    $('btn-road').click(); g.waves.timer = 0.05; g.step(0.2, {});
-    out.storm.after = { ships: g.raiders.list.length, mult: g.waves.wave?.mult, bonus: g.waves.wave?.bonus, storm: g.waves.wave?.storm, title: $('banner-title').textContent };
-    g.raiders.clear(); Object.assign(g.waves, { state: 'fight' }); const s0 = g.voyage.shards; g.step(0.05, {}); out.storm.after.waveBonus = g.voyage.shards - s0; g.sailOn();
-    out.countdown = card(5); g.step(26, {}); out.countdown.took = g.waves.state === 'calm' && !g.waves.next.road;
-    // (a hunt: the card after wave 7 offers the Sail-Ripper early; her own wave, the tenth, then has no captain)
-    out.hunt = card(7); const huntWave = g.waves.alt;
-    if (huntWave?.road === 'hunt') { $('btn-road').click(); out.hunt.who = huntWave.who?.id; out.hunt.bounty = huntWave.bounty; out.hunt.plain = g.nextWave(9).captain; }
-    // (a treasure ship's trail: the first card that offers one)
-    out.treasure = null;
-    for (let n = 2; n < 15 && !out.treasure; n++) { const c = card(n); if (c.kind === 'treasure') out.treasure = { n, ...c, prize: g.waves.alt.treasure.length || g.waves.alt.ids.includes('galleon') }; g.sailOn(); }
-    out.captain = card(3); g.sailOn(); // (wave 5 next: Senna Vale's)
-    g.progress.data.skies = 'fair'; const fair = new Set();
-    for (let n = 2; n < 14; n++) { const c = card(n); if (c.kind) fair.add(c.kind); g.sailOn(); }
+    const sail = (skies) => { g.progress.reset(); g.progress.data.skies = skies; g.fly('brig'); g.raiders.setAI(false); W.timer = 1e9; };
+    // (the next wave comes and every raider of it is sunk: the card between waves, risen, and what it offers)
+    const beat = () => {
+      Object.assign(W, { state: 'calm', timer: 0.01 }); g.step(0.05, {});
+      const cap = g.raiders.list.find((r) => r.who);
+      const came = { ids: g.raiders.list.map((r) => r.id).join(','), road: W.wave?.road ?? 'steady', treasure: g.raiders.list.filter((r) => r.role === 'prize').length, captain: cap?.who.id ?? '', ship: cap?.id ?? '' };
+      for (const r of g.raiders.list) r.f.hit('hull', 1e9);
+      g.step(0.1, {}); $('calm').getAnimations().forEach((a) => a.finish()); g.raiders.clear();
+      const road = $('btn-road');
+      return { came, n: W.n, state: W.state, shown: !road.hidden, kind: W.alt?.road ?? '', words: road.hidden ? '' : `${road.querySelector('b').textContent}: ${road.querySelector('small').textContent}`, next: W.next.ids.join(','), alt: W.alt?.ids.join(',') ?? '' };
+    };
+    sail('cross');
+    out.first = beat(); g.sailOn(0);
+    // (the mouse locked to the view as the card after wave 2 comes up: kept locked)
+    let letGo = 0; const realExit = document.exitPointerLock, canvas = $('stage');
+    Object.defineProperty(document, 'pointerLockElement', { configurable: true, get: () => canvas }); document.exitPointerLock = () => { letGo++; };
+    try { out.treasure = beat(); } finally { delete document.pointerLockElement; document.exitPointerLock = realExit; }
+    out.treasure.letGo = letGo;
+    $('btn-road').click();
+    out.hunt = beat(); out.treasure.came = out.hunt.came;
+    out.hunt.who = W.alt?.who?.id ?? ''; out.hunt.ship = W.alt ? W.alt.ids[W.alt.captain] : '';
+    g.step(26, {}); out.hunt.countdown = W.state === 'calm' && !W.next.road;
+    out.captain = beat(); g.sailOn(0);
+    out.storm = beat();
+    $('btn-road').click(); Object.assign(W, { state: 'calm', timer: 0.01 }); g.step(0.05, {});
+    out.storm.after = { ships: g.raiders.list.length, mult: W.wave?.mult, bonus: W.wave?.bonus, storm: W.wave?.storm, road: W.wave?.road };
+    g.raiders.clear(); const s0 = g.voyage.shards; g.step(0.05, {}); out.storm.after.waveBonus = g.voyage.shards - s0; out.storm.after.n = W.n;
+    $('calm').getAnimations().forEach((a) => a.finish());
+    out.ripper = { kind: W.alt?.road ?? '', who: W.alt?.who?.id ?? '', ship: W.alt ? W.alt.ids[W.alt.captain] : '', words: $('btn-road').hidden ? '' : $('btn-road').querySelector('small').textContent };
+    if (W.alt?.road === 'hunt') { const alt = W.alt; $('btn-road').click(); out.ripper.bounty = alt.bounty; out.ripper.plain = g.nextWave(9).captain; out.ripper.came = beat().came; }
+    const P = g.player, sw = g.roadWave('storm', g.nextWave(6));
+    out.stormTitle = g.bannerFor(sw, { a: P.heading, how: sw.how }).title;
+    sail('fair'); const fair = new Set();
+    for (let n = 0; n < 14; n++) { const c = beat(); if (c.kind) fair.add(c.kind); g.sailOn(0); }
     out.fair = [...fair].sort().join(' ');
     g.progress.data.skies = 'cross'; offR(); out.kinds = kinds.join(' ');
     return out;
   });
-  // (and the real 2 key, on the storm road's card)
-  // (the page's own frames read the real keys, not a test's steps: so it waits for one to answer the key)
-  await page.evaluate(() => { const g = window.__game; document.activeElement?.blur?.(); g.raiders.clear(); Object.assign(g.waves, { n: 5, state: 'fight', next: null }); g.step(0.05, {}); });
+  // (and the real 2 key, on the card after wave 2 of a fresh voyage, with chain shot aboard: as the last raider goes down,
+  // and once the card has risen. The page's own frames read the real keys, not a test's steps: it waits for them)
+  await page.evaluate(() => {
+    const g = window.__game, W = g.waves; document.activeElement?.blur?.();
+    g.progress.reset(); g.progress.data.skies = 'cross'; g.progress.data.shots.chain = true; g.fly('brig'); g.raiders.setAI(false); W.timer = 1e9; g.pickShot('round');
+    for (let n = 0; n < 2; n++) { Object.assign(W, { state: 'calm', timer: 0.01 }); g.step(0.05, {}); for (const r of g.raiders.list) r.f.hit('hull', 1e9); g.step(0.1, {}); if (n === 0) { g.raiders.clear(); g.sailOn(0); } }
+  });
+  await page.keyboard.press('2');
+  await page.waitForTimeout(250);
+  roads.early = await page.evaluate(() => { const g = window.__game; return { state: g.waves.state, alt: g.waves.alt?.road ?? '', shot: g.gunnery.shot, risen: g.cardRisen() }; });
+  await page.waitForFunction(() => window.__game.cardRisen(), null, { timeout: 30000 }).catch(() => {});
   await page.keyboard.press('2');
   await page.waitForFunction(() => window.__game.waves.state !== 'choose', null, { timeout: 30000 }).catch(() => {});
-  roads.key = await page.evaluate(() => { const g = window.__game; return { state: g.waves.state, road: g.waves.next?.road ?? 'steady' }; });
+  roads.key = await page.evaluate(() => { const g = window.__game; g.raiders.clear(); g.progress.data.shots.chain = false; g.pickShot('round'); return { state: g.waves.state, road: g.waves.next?.road ?? 'steady' }; });
   {
     const R = roads;
-    console.log(`the road between waves: after wave 2 "${R.first.road}" (the mouse let go ${R.first.letGo} time); after wave 6 "${R.storm.road}", taken: ${R.storm.after.ships} ships ("${R.storm.after.title}", shards ×${R.storm.after.mult}, the wave's bonus ×${R.storm.after.bonus}: ◆ ${R.storm.after.waveBonus}); the 2 key took the ${R.key.road} road; the countdown ${R.countdown.took ? 'took the steady course' : 'DID NOT'}; a hunt "${R.hunt.road}" (her bounty ×${R.hunt.bounty}, wave 10's captain then ${R.hunt.plain}); a treasure ship's trail after wave ${R.treasure?.n} ("${R.treasure?.road}"); before Senna Vale's wave: ${R.captain.shown ? 'A SECOND WAY' : 'one way on'}; on Fair Winds: ${R.fair}`);
-    if (!R.first.shown || R.first.letGo !== 1) problems.push(`the card after wave 2 should offer a second way on, letting go of the mouse so it can be clicked: ${JSON.stringify(R.first)}`);
-    if (R.storm.kind !== 'storm' || R.storm.alt !== R.storm.next + 1 || R.storm.after.ships !== R.storm.alt || R.storm.after.mult !== 1.5 || R.storm.after.bonus !== 2 || !R.storm.after.storm || R.storm.after.title !== 'Wave 7: into the storm!' || R.storm.after.waveBonus !== Math.round(20 * 7 * 1.25 * 2)) problems.push(`the storm road should bring one ship more, in a storm, for half as many shards again and a double bonus: ${JSON.stringify(R.storm)}`);
-    if (R.key.state !== 'calm' || R.key.road !== 'storm') problems.push(`the 2 key should take the second way on: ${JSON.stringify(R.key)}`);
-    if (!R.countdown.took) problems.push(`the card's countdown should take the steady course: ${JSON.stringify(R.countdown)}`);
-    if (R.hunt.kind !== 'hunt' || R.hunt.who !== 'ripper' || R.hunt.bounty !== 1.25 || R.hunt.plain !== -1 || !R.hunt.road.startsWith('Hunt Corra Dunmore')) problems.push(`a hunt should bring the next raider captain early, her bounty a quarter more, and her own wave then be plain: ${JSON.stringify(R.hunt)}`);
-    if (!R.treasure?.prize || !R.treasure.road.includes('treasure')) problems.push(`a treasure ship's trail should bring a treasure ship: ${JSON.stringify(R.treasure)}`);
-    if (R.captain.shown || R.fair.includes('storm') || !R.kinds.includes('steady')) problems.push(`a raider captain's wave should bar a second way, and Fair Winds never offer a storm: ${JSON.stringify({ captain: R.captain, fair: R.fair, kinds: R.kinds })}`);
+    console.log(`the road between waves, in a real voyage: after wave 1 ${R.first.shown ? 'A SECOND WAY' : 'one way on'}; after wave 2 "${R.treasure.words}" (the mouse let go ${R.treasure.letGo} times), taken: ${R.treasure.came.ids} (${R.treasure.came.treasure} treasure ship, the steady course ${R.treasure.next}); after wave 3 "${R.hunt.words}" (${R.hunt.who} in a ${R.hunt.ship}, the steady course ${R.hunt.next}), the countdown ${R.hunt.countdown ? 'took the steady course' : 'DID NOT'}; before Senna Vale's wave: ${R.captain.shown ? 'A SECOND WAY' : 'one way on'}; after wave 5 "${R.storm.words}", taken: ${R.storm.after.ships} ships, shards ×${R.storm.after.mult}, the wave's bonus ×${R.storm.after.bonus} (◆ ${R.storm.after.waveBonus}); after wave 6 "${R.ripper.words}" (${R.ripper.who} in a ${R.ripper.ship}, her bounty ×${R.ripper.bounty}, wave 10's captain then ${R.ripper.plain}); a storm road's wave ahead: "${R.stormTitle}"; on Fair Winds: ${R.fair}; the 2 key as the last raider went down: ${R.early.state}, ${R.early.shot} loaded, then once the card had risen: the ${R.key.road} road`);
+    if (R.first.shown || !R.treasure.shown || R.treasure.kind !== 'treasure' || R.treasure.letGo !== 0 || R.treasure.words !== 'A treasure ship\'s trail: The same raiders, and a treasure Brig to catch' || R.treasure.came.road !== 'treasure' || R.treasure.came.treasure !== 1 || R.treasure.came.ids !== `brig,${R.treasure.next}`) problems.push(`in a real voyage the card after wave 2 should offer a treasure ship's trail, the steady course's raiders and a treasure Brig with them, keeping the mouse locked: ${JSON.stringify({ first: R.first.shown, treasure: R.treasure })}`);
+    if (R.hunt.kind !== 'hunt' || R.hunt.who !== 'fox' || R.hunt.ship !== 'brig' || !R.hunt.next.startsWith('cutter') || R.hunt.words !== 'Hunt Senna Vale: The Cloud Fox, a wave early: a quarter more on her head' || !R.hunt.countdown) problems.push(`the card after wave 3 should offer to hunt the Cloud Fox in a Brig (not the steady course's Cutter), and its countdown take the steady course: ${JSON.stringify(R.hunt)}`);
+    if (R.storm.kind !== 'storm' || R.storm.alt.split(',').length !== R.storm.next.split(',').length + 1 || R.storm.after.ships !== R.storm.alt.split(',').length || R.storm.after.mult !== 1.5 || R.storm.after.bonus !== 2 || !R.storm.after.storm || R.storm.after.waveBonus !== Math.round(20 * R.storm.after.n * 1.25 * 2) || !R.storm.words.startsWith('Into the storm: The same raiders and a ') || !/: into the storm!$/.test(R.stormTitle)) problems.push(`the storm road should bring one ship more, in a storm, for half as many shards again and a double bonus: ${JSON.stringify({ storm: R.storm, title: R.stormTitle })}`);
+    if (R.ripper.kind !== 'hunt' || R.ripper.who !== 'ripper' || R.ripper.ship !== 'frigate' || R.ripper.bounty !== 1.25 || R.ripper.plain !== -1 || R.ripper.came?.captain !== 'ripper' || R.ripper.words !== 'The Sail-Ripper, three waves early: a quarter more on her head') problems.push(`a hunt should bring the next raider captain early in her own wave's ship, her bounty a quarter more, and her own wave then be plain: ${JSON.stringify(R.ripper)}`);
+    if (R.captain.shown || R.fair.includes('storm') || !R.fair.includes('treasure') || !R.kinds.includes('steady')) problems.push(`a raider captain's wave should bar a second way, and Fair Winds never offer a storm (but a treasure ship's trail): ${JSON.stringify({ captain: R.captain, fair: R.fair, kinds: R.kinds })}`);
+    if (R.early.state !== 'choose' || !R.early.alt || R.early.shot !== 'chain' || R.early.risen || R.key.state !== 'calm' || R.key.road !== 'treasure') problems.push(`the 2 key should load chain shot until the card between waves has risen, and only then take the second way on: ${JSON.stringify({ early: R.early, key: R.key })}`);
   }
   });
   // pictures of foes worth remembering (looked at by eye): a named raider captain's banner and her tag; a crew raider
@@ -4604,17 +4743,26 @@ if (!demoOnly) {
       const r = g.raiders.spawn('brig', P.pos.clone().add({ x: -95, y: 25, z: 60 }), 1.9, true); g.raiders.spawn('skiff', P.pos.clone().add({ x: 3000, y: 0, z: 3000 }), 0, true);
       g.step(1 / 60, {}); r.f.health.hull = r.f.full.hull * 0.4; r.f.hit('sails', 1e9); g.step(4.4, {}); g.cam.zoom = 0.75; ${aimAtIt}`));
     await page.waitForTimeout(800); await shot(page, 'laptop-struck'); await unhold();
-    await look(at(`g.raiders.clear(); g.cam.zoom = 1; P.pos.set(0, 900, 0); P.heading = 0;
-      const r = g.raiders.spawn('brig', P.pos.clone().add({ x: 90, y: -20, z: 330 }), 2.4, false); r.f.health.hull = r.f.full.hull * 0.45;
-      g.raiders.setAI(true); g.step(0.1, {}); g.raiders.setAI(false); r.frozen = true; g.step(2.75, {}); ${aimAtIt} g.cam.pitch = -0.3; g.step(1 / 60, {}); g.placeTags();`));
+    // (the flare just after it bursts, in the chase view turned to her, clear of your own ship)
+    await look(at(`g.raiders.clear(); g.cam.zoom = 1; P.pos.set(0, 900, 0); P.heading = 0; P.speed = 0.01; P.sail = 0;
+      const r = g.raiders.spawn('brig', P.pos.clone().add({ x: 170, y: -10, z: 400 }), 2.4, false); r.f.health.hull = r.f.full.hull * 0.45;
+      g.raiders.setAI(true); g.step(0.1, {}); g.raiders.setAI(false); r.frozen = true; g.step(1.75, {});
+      g.cam.yaw = Math.atan2(r.f.pos.x - P.pos.x, r.f.pos.z - P.pos.z) - P.heading; g.cam.pitch = 0.2; g.input.lastLook = performance.now() / 1000 + 120; g.step(1 / 60, {}); g.placeTags();`));
     await page.waitForTimeout(400); await shot(page, 'laptop-flare'); await unhold();
-    for (const how of ['below', 'sun']) {
-      await look(at(`g.raiders.clear(); g.raiders.setAI(true); P.pos.set(0, 900, 0); P.heading = 0; P.speed = 3;
-        Object.assign(g.waves, { n: 3, state: 'calm', timer: 0.1, next: { ids: ['cutter', 'cutter', 'skiff'], captain: -1, treasure: [], how: '${how}' } }); g.step(0.2, {});
-        ${how === 'below' ? `for (let k = 0; k < 600 && !g.raiders.list.some((x) => x.f.pos.y > 425); k++) g.step(0.05, {}); g.step(0.5, {});` : 'g.step(3, {});'}
-        g.raiders.setAI(false); const r = g.raiders.list[0]; ${aimAtIt}`));
+    // (each way a wave arrives: up through the clouds (as the first bursts through, in the chase view), out of the sun,
+    // from both sides (the view swung to take in a raider of each side), and high and low (framing the high one and the
+    // low one))
+    for (const how of ['below', 'sun', 'pincer', 'stack']) {
+      const frame = how === 'below' ? `const r = g.raiders.list.reduce((m, x) => (x.f.pos.y > m.f.pos.y ? x : m)); g.cam.yaw = Math.atan2(r.f.pos.x - P.pos.x, r.f.pos.z - P.pos.z) - P.heading; g.cam.pitch = 0.2; g.input.lastLook = performance.now() / 1000 + 120; g.step(1 / 60, {}); g.placeTags();`
+        : how === 'pincer' || how === 'stack' ? `const a = g.raiders.list[0].f.pos, b = g.raiders.list.find((x) => (${how === 'pincer' ? 'x.f.pos.clone().sub(P.pos).dot(a.clone().sub(P.pos)) < 0' : 'Math.sign(x.f.pos.y - P.pos.y) !== Math.sign(a.y - P.pos.y)'}))?.f.pos ?? a, r = { f: { pos: a.clone().add(b).multiplyScalar(0.5) } }; ${aimAtIt} g.cam.zoom = ${how === 'pincer' ? 0.6 : 0.8}; g.step(1 / 60, {}); g.placeTags();`
+          : `const r = g.raiders.list[0]; ${aimAtIt}`;
+      await look(at(`g.raiders.clear(); g.raiders.setAI(true); P.pos.set(0, 900, 0); P.heading = 0; P.speed = 3; g.cam.zoom = 1;
+        Object.assign(g.waves, { n: 3, state: 'calm', timer: 0.1, next: { ids: ['cutter', 'cutter', 'skiff'${how === 'pincer' ? ", 'skiff'" : ''}], captain: -1, treasure: [], how: '${how}' } }); g.step(0.2, {});
+        ${how === 'below' ? `let up = false; const off = g.events.on('burst', () => { up = true; }); for (let k = 0; k < 600 && !up; k++) g.step(0.05, {}); off(); g.step(0.3, {});` : how === 'sun' ? 'g.step(3, {});' : 'g.step(8, {});'}
+        g.raiders.setAI(false); ${frame}`));
       await banner(); await page.waitForTimeout(600); await shot(page, `laptop-arrive-${how}`); await unhold();
     }
+    await page.evaluate(() => { window.__game.cam.zoom = 1; });
     await look(at(`g.raiders.clear(); g.raiders.setAI(true); P.pos.set(0, 900, 0); P.heading = 0; P.speed = 3; for (const k of ['hull', 'sails', 'crystals']) P.full[k] = P.health[k] = 1e6;
       Object.assign(g.waves, { n: 12, state: 'calm', timer: 0.1, next: { ids: ['frigate', 'frigate', 'brig'], captain: -1, treasure: [], how: 'line' } }); g.step(0.2, {}); g.step(34, {});
       g.raiders.setAI(false); const r = g.raiders.list[1]; ${aimAtIt} g.cam.pitch += 0.12; g.step(1 / 60, {}); g.placeTags();`));
@@ -4650,13 +4798,17 @@ if (!demoOnly) {
   {
     const HUD = ['ship', 'compass', 'btn-pause', 'minimap', 'score', 'battery', 'toast', 'warn', 'banner', 'region', 'aim', 'help', 'btn-help', 'calm'];
     const PANELS = ['ship', 'compass', 'btn-pause', 'minimap', 'score', 'battery', 'help', 'btn-help'];
+    // (the longest banner line the game writes, tried with the rest; every wave's line kept to the limit)
+    const SAY = await longestBanner(page);
+    console.log(`a wave's banner: the longest of ${SAY.lines} lines ${SAY.line.length} letters ("${SAY.title}": "${SAY.line}"), the limit ${SAY.limit}${SAY.over.length ? `; OVER IT: ${SAY.over.join('; ')}` : ''}`);
+    if (SAY.over.length || !(SAY.line.length > 60 && SAY.line.length <= SAY.limit)) problems.push(`every wave's banner line should keep to ${SAY.limit} letters, so it fits a phone: ${JSON.stringify(SAY)}`);
     const voyages = await page.evaluate(() => { const S = window.__game.settings, n = S.data.voyages; S.keep('voyages', 0); return n; });
     const layouts = [];
     for (const [w, h] of [[1280, 800], [1366, 768], [1024, 640]]) {
       await page.setViewportSize({ width: w, height: h }); await page.waitForTimeout(500);
       await page.waitForFunction(([w, h]) => Math.abs(window.__game.camera.aspect - w / h) < 1e-6, [w, h], { timeout: 30000 }).catch(() => problems.push(`laptop ${w}x${h}: the game never heard the window change size`));
       const keys = await page.evaluate(() => window.__game.settings.data.voyages < 2 ? 'the keys' : 'the Keys button');
-      layouts.push(`${w}x${h} with ${keys}: ${layoutProblems(await layoutAt(page, HUD, PANELS, w === 1024), `laptop ${w}x${h}`)}; a bounty ${bountyProblems(await bountyCard(page), `laptop ${w}x${h}`)}`);
+      layouts.push(`${w}x${h} with ${keys}: ${layoutProblems(await layoutAt(page, HUD, PANELS, w === 1024, { say: SAY }), `laptop ${w}x${h}`)}; a bounty ${bountyProblems(await bountyCard(page), `laptop ${w}x${h}`)}`);
     }
     console.log(`laptop layouts: ${layouts.join('; ')}`);
     await page.evaluate((n) => window.__game.settings.keep('voyages', n + 3), voyages);
@@ -4945,7 +5097,7 @@ if (!quick && !demoOnly) {
   // with the touch buttons and the hint
   const HUD = ['ship', 'compass', 'btn-pause', 'minimap', 'score', 'battery', 'toast', 'warn', 'banner', 'region', 'aim', 'btn-fire', 'btn-surge', 'btn-shot', 'btn-patch', 'btn-sail-up', 'btn-sail-down', 'touch-hint', 'calm'];
   const PANELS = ['ship', 'compass', 'btn-pause', 'minimap', 'score', 'battery', 'touch-buttons', 'touch-hint'];
-  const layouts = [];
+  const layouts = [], SAY = await longestBanner(page); // (the longest banner line the game writes)
   for (const [w, h] of [[390, 844], [360, 640], [844, 390], [740, 360], [640, 360], [568, 320]]) {
     // (the new size, once the game has heard of it: drawn in software, a frame can take longer than the half second)
     await page.setViewportSize({ width: w, height: h }); await page.waitForTimeout(500);
@@ -4956,7 +5108,7 @@ if (!quick && !demoOnly) {
     // upright with the Patch button alone; then with both buttons showing (chain shot aboard, her hull at 60%)
     const passes = [['as a new Captain sees it', { shot: false, hurt: false }], ['with Fire on the left', w > h ? { left: true } : { left: true, shot: false }], ['', {}]];
     for (const [what, o] of passes) {
-      const L = await layoutAt(page, HUD, PANELS, w === 360 && !what, o), want = (o.shot ?? true) + (o.hurt ?? true), where = `phone ${w}x${h}${what ? ` ${what}` : ''}`;
+      const L = await layoutAt(page, HUD, PANELS, w === 360 && !what, { ...o, say: SAY }), want = (o.shot ?? true) + (o.hurt ?? true), where = `phone ${w}x${h}${what ? ` ${what}` : ''}`;
       if (L.tacButtons !== want) problems.push(`${where}: the layout test should measure ${want ? `the ${want === 2 ? 'shot and Patch buttons' : 'Patch button'}` : 'no shot or Patch button'} with the rest (${L.tacButtons} of the two showing)`);
       layouts.push(`${w}x${h}${what ? ` ${what}` : ''}: ${layoutProblems(L, where)}`);
     }
@@ -4964,6 +5116,29 @@ if (!quick && !demoOnly) {
     if (h === 360 || h === 320 || h === 844) layouts.push(`${w}x${h}: a shot earned as the wave ends: ${earnedProblems(await earnedLast(page), `phone ${w}x${h}`, true)}`);
   }
   console.log(`phone layouts: ${layouts.join('; ')}`);
+  // between waves on a phone held sideways (the card docked at the top), Sail on and Back to port stay where they always
+  // are with a second way on, which goes under them (a tap where Sail on always is never takes the other road); held
+  // upright (the card grows up from the buttons), the second way on goes over them
+  const roadOrder = [];
+  for (const [w, h] of [[844, 390], [390, 844]]) {
+    await page.setViewportSize({ width: w, height: h }); await page.waitForTimeout(500);
+    await page.waitForFunction(([w, h]) => Math.abs(window.__game.camera.aspect - w / h) < 1e-6, [w, h], { timeout: 30000 }).catch(() => {});
+    roadOrder.push(await page.evaluate(([w, h]) => {
+      const g = window.__game, $ = (id) => document.getElementById(id), W = g.waves, box = (id) => { const b = $(id).getBoundingClientRect(); return { l: Math.round(b.left), t: Math.round(b.top), r: Math.round(b.right), b: Math.round(b.bottom) }; };
+      g.progress.reset(); g.progress.data.skies = 'cross'; g.fly('brig'); g.raiders.setAI(false); W.timer = 1e9; g.raiders.clear();
+      const card = (n, stay = false) => { Object.assign(W, { n, state: 'fight', next: null }); g.step(0.05, {}); $('calm').getAnimations().forEach((a) => a.finish()); const out = { road: !$('btn-road').hidden, sail: box('btn-sail-on'), port: box('btn-go-port'), alt: $('btn-road').hidden ? null : box('btn-road') }; if (!stay) g.sailOn(0); return out; };
+      return { size: `${w}x${h}`, plain: card(0), roads: card(1, true) };
+    }, [w, h]));
+    await page.waitForTimeout(300); await shot(page, `${w > h ? 'side' : 'phone'}-road`); // (the card with a second way on, to look at)
+    await page.evaluate(() => window.__game.sailOn(0));
+  }
+  await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(500);
+  {
+    const [S, U] = roadOrder, same = (a, b) => Math.abs(a.l - b.l) <= 1 && Math.abs(a.t - b.t) <= 1;
+    console.log(`phone, the card between waves with a second way on: held sideways Sail on ${same(S.plain.sail, S.roads.sail) ? 'where it always is' : `MOVED from ${S.plain.sail.l},${S.plain.sail.t} to ${S.roads.sail.l},${S.roads.sail.t}`}, the road ${S.roads.alt && S.roads.alt.t >= S.roads.sail.b ? 'under it' : 'NOT UNDER IT'}; upright the road ${U.roads.alt && U.roads.alt.b <= U.roads.sail.t + 1 ? 'over Sail on' : 'NOT OVER SAIL ON'}`);
+    if (S.plain.road || !S.roads.road || !same(S.plain.sail, S.roads.sail) || !same(S.plain.port, S.roads.port) || !(S.roads.alt.t >= S.roads.sail.b)) problems.push(`phone held sideways: with a second way on, Sail on and Back to port should stay where they always are, the road under them: ${JSON.stringify(S)}`);
+    if (!U.roads.road || !(U.roads.alt.b <= U.roads.sail.t + 1)) problems.push(`phone held upright: a second way on should go over Sail on and Back to port: ${JSON.stringify(U)}`);
+  }
   // reading a fight from afar on a phone: upright, a raider's glows, scars and fire and a far wake; held sideways, two
   // raiders' tags far off (the gate's case: the lower one used to be pushed down over her Brig), and the glows again
   await sized(page, 390, 844, 'phone');

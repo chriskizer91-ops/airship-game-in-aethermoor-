@@ -613,7 +613,12 @@
     #wind { font-size: 12px; }
     .wide { display: none; }
     .narrow { display: inline; }
-    #score { font-size: 12px; padding: 3px 8px; top: calc(var(--top) + var(--map-w) / 1.5 + 8px); }
+    /* (the score in two lines under the map, as held upright: the wave and the shards, then the raiders downed, so it
+       stays about as narrow as the map and the card between waves, beside it, never runs into it) */
+    #score { display: grid; grid-template-columns: auto auto; gap: 0 8px; justify-items: end; font-size: 12px; padding: 3px 8px; top: calc(var(--top) + var(--map-w) / 1.5 + 8px); }
+    #score > span + span::before { content: none; }
+    #score .sc-wave { order: -1; }
+    #score .sc-down { grid-column: 1 / -1; order: 1; }
     #region { top: calc(var(--top) + 36px); font-size: 19px; }
     #banner { top: calc(var(--top) + 34px); max-width: calc(100% - 2 * (var(--gutter) + 172px)); padding: 4px 14px 6px; border-radius: 22px; }
     #banner-title { font-size: 20px; }
@@ -796,15 +801,21 @@
     #pp-mods-part { order: -1; }
     #pp-mods-part h3 { display: none; }
   }
-  /* a second way on, on a phone: across the card, over Sail on and Back to port; held sideways, a little smaller, and the
-     card with it reaches down past Fire and Surge, which wait meanwhile (there's nothing to fire at between waves) */
+  /* a second way on, on a phone: across the card, over Sail on and Back to port held upright (the card grows upwards
+     from the buttons, so they stay where they always are); held sideways, under them (the card is docked at the top
+     there, so Sail on and Back to port stay in their places and a tap where Sail on always is never takes the other
+     road), a little smaller, and the card with it reaches down past Fire and Surge, which wait meanwhile (there's
+     nothing to fire at between waves) */
   @media (max-width: 700px), (max-height: 500px) {
     #calm.roads .choices { flex-wrap: wrap; }
     #calm.roads #btn-road { order: -1; flex: 1 1 100%; }
   }
+  @media (max-height: 500px) { #calm.roads #btn-road { order: 1; } }
   /* (and the toast, between waves with a second way on, out of the taller card's way: upright, just under the region's
-     name; held sideways, at the foot of the screen between the thumbs) */
-  @media (max-width: 700px) and (min-height: 501px) { body.between.roads #toast { top: calc(var(--top) + 196px); } }
+     name, or higher, just over the card, when the card reaches up past there (a long line and a road's two lines, on a
+     small phone: --calm-top, where the card's top is, main.js layout); held sideways, at the foot of the screen between
+     the thumbs) */
+  @media (max-width: 700px) and (min-height: 501px) { body.between.roads #toast { top: min(calc(var(--top) + 196px), calc(var(--calm-top, 100vh) - 56px)); } }
   @media (max-height: 500px) {
     body.between.roads #toast { top: auto; bottom: calc(var(--bottom) + 6px); }
     body.between.roads #btn-fire, body.between.roads #btn-surge { visibility: hidden; }
