@@ -320,6 +320,25 @@
 //                     card fitting the screen; dragging her round in port; on a phone, its frames costing no more than
 //                     a voyage's (timed in turns with a voyage's) and drawn in fewer goes, and pictures of it upright
 //                     and sideways
+//                     the Captain's record (deeds.js, coach.js, record.js, paint.js, and the save's version 2): an old
+//                     save (version 1) keeping everything, credited the stars its best waves prove and paid them once as
+//                     back pay, from this device and from the store (and on a phone, said in port, with its rank and
+//                     stars on the title); a broken save made whole; a long career's save small enough to send often; a
+//                     brand-new Captain's first voyage, on a laptop and a phone, with the tips at their moments (how to
+//                     steer, the ring, firing once locked on; worded for the device and the hand, in the hint's place
+//                     on a phone) and her first raider coming ahead, closer, holding her fire till the Captain fires;
+//                     the tips' place clear of everything in every layout, at their longest; commendations paying once
+//                     (First Prize, High Ground, Under the Clouds, Two at Once, Fortress Fallen, Small but Fierce, and A
+//                     Fleet of Four bought in port), their toasts waiting their turn and none longer than the longest
+//                     the screens are tried with; stars paid once (Crosswinds' fifth, the Maelstrom's tenth and its
+//                     storm-silver sails); a rank risen told coming home with its purse, and not twice; coming home's
+//                     card after a voyage lost (half kept, the purse counting up) and Sail again; the card, the log and
+//                     her colours fitting every phone size, their buttons in view; the Captain's log (every
+//                     commendation, the records, the voyages; its list and the save's the same); the quartermaster's
+//                     line and its gold dot; colours bought in port on her ship on the berth with no new shaders (the
+//                     hoist still gold, a raider's sails still rust, a rank's colour not for sale, one tried on gone
+//                     as she leaves, none a raider's); harbour orders (three a day, the same asked again, each paid
+//                     once, the thanks for all three, fresh the next day); a tip given kept through a reload; pictures
 // Run: node tools/build.mjs && node tools/check.mjs [--quick | --ships] [folder]
 //   --quick: only the game page at laptop size (for checking during work; the full run is the one that counts)
 //   --ships: only the ships demo (dist/hangar.html), on the laptop and the phone, upright and sideways
@@ -480,6 +499,43 @@ const sized = async (page, w, h, where) => {
   sync.push(['a save from before the big two', `${bigTwo(olden)}; from the store ${bigTwo(adopted)}`, '420 brig brig true armour 2, galleon false 0, man-o\'-war false 0, shot false false; from the store 421 brig brig true armour 2, galleon false 0, man-o\'-war false 0, shot true false']);
   for (const [what, was, want] of sync) if (was !== want) problems.push(`the save between two devices, ${what}: ${was}, should be ${want}`);
   console.log(`the save between two devices: ${sync.every(([, a, b]) => a === b) ? 'the newest save always wins, and no voyage is lost' : 'WRONG'}`);
+  // version 2 of the save (the Captain's record: deeds.js). A version 1 save (◆ 500, the Brig owned, best wave 7 on
+  // Crosswinds and 12 on the Maelstrom) keeps everything it had, earns the stars its best waves prove, paid once as back
+  // pay (Crosswinds' fifth ◆ 100, the Maelstrom's fifth and tenth ◆ 200 and 500, and the Maelstrom's storm-silver sails)
+  // and a rank from the renown of those waves (no purse), and opened again pays nothing more; and from the store, saved
+  // by a device still on the old game, the same. A save with a commendation the game doesn't have, a log of 40 voyages
+  // (one of them broken), shards that aren't a number, orders of the wrong length and colours it doesn't own: the
+  // commendation dropped, the last 12 good voyages kept, shards 0, the orders and colours as fresh. And a long career's
+  // save (every list full: 12 voyages logged, every commendation, tip, star, dye and land) small enough to send often
+  {
+    const v2 = [], ship4b = (owned) => ({ owned, power: 0, mods: { armour: 0, canvas: 0, drill: 0, crystals: 0 } });
+    const old = { v: 1, saved: 5, shards: 500, skies: 'cross', voyages: 9, best: { fair: 0, cross: 7, mael: 12 }, ships: { skiff: ship4b(true), brig: ship4b(true) }, shots: { chain: true } };
+    const oldLS = new Map([['skies-of-aethermoor/save-1', JSON.stringify(old)]]);
+    const was = (p) => { const d = p.data; return `v${d.v} ◆ ${d.shards} brig ${d.ships.brig.owned} chain ${d.shots.chain} best ${d.best.cross}/${d.best.mael} voyages ${d.voyages}, stars ${['fair', 'cross', 'mael'].map((k) => Object.values(d.stars[k]).join('')).join(' ')}, rank ${d.rank} (renown ${d.stats.renown}), storm sails ${d.dyes.storm}, paint ${d.ships.brig.paint.sails}/${d.ships.brig.paint.pennant}`; };
+    let up = device(oldLS, { online: false }); const paid = [up.takeBackPay(), up.takeBackPay()];
+    v2.push(['a version 1 save brought up', `${was(up)}, back pay ${paid.join(' then ')}`, 'v2 ◆ 1300 brig true chain true best 7/12 voyages 9, stars 000 100 110, rank 3 (renown 1450), storm sails 1, paint sailcloth/plum, back pay 800 then 0']);
+    up = device(oldLS, { online: false });
+    v2.push(['opened again', `${was(up)}, back pay ${up.takeBackPay()}`, 'v2 ◆ 1300 brig true chain true best 7/12 voyages 9, stars 000 100 110, rank 3 (renown 1450), storm sails 1, paint sailcloth/plum, back pay 0']);
+    for (const pg of pages) if (!pg.closed) { pg.closed = true; for (const f of pg.subs) subs.delete(f); } // (the other devices' pages closed: this is one device on its own)
+    store = { ...old, saved: 9.9e12 }; const fromStore = device(new Map()); await wait(300);
+    fromStore.save(); await wait(300); // (and sent back up as version 2 with this device's next save)
+    v2.push(['from the store', `${was(fromStore)}, back pay ${fromStore.takeBackPay()}, the store then v${store.v} with ◆ ${store.shards}`, 'v2 ◆ 1300 brig true chain true best 7/12 voyages 9, stars 000 100 110, rank 3 (renown 1450), storm sails 1, paint sailcloth/plum, back pay 800, the store then v2 with ◆ 1300']);
+    const broken = { v: 2, saved: 7, shards: NaN, medals: { first: 290, gone: 3 }, log: [...Array.from({ length: 40 }, (_, i) => ({ d: i + 1, ship: 'skiff', skies: 'cross', w: 2, k: 3, s: 40 + i, sunk: 0 })), { d: 'x', ship: 'skiff' }],
+      orders: { day: '2026-10-13/1', picks: [1, 2], got: [1, 2, 3], done: [1, 0, 0], bonus: 0 }, dyes: { sky: 1 }, ships: { skiff: { ...ship4b(true), paint: { sails: 'honey', pennant: 'nonsense' } } } };
+    const bad = device(new Map([['skies-of-aethermoor/save-1', JSON.stringify(broken)]]), { online: false }), B = bad.data;
+    v2.push(['a broken save', `◆ ${B.shards}, medals first ${B.medals.first} gone ${'gone' in B.medals}, log ${B.log.length} from ${B.log[0]?.d} to ${B.log.at(-1)?.d}, picks ${B.orders.picks.join(',')} got ${B.orders.got.join(',')}, paint ${B.ships.skiff.paint.sails}/${B.ships.skiff.paint.pennant}, sky ${B.dyes.sky}`,
+      '◆ 0, medals first 290 gone false, log 12 from 29 to 40, picks -1,-1,-1 got 1,2,3, paint sailcloth/plum, sky 1']);
+    const full = device(new Map(), { online: false }), F = full.data;
+    for (const k of Object.keys(F.medals)) F.medals[k] = 300; for (const k of Object.keys(F.tips)) F.tips[k] = 1; for (const k of Object.keys(F.dyes)) F.dyes[k] = 1; for (const k of Object.keys(F.charted)) F.charted[k] = 1;
+    for (const k of Object.keys(F.stats)) F.stats[k] = 123456; for (const s of Object.values(F.stars)) for (const w in s) s[w] = 1;
+    for (const id of Object.keys(F.ships)) Object.assign(F.ships[id], { owned: true, power: 2, mods: { armour: 3, canvas: 3, drill: 3, crystals: 3 }, paint: { sails: 'twilight', pennant: 'lightning' } });
+    for (let i = 0; i < 50; i++) F.log.push({ d: 300, ship: 'manowar', skies: 'mael', w: 40, k: 180, s: 123456, sunk: 1 });
+    Object.assign(F.orders, { day: '2026-10-13/1', picks: [12, 13, 14], got: [1, 1, 1], done: [1, 1, 1], bonus: 1 }); F.captains = { fox: { beaten: 30, sank: 3 }, ripper: { beaten: 30, sank: 3 }, bell: { beaten: 30, sank: 3 }, diver: { beaten: 30, sank: 3 }, iron: { beaten: 30, sank: 3 }, ghost: { beaten: 30, sank: 3 } };
+    full.save(); const size = JSON.stringify(device(new Map([['skies-of-aethermoor/save-1', JSON.stringify(F)]]), { online: false }).data).length;
+    v2.push(['a long career\'s save', size < 8000 ? 'under 8,000 letters' : `${size} letters`, 'under 8,000 letters']);
+    for (const [what, got, want] of v2) if (got !== want) problems.push(`version 2 of the save, ${what}: ${got}, should be ${want}`);
+    console.log(`version 2 of the save: ${v2.every(([, a, b]) => a === b) ? `an old save keeps everything and is paid its back pay once (◆ ${paid[0]}), from this device or the store; a broken one is made whole; a long career's is ${size} letters` : 'WRONG'}`);
+  }
 }
 
 // ---------- the hangar ----------
@@ -851,6 +907,11 @@ const layoutAt = (page, HUD, PANELS, sink = false, { shot = true, hurt = true, l
     g.raiders.spawn('cutter', P.pos.clone().addScaledVector(f, a * 400).addScaledVector(s, b * 400).add({ x: 0, y: up, z: 0 }), P.heading, true);
   }
   g.cam.yaw = 0; g.cam.pitch = 0.15; g.step(0.2, {});
+  // (and a new Captain's tip, its longest on this device: coach.js; shown at once, its fading in finished, and the
+  // raiders' tags placed again as the game's next frame does once it shows: they keep clear of it)
+  const tipId = g.coach.TIP_ORDER.reduce((a, b) => (g.coach.words(b).length > g.coach.words(a).length ? b : a));
+  const tipShow = () => { g.coach.show(tipId); $('tip').getAnimations().forEach((a) => a.finish()); };
+  tipShow(); out.tip = g.coach.words(tipId); g.placeTags();
   const say = { toast: LONGEST_TOAST, warn: 'Nearing the Thinning: the crystals can\'t lift you higher', 'region-name': 'The Sunscorch Wastes', 'region-air': 'Cold, clear air, and snow on the wind', 'banner-title': sayLongest?.title || 'Wave 20: Talia Brightling', 'banner-line': sayLongest?.line || 'the Sun-Diver: dives on you out of the sun · above you, behind you on your right' };
   for (const [id, t] of Object.entries(say)) $(id).textContent = t;
   $('warn').hidden = false;
@@ -863,7 +924,7 @@ const layoutAt = (page, HUD, PANELS, sink = false, { shot = true, hurt = true, l
   look(HUD.filter((id) => id !== 'region' && id !== 'calm'), 'a battle, with the first voyage\'s banner');
   const tl = $('banner-title'); out.firstLines = Math.round(tl.getBoundingClientRect().height / parseFloat(getComputedStyle(tl).lineHeight));
   [$('banner-title').textContent, $('banner-line').textContent] = said;
-  const panels = PANELS.map((id) => [id, box(id)]).filter(([, b]) => b);
+  let panels = PANELS.map((id) => [id, box(id)]).filter(([, b]) => b);
   const tagsClear = (what) => {
     for (const t of document.querySelectorAll('#tags .tag.edge')) {
       const w = t.querySelector('.arrow'), parts = [['', t.getBoundingClientRect()], ...(getComputedStyle(w).display !== 'none' ? [['its arrow ', w.getBoundingClientRect()]] : [])];
@@ -877,6 +938,9 @@ const layoutAt = (page, HUD, PANELS, sink = false, { shot = true, hurt = true, l
   for (const r of g.raiders.list) r.charge.b = 'port';
   g.placeTags(); g.placeTags();
   out.warnTags = document.querySelectorAll('#tags .tag.edge.warn').length;
+  // (on a screen too crowded for all their tags the tip makes way for them, coach.js makeWay: the panels as they are now)
+  out.tipWay = !g.coach.showing;
+  if (out.tipWay) panels = PANELS.map((id) => [id, box(id)]).filter(([, b]) => b);
   tagsClear('readying a broadside: ');
   // tags at the edge never on each other (on a phone held sideways the panels leave room down the side for a tag or
   // two, so the rest go beside them): as things stand, every raider readying her broadside, the view swung all round
@@ -903,7 +967,7 @@ const layoutAt = (page, HUD, PANELS, sink = false, { shot = true, hurt = true, l
   g.cam.yaw = 0; g.cam.pitch = 0.15; g.placeTags();
   // between waves: the card risen into view (its rising finished), then looked at with the rest
   g.raiders.clear(); Object.assign(g.waves, { n: 2, state: 'fight', next: null }); g.step(0.15, {}); $('toast').textContent = say.toast;
-  $('calm').getAnimations().forEach((a) => a.finish());
+  $('calm').getAnimations().forEach((a) => a.finish()); g.layout(); tipShow(); // (the tip just over the card on a laptop, where it is now)
   out.calm = !!box('calm');
   look(HUD.filter((id) => id !== 'region' && id !== 'banner'), 'between waves');
   out.wave = [$('wave-n').textContent, /\d+/.exec($('calm-title').textContent)?.[0]]; // (the wave just beaten, as the card says)
@@ -950,7 +1014,7 @@ const layoutAt = (page, HUD, PANELS, sink = false, { shot = true, hurt = true, l
     out.sunk = g.waves.sunk; out.sunkMapClosed = !mc.classList.contains('big');
     if (out.sunk) onTop('her ship gone down with the big map open');
   }
-  $('warn').hidden = true; g.raiders.clear();
+  $('warn').hidden = true; g.raiders.clear(); g.coach.clear();
   if (left) g.settings.set('leftFire', false);
   return out;
 }, { HUD, PANELS, sink, shot, hurt, left, sayLongest, LONGEST_TOAST });
@@ -960,14 +1024,15 @@ function layoutProblems(L, where) {
   if (!(L.firstLines <= 2)) problems.push(`${where}: the first voyage's banner "Your first voyage, Captain" should take two lines at most: ${L.firstLines}`);
   if (L.tags.length) problems.push(`${where}: raiders' tags at the edge (or their arrows) land on the panels: ${L.tags.join('; ')}`);
   if (L.tagLaps.length || L.behindTags < 3) problems.push(`${where}: raiders' tags at the edge should never land on each other (${L.behindTags} of 3 raiders behind her at the edge): ${L.tagLaps.slice(0, 6).join('; ')}`);
-  if (!L.calm || L.edgeTags < 5 || L.warnTags < 5 || !L.map) problems.push(`${where}: the layout test didn't run as it should (the card between waves never in view, too few edge tags, or the big map not fitting): ${JSON.stringify({ calm: L.calm, edgeTags: L.edgeTags, map: L.map })}`);
+  if (!L.calm || L.edgeTags < 5 || L.warnTags < 5 || !L.map || !L.tip) problems.push(`${where}: the layout test didn't run as it should (the card between waves never in view, too few edge tags, the big map not fitting, or no tip shown): ${JSON.stringify({ calm: L.calm, edgeTags: L.edgeTags, map: L.map, tip: L.tip })}`);
   if (L.pause.length || !L.mapClosed) problems.push(`${where}: the pause card should lie over everything at sea (and close the big map): ${[...L.pause, L.mapClosed ? '' : 'the big map still open'].filter(Boolean).join('; ')}`);
   if (!L.battery) problems.push(`${where}: after the card between waves went (the window changed while it was up), the edge tags no longer keep clear of the guns' label`);
   if (!(L.names >= 10.9)) problems.push(`${where}: the big map's names are too small to read (${L.names} px)`);
   if (!(L.nameGap >= 2.5)) problems.push(`${where}: the big map's names ${L.nearest} land on or touch each other (${L.nameGap} px apart)`);
   if (L.wave[0] !== L.wave[1]) problems.push(`${where}: between waves the score should say the wave just beaten, as the card does (Wave ${L.wave[1]}), not Wave ${L.wave[0]}`);
   if ('sunk' in L && (!L.sunk || !L.sunkMapClosed)) problems.push(`${where}: her ship going down with the big map open should close it and show its card on top: ${JSON.stringify({ sunk: L.sunk, closed: L.sunkMapClosed })}`);
-  return `${L.laps.length + L.off.length + L.tags.length + L.pause.length + L.tagLaps.length ? `${L.laps.length + L.off.length} overlaps, ${L.tags.length} tags on panels, ${L.tagLaps.length} tags on tags, ${L.pause.length} under the pause card` : 'all clear'} (the first voyage's banner on ${L.firstLines} line${L.firstLines === 1 ? '' : 's'}; ${L.edgeTags} tags at the edge, ${L.warnTags} of them saying "Broadside!" in turn, none on another in 13 views and with three raiders behind her; the map's names ${L.names} px, ${L.nameGap} px apart at the closest)`;
+  if (L.tipWay && !/^phone 568x320/.test(where)) problems.push(`${where}: a tip should make way for the raiders' tags only on the smallest phone, where a crowd of them can't all fit`);
+  return `${L.tipWay ? 'the tip making way for a crowd of tags readying broadsides; ' : ''}${L.laps.length + L.off.length + L.tags.length + L.pause.length + L.tagLaps.length ? `${L.laps.length + L.off.length} overlaps, ${L.tags.length} tags on panels, ${L.tagLaps.length} tags on tags, ${L.pause.length} under the pause card` : 'all clear'} (the first voyage's banner on ${L.firstLines} line${L.firstLines === 1 ? '' : 's'}; ${L.edgeTags} tags at the edge, ${L.warnTags} of them saying "Broadside!" in turn, none on another in 13 views and with three raiders behind her; the map's names ${L.names} px, ${L.nameGap} px apart at the closest)`;
 }
 // a raider's bounty and the card between waves (at the page's size now): the wave's last raider brought down right where
 // the card will rise (her bounty would rise over its words), and the bounty looked at every 0.1 s while it can be read
@@ -1219,8 +1284,10 @@ async function titleAt(page, w, h) {
   return page.evaluate(() => {
     const g = window.__game, d = g.progress.data, T = g.title, el = document.getElementById('title'), out = { size: `${innerWidth}x${innerHeight}` };
     if (g.mode === 'voyage') g.endVoyage(0);
-    const was = { flying: d.flying, voyages: d.voyages, shards: d.shards, owned: d.ships.frigate.owned };
+    const was = { flying: d.flying, voyages: d.voyages, shards: d.shards, owned: d.ships.frigate.owned, rank: d.rank, record: JSON.stringify({ best: d.best, records: d.records, stars: d.stars }) };
     Object.assign(d, { voyages: Math.max(1, d.voyages), shards: 1234, flying: 'frigate' }); d.ships.frigate.owned = true;
+    // (the card at its tallest: the longest rank's name, and every skies with its record and its stars)
+    d.rank = 9; for (const k in d.best) { d.best[k] = 15; Object.assign(d.records[k], { shards: 12345, downed: 123 }); d.stars[k].w5 = d.stars[k].w10 = 1; }
     g.port.setMode('port'); g.port.setMode('title'); T.resize();
     const card = el.querySelector('.title-card').getBoundingClientRect(), h1 = el.querySelector('h1');
     out.fits = el.scrollHeight <= el.clientHeight + 1 && card.bottom <= innerHeight + 1;
@@ -1268,7 +1335,7 @@ async function titleAt(page, w, h) {
     out.seen = +(seen / 600).toFixed(2); out.long = Math.round(px[px.length >> 1] ?? 0); out.ship = S.recipe.name;
     out.lift = Math.round(lift[lift.length >> 1] ?? 0); angles.sort((a, c) => a - c);
     out.angle = angles.length ? [angles[0], angles[Math.floor(angles.length / 10)], angles.at(-1)].map(Math.round) : [];
-    Object.assign(d, { flying: was.flying, voyages: was.voyages, shards: was.shards }); d.ships.frigate.owned = was.owned;
+    Object.assign(d, { flying: was.flying, voyages: was.voyages, shards: was.shards, rank: was.rank, ...JSON.parse(was.record) }); d.ships.frigate.owned = was.owned;
     g.port.setMode('port'); g.port.setMode('title');
     return out;
   });
@@ -2194,8 +2261,13 @@ function burstEdgeProblems(B, where, narrow) {
   return `bursting up through the clouds 35 degrees to the left, ${B.onScreen ? 'in view' : `off the view, her tag at the ${B.edge ? 'edge' : 'MIDDLE'}`}, ${B.glow ? 'glowing' : 'NOT GLOWING'}${B.later ? ' (STILL 4 s on)' : ''}, the toast "${B.toast}"`;
 }
 const mode = (page) => page.evaluate(() => window.__game.mode);
+// A new Captain's tips (coach.js) are switched off on the card for the checks written before them: each of those starts
+// afresh as a brand-new Captain, and its voyages would each be a first voyage, a tip showing in every picture. They're
+// checked on their own (the Captain's record, below: switched on), and in every layout (layoutAt shows the longest)
+const tipsOff = (page) => page.evaluate(() => window.__game.settings.set('tips', false));
 if (!demoOnly) {
   const page = await open('game', 'laptop', gameReady);
+  await tipsOff(page);
   // every piece of the game's news must be told somewhere as these checks play: count them (the page reloads once, so
   // they're counted before it and again after)
   const told = new Set(), countEvents = () => page.evaluate(() => {
@@ -2443,7 +2515,7 @@ if (!demoOnly) {
     return out;
   });
   console.log(`settings: rows ${rows.rows}; picture ${rows.default} by default; Smooth ${JSON.stringify(rows.smooth)}, Balanced ${JSON.stringify(rows.balanced)}, Sharp ${JSON.stringify(rows.sharp)}; aim Fast ×${rows.aim.fast}, Slow ×${rows.aim.slow}, flipped ×${rows.aim.flipped}; a big jolt moves the view ${rows.shakeOn} m, ${rows.shakeOff} m with the shake off`);
-  if (rows.rows !== 'sound music effects aim flip picture shake' || rows.default !== 'sharp') problems.push(`a laptop's Settings card should have sound, music, sounds, aim speed, up and down, picture (Sharp at first) and camera shake: ${JSON.stringify(rows)}`);
+  if (rows.rows !== 'sound music effects aim flip picture shake tips' || rows.default !== 'sharp') problems.push(`a laptop's Settings card should have sound, music, sounds, aim speed, up and down, picture (Sharp at first), camera shake and a new Captain's tips: ${JSON.stringify(rows)}`);
   const dpr2 = Math.min(2, await page.evaluate(() => devicePixelRatio));
   if (rows.smooth.ratio > 1 || rows.smooth.shadow !== 512 || rows.smooth.puffs !== 55 || rows.smooth.detail !== 0.09 || !(rows.smooth.q < rows.sharp.q) || Math.abs(rows.smooth.wide - rows.smooth.ratio) > 0.01
     || rows.balanced.shadow !== 1024 || rows.balanced.puffs !== 85 || rows.sharp.ratio !== dpr2 || rows.sharp.shadow !== 2048 || rows.sharp.puffs !== 110 || rows.sharp.q !== 1 || rows.sharp.detail !== 0.06) problems.push(`the picture setting should change the drawing at once: ${JSON.stringify(rows)}`);
@@ -3879,6 +3951,9 @@ if (!demoOnly) {
     const before = g.progress.data.shards; out.half = Math.round(g.voyage.shards / 2);
     document.getElementById('btn-abandon').click();
     out.home = g.mode === 'port'; out.banked = g.progress.data.shards - before;
+    // coming home's card (record.js): over the port, saying she went down, a Skiff downed, what she kept, and the purse
+    const $ = (id) => document.getElementById(id);
+    out.card = { shown: !$('homecoming').hidden, title: $('hc-title').textContent, rows: $('hc-rows').textContent, got: $('hc-got')?.textContent, purse: g.progress.data.shards, again: $('btn-again').textContent };
     return out;
   }, fought);
   console.log(`voyage: wave 1 (${voyage.raiders}) beaten in ${voyage.wave1} s (◆ ${voyage.shards}), sailed on, sank, home with ◆ ${voyage.banked}`);
@@ -3887,14 +3962,35 @@ if (!demoOnly) {
   if (!(voyage.waits >= 1.2) || !(voyage.since > 0) || (voyage.since < 1200 && !voyage.unseen)) problems.push(`the card between waves should wait for the slow motion before it rises: ${JSON.stringify({ waits: voyage.waits, since: voyage.since, unseen: voyage.unseen })}`);
   if (voyage.raiders !== 'skiff') problems.push(`a voyage's wave 1 should be one Skiff, got: ${voyage.raiders}`);
   if (!voyage.sailed || !voyage.choose || !voyage.shards || !voyage.wave2 || !voyage.sunk || !voyage.home || Math.abs(voyage.banked - voyage.half) > 1) problems.push(`a voyage went wrong: ${JSON.stringify(voyage)}`);
+  // coming home: the card over the port, the purse counted up a moment later; Sail again sets sail at once in the same
+  // ship at wave 1, the card gone; then home from the card between waves with nothing gathered: "Home from the voyage"
+  // (the purse counted up in real time, on the page's own frames: drawn in software they can be slow, so it's waited for)
+  await page.waitForFunction((n) => document.getElementById('hc-purse').textContent === n, voyage.card.purse.toLocaleString('en'), { timeout: 20000 }).catch(() => {});
+  const homeCard = await page.evaluate(() => {
+    const g = window.__game, $ = (id) => document.getElementById(id), out = { purse: $('hc-purse').textContent };
+    $('btn-again').click();
+    out.again = { mode: g.mode, n: g.waves.n, ship: g.player.ship.recipe.id, flying: g.progress.data.flying, card: !$('homecoming').hidden };
+    g.waves.timer = 1e9; g.raiders.setAI(false); Object.assign(g.waves, { state: 'fight', n: 0 }); g.raiders.clear(); g.voyage.shards = 0; g.step(0.1, {});
+    g.voyage.shards = 0; $('calm').getAnimations().forEach((a) => a.finish()); $('btn-go-port').click();
+    out.plain = { shown: !$('homecoming').hidden, title: $('hc-title').textContent };
+    $('btn-hc-port').click(); out.closed = $('homecoming').hidden && g.mode === 'port';
+    return out;
+  });
+  const C = voyage.card;
+  console.log(`coming home: "${C.title}" (${C.shown ? 'over the port' : 'NOT SHOWN'}), "${C.rows.slice(0, 90)}…", kept ${C.got}, the purse counting up to ${homeCard.purse}; "${C.again}": ${homeCard.again.mode} at wave ${homeCard.again.n + 1} in the ${homeCard.again.ship}; home again: "${homeCard.plain.title}"`);
+  if (!C.shown || !C.title.includes('went down') || !C.rows.includes('Raiders downed1: a Skiff') || C.got !== `◆ ${voyage.half.toLocaleString('en')}` || homeCard.purse !== C.purse.toLocaleString('en')) problems.push(`coming home from a voyage lost should show its card (she went down, a Skiff downed, half kept, the purse counted up to what's in it): ${JSON.stringify({ C, purse: homeCard.purse, half: voyage.half })}`);
+  if (homeCard.again.mode !== 'voyage' || homeCard.again.n !== 0 || homeCard.again.ship !== homeCard.again.flying || homeCard.again.card || !homeCard.plain.shown || homeCard.plain.title !== 'Home from the voyage' || !homeCard.closed) problems.push(`coming home's Sail again should set sail at once (wave 1, her ship, the card gone), and a voyage brought home say "Home from the voyage", closing with To port: ${JSON.stringify(homeCard)}`);
   // the save survives a reload
   await collect();
-  await page.evaluate(() => { const d = window.__game.progress.data; d.shards = 1234; window.__game.progress.save(); document.querySelector('#set-aim [data-value="4"]').click(); });
+  await page.evaluate(() => { const d = window.__game.progress.data; d.shards = 1234; d.tips.fire = 1; window.__game.progress.mark(); window.__game.progress.save(); document.querySelector('#set-aim [data-value="4"]').click(); });
   await page.reload();
   await page.waitForFunction(gameReady, null, { timeout: 180000 });
   await countEvents();
   const kept = await page.evaluate(() => window.__game.progress.data.shards);
   if (kept !== 1234) problems.push(`the save didn't survive a reload (${kept})`);
+  // (and a tip given stays given: coach.js)
+  const keptTip = await page.evaluate(() => ({ fire: window.__game.progress.data.tips.fire, v: window.__game.progress.data.v }));
+  if (keptTip.fire !== 1 || keptTip.v !== 2) problems.push(`a tip given should stay given through a reload (in the version 2 save): ${JSON.stringify(keptTip)}`);
   const keptMusic = await page.evaluate(() => window.__game.settings.data.music);
   if (keptMusic !== 0) problems.push(`the music setting didn't survive a reload (${keptMusic})`);
   // (and the aim speed, on this device only: never in the save that goes between devices)
@@ -4989,8 +5085,8 @@ if (!demoOnly) {
   // voyages, then the Keys button), at this size and on two shorter windows (a 1366 by 768 laptop, a small window); the
   // ship going down with the big map open, at the smallest
   {
-    const HUD = ['ship', 'compass', 'btn-pause', 'minimap', 'score', 'battery', 'toast', 'warn', 'banner', 'region', 'aim', 'help', 'btn-help', 'calm'];
-    const PANELS = ['ship', 'compass', 'btn-pause', 'minimap', 'score', 'battery', 'help', 'btn-help'];
+    const HUD = ['ship', 'compass', 'btn-pause', 'minimap', 'score', 'battery', 'toast', 'warn', 'banner', 'region', 'aim', 'help', 'btn-help', 'tip', 'calm'];
+    const PANELS = ['ship', 'compass', 'btn-pause', 'minimap', 'score', 'battery', 'help', 'btn-help', 'tip'];
     // (the longest banner line the game writes, tried with the rest; every wave's line kept to the limit)
     const SAY = await longestBanner(page);
     console.log(`a wave's banner: the longest of ${SAY.lines} lines ${SAY.line.length} letters ("${SAY.title}": "${SAY.line}"), the limit ${SAY.limit}${SAY.over.length ? `; OVER IT: ${SAY.over.join('; ')}` : ''}`);
@@ -5007,6 +5103,208 @@ if (!demoOnly) {
     await page.evaluate((n) => window.__game.settings.keep('voyages', n + 3), voyages);
     await page.setViewportSize({ width: 1280, height: 800 });
   }
+  // ---------- the Captain's record (deeds.js, coach.js, record.js, paint.js) ----------
+  // A brand-new Captain's first voyage on a laptop, from the title's Set sail, with the tips on: the first tip (steering,
+  // with A and D) 1.5 s in, given once she's steered; her first raider coming nearly dead ahead (within 0.2 rad of the
+  // bow) about 1,200 m off, in clear air, and holding her fire until the Captain has fired; the tip to put the ring on her (the mouse
+  // not locked: click the sky first), then, locked on, to hold the left button and fire, given once a shot has hit; the
+  // view held on her by the check as a player would. Then her record: the first raider down paying First Prize (◆ 25)
+  // once, its toast waiting its turn; a Brig downed from 120 m above her paying High Ground, a Skiff under the cloud
+  // floor Under the Clouds, two within 5 s Two at Once, a Man-o'-war Fortress Fallen; Crosswinds' wave 5 beaten its star
+  // (◆ 100, the best wave kept at once) and not twice; the Maelstrom's wave 10 its star and storm-silver sails; a rise to
+  // Raider-Bane (renown 990 and a Brig's 60) told on coming home's card with its purse (◆ 150), and the next voyage home
+  // no purse; the Captain's log listing every commendation (one won, with its day), the records and the voyages, every
+  // commendation's id in the save and the reverse; the quartermaster's line (a new Captain's first voyage, gun drill
+  // affordable and its row marked, the Gale affordable and her button marked, ◆ 50 more for gun drill with what her
+  // voyages bring home); colours bought with the port's own buttons (sky blue sails ◆ 150 and teal pennants ◆ 80) on
+  // her ship on the berth with no new shaders, the hoist still gold, a raider's sails still rust, a rank's colour not
+  // for sale, a colour tried on and not bought gone as she leaves; and no dye a raider's (red, or too dark); harbour
+  // orders: three for today, the same three asked again, "Bring down 3 Skiffs" done and paid (◆ 60) once, the thanks for
+  // all three, and fresh ones the next day; a commendation won in port by buying her fourth ship (said in the note);
+  // every toast the record says no longer than the longest the screens are tried with. Pictures of each
+  {
+    const R = await page.evaluate(() => {
+      const g = window.__game, $ = (id) => document.getElementById(id), d0 = () => g.progress.data, out = {};
+      const tip = () => ($('tip').hidden ? '' : $('tip').textContent);
+      const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+      // (the view held on her as a player would, the view not easing back behind the ship meanwhile: lastLook)
+      const aim = (r) => { const P = g.player, T = g.pivot(), v = r.f.pos.clone().sub(T).normalize(); g.cam.pitch = Math.max(-0.35, -Math.asin(v.y)); g.cam.yaw = wrap(Math.atan2(v.x, v.z) - P.heading); g.input.lastLook = performance.now() / 1000 + 120; };
+      const deeds = []; const offD = g.events.on('deed', (e) => deeds.push(`${e.kind}:${e.id}:${e.reward}`));
+      let shotFirst = null, hitShot = null; const offF = g.events.on('fire', (e) => { if (shotFirst === null) shotFirst = e.owner; }), offH = g.events.on('hit', (e) => { if (e.owner === 'player' && hitShot === null) hitShot = `${e.kind} ${e.shot}`; });
+      // the first voyage
+      g.settings.set('tips', true); g.progress.reset(); g.port.setMode('title');
+      $('btn-title-sail').click(); g.wind.strength = 0; g.scene.visible = false;
+      const P = g.player;
+      g.step(2, {}); out.steer = tip();
+      g.step(3.2, { turn: 1 }); out.steered = d0().tips.steer;
+      for (let i = 0; i < 40 && !g.raiders.list.length; i++) g.step(0.1, {});
+      const r = g.raiders.list[0];
+      out.raider = r ? { id: r.id, d: Math.round(r.f.pos.distanceTo(P.pos)), off: +Math.abs(wrap(Math.atan2(r.f.pos.x - P.pos.x, r.f.pos.z - P.pos.z) - P.heading)).toFixed(2), hold: Math.round(r.hold), cloud: +g.sky.cloudAt(r.f.pos).toFixed(2) } : null;
+      P.speed = 3; P.sail = 0.05;
+      g.step(1.5, {}); out.aim = tip();
+      for (let t = 0; t < 4.5 && r; t += 0.25) { aim(r); g.step(0.25, { sail: -1 }); }
+      out.locked = g.locked === r; out.fire = tip(); out.before = g.bolts.bolts.filter((b) => b.owner === 'raider').length;
+      for (let t = 0; t < 5 && r; t += 0.25) { aim(r); g.step(0.25, { fire: true, sail: -1 }); }
+      out.hits = g.hits; out.fired = d0().tips.fire; out.shotFirst = shotFirst; g.input.lastLook = 0;
+      // her first raider down: First Prize, once, its toast waiting its turn
+      let s0 = d0().shards; r.f.hit('hull', 1e9); g.step(0.2, {});
+      out.first = { medal: d0().medals.first > 0, paid: +(deeds.find((x) => x.startsWith('medal:first:'))?.split(':')[2] ?? 0), saying: g.saying.join(' | ') };
+      g.waves.timer = 1e9; g.raiders.setAI(false); g.raiders.clear(); Object.assign(g.waves, { state: 'fight', n: 3 });
+      const kill = (id, at, opt = {}) => { const k = g.raiders.spawn(id, at, 0, true); g.step(1 / 60, {}); s0 = d0().shards; k.f.hit('hull', 1e9); g.step(0.1, {}); return d0().shards - s0; };
+      g.step(6, {});
+      P.pos.set(0, 900, 0); out.second = kill('skiff', P.pos.clone().add({ x: 0, y: 0, z: 300 }));
+      g.step(6, {});
+      out.high = kill('brig', P.pos.clone().add({ x: 0, y: -120, z: 300 }));
+      g.step(6, {}); P.pos.set(0, 300, 0); P.vy = 0;
+      out.under = kill('skiff', P.pos.clone().add({ x: 0, y: 0, z: 300 }));
+      P.pos.set(0, 900, 0); out.two = kill('skiff', P.pos.clone().add({ x: 200, y: 0, z: 300 }));
+      g.step(6, {}); out.fort = kill('manowar', P.pos.clone().add({ x: 0, y: -60, z: 700 }));
+      // (a raider sunk by her crystals, crystal breakers last hitting her: Crystals Out and Crystal Breaker)
+      { const k = g.raiders.spawn('frigate', P.pos.clone().add({ x: 300, y: 0, z: 300 }), 0, true); g.step(1 / 60, {}); s0 = d0().shards; k.lastShot = 'breaker'; k.f.hit('crystals', 1e9); g.step(0.1, {}); out.breaker = d0().shards - s0; }
+      out.hitShot = hitShot;
+      out.medals = Object.keys(d0().medals).filter((k) => d0().medals[k]).join(' ');
+      out.firstPaid = deeds.filter((x) => x.startsWith('medal:first:')).length;
+      // a tip making way for a crowd of raiders' tags with no room left (coach.js makeWay): gone at once and not given, no
+      // tip for 8 s, and then it comes again
+      d0().tips.steer = 0; g.coach.clear(); g.raiders.clear(); g.coach.show('steer');
+      out.way = { made: g.coach.makeWay(), gone: !g.coach.showing && $('tip').hidden && !document.body.classList.contains('tipping'), given: d0().tips.steer };
+      for (let t = 0; t < 7; t += 0.25) g.step(0.25, {});
+      out.way.quiet = g.coach.showing;
+      for (let t = 0; t < 2; t += 0.25) g.step(0.25, {});
+      out.way.back = g.coach.showing; d0().tips.steer = 1;
+      g.coach.clear(); g.endVoyage(0); g.settings.set('tips', false);
+      // stars: Crosswinds' fifth wave beaten (and again: nothing more), the Maelstrom's tenth
+      g.progress.reset(); d0().skies = 'cross'; g.fly('skiff'); g.raiders.setAI(false); g.waves.timer = 1e9;
+      const beat = (n) => { g.raiders.clear(); Object.assign(g.waves, { n, state: 'fight', next: null }); deeds.length = 0; g.step(0.1, {}); const star = deeds.filter((x) => x.startsWith('star:')).map((x) => +x.split(':')[3]).reduce((a, b) => a + b, 0); g.sailOn(); g.waves.timer = 1e9; return star; };
+      out.star = { paid: beat(4), star: d0().stars.cross.w5, best: d0().best.cross, saying: g.saying.join(' | '), again: beat(4) };
+      g.endVoyage(0); d0().skies = 'mael'; g.fly('skiff'); g.raiders.setAI(false); g.waves.timer = 1e9;
+      out.mael = { paid: beat(9), star: d0().stars.mael.w10, storm: d0().dyes.storm };
+      g.endVoyage(0);
+      // a rank risen, told coming home
+      g.progress.reset(); Object.assign(d0(), { skies: 'cross', rank: 2, voyages: 4 }); d0().stats.renown = 990; g.fly('brig'); g.raiders.setAI(false); g.waves.timer = 1e9; g.raiders.clear(); g.waves.state = 'fight';
+      g.player.pos.set(0, 900, 0); kill('brig', g.player.pos.clone().add({ x: 0, y: 0, z: 300 }));
+      s0 = d0().shards; g.home(1);
+      out.rank = { renown: d0().stats.renown, rank: d0().rank, title: $('hc-title').textContent, card: !$('homecoming').hidden, purse: g.summary?.rank.purse, rows: $('hc-rank').textContent, emerald: d0().dyes.emerald };
+      g.fly('brig'); g.raiders.setAI(false); g.waves.timer = 1e9; g.home(1);
+      out.rank.again = { up: g.summary?.rank.up, purse: g.summary?.rank.purse, title: $('hc-title').textContent };
+      $('btn-hc-port').click();
+      offD(); offF(); offH(); g.scene.visible = true;
+      return out;
+    });
+    await page.waitForTimeout(300);
+    console.log(`a tip making way for a crowd of tags: ${R.way.made && R.way.gone ? 'gone at once' : 'NOT GONE'}, given ${R.way.given}, after 7 s ${R.way.quiet ?? 'none'}, after 9 s ${R.way.back ?? 'none'}`);
+    if (!R.way.made || !R.way.gone || R.way.given !== 0 || R.way.quiet !== null || R.way.back !== 'steer') problems.push(`a tip making way for a crowd of raiders' tags should go at once, not given, with no tip for 8 s, then come again: ${JSON.stringify(R.way)}`);
+    console.log(`a new Captain's first voyage: "${R.steer}" (given: ${R.steered}); her first raider a ${R.raider?.id} ${R.raider?.d} m off, ${R.raider?.off} rad off the bow, holding her fire ${R.raider?.hold} s, in cloud ${R.raider?.cloud}; "${R.aim}"; ${R.locked ? 'locked on' : 'NOT LOCKED'}: "${R.fire}" (${R.before} raider shots before the Captain fired; the first gun to fire the ${R.shotFirst}'s); ${R.hits} hits, the fire tip given: ${R.fired}`);
+    console.log(`commendations: First Prize ${R.first.medal ? `paid ◆ ${R.first.paid}` : 'NOT WON'} (toasts waiting: "${R.first.saying}"), a second Skiff ◆ ${R.second}; High Ground ◆ ${R.high}, Under the Clouds ◆ ${R.under}, Two at Once ◆ ${R.two}, Fortress Fallen and Small but Fierce ◆ ${R.fort}, Crystals Out and Crystal Breaker ◆ ${R.breaker} (a hit from her guns: "${R.hitShot}"); won: ${R.medals}; stars: Crosswinds' wave 5 ◆ ${R.star.paid} (best ${R.star.best}), again ◆ ${R.star.again}; the Maelstrom's wave 10 ◆ ${R.mael.paid}, storm-silver ${R.mael.storm ? 'won' : 'NOT WON'}; a rank: "${R.rank.title}" (rank ${R.rank.rank}, renown ${R.rank.renown}, purse ◆ ${R.rank.purse}), next voyage "${R.rank.again.title}"`);
+    if (!R.steer.includes('A and D') || R.steered !== 1) problems.push(`a new Captain's first voyage should open with a tip on steering (A and D), given once she's steered: ${JSON.stringify({ steer: R.steer, steered: R.steered })}`);
+    if (!R.raider || R.raider.id !== 'skiff' || Math.abs(R.raider.d - 1200) > 120 || R.raider.off > 0.2 || !(R.raider.hold > 15) || !(R.raider.cloud < 0.05)) problems.push(`a new Captain's first raider should come nearly dead ahead, about 1,200 m off, in clear air, holding her fire: ${JSON.stringify(R.raider)}`);
+    if (!R.aim.includes('Click the sky') || !R.locked || !R.fire.includes('Hold the left button') || R.before !== 0 || R.shotFirst !== 'player' || !(R.hits > 0) || R.fired !== 1) problems.push(`the first voyage's tips should say to put the ring on her, then (locked on) to fire, and her first raider hold her fire till the Captain fires: ${JSON.stringify(R)}`);
+    if (!R.first.medal || R.first.paid !== 25 || !R.first.saying.includes('Commendation: First Prize · ◆ 25') || R.second !== 0 || R.firstPaid !== 1) problems.push(`the first raider down should pay First Prize (◆ 25) once, its toast waiting its turn: ${JSON.stringify({ first: R.first, second: R.second, paid: R.firstPaid })}`);
+    if (R.high !== 60 || R.under !== 50 || R.two !== 60 || R.fort !== 450 || R.breaker !== 125 || R.hitShot !== 'chaser round') problems.push(`High Ground (◆ 60), Under the Clouds (◆ 50), Two at Once (◆ 60), Fortress Fallen (◆ 300, with Small but Fierce's ◆ 150 in the Skiff) and Crystal Breaker (◆ 75, with Crystals Out's ◆ 50) should each pay when won, a hit saying its gun and its shot: ${JSON.stringify({ high: R.high, under: R.under, two: R.two, fort: R.fort, breaker: R.breaker, hitShot: R.hitShot, medals: R.medals })}`);
+    if (R.star.paid !== 100 || R.star.star !== 1 || R.star.best !== 5 || !R.star.saying.includes('Crosswinds star: wave 5 · ◆ 100') || R.star.again !== 0 || R.mael.paid !== 500 || R.mael.star !== 1 || R.mael.storm !== 1) problems.push(`a skies' star should pay once as its wave is beaten (Crosswinds' fifth ◆ 100, the Maelstrom's tenth ◆ 500 and its storm-silver sails): ${JSON.stringify({ star: R.star, mael: R.mael })}`);
+    if (R.rank.rank !== 3 || R.rank.renown < 1000 || R.rank.title !== 'Raised to Raider-Bane!' || !R.rank.card || R.rank.purse !== 150 || !R.rank.rows.includes('Raider-Bane') || R.rank.again.up || R.rank.again.purse || R.rank.again.title !== 'Home from the voyage') problems.push(`a rank risen should be told coming home with its purse (◆ 150 for Raider-Bane), and not again: ${JSON.stringify(R.rank)}`);
+    await page.evaluate(() => window.__game.port.setMode('port'));
+  }
+
+  // the Captain's log, the quartermaster's line, her colours, harbour orders, a commendation won in port, and the toasts
+  {
+    const L = await page.evaluate(() => {
+      const g = window.__game, $ = (id) => document.getElementById(id), d0 = () => g.progress.data, out = {};
+      // the log (the save from just before, with commendations won), each of its pages
+      g.port.setMode('port'); $('btn-log').click();
+      const ribbons = [...document.querySelectorAll('#log-body .ribbon')];
+      out.log = { shown: !$('log').hidden, ribbons: ribbons.length, won: ribbons.filter((x) => !x.classList.contains('dim') && !x.classList.contains('order')).map((x) => x.querySelector('small').textContent).slice(0, 2), rank: $('log-rank').textContent };
+      $('log-tab-records').click(); out.log.records = $('log-body').textContent;
+      $('log-tab-voyages').click(); out.log.voyages = document.querySelectorAll('#log-body li').length;
+      $('log-tab-deeds').click();
+      const ids = Object.keys(d0().medals), names = g.deeds.MEDALS.map((M) => M.id);
+      out.ids = { missing: ids.filter((id) => !names.includes(id)), extra: names.filter((id) => !ids.includes(id)) };
+      // the quartermaster's line
+      const said = () => $('pp-next').textContent;
+      $('btn-log-done').click();
+      g.progress.reset(); g.port.setMode('port'); out.fresh = said();
+      Object.assign(d0(), { voyages: 1, shards: 60 }); g.port.refresh(); out.drill = { said: said(), marked: document.querySelector('.mod[data-mod="drill"]').classList.contains('advised') };
+      d0().shards = 300; g.port.refresh(); out.gale = { said: said(), marked: document.querySelector('#port-ships [data-ship="cutter"]').classList.contains('advised') };
+      d0().shards = 10; d0().log.push({ d: 280, ship: 'skiff', skies: 'cross', w: 3, k: 4, s: 120, sunk: 0 }, { d: 281, ship: 'skiff', skies: 'cross', w: 4, k: 5, s: 160, sunk: 0 }); g.port.refresh(); out.goal = said();
+      // her colours: sky blue sails and teal pennants bought with the port's buttons; the shaders made, before and after
+      g.progress.reset(); d0().shards = 500; g.port.setMode('port'); document.querySelector('#port-ships [data-ship="skiff"]').click(); g.port.render();
+      const skiff = g.built.get('skiff'), canvasOf = (s) => { let c = null; s.root.traverse((o) => { if (!c && o.isMesh && o.name === 'canvas') c = o.material.color.getHex(); }); return c; };
+      const flagOf = (s) => { let f = null; s.root.traverse((o) => { if (!f && o.isMesh && o.name === 'flag') f = o.geometry; }); const C = f.attributes.color, B = f.attributes.billow; const hoist = [], body = []; for (let i = 0; i < C.count; i++) (B.getX(i) < 0.12 ? hoist : body).push([C.getX(i), C.getY(i), C.getZ(i)].map((x) => +x.toFixed(2)).join(',')); return { hoist: [...new Set(hoist)].join(' '), body: [...new Set(body)].join(' ') }; };
+      const p0 = g.renderer.info.programs.length;
+      document.querySelector('[data-dye="sky"]').click(); out.tried = { canvas: canvasOf(skiff), btn: $('btn-dye').textContent, sail: $('btn-sail').textContent };
+      $('btn-dye').click(); g.port.render();
+      out.sky = { owned: d0().dyes.sky, paint: d0().ships.skiff.paint.sails, canvas: canvasOf(skiff), shards: d0().shards };
+      document.querySelector('[data-dye="teal"]').click(); $('btn-dye').click(); g.port.render();
+      out.teal = { owned: d0().dyes.teal, paint: d0().ships.skiff.paint.pennant, shards: d0().shards, ...flagOf(skiff) };
+      out.programs = [p0, g.renderer.info.programs.length];
+      document.querySelector('[data-dye="twilight"]').click(); out.locked = { disabled: $('btn-dye').disabled, text: $('btn-dye').textContent, note: $('pp-dye-note').textContent };
+      $('btn-dye').click(); out.locked.owned = d0().dyes.twilight; out.locked.shards = d0().shards;
+      document.querySelector('[data-dye="honey"]').click(); out.leave = { tried: canvasOf(skiff) }; g.port.setMode('title'); out.leave.after = canvasOf(skiff); out.leave.saved = d0().ships.skiff.paint.sails;
+      out.notRaider = Object.keys(g.paint.DYES).filter((id) => id !== 'sailcloth' && id !== 'plum' && !g.paint.notRaider(id));
+      g.port.setMode('port'); g.fly('cutter'); g.raiders.setAI(false); g.waves.timer = 1e9; const foe = g.raiders.spawn('brig', g.player.pos.clone().add({ x: 0, y: 0, z: 400 }), 0, true);
+      out.raider = canvasOf(foe.ship); g.raiders.clear(); g.endVoyage(0);
+      // harbour orders: three for today, the same asked again; "Bring down 3 Skiffs" done and paid once, the thanks for
+      // all three; fresh ones the next day
+      g.progress.reset(); Object.assign(d0(), { voyages: 1, skies: 'cross' }); const O = g.deeds.today();
+      out.orders = { day: O.day, picks: O.picks.join(','), again: g.deeds.pickOrders(O.day, d0()).join(','), other: g.deeds.pickOrders('2026-12-25/1', d0()).join(',') };
+      const ORD = g.deeds.ORDERS, idx = (text) => ORD.findIndex((o) => o.text === text);
+      O.picks = [idx('Bring down 3 Skiffs'), idx('Bring down a raider under the clouds'), idx('Beat wave 3')];
+      const paid = []; const off = g.events.on('deed', (e) => { if (e.kind === 'order' || e.kind === 'orders') paid.push(`${e.name} ${e.reward}`); });
+      g.fly('skiff'); g.raiders.setAI(false); g.waves.timer = 1e9; g.waves.state = 'fight'; const P = g.player; P.pos.set(0, 900, 0);
+      const down = (y = 0) => { const k = g.raiders.spawn('skiff', P.pos.clone().add({ x: 0, y, z: 300 }), 0, true); g.step(1 / 60, {}); k.f.hit('hull', 1e9); g.step(0.1, {}); g.step(6, {}); };
+      for (let i = 0; i < 4; i++) down();
+      out.orders.after3 = { got: O.got.join(','), done: O.done.join(','), paid: paid.slice() };
+      P.pos.set(0, 300, 0); P.vy = 0; down(); P.pos.set(0, 900, 0);
+      g.raiders.clear(); Object.assign(g.waves, { n: 2, state: 'fight', next: null }); g.step(0.2, {});
+      out.orders.all = { done: O.done.join(','), bonus: O.bonus, paid: paid.slice(), saying: g.saying.join(' | ') };
+      off(); g.endVoyage(0);
+      O.day = '2000-01-01/1'; const O2 = g.deeds.today(); out.orders.next = { day: O2.day, got: O2.got.join(','), done: O2.done.join(',') };
+      // a commendation won in port: her fourth ship bought
+      g.progress.reset(); const d = d0(); d.ships.cutter.owned = d.ships.brig.owned = true; Object.assign(d, { shards: 3000, voyages: 2 }); g.port.setMode('port'); document.querySelector('#port-ships [data-ship="frigate"]').click(); $('btn-buy').click();
+      out.four = { medal: d.medals.four > 0, shards: d.shards };
+      // every toast the record says, against the longest the screens are tried with
+      const longest = [...g.deeds.MEDALS.map((M) => `Commendation: ${M.name} · ◆ ${M.reward.toLocaleString('en')}`), ...ORD.map((o) => `Order done: ${o.text} · ◆ ${o.reward}`),
+        ...['Fair Winds', 'Crosswinds', 'Maelstrom'].map((n) => `${n} star: wave 15 · ◆ 1,000`), `The harbourmaster's thanks · ◆ ${g.deeds.THANKS}`].sort((a, b) => b.length - a.length)[0];
+      out.longest = longest;
+      return out;
+    });
+    await page.waitForTimeout(2800);
+    const note4 = await page.evaluate(() => document.getElementById('port-note').textContent);
+    console.log(`the Captain's log: ${L.log.shown ? 'open' : 'NOT OPEN'}, ${L.log.ribbons} ribbons (won: "${L.log.won.join('", "')}"), records ${L.log.records.includes('Raiders downed') ? 'listed' : 'MISSING'}, ${L.log.voyages} voyages; commendations ${L.ids.missing.length + L.ids.extra.length ? `NOT MATCHING THE SAVE: ${[...L.ids.missing, ...L.ids.extra].join(', ')}` : 'matching the save\'s list'}`);
+    console.log(`the quartermaster: "${L.fresh}"; "${L.drill.said}" (${L.drill.marked ? 'its row marked' : 'NOT MARKED'}); "${L.gale.said}" (${L.gale.marked ? 'her button marked' : 'NOT MARKED'}); "${L.goal}"`);
+    console.log(`colours: sky blue tried on (her sails ${L.tried.canvas?.toString(16)}, "${L.tried.btn}", "${L.tried.sail}"), bought: ${L.sky.paint} (◆ ${L.sky.shards} left), teal pennants: ${L.teal.paint} (◆ ${L.teal.shards} left; hoist ${L.teal.hoist}, body ${L.teal.body}); shaders ${L.programs.join(' then ')}; a rank's colour: "${L.locked.text}" (${L.locked.disabled ? 'not for sale' : 'FOR SALE'}); honey tried on and left: ${L.leave.after.toString(16)}; a raider's sails ${L.raider.toString(16)}; ${L.notRaider.length ? `LIKE A RAIDER'S: ${L.notRaider.join(', ')}` : 'no colour a raider\'s'}`);
+    console.log(`harbour orders for ${L.orders.day}: ${L.orders.picks} (asked again ${L.orders.again}, another day ${L.orders.other}); four Skiffs down: got ${L.orders.after3.got}, done ${L.orders.after3.done}, paid ${L.orders.after3.paid.join(', ')}; all three: ${L.orders.all.paid.join(', ')}; a new day come (the save's orders from 2000-01-01): ${L.orders.next.day} (got ${L.orders.next.got}); her fourth ship bought: "${note4}"; the longest toast: "${L.longest}"`);
+    if (!L.log.shown || L.log.ribbons < 35 || !L.log.won.length || !L.log.won[0].includes(' · ') || !L.log.records.includes('Raiders downed') || !(L.log.voyages >= 1) || !L.log.rank.includes('renown')) problems.push(`the Captain's log should open on the commendations (every one, those won with their day), the records and the voyages: ${JSON.stringify(L.log)}`);
+    if (L.ids.missing.length || L.ids.extra.length) problems.push(`every commendation in the save (progress.js MEDAL_IDS) should have its words and reward (deeds.js MEDALS), and the reverse: ${JSON.stringify(L.ids)}`);
+    if (!L.fresh.includes('ready') || !L.drill.said.includes('Gun drill') || !L.drill.marked || !L.gale.said.includes('Gale') || !L.gale.marked || !L.goal.includes('◆ 50 more') || !L.goal.includes('about ◆ 140')) problems.push(`the quartermaster's line should say what's worth doing next, marking it: ${JSON.stringify({ fresh: L.fresh, drill: L.drill, gale: L.gale, goal: L.goal })}`);
+    if (L.tried.canvas !== 0x9fc4ee || !L.tried.btn.startsWith('Buy Sky blue') || !L.tried.sail.startsWith('or') || L.sky.owned !== 1 || L.sky.paint !== 'sky' || L.sky.canvas !== 0x9fc4ee || L.sky.shards !== 350 || L.teal.paint !== 'teal' || L.teal.shards !== 270 || L.teal.hoist !== '0.95,0.72,0.28' || L.teal.body !== '0.2,0.62,0.7' || L.programs[1] !== L.programs[0]) problems.push(`colours bought in port should show on her ship (her sails dyed, her pennants' bodies, the hoist still gold) with no new shaders: ${JSON.stringify({ tried: L.tried, sky: L.sky, teal: L.teal, programs: L.programs })}`);
+    if (!L.locked.disabled || L.locked.owned || L.locked.shards !== 270 || !L.locked.note.includes('rank') || L.leave.tried === L.leave.after || L.leave.after !== 0x9fc4ee || L.leave.saved !== 'sky' || L.raider !== 0xc8735c || L.notRaider.length) problems.push(`a rank's colour isn't for sale, one tried on is gone as she leaves, a raider keeps her rust, and no colour is a raider's: ${JSON.stringify({ locked: L.locked, leave: L.leave, raider: L.raider, notRaider: L.notRaider })}`);
+    const O = L.orders;
+    if (!/^\d{4}-\d\d-\d\d\/1$/.test(O.day) || new Set(O.picks.split(',')).size !== 3 || O.picks.includes('-1') || O.again !== O.picks || O.after3.done !== '1,0,0' || O.after3.paid.join() !== 'Bring down 3 Skiffs 60' || O.all.done !== '1,1,1' || O.all.bonus !== 1 || !O.all.paid.includes('The harbourmaster\'s thanks 100') || O.next.got !== '0,0,0' || O.next.day === '2000-01-01/1') problems.push(`harbour orders should be three a day, the same asked again, each paid once as it's done, the thanks for all three, and fresh the next day: ${JSON.stringify(O)}`);
+    if (!L.four.medal || L.four.shards !== 3000 - 2200 + 200 || note4 !== 'Commendation: A Fleet of Four · ◆ 200') problems.push(`buying her fourth ship should win A Fleet of Four (◆ 200), said in the port's note: ${JSON.stringify({ four: L.four, note: note4 })}`);
+    if (L.longest.length > LONGEST_TOAST.length) problems.push(`the record's toasts should be no longer than the longest the screens are tried with (${LONGEST_TOAST.length} letters): "${L.longest}" (${L.longest.length})`);
+  }
+
+  // pictures: a new Captain's first tip at sea, coming home after a good voyage, the Captain's log, her colours on the
+  // berth, and the title with its stars
+  {
+    await page.evaluate(() => { const g = window.__game; g.settings.set('tips', true); g.progress.reset(); g.progress.data.skies = 'cross'; g.port.setMode('title'); document.getElementById('btn-title-sail').click(); g.step(2, {}); g.quiet(); });
+    await drawnAtSea(page); await shot(page, 'laptop-first-voyage-tip');
+    await page.evaluate(() => {
+      const g = window.__game, P = g.player, d = g.progress.data; g.coach.clear(); g.settings.set('tips', false); g.raiders.setAI(false); g.waves.timer = 1e9; g.waves.state = 'fight';
+      d.stats.renown = 110; d.voyages = 1; g.deeds.today();
+      for (const [id, y] of [['skiff', 0], ['cutter', -100], ['brig', -100], ['skiff', -500]]) { const k = g.raiders.spawn(id, P.pos.clone().add({ x: 0, y, z: 300 }), 0, true); g.step(1 / 60, {}); k.f.hit('hull', 1e9); g.step(0.1, {}); g.step(1, {}); }
+      g.raiders.clear(); Object.assign(g.waves, { n: 4, state: 'fight', next: null }); g.step(0.2, {}); g.voyage.shards += 240; g.home(1);
+    });
+    await page.waitForTimeout(1800); await shot(page, 'laptop-homecoming');
+    await page.evaluate(() => { document.getElementById('btn-hc-port').click(); document.getElementById('btn-log').click(); });
+    await page.waitForTimeout(800); await shot(page, 'laptop-log');
+    await page.evaluate(() => { const g = window.__game, $ = (id) => document.getElementById(id); $('btn-log-done').click(); g.progress.data.shards += 600; document.querySelector('#port-ships [data-ship="skiff"]').click(); document.querySelector('[data-dye="sky"]').click(); $('btn-dye').click(); document.querySelector('[data-dye="sunrise"]').click(); $('btn-dye').click(); document.querySelector('[data-dye="honey"]').click(); $('pp-colours-part').scrollIntoView({ block: 'end' }); });
+    await page.waitForTimeout(1500); await shot(page, 'laptop-colours');
+    await page.evaluate(() => { const g = window.__game; g.port.setMode('title'); });
+    await page.waitForTimeout(2500); await shot(page, 'laptop-title-record');
+    await page.evaluate(() => window.__game.port.setMode('port'));
+  }
   await collect();
   const untold = (await page.evaluate(() => Object.keys(window.__game.events.PAYLOAD))).filter((k) => !told.has(k));
   console.log(`the game's news: ${told.size} kinds told${untold.length ? `, NEVER: ${untold.join(', ')}` : ', every kind'}`);
@@ -5015,6 +5313,7 @@ if (!demoOnly) {
 }
 if (!quick && !demoOnly) {
   const page = await open('game', 'phone', gameReady);
+  await tipsOff(page);
   await page.evaluate(() => { const p = window.__game.progress; p.reset(); p.data.skies = 'cross'; });
   const start = await page.evaluate(() => ({ touch: document.body.classList.contains('touch') }));
   if (!start.touch) problems.push('phone: the touch controls are not showing');
@@ -5293,8 +5592,8 @@ if (!quick && !demoOnly) {
   if (!says(rightWords, 'Left', 'right')) problems.push(`phone: with Fire back on the right, the hint and How to fly should say the left thumb steers again: ${JSON.stringify(rightWords)}`);
   // nothing on the screen lands on anything else, on a phone held upright or sideways (two sizes each): layoutAt,
   // with the touch buttons and the hint
-  const HUD = ['ship', 'compass', 'btn-pause', 'minimap', 'score', 'battery', 'toast', 'warn', 'banner', 'region', 'aim', 'btn-fire', 'btn-surge', 'btn-shot', 'btn-patch', 'btn-sail-up', 'btn-sail-down', 'touch-hint', 'calm'];
-  const PANELS = ['ship', 'compass', 'btn-pause', 'minimap', 'score', 'battery', 'touch-buttons', 'touch-hint'];
+  const HUD = ['ship', 'compass', 'btn-pause', 'minimap', 'score', 'battery', 'toast', 'warn', 'banner', 'region', 'aim', 'btn-fire', 'btn-surge', 'btn-shot', 'btn-patch', 'btn-sail-up', 'btn-sail-down', 'touch-hint', 'tip', 'calm'];
+  const PANELS = ['ship', 'compass', 'btn-pause', 'minimap', 'score', 'battery', 'touch-buttons', 'touch-hint', 'tip'];
   const layouts = [], SAY = await longestBanner(page); // (the longest banner line the game writes)
   for (const [w, h] of [[390, 844], [360, 640], [844, 390], [740, 360], [640, 360], [568, 320]]) {
     // (the new size, once the game has heard of it: drawn in software, a frame can take longer than the half second)
@@ -5392,7 +5691,7 @@ if (!quick && !demoOnly) {
       }
       Object.assign(d.ships.galleon, { owned: was0.galleon }); Object.assign(d.ships.manowar, { owned: was0.manowar }); d.ships.frigate.owned = false; d.flying = was0.flying === 'frigate' ? 'skiff' : was0.flying; // (the Frigate left unowned, for the pictures below)
       d.shards = 12345; d.flying = 'skiff'; $('port-ships').querySelector('[data-ship="skiff"]').click();
-      const top = ['port-shards', 'btn-skies', 'btn-settings-port'].map(r), line = Math.max(...top.map((b) => b.height)), right = Math.round(Math.max(...top.map((b) => b.right)));
+      const top = ['port-shards', 'btn-log', 'btn-skies', 'btn-settings-port'].map(r), line = Math.max(...top.map((b) => b.height)), right = Math.round(Math.max(...top.map((b) => b.right)));
       $('pp-tab-upgrades').click();
       const sail = r('btn-sail'), mods = [...document.querySelectorAll('.mod')].filter((m) => m.getBoundingClientRect().bottom <= sail.top + 1).length;
       $('pp-tab-ship').click();
@@ -5404,7 +5703,7 @@ if (!quick && !demoOnly) {
         const b = r('pp-blurb'), so = document.querySelector('.sail-out').getBoundingClientRect(), pn = r('port-panel');
         if (b.height && b.bottom > so.top + 1) tucked.push(`${id}${own ? '' : ' (not owned)'} by ${Math.round(b.bottom - so.top)} px`);
         if (innerWidth <= 700 && innerHeight > 500 && pn.bottom - so.bottom > 12) empty.push(`${id}${own ? '' : ' (not owned)'}: ${Math.round(pn.bottom - so.bottom)} px`);
-        for (const other of ['port-ships', 'port-shards', 'btn-skies', 'btn-settings-port', 'port-note']) if (lap(pn, r(other))) laps.add(other);
+        for (const other of ['port-ships', 'port-shards', 'btn-log', 'btn-skies', 'btn-settings-port', 'port-note', 'pp-next']) if (lap(pn, r(other))) laps.add(other);
       };
       for (const id of ['skiff', 'cutter', 'brig', 'frigate', 'galleon', 'manowar']) { if (id !== 'skiff') look(id, false); look(id, true); }
       $('port-note').textContent = '';
@@ -5427,6 +5726,56 @@ if (!quick && !demoOnly) {
     if (w === 740) { await page.click('#pp-tab-upgrades'); await page.waitForTimeout(1200); await shot(page, 'phone-sideways-port-upgrades'); await page.click('#pp-tab-ship'); }
   }
   console.log(`phone port: ${ports.join('; ')}`);
+  // coming home's card, the Captain's log and her colours at every phone size (upright and sideways, down to the
+  // smallest, 568 by 320): each card on the screen with its buttons in view (not scrolled away), after a rich voyage
+  // (five ribbons and a rank risen); her Colours tab with every swatch in the panel above Set sail, and a colour tried
+  // on its Buy button in view, and (upright) her ship above the panel
+  {
+    const cards = [];
+    for (const [w, h] of [[390, 844], [360, 640], [844, 390], [740, 360], [640, 360], [568, 320]]) {
+      await page.setViewportSize({ width: w, height: h }); await page.waitForTimeout(300);
+      const C = await page.evaluate(() => {
+        const g = window.__game, $ = (id) => document.getElementById(id), d = g.progress.data, r = (el) => (typeof el === 'string' ? $(el) : el).getBoundingClientRect();
+        const inView = (el, box) => { const b = r(el); return b.width > 0 && b.left >= box.left - 1 && b.right <= box.right + 1 && b.top >= box.top - 1 && b.bottom <= box.bottom + 1 && b.left >= -1 && b.top >= -1 && b.right <= innerWidth + 1 && b.bottom <= innerHeight + 1; };
+        const was = JSON.stringify(d), out = { size: `${innerWidth}x${innerHeight}`, off: [] };
+        g.progress.reset(); Object.assign(d, { skies: 'cross', voyages: 3, rank: 0 }); d.stats.renown = 100; d.best.cross = 4;
+        g.fly('brig'); g.raiders.setAI(false); g.waves.timer = 1e9; g.waves.state = 'fight'; const P = g.player; P.pos.set(0, 900, 0);
+        for (const [id, y] of [['skiff', 0], ['brig', -100], ['skiff', -500], ['cutter', 0]]) { const k = g.raiders.spawn(id, P.pos.clone().add({ x: 0, y, z: 300 }), 0, true); g.step(1 / 60, {}); k.f.hit('hull', 1e9); g.step(0.1, {}); P.pos.set(0, 900, 0); }
+        g.raiders.clear(); Object.assign(g.waves, { n: 4, state: 'fight', next: null }); g.step(0.2, {}); g.voyage.shards += 300; g.home(1);
+        const card = r(document.querySelector('#homecoming .card'));
+        out.ribbons = document.querySelectorAll('#hc-ribbons .ribbon').length; out.title = $('hc-title').textContent;
+        for (const id of ['btn-again', 'btn-hc-port', 'hc-purse', 'hc-title']) if (!inView(id, card)) out.off.push(id);
+        out.scrolls = document.querySelector('#homecoming .card-body').scrollHeight > document.querySelector('#homecoming .card-body').clientHeight + 1;
+        $('btn-hc-port').click(); $('btn-log').click();
+        const lc = r(document.querySelector('#log .card'));
+        for (const id of ['btn-log-done', 'log-tab-deeds', 'log-tab-voyages', 'log-title']) if (!inView(id, lc)) out.off.push(`log: ${id}`);
+        $('btn-log-done').click();
+        // her colours (on a phone a tab of their own)
+        d.shards = 5000; document.querySelector('#port-ships [data-ship="skiff"]').click(); $('pp-tab-colours').click();
+        const pn = r('port-panel'), so = r(document.querySelector('.sail-out'));
+        const sw = [...document.querySelectorAll('.swatch')].filter((b) => { const x = r(b); return !(x.width > 0 && x.top >= pn.top - 1 && x.bottom <= so.top + 1 && x.left >= pn.left && x.right <= pn.right); }).map((b) => b.dataset.dye);
+        if (sw.length) out.off.push(`swatches under the fade or out of the panel: ${sw.join(' ')}`);
+        document.querySelector('[data-dye="dusk"]').click();
+        if (!inView('btn-dye', r('port-panel'))) out.off.push('colours: its Buy button');
+        if (innerWidth <= 700 && innerHeight > 500 && g.port.shipBox().b > r('port-panel').top + 1) out.off.push('colours: her ship behind the panel');
+        g.port.show('brig'); $('pp-tab-ship').click();
+        g.progress.reset(); Object.assign(d, JSON.parse(was)); g.progress.save(); g.port.refresh();
+        return out;
+      });
+      cards.push(`${C.size}: ${C.off.length ? `OUT OF VIEW: ${C.off.join(', ')}` : 'all in view'} ("${C.title}", ${C.ribbons} ribbons${C.scrolls ? ', its words scrolling' : ''})`);
+      if (C.off.length || C.ribbons < 4) problems.push(`phone ${C.size}: coming home's card, the log and her colours should fit, their buttons in view: ${JSON.stringify(C)}`);
+      if (w === 390 || w === 844 || w === 568) {
+        await page.evaluate(() => { const g = window.__game; g.fly('brig'); g.raiders.setAI(false); g.waves.timer = 1e9; g.voyage.shards = 345; g.raiders.clear(); Object.assign(g.waves, { n: 2, state: 'fight', next: null }); g.step(0.2, {}); g.home(1); });
+        await page.waitForTimeout(1500); await shot(page, `${w > h ? 'side' : 'phone'}-${w}-homecoming`);
+        await page.evaluate(() => { document.getElementById('btn-hc-port').click(); document.getElementById('btn-log').click(); });
+        await page.waitForTimeout(500); await shot(page, `${w > h ? 'side' : 'phone'}-${w}-log`);
+        await page.evaluate(() => { const $ = (id) => document.getElementById(id); $('btn-log-done').click(); window.__game.progress.data.shards += 400; document.querySelector('#port-ships [data-ship="skiff"]').click(); $('pp-tab-colours').click(); document.querySelector('[data-dye="sea"]').click(); });
+        await page.waitForTimeout(1200); await shot(page, `${w > h ? 'side' : 'phone'}-${w}-colours`);
+        await page.evaluate(() => { window.__game.port.setMode('title'); window.__game.port.setMode('port'); document.getElementById('pp-tab-ship').click(); });
+      }
+    }
+    console.log(`phone, coming home, the log and her colours: ${cards.join('; ')}`);
+  }
   await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(500);
   await page.evaluate(() => window.__game.fly('skiff'));
   await page.evaluate(battle, ['cutter', 'skiff']);
@@ -5514,6 +5863,39 @@ if (!quick && !demoOnly) {
   await wait(page, () => !document.getElementById('veil').getAnimations().length, null, 'phone: the title coming up out of the night');
   await page.waitForTimeout(1500);
   await shot(page, 'phone-title-sideways');
+  // last on the phone (it reloads the page, sails and starts the sound): an old save (version 1, as the game kept it
+  // before October 13) opened on a phone held upright: everything kept, its stars
+  // credited from its best wave and paid once as back pay (said in port), its rank on the title and its stars on the
+  // skies; then a brand-new Captain's first voyage on a phone, from the title's Set sail: the first tip in the hint's
+  // place (the hint making way), saying the left thumb steers (the right, with Fire on the left), clear of the buttons
+  {
+    await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(500);
+    const brig = { owned: true, power: 1, mods: { armour: 2, canvas: 0, drill: 1, crystals: 0 } };
+    await page.evaluate((brig) => localStorage.setItem('skies-of-aethermoor/save-1', JSON.stringify({ v: 1, saved: Date.now(), skies: 'cross', shards: 500, flying: 'brig', voyages: 9, best: { fair: 0, cross: 7, mael: 0 }, ships: { skiff: { owned: true, power: 0, mods: { armour: 0, canvas: 0, drill: 0, crystals: 0 } }, brig }, shots: { chain: true, breaker: false } })), brig);
+    await page.reload(); await page.waitForFunction(gameReady, null, { timeout: 180000 });
+    const old = await page.evaluate(() => {
+      const g = window.__game, $ = (id) => document.getElementById(id), d = g.progress.data;
+      g.port.setMode('title');
+      const out = { v: d.v, shards: d.shards, brig: `${d.ships.brig.owned} ${d.ships.brig.power} ${Object.values(d.ships.brig.mods).join('')}`, flying: d.flying, voyages: d.voyages, chain: d.shots.chain, stars: Object.values(d.stars.cross).join(''), rank: $('title-rank').textContent,
+        skies: [...document.querySelectorAll('#skies [data-skies="cross"] .star.on')].length };
+      g.port.setMode('port'); out.note = $('port-note').textContent;
+      return out;
+    });
+    console.log(`phone, an old save: version ${old.v}, ◆ ${old.shards}, the Brig ${old.brig} (sailing the ${old.flying}), ${old.voyages} voyages, chain shot ${old.chain}; Crosswinds' stars ${old.stars} (${old.skies} gold on the title); "${old.rank}"; the port: "${old.note}"`);
+    if (old.v !== 2 || old.shards !== 600 || old.brig !== 'true 1 2010' || old.flying !== 'brig' || old.voyages !== 9 || !old.chain || old.stars !== '100' || old.skies !== 1 || !old.rank.startsWith('Steady Captain') || old.note !== 'Back pay for your earlier voyages\' stars: ◆ 100') problems.push(`an old save should load with everything kept, its stars paid once as back pay (said in port), its rank and stars on the title: ${JSON.stringify(old)}`);
+    await page.evaluate(() => { const g = window.__game; g.settings.set('tips', true); g.progress.reset(); g.port.setMode('title'); });
+    await page.tap('#btn-title-sail');
+    const tipped = await page.evaluate(() => {
+      const g = window.__game, $ = (id) => document.getElementById(id), r = (id) => $(id).getBoundingClientRect();
+      g.step(2, {}); $('tip').getAnimations().forEach((a) => a.finish());
+      const t = r('tip'), b = r('touch-buttons'), lap = (a, c) => a.left < c.right - 1 && c.left < a.right - 1 && a.top < c.bottom - 1 && c.top < a.bottom - 1;
+      return { words: $('tip').hidden ? '' : $('tip').textContent, hint: getComputedStyle($('touch-hint')).visibility, onScreen: t.left >= 0 && t.right <= innerWidth && t.top >= 0 && t.bottom <= innerHeight, buttons: lap(t, b) };
+    });
+    await drawnAtSea(page); await shot(page, 'phone-first-voyage-tip');
+    const lefty = await page.evaluate(() => { const g = window.__game, $ = (id) => document.getElementById(id); g.settings.set('leftFire', true); g.coach.clear(); g.coach.show('steer'); const w = $('tip').textContent, side = $('tip').getBoundingClientRect().left > innerWidth / 2; g.settings.set('leftFire', false); g.coach.clear(); g.settings.set('tips', false); g.endVoyage(0); g.port.setMode('title'); return { w, side }; });
+    console.log(`phone, a new Captain's first tip: "${tipped.words}" (the hint ${tipped.hint}, ${tipped.onScreen ? 'on the screen' : 'OFF THE SCREEN'}${tipped.buttons ? ', ON THE BUTTONS' : ''}); with Fire on the left: "${lefty.w}" (${lefty.side ? 'on the right' : 'ON THE LEFT'})`);
+    if (!tipped.words.startsWith('Left thumb') || tipped.hint !== 'hidden' || !tipped.onScreen || tipped.buttons || !lefty.w.startsWith('Right thumb') || !lefty.side) problems.push(`phone: a new Captain's first tip should be in the hint's place (the hint making way), saying which thumb steers, clear of the buttons: ${JSON.stringify({ tipped, lefty })}`);
+  }
   await page.close();
 }
 

@@ -525,11 +525,13 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
   //           the clouds below
   // A treasure ship (treasureShip: one that runs, a Galleon captain too) is closer, about 1.2 km, sailing across the
   // Captain's path. Her colours are a captain's if she leads the wave, or else a treasure ship's. Coming in high or low
-  // (the sun, the stack), each holds her height ARRIVE seconds at the most. Returns the way they come from (a bearing),
-  // and how
-  const OUT = { a: 0, how: 'ahead' }, ARRIVE = 30, BELOW = { from: 1300, more: 300, rise: 1250, hold: 90 };
+  // (the sun, the stack), each holds her height ARRIVE seconds at the most. A brand-new Captain's first raider (`gentle`:
+  // main.js) comes on nearly dead ahead and closer (GENTLE.d metres), in clear air (at the Captain's height or the
+  // nearest clear of cloud to it: never hidden in a cloud as she comes), and holds her fire until the Captain has fired
+  // (or GENTLE.hold seconds have gone by). Returns the way they come from (a bearing), and how
+  const OUT = { a: 0, how: 'ahead' }, ARRIVE = 30, BELOW = { from: 1300, more: 300, rise: 1250, hold: 90 }, GENTLE = { spread: 0.2, d: 1200, hold: 25, up: [0, 60, -60, 120, -120, 200, -200, 300] };
   function spawnWave(wave, foe) {
-    const base = foe.heading + (Math.random() - 0.5) * 1.4, ids = wave.ids, how = wave.how ?? 'ahead', sun = Math.atan2(SUN.x, SUN.z);
+    const gentle = !!wave.gentle, base = foe.heading + (Math.random() - 0.5) * (gentle ? GENTLE.spread : 1.4), ids = wave.ids, how = wave.how ?? 'ahead', sun = Math.atan2(SUN.x, SUN.z);
     const line = [];
     let k = 0, lead = null;
     OUT.a = how === 'sun' ? sun : base; OUT.how = how; burstYet = false;
@@ -540,7 +542,7 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
       if (way === 'stack' && ROLE[id] !== 'chaser') way = 'ahead'; // (high and low: the small ones; a big one comes on ahead)
       if (cap && i === 0 && way !== 'cross') OUT.a = way === 'sun' ? sun : base, OUT.how = way; // (the banner tells her way, a captain's wave)
       const spread = (i - (ids.length - 1) / 2) * 0.24;
-      let a = base + spread, d = 1500 + Math.random() * 400, y = clamp(foe.pos.y + (Math.random() - 0.5) * 160, 200, 2000), alt = null, near = 0;
+      let a = base + spread, d = gentle ? GENTLE.d : 1500 + Math.random() * 400, y = clamp(foe.pos.y + (Math.random() - 0.5) * 160, 200, 2000), alt = null, near = 0;
       if (way === 'cross') { d = 1100 + Math.random() * 250; }
       else if (way === 'pincer') { a = base + (k % 2) * Math.PI + (Math.floor(k / 2) - 0.5) * 0.2; d = 1300 + Math.random() * 300; k++; }
       else if (way === 'below') { a = base + spread * 1.5; d = BELOW.from + Math.random() * BELOW.more; y = Math.max(120, CLOUD_Y - 110); }
@@ -548,6 +550,7 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
       else if (way === 'stack') { const up = k++ % 2 ? -1 : 1; y = clamp(foe.pos.y + up * 140, 150, 2200); alt = up * 140; near = 300; d = 1300 + Math.random() * 300; }
       else if (way === 'line') { a = base; d = 1500 + Math.random() * 200; }
       const pos = new THREE.Vector3(foe.pos.x + Math.sin(a) * d, y, foe.pos.z + Math.cos(a) * d);
+      if (gentle && api.sky) for (const up of GENTLE.up) { pos.y = clamp(foe.pos.y + up, 200, 2000); if (api.sky.cloudAt(pos) < 0.05) break; }
       let heading = runs ? a + (Math.random() < 0.5 ? 1 : -1) * Math.PI / 2 : a + Math.PI;
       // (a line: the first big ship leads, the rest behind her along her heading, each her length and the next's apart)
       if (way === 'line' && lead) {
@@ -556,6 +559,7 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
       }
       const r = spawn(id, pos, heading, false, cap, runs && !cap, { who, tough: wave.tough ?? 1, bounty: cap ? wave.bounty ?? 1 : 1 });
       r.seen = foe.pos.clone(); // (they know where she was as they came)
+      if (gentle) r.hold = GENTLE.hold;
       if (alt !== null) { r.alt = alt; r.arrive = { near, t: ARRIVE, alt: (Math.random() - 0.5) * (r.role === 'chaser' ? 50 : 20) }; }
       if (way === 'below') { r.alt = 30; r.rising = true; }
       if (way === 'sun') r.unseen = 6;
@@ -813,6 +817,8 @@ export function makeRaiders(scene, art, bolts, skies, fx) {
   const lineTurn = (r) => { const A = lineAhead(r); return !A || A.firedAt > r.firedAt || r.wait > LINE.hold; };
   function shoot(r, foe, dt) {
     const ch = r.charge;
+    // (a brand-new Captain's first raider holds her fire until the Captain has fired, or for GENTLE.hold seconds)
+    if (r.hold > 0) { if (foe.firedOnce) r.hold = 0; else { r.hold -= dt; ch.b = null; ch.aimed = false; return; } }
     if (!r.sees || r.smoke > 0) { ch.b = null; ch.aimed = false; return; } // (she can't see the Captain, or she's in her smoke: she holds her fire, and stands down a broadside)
     if (ch.b && (ch.t -= dt) <= 0) {
       const A = r.aimed[ch.b];

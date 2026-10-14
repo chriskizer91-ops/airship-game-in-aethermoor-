@@ -5,8 +5,9 @@ The game is one page, `dist/game.html`, with everything inside it, so it works w
 ## How it goes
 
 1. **The title screen.** Your ship flies slowly over Aethermoor at sunset, behind the game's name (see [The title screen](#the-title-screen)). Choose your skies, the game's difficulty (see [The skies](#the-skies)), then **Set sail** straight away, or go **To port** first.
-2. **The port.** Your ship turns slowly in a quiet void, on a round stone berth with a brass rim (Chris: a racing game's garage); drag her to turn her round. Pick which ship to sail, buy ships and upgrades with Crystal Shards, and set where the crystals' power goes (see [The port](#the-port)).
+2. **The port.** Your ship turns slowly in a quiet void, on a round stone berth with a brass rim (Chris: a racing game's garage); drag her to turn her round. Pick which ship to sail, buy ships, upgrades and colours with Crystal Shards, and set where the crystals' power goes (see [The port](#the-port)).
 3. **A voyage.** Set sail over Aethermoor and fight off waves of raiders, each harder than the last (see [A voyage](#a-voyage)). Downed raiders spill Crystal Shards; fly through them to gather them. After each wave, sail on for more or go back to port to keep what you've gathered. If your ship goes down, the crew get her home with half.
+4. **Coming home.** A card shows what the voyage did and what it won, and **Sail again** takes you straight back out. Everything you do counts towards your record: commendations, stars, a rank that only goes up, and three small harbour orders a day (see [The Captain's record](#the-captains-record)). A brand-new Captain's first voyage teaches as it goes, one short tip at a time.
 
 What's built, step by step (October 6 to 13). First, the game this version was copied from:
 
@@ -35,6 +36,8 @@ Then, in this version:
 - **Foes worth remembering** (October 13): raiders with nerve (a beaten crew strikes her colours and runs up a white flag, a hurt one runs for the clouds, a Brig or Frigate fires a red flare for help); six raider captains with names, titles and tricks to learn, and a bigger price on the head of one who sinks you; waves that come up through the clouds, out of the sun, from both sides, high and low, or in a line of battle; the Man-o'-war's fortress battle in three acts (blocks of guns to silence, her boats, her sinking broadside); and a choice of road between waves: into the storm, a treasure ship's trail, or hunting the next captain down early (see [Foes worth remembering](#foes-worth-remembering)). Polished after review (October 13): a red flare bursts where you can see it and hangs over her while help is coming; the Ghost stays hidden in her smoke as she slips round you; raiders coming up through the clouds burst through further off, in view, with a toast saying where; a struck raider's white flag shows from any side; the Man-o'-war's last act lasts a minute at most, and her red fan grows as tall on either side; a raider running for the clouds leaves her line of battle, so the ships behind her don't follow her away; banners are kept short enough for a phone (a hint that doesn't fit comes in a toast after); a treasure ship's trail brings a treasure ship as well as the raiders, not in place of them, and comes up in a real voyage; a hunted captain sails her own wave's ship; 1 and 2 stay shot keys until the card between waves has risen, the mouse stays locked between waves, and held sideways the card's second way on goes under Sail on, which stays where it always is.
 - **Touch-ups** (October 13, from stage 4c's look-over): a raider in cloud is **lost** only while the cloud, as it's drawn, really hides her: one sailing in the front of a cloud, or through its thin edge, shows and you can lock on to her (a line of battle used to stay "Lost in the cloud" right through its bank, in plain sight, worst in a storm; see [The raiders](#the-raiders)). **Aim down past your own big ship**: the view moves out over her bow, her side or her stern as far as it must, so a raider below a Man-o'-war is never hidden behind her (see [Aiming and the guns](#aiming-and-the-guns)). A struck raider's **white flag is hemmed dark** far off and grows sooner, so it shows against white haze; **crystal breakers aim at the middle of what shows of her crystals**, so a level volley lands on her instead of flying over; **the sea's glitter is soft**, a gentle path of light with soft glints, not a field of white specks; and a wave **bursting up through the clouds** off the side of a phone's narrow view gets a toast pointing the way ("← Rising through the clouds, ahead on your left!") and her tag pulses gold. **The roads between waves are each a fair trade**: the storm road brings the same raiders now (one ship more made its voyages far riskier for fewer shards), the hunt pays half as much again on her head, and the simulated Captain plays each voyage afresh with its own dice, so the measures can be trusted (see [How hard it is](#how-hard-it-is)).
 
+- **Reasons to come back** (October 13): the game now remembers the Captain's whole record, on her phone and laptop alike. **A gentle first voyage** for a brand-new Captain: one short tip at a time, worded for the laptop's keys or the phone's thumbs, and her first raider comes on ahead, closer, and holds her fire until you've fired. **Coming home** shows a card of what the voyage did, with **Sail again**. **Commendations** for deeds and milestones (◆ 25 to ◆ 1,000 each), a **Captain's log** in port, **ranks** from New Captain to Legend of Aethermoor, **three stars on each skies** for its 5th, 10th and 15th waves, the **quartermaster's advice** in port, **sail and pennant colours** to buy or win, and **three harbour orders a day** (see [The Captain's record](#the-captains-record)). An old save keeps everything, and is paid for the stars its best waves had already earned.
+
 Boarding waits (Chris, October 6: fill out the ship-to-ship fighting first).
 
 ## The skies
@@ -47,14 +50,14 @@ Three difficulties, named for the weather:
 | **Crosswinds** | As described in [The raiders](#the-raiders); they lose you in a cloud unless they're within 250 m. A broadside's warning lasts 0.8 s; big raiders try to cross your bow and rake you. **Storms on waves 8 and 13** | a quarter more |
 | **Maelstrom** | Aim a little better, reload a little faster, hit 15% harder, 15% sturdier, an extra Skiff or Cutter in every wave from the third; they lose you in a cloud unless they're within 350 m. A broadside's warning lasts 0.6 s; big raiders try to cross your bow, small ones come at your stern, and one your loaded broadside is pointed at may climb or dive out of it. **Storms on waves 4, 8 and 12** (the Man-o'-war's wave in a storm), and two waves in five after the fifteenth | 60% more |
 
-The title screen remembers your best wave on each. A brand-new Captain starts on **Fair Winds**, the skies marked best for a first voyage; once you've chosen, the game keeps your choice.
+The title screen shows your record on each: your best wave, the most shards you've brought home and the most raiders you've downed in one voyage, and three stars, one each for beating its 5th, 10th and 15th waves (see [Stars and records](#stars-and-records)). A brand-new Captain starts on **Fair Winds**, the skies marked best for a first voyage; once you've chosen, the game keeps your choice.
 
 ## The title screen
 
 - **Your ship over Aethermoor at sunset.** The ship you sail flies a slow, gentle circle 700 m up over the Hearthsea and the island city, leaning into her turn, with the view drifting along beside her. The sun sits low in the west-south-west with rays fanning out of it, the clouds below are peach and gold, and the land lies in warm shadow. Far off, raiders with rust-red sails cross the sky on their own business, just above the horizon: as one crosses out of sight the next comes in, so there's nearly always one to see (three of them on a laptop or a phone held sideways, two on a phone held upright). Wherever she is in the view, each is turned about 30 degrees from side-on to you, her bow towards you as she crosses to the left or her stern as she crosses to the right, so you see her sails glowing in the low sun (seen straight from the side, square sails are edge-on and you'd see only bare masts). On a phone held upright they're small and sail just over the horizon, so they look properly far off. They never fight here. Drag the sky to swing the view round her; let go, and a moment later it eases back to show the sun again. Her ship always sits clear of the title's card, whatever the size of the screen.
 - **The sunset is the title's own.** As soon as you set sail (or go to port), the sky goes back to the voyages' late afternoon, exactly as it always is at sea.
 - **The skies tint it.** **Fair Winds**: a clear evening, less cloud, more of the land showing. **Crosswinds**: breezy, a little more cloud, and the clouds racing past (the big clouds and the cloud below on the same wind). **Maelstrom**: storm cloud rolling in, dark slate clouds below, a darker sky over a burning horizon, and the clouds racing harder. The change blends in over a second and a half.
-- **Fewer taps.** The big button sets sail at once in your ship. For a new Captain it just says **Set sail** (there's nothing to buy yet), and Fair Winds is marked **Best for your first voyage** and already chosen, so Set sail takes a newcomer out on it; that first voyage opens with "Your first voyage, Captain". Back from the sea, it says **Set sail in the Zephyr** (or whichever ship you sail), and a gold line shows the shards waiting to be spent in port (or that you have none yet). **To port** is the plain button beside it. On a phone held sideways the two buttons sit side by side under the skies, and the game's name fits on one line. On a small phone the opening line is left out: held upright, so your ship still shows above the panel; held sideways with the browser's bars showing, so Set sail still shows.
+- **Fewer taps.** The big button sets sail at once in your ship. For a new Captain it just says **Set sail** (there's nothing to buy yet), and Fair Winds is marked **Best for your first voyage** and already chosen, so Set sail takes a newcomer out on it; that first voyage opens with "Your first voyage, Captain". Back from the sea, it says **Set sail in the Zephyr** (or whichever ship you sail), and a gold line under the game's name shows your rank and the shards waiting to be spent in port ("Bold Captain · ◆ 1,240 to spend in port"; on a small phone held sideways it takes the place of the "Choose your skies" heading, so everything fits). Each skies shows its stars and its record; the Maelstrom, until you've sailed it, says what its stars pay ("◆ 1,700 in stars to win"); on a phone held sideways, just the stars and the best wave. **To port** is the plain button beside it. On a phone held sideways the two buttons sit side by side under the skies, and the game's name fits on one line. On a small phone the opening line is left out: held upright, so your ship still shows above the panel; held sideways with the browser's bars showing, so Set sail still shows.
 - **Between screens** (the title, the port and the sea) the picture dips into the night for a moment and comes up out of it over half a second, so you never see the wrong scene flash past.
 - **It's smooth on a phone**: the title is drawn in fewer goes than a voyage (on a phone about 34 against a voyage's 47 or so): each raider far off is drawn in one go rather than a dozen, and on a phone only her sails, masts, hull and deck cast shadows here (the shadows of the little parts can't be seen at this size). Each frame costs about what a frame at sea does (the check times both on a phone-sized screen, and the title may take at most a tenth longer). The check times them in turns, a voyage then the title, then the other way round, six times, and goes by the middle of the six turns, so a machine busy with other work slows both alike and can't trip it.
 
@@ -62,8 +65,11 @@ The title screen remembers your best wave on each. A brand-new Captain starts on
 
 - **Ships.** You start with the Skiff, the Zephyr. The Cutter (Gale) costs ◆ 300, the Brig (Tradewind) ◆ 900 and the Frigate (Tempest) ◆ 2,200. Then come your late-game ships, goals for many voyages: the Galleon (Doldrums) for ◆ 12,000 and the Man-o'-war (Thunderhead) for ◆ 30,000 (see [The Galleon and the Man-o'-war](#the-galleon-and-the-man-o-war)). The six sit along the bottom: in one row on a laptop, or two rows of three on a narrow window and on a phone either way (there just their names and prices: her class is in the panel). Tap a ship to look at it; if it's yours, it's the one you sail. Looking at a ship you don't own, the big gold button buys her ("Buy the Tempest · ◆ 2,200", always on one line on a phone, with the price in one piece; on the smallest phone held sideways, "Buy Tempest · ◆ 2,200"); until you can afford her it fills with gold as you earn towards her price, and says how many shards you have. **The Man-o'-war is sold only once you own the Galleon**: until then her button says "Buy the Doldrums first" and can't be pressed. (Owning her alone, your treasure ships would still be treasure Brigs, and a laden Brig outruns a Man-o'-war.) Under a giant's button a line says what owning her brings ("Once she's yours, raiders sail Men-o'-war too"; on a laptop and a phone held upright, where there's room), and as you buy her a note at the top says it again, on any screen (on a phone held sideways, on two lines beside the panel, never under it). Setting sail in your own ship is the plain line under it ("or set sail in the Zephyr").
 - **How she sails.** Bars for top speed, turning, climbing, hull and firepower, against the best any ship can be, in plain words: top speed in km/h, turning as the time for a full circle, climbing in metres a second, and firepower as light, fair, heavy, very heavy or (more than a tenth past a Frigate at her best) fearsome: the Galleon as built is very heavy, the Man-o'-war fearsome. Your Man-o'-war's hull and broadside are some twenty to fifty times a Skiff's, so those two bars are squeezed: a Skiff's still shows, a bigger ship's is always longer, and the number or the word says exactly how much. Pale is the ship as built; gold past it is what upgrades add, and red is what they cost. Looking at another ship, a white mark on each bar shows where the ship you sail now is, to compare. Her guns are listed in words too ("Guns: 2 in the bow, 6 each side, 1 in the stern"); on a narrow phone the line breaks only between its pieces, never inside one.
-- **On a phone**, looking at a ship you own, the panel has two tabs: **The ship** (what she's like and how she sails) and **Upgrades** (the upgrades first, then crystal power). A gold dot on Upgrades means there's one you can afford. Held upright, the panel is only as tall as what's in it, and your ship shows as big as fits in the room above it (all of her above the panel, berth and all); the ship's tab of a ship you own leaves out the heading over how she sails (the tab says it), so all five bars show above Set sail (on a small phone, the first two, with the rest a scroll away). The Upgrades tab makes the panel taller, with the ship smaller above it, and so does looking at a ship you don't own, so all of how she sails shows above the Buy button (on a small phone, without the line about your shards under it). Held sideways, the panel is on the right and the ships along the bottom on the left, in two rows of three (on the smallest phones, an iPhone SE's first one, the panel is a little narrower and the ships' buttons a little tighter, so all six fit); how she sails comes first (without its heading: the tab says it), then what she's like, all above the button, and the Upgrades tab leaves her class and guns to the ship's tab, so two upgrades show above Set sail (on the shortest screens one, with the rest just a scroll away). On a very short screen, with the browser's bars showing, what she's like is left out. On a phone held upright the button at the top says just the skies' name.
+- **On a phone**, looking at a ship you own, the panel has three tabs: **The ship** (what she's like and how she sails), **Upgrades** (the upgrades first, then crystal power and shot) and **Colours** (see below). A gold dot on Upgrades means there's one you can afford. Held upright, the panel is only as tall as what's in it, and your ship shows as big as fits in the room above it (all of her above the panel, berth and all); the ship's tab of a ship you own leaves out the heading over how she sails (the tab says it), so all five bars show above Set sail (on a small phone, the first two, with the rest a scroll away). The Upgrades tab makes the panel taller, with the ship smaller above it, and so does looking at a ship you don't own, so all of how she sails shows above the Buy button (on a small phone, without the line about your shards under it). Held sideways, the panel is on the right and the ships along the bottom on the left, in two rows of three (on the smallest phones, an iPhone SE's first one, the panel is a little narrower and the ships' buttons a little tighter, so all six fit); how she sails comes first (without its heading: the tab says it), then what she's like, all above the button, and the Upgrades tab leaves her class and guns to the ship's tab, so two upgrades show above Set sail (on the shortest screens one, with the rest just a scroll away). On a very short screen, with the browser's bars showing, what she's like is left out. On a phone held upright the button at the top says just the skies' name.
 - **Try her out.** Under the Buy button of a ship you don't own, a plain button takes her out for a sea trial, like a test drive (see [A sea trial](#a-sea-trial)). It sits a thumb's width clear of Buy and is tall enough for a thumb, so trying her never buys her by mistake (Buy spends the shards at once).
+- **The quartermaster's advice.** One gold line under the top bar says what's worth doing next, and a gold dot marks it: a new Captain's first voyage ("Your first ship, the Zephyr, is ready. Set sail and bring down raiders to earn Crystal Shards"); a ship you can buy now ("You can buy the Gale now: quick, with three guns a side", the dot on her button); an upgrade for the ship you sail, the lowest step first, gun drill before armour, canvas and crystals ("You can afford Gun drill for the Zephyr (◆ 60): her guns reload faster", the dot on its row); a kind of shot; or else how far off the nearest of those is ("◆ 85 more for gun drill. Your last voyages brought home about ◆ 140 each"). On a phone it's in short words on one line, and held upright it shows over your own ship's tab and her colours (a ship to buy, or her upgrades, need the room for the panel). The port's note takes its place while that shows.
+- **The Captain's log.** The button by your shards (a book, with your rank on it where there's room; just the book on a phone) opens the Captain's log (see [The Captain's record](#the-captains-record)).
+- **Colours.** Under the shot (on a phone, the Colours tab): a row of round swatches for her sails and one for her pennants. Tap one you have and she flies it at once (each ship keeps her own colours); tap one you haven't and she wears it on the berth to look at, and the big gold button says "Buy Sky blue · ◆ 150" (setting sail is the plain line beside it until you buy it or move on). A colour bought is yours for every ship. Some can't be bought, only won: by rank, or with a Maelstrom star; those say what wins them. A lock on a swatch means it isn't yours yet. Her pennants always keep their gold hoist, and no colour is a raider's rust, crimson or black, so she never looks like one of them (see [Colours](#colours)).
 - **Crystal power** (free, change it any time). A slider from Sails to Guns, in five notches. Each notch towards the guns gives 8% faster reloading and 6% heavier shots, and costs 6% top speed and 6% speeding up. Towards the sails, the other way round.
 - **Upgrades.** Four of them, each bought in three steps, for each ship separately. Each says what it does in plain words, with the exact numbers in small print under it:
 
@@ -121,6 +127,151 @@ Playing on your phone and your laptop, **the newest progress always wins**. A ga
 - **Treasure ships.** A treasure ship is a rich prize, her hold worth ◆ 300 before the bonuses, whatever she sails. **Until you own a Galleon she's a treasure Brig**: a rich merchant Brig laden with shards (Chris: giant raiders only once you own one); once you own the Galleon, treasure Galleons come instead. She looks it: wine-red sails edged in gold, gilded fittings that glint and twinkle, open chests of gold on her deck, a glittering gold wake, and her hull sprays gold where you hit it. She sails across your path until you come within a kilometre or hit her, then runs, weaving, covering her escape with her stern guns; laden with her treasure, she sails at 85% of her class's top speed, so even a Skiff can run her down. Your guns lock on to her sails rather than her hull: **shoot her sails away (or her hull down to a quarter) and she strikes her colours**: she doesn't blow up, but lowers her pennants, glints gold from her hold, and settles away below the clouds, spilling her shards. Let her get 3.6 km away and she escapes with her treasure. Don't pull alongside a treasure Galleon: two decks of eight guns a side (a treasure Brig has six). Any ship can sail as a treasure ship, in the same colours and running the same way, and her wave is announced as a treasure ship's ("Wave 6: a treasure ship", "a treasure Brig and a Cutter"; two of them, "two treasure ships"). A Galleon that leads a raider captain's wave wears the captain's colours, but she still runs like any Galleon.
 - **The Man-o'-war** sails among the raiders only once you own one (until then a raider captain's Frigate leads her waves in her place). She's a fortress: hull 7,000, two decks of twelve guns a side, four in the bow. Her broadside can wreck a Frigate in a few volleys, but she turns slowly and barely climbs, so stay off her beam: above or below her, or off her bow or stern. From above, her five crystal columns are open to your guns; sink her crystals and she's out of the fight. They're her weak points, and they look it: they glow brighter than any other ship's and beat slowly like a heart, and lock on to her and their edges glow gold. Each one that gives out blows out in a shower of gold and violet sparks, goes dark and smokes, and she dips at that end. Her fight comes in three acts: her plated sides take half of any hit from the side, her blocks of guns can be silenced, she launches her boats at two-thirds of her hull, and with three columns gone she sinks, firing everything (see [The Man-o'-war's fortress battle](#the-man-o-wars-fortress-battle)).
 
+## The Captain's record
+
+The game remembers what you do on every voyage (in your progress, so it follows you between your phone and your laptop): every raider you bring down, by class, every raider captain, treasure ship and crew that gives up, your shots and hits, the hits you take, the shards you bring home, your time at sea, the waves you beat, the lands of Aethermoor you fly over, and the last twelve voyages. From that come commendations, a rank, stars on each skies, harbour orders, and the quartermaster's advice in port. A sea trial counts for none of it (it changes nothing in your progress).
+
+### A gentle first voyage
+
+A brand-new Captain's first voyage teaches as it goes: one short tip at a time in a cream-and-gold note, at the bottom in the middle on a laptop (just over the card between waves), and on a phone low on the steering side, where the hint usually is (the hint makes way; between waves on the smallest phones held sideways it narrows to fit beside the card). Each shows for at least 3.5 seconds, until you've done what it says or it's had its time, and once given it's never given again, on any device. On a screen too crowded for every raider's tag (the smallest phone held sideways, with raiders all round readying broadsides) a tip makes way for them at once; it isn't counted as given, and comes back after a quiet moment. In the order they come:
+
+| Tip | When | On a laptop | On a phone |
+|---|---|---|---|
+| Steering | 1.5 s after setting sail | "Steer with A and D. W sets more sail and S less; Space climbs and Shift dives." | "Left thumb: put it down on the left and push to turn, climb and dive." (with Fire on the left, the right thumb) |
+| Finding her | a raider more than 40° off the bow and over 900 m away, 4.5 s after her wave comes | "That red tag is a raider. Turn until she's ahead of you." | the same |
+| Aiming | a raider within 1,400 m and the guns not locked on for 2 s | "Click the sky to take hold of the aim, then move the mouse to put the ring on her." (once the mouse is held: "Move the mouse to put the ring on her: where you look, your guns fire.") | "Drag on the right to swing your view round, and put the ring on her." |
+| Firing | the guns locked on | "Locked on: the ring turns red and your gunners aim ahead of her. Hold the left button (or F) to fire." | "Locked on! Hold Fire. Slide your thumb off Fire to aim as you shoot." |
+| A red fan | a raider readying her broadside at you | "A red fan: she's about to fire her broadside at you. Climb out of it and she misses!" | the same |
+| Her shards | your first raider down | "She's going down! Fly through her glowing shards to gather them: they're your pay." | the same |
+| Side guns | a raider off your side, within 800 m | "The guns facing where you look are the ones that fire. Look to her side to fire your side guns." | the same |
+| Hurt | your hull under half | "She's hurt! Press X and your crew patch her up. Climb or dive out of their line of fire." | "…Tap Patch…" |
+| Broadsides | a Brig or bigger within 1 km | "Ships with broadsides hit hardest from the side. Stay above or below her, or off her bow or stern." | the same |
+| The card | the first card between waves | "Sail on for a harder wave and more shards, or go home and keep them all. If she sinks, you keep half." | the same |
+| The Surge | from your second voyage: a raider running, or a treasure ship far off | "Press R to Surge: three seconds at full speed, to catch her or to get away." | "Tap Surge, the blue button…" |
+| Shot | once you have more than round shot, 6 s into a wave | "2 loads chain shot (it shreds sails), 3 crystal breakers (they crack crystals)" (or just the one you have) | "…tap the shot button over Surge to load the next kind." |
+
+**Her first raider is gentle**: on a brand-new Captain's first voyage, wave 1's Skiff comes on nearly dead ahead and closer (1.2 km, not 1.5 to 1.9), in clear air (never hidden in a cloud as she comes), and holds her fire until you've fired (or for 25 seconds). Every later voyage is as before.
+
+Settings has **Tips for a new Captain** (on unless you switch it off, on that device) and **Show the tips again**, which gives them all once more.
+
+### Coming home
+
+Going back to port from the card between waves, from the pause card, or with To port when your ship has gone down, a card rises over the port: "Home from the voyage" (or "The Tempest went down", or "Raised to Raider-Bane!" when your rank rose). It says which ship, which skies and how long you were at sea, then in plain words:
+
+- **Waves beaten**, and "a new best on Crosswinds!" when it is;
+- **Raiders downed**, by class ("5: a Brig, two Cutters and two Skiffs (one a raider captain)");
+- **Treasure ships** caught and got away (when there were any);
+- **Shots** fired and hit (broadsides spread, so even good aim hits about a third: it's not a grade), and **hits taken**;
+- **Shards**: gathered, plus the waves' pay, and whether you keep it all or half;
+- gold ribbons for everything the voyage won: commendations, stars, orders done, and a rank risen, each with its shards;
+- your rank, with a bar to the next ("Bold Captain: 820 of 1,000 renown to Raider-Bane");
+- the first time your ship went down, "Next time, go home between waves to keep everything"; on Fair Winds or Crosswinds once you've beaten wave 5 there, what the voyage would have paid on the Maelstrom; and the quartermaster's advice;
+- and your purse, counting up from what it was when you set sail.
+
+Then a big gold **Sail again in the Tempest** (straight back out, at wave 1) and a plain **To port**. On a phone the card scrolls between its heading and its buttons, which always show; held sideways it's wide and low, the purse beside the buttons.
+
+### Commendations
+
+Each is won once and paid at once, straight into your purse (so it's yours even if your ship goes down later). At sea a gold line says so, after the one showing has been read ("Commendation: High Ground · ◆ 60"); in port, the note at the top. All 36 are in the Captain's log, those still to win showing how far you've got ("Raider Hunter · 37 of 50").
+
+| Commendation | How | ◆ |
+|---|---|---|
+| First Prize | Bring down your first raider | 25 |
+| Safe Harbour | Come home with shards in the hold | 25 |
+| Broadside! | Bring a raider down with a broadside | 40 |
+| Raked! | Rake a raider down her length with a broadside | 40 |
+| Crystals Out | Sink a raider by shooting out her crystals | 50 |
+| Crystal Breaker | Sink a raider by her crystals with crystal breakers | 75 |
+| High Ground | Bring down a Brig or bigger from 60 m or more above her | 60 |
+| Under the Clouds | Bring down a raider while flying under the cloud floor | 50 |
+| Thin Air | Bring down a raider while flying above 2,000 m | 40 |
+| Two at Once | Bring down two raiders within 5 seconds | 60 |
+| Untouched | Beat a wave, from wave 2 on, without being hit | 40 |
+| Close Shave | Beat a wave with less than 15% of your hull left | 40 |
+| White Flag | Make a raider crew give up and strike their colours | 60 |
+| Strike Her Colours | Make a treasure ship strike her colours | 100 |
+| No Help Coming | Sink a raider before her flare brings help | 50 |
+| Captain Taken | Bring down a raider captain | 75 |
+| Bounty Paid | Bring down a raider captain with a price on her head | 120 |
+| Storm Rider | Beat a wave in a storm | 60 |
+| The Long Way | Beat a wave down a road you chose between waves | 50 |
+| Small but Fierce | Bring down a Frigate or bigger in the Skiff | 150 |
+| Fortress Fallen | Bring down a Man-o'-war | 300 |
+| Raider Hunter, Raider Slayer, Scourge of Raiders | Bring down 10, 50, 200 raiders | 50, 150, 500 |
+| Treasure Hunter, Gold in the Hold | Catch 5, 20 treasure ships | 150, 400 |
+| Full Purse, Heavy Purse, A King's Ransom | Bring home ◆ 1,000, 5,000, 20,000 in all | 50, 150, 400 |
+| Seasoned, Old Salt | Sail 10, 50 voyages | 40, 150 |
+| Charted Aethermoor | Fly over all six lands of Aethermoor | 100 |
+| Every Captain | Bring down all six named raider captains | 300 |
+| A Fleet of Four | Own the Skiff, the Cutter, the Brig and the Frigate | 200 |
+| Fully Fitted | Every upgrade on one ship | 150 |
+| Every Hull | Own all six ships | 1,000 |
+
+All together they pay ◆ 5,300, about a twentieth of everything the port sells.
+
+### Ranks
+
+Renown never goes down. Each raider you bring down earns her bounty in renown (a raider captain's twice, a treasure ship's twice), and each wave beaten 10 for each wave so far (wave 5 is worth 50); on Fair Winds three quarters of that, on the Maelstrom half as much again. A rank risen is told on coming home's card (never mid-fight), with a purse of ◆ 50 times the rank's number, and every other rank wins a colour:
+
+| Rank | Renown | Purse | Wins |
+|---|---|---|---|
+| New Captain | 0 | | |
+| Steady Captain | 120 | ◆ 50 | |
+| Bold Captain | 400 | ◆ 100 | Emerald pennants |
+| Raider-Bane | 1,000 | ◆ 150 | |
+| Commodore | 2,000 | ◆ 200 | Twilight sails |
+| Rear Admiral | 3,500 | ◆ 250 | |
+| Admiral | 6,000 | ◆ 300 | Royal blue pennants |
+| High Admiral | 10,000 | ◆ 350 | |
+| Storm Admiral | 16,000 | ◆ 400 | Dusk blue sails |
+| Legend of Aethermoor | 25,000 | ◆ 450 | |
+
+By our reckoning a first voyage to wave 2 or 3 brings about 50 to 100 renown, so Steady Captain comes on the second voyage, Bold Captain within the first few, Raider-Bane after a handful of good voyages, and the Legend after many long ones (sooner on the Maelstrom). Your rank shows under the game's name on the title, on the Log button in port (where there's room), in the log and on coming home's card.
+
+### Stars and records
+
+Each skies has three stars, won the first time you beat its 5th, 10th and 15th waves there, and paid at once (a gold line says so: "Crosswinds star: wave 5 · ◆ 100"):
+
+| Skies | Wave 5 | Wave 10 | Wave 15 |
+|---|---|---|---|
+| Fair Winds | ◆ 50 | ◆ 150 | ◆ 300 |
+| Crosswinds | ◆ 100 | ◆ 250 | ◆ 500 |
+| Maelstrom | ◆ 200 | ◆ 500, and Storm-silver sails | ◆ 1,000, and Lightning pennants |
+
+Each skies also keeps its records: the best wave (kept the moment it's beaten, so a voyage cut short still counts), the most shards brought home and the most raiders downed in one voyage. The title shows them on each skies' button, with its stars.
+
+### The Captain's log
+
+The Log button in port opens it. At the top, your rank and its bar; then three pages:
+
+- **Commendations**: today's harbour orders first (how far each has got), then every commendation as a ribbon: gold for those won, with the day, the rest dim, with how far you've got.
+- **Records**: each skies' stars, best wave, most shards and raiders in a voyage, and the shards its stars still have to win; then everything over every voyage: voyages (home and lost), waves beaten, raiders downed by class, raider captains, treasure ships caught and got away, crews that gave up, shots and hits, hits taken, shards brought home, time at sea, the lands charted and your renown.
+- **Voyages**: the last twelve, newest first ("13 Oct · the Tempest · Crosswinds · wave 6 · 7 downed · ◆ 512 · home").
+
+### Harbour orders
+
+From your second voyage on, the harbourmaster gives three small jobs a day, picked from those that suit how far you've come, and the same three on every device (they're picked by the date, so they work with no internet too). They change at midnight. Each pays when it's done, at once ("Order done: Bring down 3 Cutters · ◆ 90"), and all three earn the harbourmaster's thanks (◆ 100). The jobs: bring down 3 Skiffs (◆ 60), 3 Cutters (◆ 90), 2 Brigs (◆ 120) or a Frigate (◆ 150); catch a treasure ship (◆ 200); beat wave 3, 6 or 10 (◆ 60 to 150); bring home ◆ 200 or ◆ 1,000 in one voyage (◆ 60, 120); bring down a raider under the clouds (◆ 70), with a broadside (◆ 60), on the Maelstrom (◆ 150) or a raider captain (◆ 150); beat a wave without being hit (◆ 90); make a crew give up (◆ 100); sink a raider by her crystals (◆ 80), or with crystal breakers once you have them (◆ 120). A day's three and the thanks come to about ◆ 300 to 450, about one good voyage's pay: meant to speed up a Captain who sails a little every day by roughly half.
+
+### Colours
+
+Each ship flies her own colours; a dye bought is yours for every ship (see [The port](#the-port)):
+
+| Sails | | Pennants | |
+|---|---|---|---|
+| Sailcloth | hers as built | Plum | hers as built |
+| Sky blue | ◆ 150 | Sky teal | ◆ 80 |
+| Sea green | ◆ 150 | Silver | ◆ 120 |
+| Honey | ◆ 300 | Sunrise | ◆ 120 |
+| Twilight | won at Commodore | Emerald | won at Bold Captain |
+| Dusk blue | won at Storm Admiral | Royal blue | won at Admiral |
+| Storm silver | the Maelstrom's wave 10 star | Lightning | the Maelstrom's wave 15 star |
+
+No colour is a raider's: none is red or rust (within 25 degrees of red, and more than a little coloured) and none is too dark, and the pennants keep their gold hoist. Raiders keep their rust-red and black sails, so you can always tell them apart. Changing colours costs a phone nothing: it's only the colour of her own sails and pennants.
+
+### Your record is saved
+
+All of it is kept in your progress (its version 2): on the device, and on claude.ai in the game's own private store for you, so it follows you between devices like everything else, and the newest progress wins as before. A save from before October 13 keeps everything it had, and is credited with what it already proves: the stars its best waves earned, paid once as **back pay** (the port says "Back pay for your earlier voyages' stars: ◆ 100"; on the Maelstrom, with their colours too), and renown for the waves of its best voyage on each skies, so a Captain who has sailed far starts at a fitting rank. Everything else (the raiders, the shots, the log) is counted from then on. A tip shown or an order's progress is kept on the device at once, and sent up with the next save (or as the page is left). The whole record stays small (a long career's is under 4,000 letters).
+
 ## Controls
 
 ### Laptop
@@ -161,7 +312,7 @@ On a laptop the ships are drawn at full sharpness (the picture setting Sharp).
 - **Between waves** the card's buttons are Sail on and Back to port; when there's a second way on, it's a wide button of its own in its own colour (see [Choosing the road](#choosing-the-road)): held upright, above them; held sideways, under them, so Sail on and Back to port are always in the same place and a tap there never takes the other road. Held sideways, Fire and Surge wait while it's up (there's nothing to fire at), leaving it room, and the score under the map is in two lines, as held upright, so the card beside it never runs into it. Held upright, a toast while the card is up sits just over it.
 - **The corner map**: tap it to make it big. The big map fits the screen over a dimmed sky and names the regions; tap the cross, the map or the sky round it to close it.
 - **The gear** (on the title screen and in port, and on the pause card as **Settings**) opens the Settings card (see [Settings](#settings)). **Fire button on the left** there swaps the sides for left-handed players: Fire, Surge and Sail on the left, the stick under your right thumb, and aiming on the left. The hint and How to fly say it that way round too.
-- A short hint in the lower corner says how to steer, aim and fire on your first three voyages; it fades a few seconds after you first touch the screen.
+- A short hint in the lower corner says how to steer, aim and fire on your first three voyages; it fades a few seconds after you first touch the screen. On a brand-new Captain's first voyage the tips take its place, one at a time (see [A gentle first voyage](#a-gentle-first-voyage)).
 
 On a phone the game draws a little less sharply so it stays smooth (the picture setting Balanced, with fewer sparks and puffs of smoke), and pauses by itself if you leave the page. If the phone clears the game's pictures while you're away (phones do, after a long while), the game draws them again when you come back.
 
@@ -192,6 +343,7 @@ The gear on the title screen and in port, or **Settings** on the pause card, ope
 | **Picture** | **Smooth**, **Balanced** or **Sharp**. Smooth runs best on older phones: one screen pixel to each of the page's, small sun shadows, half the cloud puffs, raiders switching to their far model sooner, fewer sparks, smoke and debris, half the rain, no scraps of scud, no sun's rays (on the title's sunset) and no glitter on the sea. Sharp looks finest. A phone starts on Balanced, a laptop on Sharp. |
 | **Camera shake** | Off, the view holds still: no shaking when you're hit and no kick from your guns |
 | **Fire button on the left** | Phones only: swaps the touch buttons and the stick for left-handed players |
+| **Tips for a new Captain** | On, unless switched off: the first voyage's tips, one at a time (see [A gentle first voyage](#a-gentle-first-voyage)). **Show the tips again**, under the card, gives them all once more |
 
 | Picture | Sharpness (screen pixels to the page's) | Sun shadows | Cloud puffs | Sparks, smoke, debris (of a laptop's full count): phone / laptop | Rain, scud, sun's rays, glitter |
 |---|---|---|---|---|---|
@@ -594,7 +746,11 @@ A real Captain who uses height, the Surge, the wind, the clouds and the tactics 
 - `src/game/main.js`: the page; the voyage (and a sea trial), the camera (looking down past her own ship: `pivot`), aiming and locking on, the waves, shards and the HUD (the raiders' tags and the warning kept off your own ship)
 - `src/game/port.js`: the port and the void it shows your ship in (with Buy and Try her out), and the title screen's panel (the skies, Set sail, To port)
 - `src/game/title.js`: the title screen's sky: your ship flying over the Hearthsea at sunset, the raiders crossing far off, the skies' tint
-- `src/game/progress.js`: the save (shards, the six ships, upgrades, skies, best waves, voyages sailed), what each ship costs, and the three skies (a save from before the big two were sold gains them, not owned)
+- `src/game/progress.js`: the save (shards, the six ships, upgrades, colours, skies, best waves, voyages sailed, and since its version 2 the Captain's record: counts, records, stars, commendations, tips, lands, rank, dyes, orders and the log; an older save made whole and paid its back pay), what each ship costs, and the three skies (a save from before the big two were sold gains them, not owned)
+- `src/game/deeds.js`: the Captain's record counted from the game's news: the commendations, ranks and renown, stars, records, harbour orders and the voyage's summary
+- `src/game/coach.js`: a brand-new Captain's tips, one at a time, worded for the device
+- `src/game/record.js`: coming home's card (with Sail again) and the Captain's log
+- `src/game/paint.js`: the sail and pennant colours, and dressing a ship in hers
 - `src/game/mods.js`: the upgrades and crystal power, and what they do to a ship, and how much better your crew sail the big two (their helm)
 - `src/game/world.js`: the map, sky, cloud floor, cloud puffs and region names, and the look of the sky (the voyages' afternoon, the title's sunset and its stormy Maelstrom tint, a storm, each region's air), kept in one set of numbers every part of the sky shares; the towering clouds round the horizon, the glory and her shadow on the cloud floor, the sea's glitter, and the cloud floor's pattern worked out in JavaScript too (where a ship can hide)
 - `src/game/sky.js`: the sky at sea and its weather, in one place: each region's air, storms rolling in and clearing, lightning and gusts, the mist inside a cloud, hiding in cloud (a raider lost only while the cloud as drawn hides her: `shows`, with world.js `veil`), the glory and the sun's glare
@@ -627,7 +783,8 @@ A real Captain who uses height, the Surge, the wind, the clouds and the tactics 
 
 `npm run check` (or `node tools/check.mjs`) plays the whole game in a hidden browser, the size of a laptop and of a phone, and must end with "all good". In short, it makes sure that:
 
-- **your progress is safe**: it's saved, it follows you between your phone and your laptop, and no voyage's shards are ever lost; a brand-new Captain starts on Fair Winds;
+- **your progress is safe**: it's saved, it follows you between your phone and your laptop, and no voyage's shards are ever lost; a brand-new Captain starts on Fair Winds; an old save keeps everything and is paid its back pay once (and a broken one is made whole);
+- **your record counts**: a brand-new Captain's first voyage gives its tips at the right moments (on a laptop and a phone, worded for each, either hand) and her first raider holds her fire; commendations, stars and orders pay once, a rank risen is told coming home, coming home's card and Sail again work, the log, the quartermaster's line and the colours (bought in port, on her ship, never a raider's, no new drawing work) are right, and the cards fit every phone; pictures of the first tip, coming home, the log and the colours;
 - **every ship is right**: built near its size budget, flying as fast as it should, and every gun firing and hitting;
 - **the game plays from start to end**: the title screen, the port (buying a ship and an upgrade), whole voyages, the card between waves, and the keyboard, mouse and touch controls;
 - **a sea trial changes nothing**: "Try her out" under a ship you don't own (a thumb's width clear of Buy, tall enough for a thumb), on a laptop and a phone held either way: the Galleon's trial won (no shards, no giant raiders, the score saying "Sea trial", the keys folded away, only the way home, counting down, and her price in one piece), the Man-o'-war's lost (its raider captain's ship made ready as she sails), the Gale's fought in Crosswinds though the Captain's skies are the Maelstrom and left from the pause card, each home to her in port with what she costs, and the save exactly as it was every time;

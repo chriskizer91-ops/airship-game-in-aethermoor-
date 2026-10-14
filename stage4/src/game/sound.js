@@ -21,7 +21,8 @@
 //   Chris's effects    (sounds.js) for the moments they fit: setting sail and coming home, a wave arriving (an alarm, a
 //                      boss's brass for a captain or a Man-o'-war, a pirate phrase for a treasure ship), a wave beaten,
 //                      the ship lost, alarms when she's badly hurt, a soft chord on crossing into another region,
-//                      buying and upgrading in port, the skies, the menus
+//                      buying and upgrading in port, her colours, the skies, the menus; a commendation, a star or an
+//                      order paid (a chime and its shards clinking), a rank risen
 //   the sky            wind rising with speed and height, gusts, the rigging whistling at full tilt or in a Surge, the
 //                      crystals humming higher as she climbs (wavering near the Thinning, sour when they're cracked),
 //                      timbers creaking (more in hard turns, or badly hurt), fire crackling when she burns; the wind
@@ -64,7 +65,9 @@ const LOW = { hull: 'deck-alarm', crystals: 'doldrums', sails: 'rope-creak' };
 // the menu buttons' sounds (by id)
 const BUTTONS = { 'btn-to-port': 'ui-confirm', 'btn-skies': 'ui-back', 'btn-pause': 'ui-open', 'btn-resume': 'ui-close', 'btn-sail-on': 'ui-confirm', 'btn-road': 'ui-confirm', 'btn-go-port': 'ui-back', 'btn-abandon': 'ui-back',
   'btn-settings-title': 'ui-open', 'btn-settings-port': 'ui-open', 'btn-settings-pause': 'ui-open', 'btn-settings-done': 'ui-close',
-  'btn-howto': 'ui-open', 'btn-howto-done': 'ui-close', 'map-close': 'ui-close', 'pp-tab-ship': 'ui-cursor', 'pp-tab-upgrades': 'ui-cursor' };
+  'btn-howto': 'ui-open', 'btn-howto-done': 'ui-close', 'map-close': 'ui-close', 'pp-tab-ship': 'ui-cursor', 'pp-tab-upgrades': 'ui-cursor', 'pp-tab-colours': 'ui-cursor',
+  'btn-log': 'map-open', 'btn-log-done': 'ui-close', 'log-tab-deeds': 'ui-cursor', 'log-tab-records': 'ui-cursor', 'log-tab-voyages': 'ui-cursor', 'btn-again': 'ui-confirm', 'btn-hc-port': 'ui-close',
+  'btn-tips-again': 'toggle' };
 
 const rnd = (a, b) => a + Math.random() * (b - a);
 const pick = (list) => list[(Math.random() * list.length) | 0];
@@ -353,6 +356,11 @@ export function makeSound({ audio, touch = false, where = () => null, weather = 
   cue('port:buy', () => { fx('ui-buy'); fx('coins', 'ui', 0.15); fx('dock-clamp', 'ui', 0.4); });
   cue('port:upgrade', (e) => { fx('upgrade'); if (UPGRADE[e.mod]) fx(UPGRADE[e.mod], 'ui', 0.35, 0.7); });
   cue('port:shot', () => { fx('ui-buy'); fx('coins', 'ui', 0.15); fx('crossbow', 'ui', 0.35, 0.7); });
+  // her colours: a dye tried on chimes softly; one bought rings the till
+  cue('port:dye', (e) => { if (e.bought) { fx('ui-buy'); fx('coins', 'ui', 0.15); } else fx('ui-cursor'); });
+  // the Captain's record paying out (deeds.js): a commendation, a star or an order done chimes and clinks its shards;
+  // a rank risen (on coming home's card) rings brighter
+  cue('deed', (e) => { if (e.kind === 'rank') { fx('upgrade', 'ui', 0.5); fx('coins', 'ui', 0.8); } else { fx('charm', 'ui'); fx('coins', 'ui', 0.25, 0.8); } });
   // a note for each notch of crystal power: high and airy towards the sails, lower and metallic towards the guns
   cue('port:power', (e) => { if (!audio.mixer) return; const k = e.power + 2; audio.mixer.here(0, 0.2); audio.tone(k <= 2 ? { f: [880, 740, 587][k], ratio: 2, index: 0.8, d: 0.6, g: 0.12 } : { f: [440, 294][k - 3], ratio: 1.41, index: 2.5, d: 0.7, g: 0.12 }, 1, 'ui'); });
   cue('port:skies', (e) => fx(e.skies === 'fair' ? 'charm' : e.skies === 'cross' ? 'wind' : 'thunder', 'ui', 0, e.skies === 'cross' ? 0.7 : 1));

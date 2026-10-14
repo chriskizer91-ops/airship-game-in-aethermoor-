@@ -7,7 +7,8 @@
 // default for each kind of device), touch: true for a phone only, note: a line under it, options: [[value, 'Label'],
 // ...] for a choice, min/max/step for a slider (0 to 1 in twentieths if not) }.
 // The device also remembers a few things of its own here that aren't rows (KEEP): how many voyages it has sailed, so
-// the laptop's key panel can fold away once you know the keys.
+// the laptop's key panel can fold away once you know the keys. (The tips themselves, which have been given, are in the
+// save, so a tip given on the laptop isn't given again on the phone: coach.js; the switch for them is the device's.)
 const KEY = 'skies-of-aethermoor/settings-1';
 export const ROWS = [
   { id: 'sound', kind: 'switch', label: 'Sound on', def: true },
@@ -19,6 +20,7 @@ export const ROWS = [
     note: 'Smooth runs best on older phones; Sharp looks finest.' },
   { id: 'shake', kind: 'switch', label: 'Camera shake', def: true },
   { id: 'leftFire', kind: 'switch', label: 'Fire button on the left', def: false, touch: true },
+  { id: 'tips', kind: 'switch', label: 'Tips for a new Captain', def: true, note: 'One short tip at a time on your first voyages. "Show the tips again" gives them all once more.' },
 ];
 // how far the view swings for a drag, at each aim speed
 export const AIM = [0.5, 0.75, 1, 1.35, 1.8];

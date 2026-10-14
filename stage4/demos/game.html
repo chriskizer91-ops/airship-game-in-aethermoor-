@@ -75,12 +75,18 @@
   #skies button b { font: 600 18px/1.1 var(--display); color: var(--cream); }
   #skies button span { font-size: 13px; color: var(--dim); }
   #skies button small { font-size: 12px; color: var(--gold); }
-  #skies button small:empty { display: none; }
+  #skies button small em { font-style: normal; }
+  /* (each skies' three stars, for its fifth, tenth and fifteenth waves: gold once won. Drawn, so every font shows them) */
+  .star { display: inline-block; width: 13px; height: 13px; margin-right: 2px; vertical-align: -1px; background: rgba(236, 220, 184, 0.28);
+    clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+  .star.on { background: var(--gold); filter: drop-shadow(0 0 3px rgba(226, 189, 103, 0.8)); }
+  #skies .stars { margin-right: 6px; white-space: nowrap; }
   #skies button[aria-checked='true'] { background: var(--plum); border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); }
   #skies button[aria-checked='true'] b { color: var(--gold); }
   /* (a new Captain's hint, on Fair Winds) */
   #skies .first { justify-self: start; margin-top: 2px; padding: 1px 8px; border-radius: 9px; background: var(--gold); color: var(--plum); font: normal 600 11.5px/1.5 var(--body); }
   #title-rank { margin: -6px 0 4px; font-size: 15px; font-weight: 500; text-shadow: 0 1px 0 #000, 0 0 10px rgba(0, 0, 0, 0.85); }
+  #title-rank b { font: 600 1.02em var(--display); color: var(--cream); white-space: nowrap; }
   .title-go { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; margin-top: 18px; }
   .title-go .plain { min-height: 48px; padding: 10px 20px; font-size: 16px; }
 
@@ -93,6 +99,29 @@
   .port-top h1 { margin: 0; font: 700 30px/1 var(--display); color: var(--gold); text-shadow: 0 2px 0 #000, 0 0 20px rgba(0, 0, 0, 0.8); }
   #port-shards { padding: 6px 12px; font-size: 17px; font-weight: 500; white-space: nowrap; }
   #btn-skies { margin-left: auto; min-height: 40px; padding: 6px 12px; font-size: 14px; white-space: nowrap; }
+  /* (the Captain's log: a book, and her rank where there's room) */
+  #btn-log { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 6px 10px; font: 600 14px/1.1 var(--display); color: var(--gold); white-space: nowrap; }
+  #btn-log svg { flex: none; width: 19px; height: 19px; }
+  /* the quartermaster's line: under the top bar on the left, like the note (which it makes way for while that shows);
+     its words shorter on a phone, on one line */
+  #pp-next { position: fixed; top: calc(var(--top) + 54px); left: var(--gutter); max-width: calc(100% - 2 * var(--gutter) - 396px); margin: 0; padding: 5px 12px; font-size: 14px; color: var(--gold); pointer-events: none; }
+  #pp-next .short { display: none; }
+  #pp-next:empty { display: none; }
+  #port.noting #pp-next { visibility: hidden; }
+  /* (a gold dot on what it means: a ship's button, an upgrade, a kind of shot) */
+  #port-ships button.advised b::after, .mod.advised b::before, .buyshot.advised b::before { content: ''; display: inline-block; width: 7px; height: 7px; margin: 0 0 0 5px; border-radius: 50%; background: var(--gold);
+    box-shadow: 0 0 6px var(--gold); vertical-align: 2px; }
+  .mod.advised b::before, .buyshot.advised b::before { margin: 0 6px 0 0; }
+  /* her colours: a row of swatches for her sails and one for her pennants (a lock on those not hers yet) */
+  .swatch-row { display: grid; gap: 4px; margin: 6px 0; font-size: 13px; color: var(--dim); }
+  .swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+  .swatch { position: relative; flex: none; width: 32px; height: 32px; padding: 0; border-radius: 50%; border: 2px solid rgba(236, 220, 184, 0.45); background: var(--dye); box-shadow: inset 0 -4px 7px rgba(0, 0, 0, 0.3); }
+  .swatch[aria-checked='true'] { border-color: #fff3d0; box-shadow: inset 0 -4px 7px rgba(0, 0, 0, 0.3), 0 0 0 2px var(--plum), 0 0 0 4px var(--gold); }
+  .swatch.locked::after { content: ''; position: absolute; right: -4px; bottom: -4px; width: 15px; height: 15px; border-radius: 50%; background: #241329 center / 9px 9px no-repeat
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath fill='%23e2bd67' d='M2 4.5h6v5H2zM3.2 4.5V3a1.8 1.8 0 0 1 3.6 0v1.5h-1V3a.8.8 0 0 0-1.6 0v1.5z'/%3E%3C/svg%3E");
+    box-shadow: 0 0 0 1px var(--gold); }
+  #pp-dye-note { margin: 0 0 6px; font-size: 12.5px; color: var(--cream); }
+  #pp-dye-buy, #btn-dye { width: 100%; }
   /* (the port's note: left of the panel, like the ships, so a long one never runs under it) */
   #port-note { position: fixed; top: calc(var(--top) + 54px); left: var(--gutter); max-width: calc(100% - 2 * var(--gutter) - 396px); margin: 0; padding: 6px 12px; color: var(--gold); opacity: 0; pointer-events: none; }
   #port-note.on { animation: region 5s ease-in-out forwards; }
@@ -162,6 +191,49 @@
   .card h2 { margin: 0; font: 700 26px/1.1 var(--display); color: var(--gold); }
   .card p { margin: 8px 0 12px; color: var(--cream); font-size: 14.5px; }
   .choices { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; }
+  /* coming home, and the Captain's log (record.js): a card over the port, its words scrolling between its heading and
+     its buttons, which always show; ribbons for what's been won (gold), and those still to win (dim) */
+  #homecoming, #log { z-index: 15; background: rgba(6, 4, 12, 0.62); }
+  #homecoming .card, #log .card { display: flex; flex-direction: column; width: min(94vw, 520px); max-height: calc(100% - 4px); padding: 0; overflow: hidden; text-align: left; background: rgb(24, 12, 30);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6); }
+  .card-head { padding: 12px 16px 6px; text-align: center; }
+  .card-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px 16px 10px; touch-action: pan-y; }
+  .card-foot { padding: 8px 16px 12px; border-top: 1px solid rgba(236, 220, 184, 0.15); text-align: center; }
+  #hc-sub { margin: 2px 0 0; font-size: 13px; color: var(--dim); }
+  #hc-rows, .records { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 6px 0 10px; font-size: 14px; }
+  #hc-rows dt, .records dt { color: var(--dim); white-space: nowrap; }
+  #hc-rows dd, .records dd { margin: 0; color: var(--cream); }
+  .gold { color: var(--gold); font-weight: 500; }
+  .dim { color: var(--dim); }
+  #hc-next { margin: 8px 0 0; font-size: 13.5px; }
+  .hc-purse { margin: 0 0 8px; font-size: 16px; color: var(--cream); }
+  .hc-purse b { font-weight: 600; }
+  .ribbons { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px; margin: 6px 0 10px; }
+  .ribbon { display: grid; gap: 1px; padding: 6px 18px 6px 12px; border-radius: 6px 0 0 6px; color: var(--plum); background: linear-gradient(#f2d389, #c99a3e);
+    clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 50%, 100% 100%, 0 100%); }
+  .ribbon b { font: 700 14px/1.15 var(--display); }
+  .ribbon small { font-size: 12px; line-height: 1.25; }
+  .ribbon.order b { font: 600 13.5px/1.2 var(--body); }
+  .ribbon .have { font: inherit; font-weight: 600; color: var(--cream); }
+  .gem { white-space: nowrap; }
+  .ribbon.dim { color: var(--dim); background: rgba(236, 220, 184, 0.09); }
+  .ribbon.dim b { color: var(--cream); }
+  .rankbar { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; align-items: center; margin: 4px 0; }
+  .rankbar b { font: 700 16px var(--display); color: var(--gold); white-space: nowrap; }
+  .rankbar .bar { position: relative; height: 7px; border-radius: 4px; background: rgba(236, 220, 184, 0.14); overflow: hidden; }
+  .rankbar .bar i { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: linear-gradient(90deg, #c99a3e, #f2d389); }
+  .rankbar small { grid-column: 1 / -1; font-size: 12.5px; color: var(--dim); }
+  #log h3 { margin: 10px 0 4px; font: 600 15px/1.2 var(--display); color: var(--cream); }
+  #log h3 small { font: 400 12px var(--body); color: var(--dim); }
+  #log-rank { text-align: left; }
+  .log-tabs { display: flex; gap: 4px; margin: 8px 0 2px; }
+  .log-tabs button { flex: 1; min-height: 38px; padding: 6px 8px; background: rgba(236, 220, 184, 0.06); border: 1px solid rgba(236, 220, 184, 0.35); border-radius: 7px; font-size: 14px; font-weight: 500; color: var(--dim); }
+  .log-tabs button[aria-selected='true'] { background: var(--plum); border-color: var(--gold); color: var(--gold); }
+  .voyages { margin: 6px 0; padding: 0; list-style: none; font-size: 13.5px; color: var(--cream); }
+  .voyages li { padding: 5px 0; border-top: 1px solid rgba(236, 220, 184, 0.12); }
+  .voyages li b { display: block; font-weight: 500; color: var(--gold); }
+  #log .card-body p { font-size: 13.5px; }
+
   /* the pause card (and the one when your ship goes down) lies over everything at sea: the strip between waves, the
      banner and the big map (5 to 7); only Settings and How to fly open over it */
   #paused { z-index: 9; }
@@ -385,6 +457,16 @@
   #help dd { margin: 0; color: var(--dim); }
   #help p { margin: 6px 0 0; color: var(--gold); }
   #btn-help { padding: 6px 10px; min-height: 36px; }
+  /* a new Captain's tip (coach.js): at the bottom in the middle on a laptop (beside the keys), and just over the card
+     between waves (--calm-top: where the card's top is, main.js layout); on a phone in the hint's place, the hint making
+     way for it */
+  #tip { flex: 0 1 460px; max-width: 460px; margin: 0 auto; padding: 7px 12px 8px; border-left: 3px solid var(--gold); border-radius: 8px; background: rgba(14, 8, 22, 0.8); color: var(--ink);
+    font-size: 14.5px; line-height: 1.35; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35); }
+  #dock > #tip { pointer-events: none; }
+  body:not(.touch).between #tip { margin-bottom: calc(100vh - var(--bottom) - var(--calm-top, 100vh) + 8px); }
+  body.touch #tip { position: fixed; left: var(--gutter); bottom: calc(var(--bottom) + 8px); width: max-content; max-width: min(240px, calc(100% - 2 * var(--gutter) - 190px)); margin: 0; padding: 6px 10px 7px; font-size: 13px; }
+  body.touch.fire-left #tip { left: auto; right: var(--gutter); border-left: 0; border-right: 3px solid var(--gold); }
+  body.touch.tipping #touch-hint { visibility: hidden; }
 
   /* ---------- the Settings card, and How to fly ---------- */
   .gear { display: grid; place-items: center; width: 44px; height: 40px; padding: 0; color: var(--cream); }
@@ -555,6 +637,20 @@
     .card h2 { font-size: 22px; }
     .setting { min-height: 40px; }
     #settings .card { padding: 12px 14px; }
+    #btn-log span { display: none; } /* (just the book: the top line stays on one line) */
+    .ribbons { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+    #hc-rows, .records { font-size: 13.5px; gap: 3px 10px; }
+  }
+  /* a phone held upright: no room for the port's name beside the Log button; the quartermaster's line in short words, and
+     only over her ship's own tab or her colours (her upgrades, or a ship to buy, need the room for her panel); the tip
+     in the hint's place beside the buttons */
+  @media (max-width: 700px) and (min-height: 501px) {
+    .port-top h1 { display: none; }
+    #pp-next { max-width: calc(100% - 2 * var(--gutter)); font-size: 13px; padding: 4px 10px; }
+    #pp-next .long { display: none; }
+    #pp-next .short { display: inline; }
+    #port.buying #pp-next, #port[data-tab='upgrades'] #pp-next { display: none; }
+    body.touch #tip { max-width: calc(100% - 2 * var(--gutter) - 186px); }
   }
 
   /* ---------- a phone held sideways, or any short window ----------
@@ -677,6 +773,36 @@
     .settings-note { margin: 2px 0 6px; font-size: 12px; }
     #settings .big { padding: 8px 22px; font-size: 16px; }
     #howto dl { grid-template-columns: auto 1fr auto 1fr; gap: 4px 10px; font-size: 13px; margin: 8px 0; }
+    /* (the quartermaster's line in short words, beside the panel; the tip in the hint's place; coming home and the log
+       wide and low, the purse beside the buttons) */
+    #pp-next { top: calc(var(--top) + 50px); max-width: calc(50vw - var(--gutter) - 24px); font-size: 12.5px; padding: 3px 10px; }
+    #pp-next .long { display: none; }
+    #pp-next .short { display: inline; }
+    body.touch #tip { max-width: 164px; font-size: 12px; padding: 4px 8px; } /* (the hint's own size, in its place) */
+    #homecoming .card, #log .card { width: min(96vw, 720px); }
+    .card-head { padding: 6px 14px 2px; }
+    .card-head h2 { font-size: 19px; }
+    #hc-sub { font-size: 12px; }
+    .card-body { padding: 2px 14px 6px; }
+    .card-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 14px 8px; }
+    .card-foot .choices { flex-wrap: nowrap; }
+    .card-foot .choices:only-child { margin: 0 auto; }
+    .hc-purse { margin: 0; font-size: 15px; }
+    #homecoming .big, #log .big { padding: 8px 16px; font-size: 16px; }
+    #hc-rows, .records { grid-template-columns: auto 1fr auto 1fr; font-size: 12.5px; gap: 2px 10px; margin: 4px 0 6px; }
+    .ribbons { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 4px; margin: 4px 0 6px; }
+    .ribbon { padding: 4px 16px 4px 10px; }
+    .ribbon b { font-size: 13px; }
+    .ribbon small { font-size: 11.5px; }
+    .log-tabs { margin: 4px 0 0; }
+    .log-tabs button { min-height: 32px; padding: 3px 8px; font-size: 13px; }
+    #log-rank .rankbar { margin: 2px 0; }
+    #skies button small .more { display: none; }
+    /* (her colours a little smaller, each kind in one row, so both rows show above Set sail on the smallest phone) */
+    .swatch { width: 28px; height: 28px; }
+    .swatches { gap: 4px; }
+    #pp-colours-part .swatch-row { gap: 2px; margin: 2px 0 3px; font-size: 12px; }
+    #pp-tabs button { white-space: nowrap; }
   }
   /* a phone held upright: the Buy button's words on one line, down to a phone 320 px across */
   @media (max-width: 700px) and (min-height: 501px) {
@@ -731,6 +857,11 @@
      little smaller (the first voyage's title on one line), so it fits under the compass, between the panels at the top
      and over the crosshair */
   @media (max-width: 700px) and (max-height: 500px) {
+    #btn-log span { display: none; }
+    /* (a Captain back from the sea, on a small phone held sideways: her rank in the place of the skies' heading, so the
+       title's card fits with every skies' stars and best wave) */
+    #title-rank:not([hidden]) + h2 { display: none; }
+    #title-rank:not([hidden]) + h2 + #skies { margin-top: 6px; }
     #btn-pause { top: var(--top); left: auto; right: calc(var(--gutter) + var(--map-w) + 8px); translate: none; }
     #port-ships button { padding: 5px 6px 4px; }
     #port-ships button b { font-size: 13px; }
@@ -778,7 +909,7 @@
   @media (max-width: 600px) and (max-height: 500px) {
     #port-panel { width: 47vw; }
     #port-ships { max-width: calc(53vw - var(--gutter) - 16px); }
-    #port-note { max-width: calc(53vw - var(--gutter) - 24px); }
+    #port-note, #pp-next { max-width: calc(53vw - var(--gutter) - 24px); }
     #port-ships button { padding: 5px 4px 4px; }
     #port-ships button b { font-size: 12px; }
     .sail-out .big { font-size: 15.5px; padding: 8px 10px; }
@@ -787,6 +918,7 @@
     /* (between waves the card just under the pause button, as wide as the room between your ship's panel and the map,
        and a little tighter, so a long line (a big wave next, a storm coming) still ends above Surge and the toast) */
     body.touch #calm, #calm { top: calc(var(--top) + 48px); width: calc(100% - 2 * (var(--gutter) + 134px)); padding: 5px 10px; gap: 3px; }
+    body.touch.between #tip { max-width: 126px; } /* (and a new Captain's tip beside the card, in the room left beside it) */
     #calm p { font-size: 11.5px; }
     #calm .big { padding: 7px 12px; }
     #calm .plain { min-height: 34px; }
@@ -804,10 +936,15 @@
   @media (max-width: 700px), (max-height: 500px) {
     #pp-tabs { display: flex; }
     #port-panel[data-tab='ship'] #pp-own { display: none; }
-    #port-panel[data-tab='upgrades'] #pp-ship-part { display: none; }
+    #port-panel[data-tab='upgrades'] #pp-ship-part, #port-panel[data-tab='colours'] #pp-ship-part { display: none; }
     #pp-own { display: flex; flex-direction: column; }
     #pp-mods-part { order: -1; }
     #pp-mods-part h3 { display: none; }
+    #port-panel[data-tab='upgrades'] #pp-colours-part { display: none; }
+    #port-panel[data-tab='colours'] #pp-power-part, #port-panel[data-tab='colours'] #pp-mods-part, #port-panel[data-tab='colours'] #pp-shot-part, #port-panel[data-tab='colours'] #pp-colours-part h3,
+      #port-panel[data-tab='colours'] #pp-cls { display: none; }
+    #pp-colours-part .swatch-row { margin: 4px 0; }
+    #pp-tabs button { padding: 6px 6px; }
   }
   /* a second way on, on a phone: across the card, over Sail on and Back to port held upright (the card grows upwards
      from the buttons, so they stay where they always are); held sideways, under them (the card is docked at the top
@@ -854,14 +991,16 @@
 
 <!-- the port: your ships in the void, their upgrades and crystal power, and setting sail -->
 <section id="port" class="screen" hidden>
-  <header class="port-top"><h1>Port</h1><span id="port-shards" class="panel shards">◆ 0</span><button id="btn-skies" class="panel" type="button">Skies</button><button id="btn-settings-port" class="panel gear" type="button" aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M10.09 4.03 L10.54 1.10 L13.46 1.10 L13.91 4.03 L16.28 5.01 L18.67 3.26 L20.74 5.33 L18.99 7.72 L19.97 10.09 L22.90 10.54 L22.90 13.46 L19.97 13.91 L18.99 16.28 L20.74 18.67 L18.67 20.74 L16.28 18.99 L13.91 19.97 L13.46 22.90 L10.54 22.90 L10.09 19.97 L7.72 18.99 L5.33 20.74 L3.26 18.67 L5.01 16.28 L4.03 13.91 L1.10 13.46 L1.10 10.54 L4.03 10.09 L5.01 7.72 L3.26 5.33 L5.33 3.26 L7.72 5.01Z M12 8.4a3.6 3.6 0 1 0 0.001 0Z"/></svg></button></header>
+  <header class="port-top"><h1>Port</h1><span id="port-shards" class="panel shards">◆ 0</span><button id="btn-log" class="panel" type="button" aria-label="Captain's log"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 5.6C10.2 4.3 7.8 3.8 2.8 4v14.3c5-.2 7.4.3 9.2 1.6 1.8-1.3 4.2-1.8 9.2-1.6V4c-5-.2-7.4.3-9.2 1.6zm-1 11.7c-1.6-.8-3.7-1.2-6.4-1.2V6.1c2.9 0 5 .5 6.4 1.4zm8.4-1.2c-2.7 0-4.8.4-6.4 1.2V7.5c1.4-.9 3.5-1.4 6.4-1.4z"/></svg><span>New Captain</span></button><button id="btn-skies" class="panel" type="button">Skies</button><button id="btn-settings-port" class="panel gear" type="button" aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M10.09 4.03 L10.54 1.10 L13.46 1.10 L13.91 4.03 L16.28 5.01 L18.67 3.26 L20.74 5.33 L18.99 7.72 L19.97 10.09 L22.90 10.54 L22.90 13.46 L19.97 13.91 L18.99 16.28 L20.74 18.67 L18.67 20.74 L16.28 18.99 L13.91 19.97 L13.46 22.90 L10.54 22.90 L10.09 19.97 L7.72 18.99 L5.33 20.74 L3.26 18.67 L5.01 16.28 L4.03 13.91 L1.10 13.46 L1.10 10.54 L4.03 10.09 L5.01 7.72 L3.26 5.33 L5.33 3.26 L7.72 5.01Z M12 8.4a3.6 3.6 0 1 0 0.001 0Z"/></svg></button></header>
   <p id="port-note" class="panel" aria-live="polite"></p>
+  <!-- (the quartermaster's advice: what's worth doing next; it makes way for the port's note while that shows) -->
+  <p id="pp-next" class="panel"></p>
   <div id="port-ships" class="panel" role="group" aria-label="Ships"></div>
   <section id="port-panel" class="panel" data-tab="ship">
     <h2 id="pp-name">Zephyr</h2>
     <p class="cls" id="pp-cls">Skiff · 8 m</p>
     <!-- (on a phone: the ship, or her upgrades) -->
-    <div id="pp-tabs" role="tablist" aria-label="Show"><button id="pp-tab-ship" type="button" role="tab" aria-selected="true">The ship</button><button id="pp-tab-upgrades" type="button" role="tab" aria-selected="false">Upgrades<i class="dot" hidden></i></button></div>
+    <div id="pp-tabs" role="tablist" aria-label="Show"><button id="pp-tab-ship" type="button" role="tab" aria-selected="true">The ship</button><button id="pp-tab-upgrades" type="button" role="tab" aria-selected="false">Upgrades<i class="dot" hidden></i></button><button id="pp-tab-colours" type="button" role="tab" aria-selected="false">Colours</button></div>
     <div id="pp-ship-part">
       <p id="pp-blurb"></p>
       <h3>How she sails</h3>
@@ -881,9 +1020,16 @@
         <h3>Shot <small>for all your ships</small></h3>
         <div id="pp-shots"></div>
       </div>
+      <div id="pp-colours-part">
+        <h3>Colours</h3>
+        <div class="swatch-row"><span>Sails</span><div id="pp-sails" class="swatches" role="radiogroup" aria-label="Sails"></div></div>
+        <div class="swatch-row"><span>Pennants</span><div id="pp-pennants" class="swatches" role="radiogroup" aria-label="Pennants"></div></div>
+      </div>
     </div>
     <div class="sail-out">
       <div id="pp-buy" hidden><button id="btn-buy" class="big" type="button"><span>Buy</span></button></div>
+      <!-- (a colour tried on her and not hers yet: the big button buys it, and setting sail is the plain line beside) -->
+      <div id="pp-dye-buy" hidden><p id="pp-dye-note"></p><button id="btn-dye" class="big" type="button"></button></div>
       <p id="pp-need"></p>
       <div class="sail-alts"><button id="btn-try" class="plain" type="button" hidden>Try her out</button><button id="btn-sail" class="big" type="button">Set sail</button></div>
     </div>
@@ -958,6 +1104,8 @@
     <p id="lock-hint">Click the sky to aim with the mouse. Esc lets go.</p>
   </section>
   <button id="btn-help" class="panel mouse-only" type="button" hidden>Keys (H)</button>
+  <!-- (a new Captain's tip, one at a time: coach.js; on a phone it takes the hint's place) -->
+  <p id="tip" aria-live="polite" hidden></p>
 </div>
 <!-- between waves: sail on, or go back to port and keep the shards -->
 <section id="calm" class="panel" hidden>
@@ -1015,7 +1163,30 @@
     <h2 id="settings-title">Settings</h2>
     <div id="settings-rows"></div>
     <p class="touch-only settings-note">No sound? Check your phone isn't on silent, and its volume is up.</p>
-    <div class="choices"><button id="btn-settings-done" class="big" type="button">Done</button></div>
+    <div class="choices"><button id="btn-settings-done" class="big" type="button">Done</button><button id="btn-tips-again" class="plain" type="button">Show the tips again</button></div>
+  </div>
+</section>
+<!-- home from a voyage: what it did, what it won, and Sail again (record.js) -->
+<section id="homecoming" class="screen dim" hidden>
+  <div class="panel card" role="dialog" aria-modal="true" aria-labelledby="hc-title">
+    <header class="card-head"><h2 id="hc-title">Home from the voyage</h2><p id="hc-sub"></p></header>
+    <div class="card-body">
+      <dl id="hc-rows"></dl>
+      <div id="hc-ribbons" class="ribbons" hidden></div>
+      <div id="hc-rank"></div>
+      <p id="hc-next"></p>
+    </div>
+    <footer class="card-foot"><p class="hc-purse">Purse: <span class="shards">◆ <b id="hc-purse">0</b></span></p>
+      <div class="choices"><button id="btn-again" class="big" type="button">Sail again</button><button id="btn-hc-port" class="plain" type="button">To port</button></div></footer>
+  </div>
+</section>
+<!-- the Captain's log: orders and commendations, records, voyages (record.js) -->
+<section id="log" class="screen dim" hidden>
+  <div class="panel card" role="dialog" aria-modal="true" aria-labelledby="log-title">
+    <header class="card-head"><h2 id="log-title">Captain's log</h2><div id="log-rank"></div>
+      <div class="log-tabs" role="tablist" aria-label="Show"><button id="log-tab-deeds" type="button" role="tab" aria-selected="true">Commendations</button><button id="log-tab-records" type="button" role="tab" aria-selected="false">Records</button><button id="log-tab-voyages" type="button" role="tab" aria-selected="false">Voyages</button></div></header>
+    <div id="log-body" class="card-body"></div>
+    <footer class="card-foot"><div class="choices"><button id="btn-log-done" class="big" type="button">Done</button></div></footer>
   </div>
 </section>
 <div id="veil" aria-hidden="true"></div>

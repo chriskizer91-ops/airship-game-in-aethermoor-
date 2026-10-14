@@ -30,6 +30,11 @@
 // The screen keeps tidy on every size (game.html has a place for everything): the region's name waits for a quiet
 // moment rather than landing on a fight, raiders' tags keep clear of the panels and of the raiders' ships far off
 // (tags()), and directions are given as left and right ("ahead on your right"), the wind in words.
+// The Captain's record (deeds.js) counts every voyage: commendations, stars and harbour orders paid at sea are said in a
+// toast (after the one showing has been read); coming home (Back to port, or her ship lost and To port) a card says
+// what the voyage did and offers Sail again (record.js); and a brand-new Captain's first voyage is a gentle one: one
+// short tip at a time (coach.js), and her first raider comes on ahead, closer, and holds her fire until the Captain has
+// fired. Each ship flies her own colours (paint.js).
 import * as THREE from 'three';
 import { loadShipArt } from '../ship/materials.js';
 import { buildShip } from '../ship/build.js';
@@ -58,6 +63,10 @@ import { WTIME } from '../ship/dress.js';
 import { makeAudio } from '../audio/audio.js';
 import { makeSound } from './sound.js';
 import { makeSettings, AIM, PICTURE } from './settings.js';
+import { makeDeeds } from './deeds.js';
+import { makeCoach } from './coach.js';
+import { makeRecord } from './record.js';
+import { applyPaint, DYES, notRaider } from './paint.js';
 import minimapUrl from '../../assets/map/minimap.webp';
 
 const $ = (id) => document.getElementById(id);
@@ -144,12 +153,17 @@ async function main() {
     else if (id === 'picture') { applyPicture(); resize(); }
     else if (id === 'shake') fx.shake = v;
     else if (id === 'leftFire') applyHands();
+    else if (id === 'tips' && !v) coach.clear();
   });
 
   // ---------- the ship you fly, and a voyage ----------
   const built = new Map(), zones = new Map();
-  const shipFor = (R) => { if (!built.has(R.id)) { const s = buildShip(R, 'full', art); s.glow.material.uniforms.uScale.value = camera.userData.pixelScale ?? 500; built.set(R.id, s); } return built.get(R.id); };
-  const port = makePort({ renderer, env: dayLight, progress, shipFor, touch, onSail: (id) => sail(id), onTrial: (id) => sail(id, false, true), onMode: (m) => enter(m) });
+  // (each in her own colours, as the save has them: paint.js)
+  const shipFor = (R) => { if (!built.has(R.id)) { const s = buildShip(R, 'full', art); s.glow.material.uniforms.uScale.value = camera.userData.pixelScale ?? 500; applyPaint(s, progress.data.ships[R.id]?.paint); built.set(R.id, s); } return built.get(R.id); };
+  // the Captain's record, counted from the news (deeds.js), and shown in port and coming home (record.js)
+  const deeds = makeDeeds({ progress, player: () => player, clock: () => time, wave: () => W.wave, trial: () => trial });
+  const port = makePort({ renderer, env: dayLight, progress, shipFor, touch, onSail: (id) => sail(id), onTrial: (id) => sail(id, false, true), onMode: (m) => enter(m), deeds, onLog: () => record.openLog() });
+  const record = makeRecord({ progress, deeds, onSail: (id) => sail(id), advice: () => port.advice().long });
   const title = makeTitle({ renderer, scene, world, lights, art, raiders, shipFor, progress, dayLight: () => dayLight, touch });
   // a phone can drop the drawing context after a long time in the background (or a laptop's graphics can restart).
   // three.js puts back the ships, the map and the shadows by itself, but not the pictures drawn once at start-up: the
@@ -162,24 +176,28 @@ async function main() {
     title.relight();
   });
   let mode = '', paused = false, player = null, gunnery = null;
-  const V = { shards: 0, downed: 0, hits: 0 }; // this voyage
+  const V = { shards: 0, downed: 0, hits: 0, bonus: 0 }; // this voyage (bonus: the shards the waves paid, of `shards`)
   // the waves: which (n, from 0), what's happening between them, and the next wave once it's known (shown on the card);
   // `news`: kinds of shot earned and not yet told in a banner (earn()). `alt`: the second way on the card offers, if any
   // (roadFor); `wave`: the wave being fought (its road's shards and bonus); `met`: the raider captains met this voyage;
   // `plainAt`: a captain wave whose captain was hunted down early (a plain wave now); `treasureAt`: the last wave with a
   // treasure ship; `grudge`: a raider captain who sank her ship and got away, for its card
-  const W = { n: 0, state: 'calm', timer: 5, lost: 0, choose: 0, sunk: false, next: null, bonus: 0, bonusAt: 0, bonusShown: -1, news: [], alt: null, wave: null, met: [], plainAt: -1, treasureAt: -99, grudge: null, offered: { storm: -1, treasure: -1, hunt: -1 }, hint: null };
+  // `gentle`: a brand-new Captain's first voyage, whose first raider comes gently (raiders.js spawnWave)
+  const W = { n: 0, state: 'calm', timer: 5, lost: 0, choose: 0, sunk: false, next: null, bonus: 0, bonusAt: 0, bonusShown: -1, news: [], alt: null, wave: null, met: [], plainAt: -1, treasureAt: -99, grudge: null, offered: { storm: -1, treasure: -1, hunt: -1 }, hint: null, gentle: false };
   let told = null; // the screen the events were last told of
   // a new screen: the title's sky (or the afternoon's again), and a dip through the night as it changes. The change
   // itself is at once (the night covers it), then the new screen comes up out of the night over half a second
   const veil = $('veil');
   let dip = null;
   function enter(m) {
+    record.hide(); // (coming home's card and the log close with any change of screen)
     if (m !== 'voyage') sky.rest(); // (no weather left in the world's sky for the title)
     if (m !== 'title') title.leave();
     if (m !== mode) { dip?.cancel(); dip = veil.animate([{ opacity: 1 }, { opacity: 0 }], { duration: lessMotion.matches ? 150 : 520, easing: 'ease-out' }); }
     mode = m; document.body.dataset.mode = m;
     if (m === 'title') { fx.clear(); title.enter(); } // (no smoke left hanging in its sky from the last fight)
+    // (an old save brought up to version 2 was given back pay for the stars its best waves had earned: said in port)
+    if (m === 'port') { const back = progress.takeBackPay(); if (back) noteLater(`Back pay for your earlier voyages' stars: ◆ ${fmt(back)}`); }
     if (told !== m) { told = m; payload('mode').mode = m; emit('mode'); }
     input.active = m === 'voyage' && !paused;
     if (m !== 'voyage' && document.pointerLockElement) document.exitPointerLock();
@@ -187,9 +205,9 @@ async function main() {
   // everything a voyage leaves behind, cleared for the next: the waves (and the next one, if a card was showing), the
   // hold, the raiders, shots, smoke and shards, wrecks and the holes they tore in the clouds, and the camera
   function resetVoyage() {
-    Object.assign(W, { n: 0, state: 'calm', timer: 5, lost: 0, choose: 0, sunk: false, next: null, alt: null, wave: null, plainAt: -1, treasureAt: -99, grudge: null, hint: null }); W.news.length = 0; W.met.length = 0; newsUp.until = 0;
+    Object.assign(W, { n: 0, state: 'calm', timer: 5, lost: 0, choose: 0, sunk: false, next: null, alt: null, wave: null, plainAt: -1, treasureAt: -99, grudge: null, hint: null, gentle: false }); W.news.length = 0; W.met.length = 0; newsUp.until = 0;
     for (const k in W.offered) W.offered[k] = -1;
-    Object.assign(V, { shards: 0, downed: 0, hits: 0 });
+    Object.assign(V, { shards: 0, downed: 0, hits: 0, bonus: 0 }); said.length = 0;
     raiders.clear(); bolts.clear(); pickups.clear(); fx.clear(); wrecks.clear(); world.clear(); surge.clear(); looks.clear(); wakes.clear(); sky.reset(); hideBounties(); calmUp(false); bigMap(false);
     document.body.classList.remove('sinking'); hidNote = -99; gaveAway = -99;
     hurt = 0; Object.assign(cam, { yaw: 0, pitch: 0.2, zoom: 1 }); Object.assign(shardCount, { shown: 0, from: 0, to: 0, t: 1, n: -1 }); surgeFov.x = surgeFov.v = 0;
@@ -261,6 +279,7 @@ async function main() {
     // (her trial's wave, known now: a raider captain's ship in it is built as she sails, under the dip through the night,
     // not as the wave appears: a stutter on a phone)
     if (trial) { W.n = TRIAL[id]; W.next = nextWave(W.n); raiders.prepareWave(W.next); }
+    W.gentle = !trial && !d.voyages; // (a brand-new Captain's first voyage: her first raider comes gently)
     // (the score says it's her sea trial, not a wave she's never reached; written before the panels are measured)
     setText($('wave-word'), trial ? 'Sea trial' : 'Wave '); setText(H['wave-n'], trial ? '' : '1');
     newWind();
@@ -277,11 +296,17 @@ async function main() {
     if (trial) banner(`Sea trial: the ${R.name}`, `One fight, as she's built · nothing won or lost`);
     else banner(first ? 'Your first voyage, Captain' : `The ${R.name} sets sail`, `${skies().name} · ${windWords()}`);
     const E = payload('voyage:start'); E.ship = id; E.skies = d.skies; E.trial = !!trial; emit('voyage:start');
+    deeds.chart(region); // (the land she sets out over, charted: deeds.js)
   }
-  // back to port: keep this share of the voyage's shards (from a sea trial, none, and nothing in the save changes)
-  function endVoyage(keep) {
+  // back to port: keep this share of the voyage's shards (from a sea trial, none, and nothing in the save changes). The
+  // voyage is added to the Captain's record first (deeds.js finish: what it did, and anything it won), and with `card`
+  // (the game's own ways home: Back to port, the pause card's, or To port when her ship's lost) coming home's card shows
+  // it over the port (record.js)
+  let summary = null; // (the last voyage's, for the card)
+  function endVoyage(keep, card = false) {
     const tried = trial, got = tried ? 0 : Math.round(V.shards * keep);
-    trial = null;
+    summary = tried ? null : deeds.finish({ got, keep, sunk: W.sunk || !!player.down, gathered: V.shards - V.bonus, bonus: V.bonus });
+    trial = null; said.length = 0;
     if (!tried) progress.bank(got, W.n);
     raiders.clear(); bolts.clear(); pickups.clear(); gunnery.cancel(); wrecks.clear(); world.clear(); surge.clear(); wakes.clear(); hideBounties(); W.next = null;
     scene.remove(player.ship.root); // the port shows her (or the ship you were looking at) in its own scene
@@ -293,7 +318,8 @@ async function main() {
     if (tried) {
       // (what she costs, and the ship to own first if the port sells her only after another)
       note(`Back from her sea trial: the ${SHIPS.find((s) => s.id === tried).name} costs ${price(tried)}${needs(tried)}`);
-    } else if (got) note(`◆ ${got.toLocaleString('en')} banked from the voyage`);
+    } else if (card && summary) record.homecoming(summary);
+    else if (got) note(`◆ ${got.toLocaleString('en')} banked from the voyage`);
     return got;
   }
   function newWind() { WIND.dir = Math.random() * Math.PI * 2; WIND.strength = WIND.base = 0.06 + Math.random() * 0.08; }
@@ -302,7 +328,21 @@ async function main() {
     const from = Math.abs(THREE.MathUtils.radToDeg(wrap(WIND.dir + Math.PI - player.heading)));
     return from > 125 ? 'the wind behind you' : from < 55 ? 'a head wind' : `a wind from your ${wrap(WIND.dir + Math.PI - player.heading) < 0 ? 'right' : 'left'}`;
   };
-  function note(text) { const n = $('port-note'); n.textContent = text; n.classList.remove('on'); void n.offsetWidth; n.classList.add('on'); }
+  // the port's note: shown at once, for five seconds, the quartermaster's line making way for it meanwhile (game.html);
+  // a commendation won in port waits (noteLater) until the note showing has had 2.6 s, so both are read
+  let noteAt = -1e9, notingT = 0, laterT = 0;
+  const laterNotes = [];
+  function note(text) {
+    const n = $('port-note'); n.textContent = text; n.classList.remove('on'); void n.offsetWidth; n.classList.add('on');
+    noteAt = performance.now(); $('port').classList.add('noting'); clearTimeout(notingT); notingT = setTimeout(() => $('port').classList.remove('noting'), 5000);
+  }
+  function noteLater(text) { laterNotes.push(text); pumpNotes(); }
+  function pumpNotes() {
+    clearTimeout(laterT);
+    if (!laterNotes.length) return;
+    const wait = noteAt + 2600 - performance.now();
+    if (wait > 0) laterT = setTimeout(pumpNotes, wait); else { note(laterNotes.shift()); if (laterNotes.length) laterT = setTimeout(pumpNotes, 2600); }
+  }
   // hiding in cloud: told once in a while as she slips into it (not every time she does), and when her guns give her away
   let hidNote = -99, gaveAway = -99;
   events.on('hidden', (e) => {
@@ -356,8 +396,21 @@ async function main() {
   events.on('port:buy', (e) => { if (BOUGHT[e.ship]) note(`The ${SHIPS.find((s) => s.id === e.ship).name} is yours: ${BOUGHT[e.ship]}`); });
   // shot bought: how to load it at sea
   events.on('port:shot', (e) => note(`${SHOTS[e.shot].name} aboard, for every ship: ${touch ? 'tap the shot button over Surge at sea' : `press ${SHOTS[e.shot].key} at sea`}`));
-  // newer progress came from the store: say so when this device had its own (a new browser just shows it)
-  progress.onLoad((d, had, kept) => { if (had) note(kept ? 'Your other device\'s progress is here, plus the shards you won here' : 'Your progress from your other device is here'); });
+  // newer progress came from the store: say so when this device had its own (a new browser just shows it); her ships
+  // put back in the colours it has for them
+  progress.onLoad((d, had, kept) => {
+    for (const [id, s] of built) applyPaint(s, d.ships[id]?.paint);
+    if (had) note(kept ? 'Your other device\'s progress is here, plus the shards you won here' : 'Your progress from your other device is here');
+  });
+  // what the Captain's record pays out (deeds.js): at sea a toast, once the one showing has had 2.2 s (so a kill's isn't
+  // cut short: `said`, taken in turn by the HUD, ten times a second); in port the note. A rank risen is told on coming
+  // home's card, not mid-fight
+  const said = [], SAID = { medal: (e) => `Commendation: ${e.name} · ◆ ${fmt(e.reward)}`, star: (e) => `${e.name} · ◆ ${fmt(e.reward)}`, order: (e) => `Order done: ${e.name} · ◆ ${fmt(e.reward)}`, orders: (e) => `${e.name} · ◆ ${fmt(e.reward)}` };
+  events.on('deed', (e) => {
+    const words = SAID[e.kind]?.(e);
+    if (!words) return;
+    if (mode === 'voyage') { if (said.length < 6) said.push(words); } else noteLater(words);
+  });
 
   // ---------- the camera: behind the ship, swung round it by the mouse or a drag ----------
   const cam = { yaw: 0, pitch: 0.2, dist: 40, zoom: 1, look: new THREE.Vector3() };
@@ -493,7 +546,7 @@ async function main() {
       }
       const damage = shot * rake;
       r.f.hit(part, damage); V.hits++;
-      HIT.owner = 'player'; HIT.target = 'raider'; HIT.part = part; HIT.at.copy(h.h.at); HIT.damage = damage; HIT.raider = r; HIT.size = b.K.size; HIT.raked = along;
+      HIT.owner = 'player'; HIT.target = 'raider'; HIT.part = part; HIT.at.copy(h.h.at); HIT.damage = damage; HIT.raider = r; HIT.size = b.K.size; HIT.raked = along; HIT.kind = b.K === KINDS.broadside ? 'broadside' : 'chaser'; HIT.shot = b.shot;
       HIT.dir.copy(b.v).normalize(); HIT.vel.copy(r.f.velocity); emit('hit');
       hitMark(part, !was && !!r.f.down); tagFlash(r, part);
       if (along) raked('player', r, h.h.at);
@@ -504,7 +557,7 @@ async function main() {
     if (!h) { nearMiss(b, a, c); return false; }
     const before = player.frac(h.part), rake = b.K === KINDS.broadside ? rakeMul(b.v, player.ship.body) : 1, damage = b.damage * SHOTS[b.shot][h.part] * rake;
     player.hit(h.part, damage);
-    HIT.owner = 'raider'; HIT.target = 'player'; HIT.part = h.part; HIT.at.copy(h.at); HIT.damage = damage; HIT.raider = b.from; HIT.size = b.K.size; HIT.raked = rake > 1;
+    HIT.owner = 'raider'; HIT.target = 'player'; HIT.part = h.part; HIT.at.copy(h.at); HIT.damage = damage; HIT.raider = b.from; HIT.size = b.K.size; HIT.raked = rake > 1; HIT.kind = b.K === KINDS.broadside ? 'broadside' : 'chaser'; HIT.shot = b.shot;
     HIT.dir.copy(b.v).normalize(); HIT.vel.copy(player.velocity); emit('hit');
     if (before >= 0.3 && player.frac(h.part) < 0.3) { LOW.part = h.part; emit('player:low'); }
     hurt = Math.min(1, hurt + (rake > 1 ? 0.75 : 0.45)); // (raked, the red at the screen's edge flares harder)
@@ -659,6 +712,7 @@ async function main() {
   // stand-in, who isn't one of them), or none if she was hunted down early (W.plainAt)
   function nextWave(n) {
     const w = waveAt(n, skies().extra, trial ? null : skies().storms, giants, n === W.plainAt);
+    if (n === 0 && W.gentle) w.gentle = true; // (a brand-new Captain's first raider: ahead, closer, holding her fire)
     return w.captain >= 0 && !w.standIn ? name(w, Math.floor((n + 1) / 5) - 1) : w;
   }
   // the second way on, beside the steady course `next` (tactics.js ROADS; raiders.js roadWave), from the card after
@@ -820,7 +874,7 @@ async function main() {
         if (last) fx.slowmo(1.6, 0.25);
         W.n++;
         const bonus = trial ? 0 : Math.round(20 * W.n * skies().shards * (W.wave?.bonus ?? 1)); // (a stormy road's bonus is double)
-        V.shards += bonus;
+        V.shards += bonus; V.bonus += bonus;
         const E = payload('wave:cleared'); E.n = W.n; E.bonus = bonus; emit('wave:cleared');
         W.state = 'choose'; W.choose = 25;
         $('btn-sail-on').hidden = !!trial;
@@ -924,7 +978,7 @@ async function main() {
     if (on && !$('help').hidden) toggleHelp();
     layout();
   }
-  const goHome = () => { if (W.state === 'choose') endVoyage(1); };
+  const goHome = () => { if (W.state === 'choose') endVoyage(1, true); };
   $('btn-sail-on').addEventListener('click', () => sailOn(0));
   road.addEventListener('click', () => sailOn(1));
   $('btn-go-port').addEventListener('click', goHome);
@@ -953,8 +1007,11 @@ async function main() {
   $('btn-howto-done').addEventListener('click', () => { howto.hidden = true; });
   howto.addEventListener('click', (e) => { if (e.target === howto) howto.hidden = true; });
   addEventListener('keydown', (e) => { if (e.key === 'Escape' && !howto.hidden) { howto.hidden = true; e.stopPropagation(); } }, true);
-  $('btn-abandon').addEventListener('click', () => endVoyage(W.sunk || W.state === 'fight' || player.down ? 0.5 : 1));
-  document.addEventListener('visibilitychange', () => { if (document.hidden && mode === 'voyage' && !paused) pause(true); });
+  $('btn-abandon').addEventListener('click', () => endVoyage(W.sunk || W.state === 'fight' || player.down ? 0.5 : 1, true));
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && mode === 'voyage' && !paused) pause(true);
+    if (document.hidden) progress.flush(); // (what's only been kept on this device, a tip given, sent up as the page goes)
+  });
 
   // ---------- the help, and the big map ----------
   const toggleHelp = () => { const h = $('help'); h.hidden = !h.hidden; $('btn-help').hidden = !h.hidden; layout(); };
@@ -973,6 +1030,17 @@ async function main() {
   mapDim.addEventListener('click', () => bigMap(false)); mapClose.addEventListener('click', () => bigMap(false));
 
   const input = makeInput(canvas, document.body);
+  // a new Captain's tips (coach.js), one at a time, from what's happening (`see`, ten times a second from the HUD)
+  const SEE = { player: null, raiders: null, locked: null, fight: false, choosing: false, shots: '', mouse: false };
+  let inpNow = null; // (this step's controls, for the tips: how long she's been steering)
+  const coach = makeCoach({ progress, settings, touch, el: $('tip'), trial: () => trial, clock: () => time, placed: () => layout(),
+    see: () => {
+      const D = progress.data.shots;
+      SEE.player = player; SEE.raiders = raiders.list; SEE.locked = locked; SEE.fight = W.state === 'fight' && !player?.down; SEE.choosing = W.state === 'choose' && !trial; SEE.mouse = input.locked;
+      SEE.shots = D?.chain && D?.breaker ? 'both' : D?.chain ? 'chain' : D?.breaker ? 'breaker' : '';
+      return SEE;
+    } });
+  $('btn-tips-again').addEventListener('click', () => { coach.again(); $('btn-tips-again').textContent = 'The tips will show again'; setTimeout(() => { $('btn-tips-again').textContent = 'Show the tips again'; }, 2500); });
   // the touch hint (a phone's first voyages) fades a few seconds after the first touch at sea (drags in port turn the
   // ship, and don't count)
   const hint = $('touch-hint');
@@ -1005,7 +1073,7 @@ async function main() {
   // And where the card between waves is, while it's up (bounties keep clear of it): measured where it ends up, as it
   // may still be rising into place (its rising moves it with translate, which offsets leave out; it's centred with
   // translate too)
-  const EDGE = { top: [], bottom: [] }, TOP_IDS = ['ship', 'compass', 'btn-pause', 'minimap', 'score'], BOTTOM_IDS = ['touch-buttons', 'battery', 'touch-hint', 'help', 'btn-help'];
+  const EDGE = { top: [], bottom: [] }, TOP_IDS = ['ship', 'compass', 'btn-pause', 'minimap', 'score'], BOTTOM_IDS = ['touch-buttons', 'battery', 'touch-hint', 'help', 'btn-help', 'tip'];
   const CALM_AT = { on: false, l: 0, r: 0, t: 0, b: 0, top: false };
   // (and the toast's place, from its top down a line or two, for the warning to keep clear of as it moves off her ship
   // while a toast shows (until: real time, in ms, as its 3 s fade ends); `n` counts the measurings, so the warning
@@ -1558,10 +1626,15 @@ async function main() {
     // find no room at all, they're all placed again from where they were pinned, packed by their tags alone)
     edges.sort(byY);
     for (let i = 0; i < edges.length; i++) { edges[i]._ex = edges[i]._x; edges[i]._ey = edges[i]._y; }
-    for (let pass = 0; pass < 2; pass++) {
-      arrowRoom = pass === 0;
-      if (pass) for (let i = 0; i < edges.length; i++) { edges[i]._x = edges[i]._ex; edges[i]._y = edges[i]._ey; }
-      if (placeEdges(W2)) break;
+    // (and if even that leaves one with no room, a new Captain's tip showing makes way for them (coach.js makeWay: the
+    // raiders' warnings come first), and they're placed again where it was)
+    for (let round = 0, fit = false; round < 2 && !fit; round++) {
+      for (let pass = 0; pass < 2 && !fit; pass++) {
+        arrowRoom = pass === 0;
+        if (pass || round) for (let i = 0; i < edges.length; i++) { edges[i]._x = edges[i]._ex; edges[i]._y = edges[i]._ey; }
+        fit = placeEdges(W2);
+      }
+      if (!fit && !coach.makeWay()) break;
     }
     arrowRoom = true;
     // those over their ships, from the highest on the screen down, each in the first clear place (placeOver): the
@@ -1700,6 +1773,8 @@ async function main() {
     }
     if (!slow) return;
     hudTimer = 0.1;
+    coach.update(0.1, inpNow); // (a new Captain's tips)
+    if (said.length && performance.now() >= TOAST_AT.until - 800) toast(said.shift()); // (what her record paid out: deeds.js)
     setText(H['r-speed'], `${Math.round(player.speed * 3.6)} km/h`);
     setText(H['r-height'], `${fmt(player.pos.y)} m`);
     setText(H['r-sail'], `${Math.round(player.sail * 100)}%`);
@@ -1818,6 +1893,7 @@ async function main() {
     }
     if (inp.fire && !player.down && gunnery.fire(battery, aimPoint, bolts, 'player', player.velocity) > 0) {
       sky.reveal(); // (her guns give her away)
+      player.firedOnce = true; // (a brand-new Captain's first raider holds her fire till now: raiders.js)
       if (gunnery.shot === 'breaker') { if (!gunnery.breakers) pickShot('round', 'out'); else shotsShown(); } // (her last volley of breakers: round shot again)
     }
     loaded.port = gunnery.ready.port; loaded.starboard = gunnery.ready.starboard;
@@ -1853,7 +1929,7 @@ async function main() {
     sun.target.position.copy(player.pos); sun.position.copy(player.pos).addScaledVector(SUN, SUN_OFF);
     WTIME.value = time; // (the sails' ripple, the pennants, the crystals' pulse, the embers and the flames)
     player.ship.glow.material.uniforms.uScale.value = camera.userData.pixelScale;
-    hud(dt, battery);
+    inpNow = inp; hud(dt, battery);
   }
   function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
@@ -1878,6 +1954,9 @@ async function main() {
     tactics: { SHOTS, SHOT_ORDER, RAKE, PATCH, SMART, rakeMul, NERVE, CAPTAINS, PLATE, FORT, LINE, ROADS, ROAD }, pickShot, nextShot: () => nextShot(), patchUp, // (shot, raking and patching)
     nextWave: (n) => nextWave(n), roadWave, bannerFor: (wave, arr) => waveBanner(wave, arr), BANNER_LINE, cardRisen, BOUNTY, CAPTAIN, // (a wave planned, its raider captain named, a second way on, and a wave's banner: foes worth remembering)
     fly: (id) => sail(id, true), // a voyage in any ship, owned or not (for tests)
+    // the Captain's record: its counting, a new Captain's tips, coming home's card and the log; the last voyage's summary,
+    // home by the game's own way (its card showing), and the toasts waiting their turn
+    deeds, coach, record, paint: { applyPaint, DYES, notRaider }, home: (keep) => endVoyage(keep, true), get summary() { return summary; }, saying: said, built,
     pivot: (yaw = cam.yaw, pitch = cam.pitch, out = new THREE.Vector3()) => pivot(yaw, pitch, out), // (the point the view turns round, looking that way: placeCamera)
     get trial() { return trial; }, TRIAL, get fightSkies() { return skies().name; }, // (the ship on her sea trial, if one is out; the wave each is tried on; the skies the fights are in)
     words: { side: sideWords, wind: () => windWords() }, layout, edge: EDGE, // (directions in words, and the panels the edge tags keep clear of)

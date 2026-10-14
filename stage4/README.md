@@ -35,7 +35,7 @@ changing it.
 
 ## What's here
 
-- `docs/game.md`: how this version plays (the title screen, the skies, the port, voyages, the controls and settings, the tactics, the foes worth remembering (raiders with nerve, named captains, the Man-o'-war's fortress battle, the road between waves), battle scars, ships that move, storms and clouds, the sound and music, the raiders, and how hard it is)
+- `docs/game.md`: how this version plays (the title screen, the skies, the port, voyages, the Captain's record (a gentle first voyage, coming home, commendations, ranks, stars, the log, harbour orders and colours), the controls and settings, the tactics, the foes worth remembering (raiders with nerve, named captains, the Man-o'-war's fortress battle, the road between waves), battle scars, ships that move, storms and clouds, the sound and music, the raiders, and how hard it is)
 - `docs/ships.md`, `docs/map.md`: the ships and the map, as in the main folders
 - `src/`: the game's code; `demos/`: the pages' HTML; `tools/`: building and checking
 - `src/audio/thareia/`: Chris's music and instruments, shared with the laptop version and kept exactly as he gave them

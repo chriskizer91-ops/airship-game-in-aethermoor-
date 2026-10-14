@@ -90,7 +90,9 @@ const VOYAGE = ([ship, waves, skies, first, owns, mods, power, dodge, patch, sho
   if (smartArg !== null) g.SKIES[skies].smart = +smartArg;
   if (warnArg !== null) g.SKIES[skies].warn = +warnArg;
   if (g.mode === 'voyage') g.endVoyage(0);
-  g.progress.reset(); const d = g.progress.data; d.skies = skies;
+  // (a Captain who has sailed before: a brand-new Captain's first raider comes gently, main.js, and that's not what's
+  // measured here)
+  g.progress.reset(); const d = g.progress.data; d.skies = skies; d.voyages = 1;
   for (const id of owns) d.ships[id].owned = true;
   Object.assign(d.ships[ship], { owned: true, power, mods: { armour: mods, canvas: mods, drill: mods, crystals: mods } });
   if (shotArg !== 'round') d.shots.chain = d.shots.breaker = true;

@@ -216,7 +216,22 @@ which were made from this repository only):
    crystals over her rail (raiders.js `breakAt`); the white flag's dark hem (wrecks.js `FLAG_U`); the sea's softer glints
    (world.js GLITTER); the burst's toast arrow and gold pulse on her tag (main.js `BURST_GLOW`, game.html `.tag.burst`).
 4. **D3-progression**: save version 2, a gentle first voyage, the homecoming summary, commendations and a Captain's
-   log, ranks, records and stars, the quartermaster's advice, sail and pennant colours, harbour orders.
+   log, ranks, records and stars, the quartermaster's advice, sail and pennant colours, harbour orders. Built October 13
+   (`docs/game.md`, "The Captain's record"). The save's version 2 (progress.js: `MEDAL_IDS`, `TIP_IDS`, `SAIL_DYES`,
+   `PENNANT_DYES`, `LANDS`, `STAR_PAY`, `RANK_AT`, still import-free; `merge` keeps lists only of the right length and
+   real numbers, `sanitize` the log's last 12 and known colours, `migrate` an old save's stars as back pay once and a
+   renown floor, `mark` keeps a small change on the device only). `deeds.js` counts the voyage from the news (a `hit`
+   now says its gun's `kind`), pays commendations, stars, orders and a rank's purse (the `deed` event: a toast in turn at
+   sea, `said`, the port's note in port, `noteLater`), and returns the voyage's summary (`finish`, before `bank`); orders
+   start after a first voyage and are picked by the date (`pickOrders`). `coach.js` gives the tips from what main.js
+   `see`s ten times a second (in the dock on a laptop, in the hint's place on a phone; `settings.tips`; `makeWay` when
+   main.js `tags` finds no room for every edge tag, as on the smallest phone with nine readying broadsides); a brand-new
+   Captain's first wave is `gentle` (raiders.js `GENTLE`: ahead, closer, `r.hold` until `player.firedOnce`).
+   `record.js` is coming home's card (shown only by the game's own ways home: `endVoyage(keep, true)`, `__game.home`)
+   and the log. `paint.js` dyes her own sails and pennants (`applyPaint` in `shipFor`, port previews reverted on leaving);
+   port.js has the Colours tab, the quartermaster's `advice()` and the Log button. The checks switch the tips off for the
+   older checks (`tipsOff`) and test them on their own and in every layout; `tools/sim-fight.mjs` sails a Captain with a
+   voyage behind her (no gentle first raider).
 
 Run them in that order (each builds on the last), with the gate's `shots` asking for each new feature at laptop,
 upright-phone and sideways-phone sizes.

@@ -23,14 +23,16 @@
 //   volley          { owner, battery, count, kind, ship, p }
 //                                                a battery starting to fire (its guns ripple off after it, bow first);
 //                                                p is its middle gun
-//   hit             { owner, target, part, at, damage, raider, dir, vel, size, raked }
+//   hit             { owner, target, part, at, damage, raider, dir, vel, size, raked, kind, shot }
 //                                                a shot landing: who fired it, 'player' or 'raider' hit, 'hull',
 //                                                'sails' or 'crystals', where (world), how hard, the raider: the one
 //                                                hit, or the one that fired at the Captain (she may be going down by
 //                                                then; null for a shot no raider's guns fired), which way the shot was
 //                                                flying (a unit vector), the velocity of the ship it hit, and how big
 //                                                the shot was (1 a chaser's, 1.35 a broadside's: the scar it leaves),
-//                                                and whether it was raking fire (down her length: tactics.js)
+//                                                and whether it was raking fire (down her length: tactics.js), the
+//                                                kind of gun it came from ('chaser' or 'broadside'), and its shot
+//                                                ('round', 'chain' or 'breaker')
 //   raked           { owner, raider, at }        a broadside's shot raking a ship (the first of a volley's hits that
 //                                                do): 'player' (the Captain raked the raider) or 'raider' (a raider
 //                                                raked the Captain); where it landed
@@ -102,6 +104,11 @@
 //   port:upgrade    { ship, mod, step }          an upgrade bought (step: how many of it she has now)
 //   port:power      { ship, power }              the crystal power moved (-2 sails .. 2 guns)
 //   port:skies      { skies }                    other skies chosen
+//   port:dye        { ship, kind, dye, bought }  a ship's colours changed in port: 'sails' or 'pennant', the dye's id,
+//                                                and whether it was bought just now (paint.js)
+//   deed            { kind, id, name, reward }   something in the Captain's record paid out (deeds.js): a 'medal' (a
+//                                                commendation), a 'star', an 'order' done, the harbourmaster's thanks
+//                                                for all three ('orders') or a 'rank' risen; its name, and its shards
 // (the sound, sound.js, answers nearly all of them)
 import { Vector3 } from 'three';
 
@@ -114,7 +121,7 @@ export const PAYLOAD = {
   'voyage:end': { kept: 0, sunk: false, waves: 0, trial: false },
   fire: { owner: '', kind: '', battery: '', p: v(), dir: v(), weight: 1, ship: '', vel: v(), i: 0, n: 1, raider: null },
   volley: { owner: '', battery: '', count: 0, kind: '', ship: '', p: v() },
-  hit: { owner: '', target: '', part: '', at: v(), damage: 0, raider: null, dir: v(), vel: v(), size: 1, raked: false },
+  hit: { owner: '', target: '', part: '', at: v(), damage: 0, raider: null, dir: v(), vel: v(), size: 1, raked: false, kind: '', shot: '' },
   raked: { owner: '', raider: null, at: v() },
   warn: { raider: null, battery: '', time: 0 },
   shot: { shot: '', why: '', left: 0 },
@@ -154,6 +161,8 @@ export const PAYLOAD = {
   'port:power': { ship: '', power: 0 },
   'port:skies': { skies: '' },
   'port:shot': { shot: '' },
+  'port:dye': { ship: '', kind: '', dye: '', bought: false },
+  deed: { kind: '', id: '', name: '', reward: 0 },
 };
 // Each event's listeners, in the order they started listening. A listener may stop listening (or another start) while
 // the event is being told: one that stops is only blanked out until the telling is over (taking it out of the list there

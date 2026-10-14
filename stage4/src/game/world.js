@@ -29,6 +29,8 @@ export const CLOUD_Y = 430, THINNING = 2400;
 // The regions, a 12 x 8 grid over the map read off Chris's painting (names from the Magpie page)
 const GRID = ['sssswwsppppp', 'sssswwhppppp', 'swwwwhhppppp', 'swwwwhhppkks', 'sggwwhhkkkks', 'sggwwfhkkkks', 'sswfffkkkkss', 'ssssssssssss'];
 const NAMES = { s: 'The Open Sea', w: 'The Verdant Wilds', g: 'The Gloamwood', f: 'The Gloomfen', h: 'The Hearthsea', p: 'The Ironspire Peaks', k: 'The Sunscorch Wastes' };
+// each region's letter on the grid, by its name (the lands flown over, kept in the save: progress.js LANDS, deeds.js)
+export const LAND_OF = Object.fromEntries(Object.entries(NAMES).map(([k, name]) => [name, k]));
 // each region's name and the middle of its cells on the map (0 to 1 across and down), for the big map's labels
 export const REGIONS = Object.entries(NAMES).filter(([k]) => k !== 's').map(([k, name]) => {
   let u = 0, v = 0, n = 0;
