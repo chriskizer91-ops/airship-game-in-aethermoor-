@@ -895,7 +895,7 @@ const longestBanner = (page) => page.evaluate(() => {
   return out;
 });
 // (the longest toast the game writes: main.js. The Bell's flare; as long: a crew striking her colours, "The Frigate
-// strikes her colours: half as many shards again", and "No crystal breakers yet: earn it at sea, or buy it in port")
+// strikes her colours: half as many shards again", and "No crystal breakers yet: earn them at sea or buy in port")
 const LONGEST_TOAST = 'Hesper Quayle fires a flare: sink her in 20 s or help comes';
 const layoutAt = (page, HUD, PANELS, sink = false, { shot = true, hurt = true, left = false, say: sayLongest = null } = {}) => page.evaluate(({ HUD, PANELS, sink, shot, hurt, left, sayLongest, LONGEST_TOAST }) => {
   const g = window.__game, $ = (id) => document.getElementById(id), out = { laps: [], tags: [], off: [], pause: [] };
@@ -5439,6 +5439,9 @@ if (!demoOnly) {
       g.fly('skiff'); g.raiders.setAI(false); g.waves.timer = 1e9; g.home(1); out.none = $('hc-rows').textContent;
       g.record.homecoming({ ...g.summary, downed: 4, by: { frigate: 2, skiff: 2 }, captains: 2 }); out.captains = $('hc-rows').textContent; $('btn-hc-port').click();
       g.fly('skiff'); g.raiders.setAI(false); g.waves.timer = 1e9; g.raiders.clear(); Object.assign(g.waves, { n: 0, state: 'fight', next: null }); g.step(0.2, {}); g.home(1); out.one = $('hc-rows').textContent; $('btn-hc-port').click();
+      // what the Maelstrom would have paid, on Fair Winds once wave 5's beaten there: all she keeps (the waves' pay too)
+      // at the Maelstrom's rate, so more than she has (◆ 209 gathered and ◆ 300 for the waves: ◆ 509, ◆ 814 there)
+      d0().best.fair = Math.max(d0().best.fair, 5); g.record.homecoming({ ...g.summary, skies: 'fair', gathered: 209, bonus: 300, got: 509, keep: 1, sunk: false }); out.mael = $('hc-next').textContent; $('btn-hc-port').click();
       // "Show the tips again", the tips off
       g.settings.set('tips', false); $('btn-tips-again').click(); out.again = { on: g.settings.data.tips, box: $('set-tips').checked, tips: Object.values(d0().tips).join('') };
       // the broadside order
@@ -5462,10 +5465,11 @@ if (!demoOnly) {
       return out;
     }));
     console.log(`coming home with a fleet of four: ${H.four.won ? `"${H.four.ribbons}" on the card` : 'NOT WON'} (${H.four.saying} toasts left at sea); a commendation won in port meanwhile: "${H.four.under}" under the card, "${H.four.after}" once it's closed`);
-    console.log(`after 9 voyages: Seasoned ${H.salt.have} (log: "${H.salt.log}"); coming home's words: "${H.none.slice(-30)}", "${H.captains.slice(0, 90)}", "${H.one.slice(-50)}"; Show the tips again with them off: ${H.again.on ? 'switched on' : 'STILL OFF'} (tips ${H.again.tips}); the broadside order for a Skiff's Captain ${H.broadside[0]}, the Gale's ${H.broadside[1]}`);
+    console.log(`after 9 voyages: Seasoned ${H.salt.have} (log: "${H.salt.log}"); coming home's words: "${H.none.slice(-30)}", "${H.captains.slice(0, 90)}", "${H.one.slice(-50)}", "${H.mael.slice(0, 50)}"; Show the tips again with them off: ${H.again.on ? 'switched on' : 'STILL OFF'} (tips ${H.again.tips}); the broadside order for a Skiff's Captain ${H.broadside[0]}, the Gale's ${H.broadside[1]}`);
     console.log(`tips: the card's as it rose "${H.card.shown}", given going home: ${H.card.given}; the fire tip "${H.fight.shown}", her raider down (${H.fight.state}): "${H.fight.after || 'gone'}"; the aiming tip "${H.aim.before}", the mouse held "${H.aim.after}"`);
     if (!H.four.won || !H.four.ribbons.includes('A Fleet of Four') || H.four.saying || H.four.under !== '' || H.four.after !== 'Commendation: Fully Fitted · ◆ 150') problems.push(`a commendation her fleet earns as she comes home should be on coming home's card, and a port note wait for the card to close: ${JSON.stringify(H.four)}`);
     if (H.salt.voyages !== 9 || H.salt.have !== '9 of 10' || H.salt.won || !H.salt.log.includes('9 of 10')) problems.push(`a voyage's tallies in port should count the voyage just home once: ${JSON.stringify(H.salt)}`);
+    if (!H.mael.includes('On the Maelstrom this voyage would have paid ◆\u00a0810.')) problems.push(`coming home on Fair Winds should say what the Maelstrom would have paid for all she keeps, the waves' pay too (◆ 810 for ◆ 509): "${H.mael}"`);
     if (!H.none.endsWith('Shardsnone this time') || !H.captains.includes('two Frigates and two Skiffs (two of them raider captains)') || !H.one.includes('◆ 20 for the wave. You keep it all')) problems.push(`coming home's words should read right (nothing at all, two raider captains, one wave's pay): ${JSON.stringify({ none: H.none, captains: H.captains, one: H.one })}`);
     if (!H.again.on || !H.again.box || H.again.tips !== '000000000000') problems.push(`"Show the tips again" should switch the tips on as it gives them again: ${JSON.stringify(H.again)}`);
     if (H.broadside.join() !== 'false,true') problems.push(`the broadside order should be offered to a Captain with a ship with broadside guns (the Gale on), and not to a Skiff's: ${H.broadside.join()}`);

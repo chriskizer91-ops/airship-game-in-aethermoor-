@@ -76,10 +76,11 @@ export function makeRecord({ progress, deeds, onSail, advice, onClose }) {
     $('hc-ribbons').hidden = !S.earned.length;
     $('hc-rank').innerHTML = rankBar(R);
     // one line more: the first time she went down, what to do next time; on gentler skies, what the Maelstrom would have
-    // paid; then what to aim for next
+    // paid (all she keeps, the waves' pay too, as the skies scale both: so always more than she has); then what to aim
+    // for next
     const lines = [];
     if (S.sunk && d.stats.sunk === 1) lines.push('Next time, go home between waves to keep everything.');
-    if (S.skies !== 'mael' && Math.max(d.best.fair, d.best.cross) >= 5 && gathered > 0) lines.push(`On the Maelstrom this voyage would have paid ◆\u00a0${fmt(Math.round((gathered * SKIES.mael.shards) / sk.shards / 10) * 10)}.`);
+    if (S.skies !== 'mael' && Math.max(d.best.fair, d.best.cross) >= 5 && S.got > 0) lines.push(`On the Maelstrom this voyage would have paid ◆\u00a0${fmt(Math.round((S.got * SKIES.mael.shards) / sk.shards / 10) * 10)}.`);
     const next = advice?.();
     if (next) lines.push(next);
     $('hc-next').innerHTML = lines.map((l, i) => `<span class="${i === lines.length - 1 && next ? 'gold' : 'dim'}">${esc(l)}</span>`).join(' ');
@@ -125,7 +126,7 @@ export function makeRecord({ progress, deeds, onSail, advice, onClose }) {
     for (const [k, S] of Object.entries(SKIES)) {
       const stars = STAR_WAVES.map((w) => `<i class="star${d.stars[k][`w${w}`] ? ' on' : ''}" title="Wave ${w}"></i>`).join('');
       const R = d.records[k], waiting = STAR_WAVES.reduce((n, w, i) => n + (d.stars[k][`w${w}`] ? 0 : STAR_PAY[k][i]), 0);
-      out.push(`<dt>${S.name} <span class="stars">${stars}</span></dt><dd>${d.best[k] ? `Best wave ${d.best[k]} · most in a voyage: ${gem(R.shards)}, ${fmt(R.downed)} downed` : 'Not sailed yet'}${waiting ? ` · <span class="gold">${gem(waiting)} in stars to win</span>` : ''}</dd>`);
+      out.push(`<dt>${S.name} <span class="stars">${stars}</span></dt><dd>${d.best[k] ? `Best wave ${d.best[k]}${R.shards || R.downed ? ` · most in a voyage: ${gem(R.shards)}, ${fmt(R.downed)} downed` : ''}` : 'Not sailed yet'}${waiting ? ` · <span class="gold">${gem(waiting)} in stars to win</span>` : ''}</dd>`);
     }
     out.push('</dl><h3>Every voyage</h3><dl class="records">');
     const by = classWords(Object.fromEntries(BIGGEST.map((id) => [id, st[id]])));

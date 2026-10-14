@@ -632,7 +632,7 @@ async function main() {
   function pickShot(s, why = 'pick') {
     if (!gunnery || player.down || !SHOTS[s] || s === gunnery.shot) return false;
     if (!hasShot(s)) {
-      toast(s === 'breaker' && progress.data.shots?.breaker ? 'Out of crystal breakers' : `No ${SHOTS[s].name.toLowerCase()} yet: earn it at sea, or buy it in port`);
+      toast(s === 'breaker' && progress.data.shots?.breaker ? 'Out of crystal breakers' : `No ${SHOTS[s].name.toLowerCase()} yet: earn ${s === 'breaker' ? 'them' : 'it'} at sea or buy in port`);
       return false;
     }
     gunnery.setShot(s);
