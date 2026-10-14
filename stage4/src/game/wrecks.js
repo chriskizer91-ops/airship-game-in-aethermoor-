@@ -36,11 +36,13 @@ const FIRE = [0xff7a2a, 0xffc04a, 0xffe8a0], AMBER = 0xffc061, GOLD = 0xffd27a;
 // pennants are down, to fly just over her mast head (above the smoke of her wounds), so it reads across a fight. It
 // turns about its pole to face the camera, streaming out sideways as it's seen (towards her stern where it can), so it
 // never shows edge-on, from her bow or her stern; and from further off than `near` metres it grows with the distance,
-// up to `most` times its size, as the far wakes and her holes do. Far off it's hemmed in a dark edge `hem` screen
-// pixels wide (from `edged` metres off, in full from twice that), so it reads against the white haze and the clouds
-// as well as against her dark sails. Its drawing is made ready as each voyage starts (flagToWarm: main.js), so the first
-// ship to strike doesn't stutter a phone
-export const WHITE_FLAG = { size: 0.3, least: 4.5, up: 1.8, color: 0xf6f2e8, near: 140, most: 2.2, hem: 1.6, edged: 90, hemColor: 0x2e2622 };
+// up to `most` times its size, as the far wakes and her holes do (grown more, 2.2 times, it hid a Brig's whole rig).
+// Far off it's hemmed in a dark edge `hem` screen pixels wide (from `edged` metres off, in full from twice that), so it
+// reads against the white haze and the clouds as well as against her dark sails: along its top, its foot and its free
+// end, which waves a little (`wave`, a share of its length) as cloth does, never down its pole's side, so it reads as a
+// flag on a pole and not a framed board. Its drawing is made ready as each voyage starts (flagToWarm: main.js), so the
+// first ship to strike doesn't stutter a phone
+export const WHITE_FLAG = { size: 0.3, least: 4.5, up: 1.8, color: 0xf6f2e8, near: 140, most: 1.6, hem: 1.6, edged: 90, hemColor: 0x2e2622, wave: 0.08 };
 const FLAG_GEO = new THREE.PlaneGeometry(1, 0.62).translate(0.5, -0.31, 0);
 const flagMat = new THREE.MeshBasicMaterial({ color: WHITE_FLAG.color, side: THREE.DoubleSide }), flagEye = new THREE.Vector3();
 flagMat.name = 'white flag';
@@ -53,10 +55,12 @@ flagMat.onBeforeCompile = (sh) => {
     float depth = max(1.0, -mvPosition.z), hem = ${WHITE_FLAG.hem.toFixed(2)} * uPx * depth * smoothstep(${WHITE_FLAG.edged.toFixed(1)}, ${(WHITE_FLAG.edged * 2).toFixed(1)}, depth);
     vHem = vec2(hem / length(modelMatrix[0].xyz), hem / (0.62 * length(modelMatrix[1].xyz)));`);
   sh.fragmentShader = 'uniform vec3 uHem;\nvarying vec2 vFlag;\nvarying vec2 vHem;\n' + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
-    vec2 e = min(vFlag, 1.0 - vFlag);
+    float fly = 1.0 - ${WHITE_FLAG.wave.toFixed(3)} * (0.5 + 0.5 * sin(vFlag.y * 9.42)); // (its free end, waving: the pole's side is vFlag.x 0)
+    if (vFlag.x > fly) discard;
+    vec2 e = vec2(fly - vFlag.x, min(vFlag.y, 1.0 - vFlag.y));
     diffuseColor.rgb = mix(diffuseColor.rgb, uHem, max(step(e.x, vHem.x), step(e.y, vHem.y)));`);
 };
-flagMat.customProgramCacheKey = () => 'white-flag-hem-1';
+flagMat.customProgramCacheKey = () => 'white-flag-hem-2';
 
 // `tear(x, z, radius)` opens a hole in the cloud deck (world.js); falling masts are added to `scene` once they break away
 export function makeWrecks({ fx, tear = null, scene = null }) {

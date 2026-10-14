@@ -370,6 +370,7 @@ export async function makeWorld(renderer) {
   // be under a few pixels across, so far off and looking down they never shimmer as a field of white specks)
   const GLITTER = `
     if (uGlitter > 0.0) {
+      float px = length(fwidth(vWorld.xz)) / 9.0; // (how much ground a pixel spans, in glints: worked out here, where every pixel takes the same way, as some phones' graphics need it)
       float water = smoothstep(0.04, 0.16, diffuseColor.b - max(diffuseColor.r, diffuseColor.g * 0.85));
       if (water > 0.0) {
         vec3 v = normalize(vWorld - cameraPosition);
@@ -378,7 +379,6 @@ export async function makeWorld(renderer) {
         float tw = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
         vec2 at = fract(q) - 0.5 - (vec2(fract(tw * 7.31), fract(tw * 3.17)) - 0.5) * 0.4;
         float beat = 0.5 + 0.5 * sin(uTime * (1.6 + 1.8 * tw) + tw * 40.0);
-        float px = length(fwidth(vWorld.xz)) / 9.0;
         float spark = smoothstep(0.55, 1.0, beat) * step(0.7, fract(tw * 13.7)) * (1.0 - smoothstep(0.08, 0.4, length(at))) * (1.0 - smoothstep(0.3, 0.65, px));
         diffuseColor.rgb += uSunCol * water * sp2 * (0.32 + 0.65 * spark) * (1.0 - cs) * uGlitter;
       }

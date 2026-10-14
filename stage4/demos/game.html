@@ -395,14 +395,16 @@
   .tag.locked { border-color: #ffd36a; box-shadow: 0 0 10px rgba(255, 200, 90, 0.6); }
   .tag.captain { background: rgba(26, 18, 8, 0.82); border-color: #ffd36a; }
   .tag.captain b { color: #ffd36a; }
-  /* a raider just burst up through the clouds: her tag and its arrow pulse gold a few times (a ring that reads on the
-     white cloud she came out of, and on the sky), so the eye goes to her, at the edge of a phone's narrow view too
-     (main.js BURST_GLOW; a "Broadside!" flashes over it) */
-  .tag.burst { opacity: 1; border-color: #ffe08a; animation: tag-burst 0.45s ease-in-out 6 alternate; }
-  .tag.burst .arrow { color: #ffd36a; animation: arrow-burst 0.45s ease-in-out 6 alternate; }
-  @keyframes tag-burst { from { box-shadow: 0 0 0 3px rgba(255, 206, 84, 0.95), 0 0 14px rgba(255, 196, 70, 0.8); } to { box-shadow: 0 0 0 1px rgba(255, 206, 84, 0.5), 0 0 2px rgba(255, 196, 70, 0.2); } }
-  @keyframes arrow-burst { from { filter: drop-shadow(0 0 1px rgba(24, 4, 2, 0.95)) drop-shadow(0 0 1px rgba(24, 4, 2, 0.95)) drop-shadow(0 0 5px #ffc446); }
-    to { filter: drop-shadow(0 0 1px rgba(24, 4, 2, 0.95)) drop-shadow(0 0 1px rgba(24, 4, 2, 0.95)) drop-shadow(0 0 1px rgba(255, 196, 70, 0)); } }
+  /* a raider just burst up through the clouds: her tag and its arrow pulse pale sky-blue a few times (a pale ring between
+     two dark lines, so it reads on the white cloud she came out of and on the sky alike; not gold, which means locked on,
+     or a raider captain), so the eye goes to her, at the edge of a phone's narrow view too (main.js BURST_GLOW; a
+     "Broadside!" flashes over it). For players whose device asks for less motion it stays lit, without the pulse */
+  .tag.burst { opacity: 1; border-color: #e6f6ff; animation: tag-burst 0.45s ease-in-out 6 alternate; }
+  .tag.burst .arrow { color: #bfe8ff; animation: arrow-burst 0.45s ease-in-out 6 alternate; }
+  @keyframes tag-burst { from { box-shadow: 0 0 0 1px rgba(8, 18, 34, 0.9), 0 0 0 4px rgba(168, 222, 255, 0.95), 0 0 0 5px rgba(8, 18, 34, 0.8), 0 0 14px rgba(140, 210, 255, 0.85); }
+    to { box-shadow: 0 0 0 1px rgba(8, 18, 34, 0.6), 0 0 0 2px rgba(168, 222, 255, 0.55), 0 0 0 3px rgba(8, 18, 34, 0.4), 0 0 2px rgba(140, 210, 255, 0.2); } }
+  @keyframes arrow-burst { from { filter: drop-shadow(0 0 1px rgba(4, 12, 24, 0.95)) drop-shadow(0 0 1px rgba(4, 12, 24, 0.95)) drop-shadow(0 0 5px #8fd6ff); }
+    to { filter: drop-shadow(0 0 1px rgba(4, 12, 24, 0.95)) drop-shadow(0 0 1px rgba(4, 12, 24, 0.95)) drop-shadow(0 0 1px rgba(143, 214, 255, 0)); } }
   /* a raider off screen readying her broadside: her tag and its arrow flash red, and say "Broadside!" in place of her
      bars (main.js) */
   .tag .bs { display: none; grid-column: 1 / -1; font-size: 12px; font-weight: 600; color: #fff; text-align: center; }
@@ -968,7 +970,9 @@
     .road b { font-size: 14px; }
     .road small { font-size: 11.5px; }
   }
-  @media (prefers-reduced-motion: reduce) { #region.on, #banner.on, #toast.on, #calm:not([hidden]) { animation-duration: 0.01s; } .tag.warn, .tag.warn .arrow, .tag.burst, .tag.burst .arrow { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { #region.on, #banner.on, #toast.on, #calm:not([hidden]) { animation-duration: 0.01s; } .tag.warn, .tag.warn .arrow, .tag.burst, .tag.burst .arrow { animation: none; }
+    .tag.burst:not(.warn) { box-shadow: 0 0 0 1px rgba(8, 18, 34, 0.9), 0 0 0 3px rgba(168, 222, 255, 0.95), 0 0 0 4px rgba(8, 18, 34, 0.8), 0 0 10px rgba(140, 210, 255, 0.7); }
+    .tag.burst:not(.warn) .arrow { filter: drop-shadow(0 0 1px rgba(4, 12, 24, 0.95)) drop-shadow(0 0 1px rgba(4, 12, 24, 0.95)) drop-shadow(0 0 4px #8fd6ff); } }
 </style>
 </head>
 <body>

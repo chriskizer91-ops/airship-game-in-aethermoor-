@@ -4,9 +4,11 @@
 // sank her, and each treasure ship caught or got away), how much damage a minute the raiders' broadsides and their
 // light guns did her, and the raking hits each way; and the raiders' nerve (how many struck their colours, ran, got
 // away, fired flares and brought help), each voyage's length, and the raider captains brought down; the shards brought
-// home (half when she sank), and what she'd have had gathering every shard spilled (she seldom flies through a wreck's
-// shards, as a real Captain would: what a road is worth is better told by that); and where each wave was fought. It plays on the
-// game's own clock, so a few minutes of fighting take about a minute.
+// home (half when she sank), how many of those spilled she gathered, and what she'd have had gathering every one; and
+// where each wave was fought. It plays on the game's own clock, so a few minutes of fighting take about a minute.
+// She gathers a wreck's shards as a real Captain does: whenever no raider is left within 500 m of her (between waves
+// too), she steers through the nearest shards she can reach before they fall away, her guns still on the nearest
+// raider (`--no-gather`: she never does, turning straight to the next raider as she did until October 14).
 // Each voyage is played in a fresh page of its own (nothing left over from the voyage before: the clouds' clock, the
 // raiders built, the save), with the dice (Math.random) seeded for it, so voyages are independent of each other and a
 // batch can be played again exactly (`--seed`), and several can be played at once (`--jobs`).
@@ -42,6 +44,7 @@
 //   --road R                 between waves, take the second way on whenever it's this one (storm, treasure or hunt)
 //   --height H               between waves, climb or dive back to H metres (by default she stays wherever the last
 //                            wave left her, following the raiders up and down)
+//   --no-gather              she never steers for a wreck's shards (only those she flies through on her way are hers)
 //   --skilled                all of them: --dodge --shot auto --patch
 //   --smart N, --warn S      for tuning: the skies' smart raiders (0, 1 or 2) and broadside warning (seconds) for this
 //                            run, in place of the skies' own (progress.js SKIES)
@@ -56,14 +59,14 @@ const smartArg = flag('smart', null), warnArg = flag('warn', null), rakeArg = fl
 for (let v; (v = flag('set', null)) !== null;) sets.push(v);
 const seedArg = flag('seed', null), jobs = Math.max(1, +flag('jobs', 1)), pageArg = flag('page', null), heightArg = flag('height', null);
 const runs = +flag('runs', 1), mods = +flag('mods', 0), power = +flag('power', 0), ownsArg = flag('owns', null), policy = flag('policy', 'abeam'), react = +flag('react', 0.35), road = flag('road', null);
-const skilled = on('skilled'), dodge = on('dodge') || skilled, patch = on('patch') || skilled, shotArg = flag('shot', skilled ? 'auto' : 'round');
+const skilled = on('skilled'), dodge = on('dodge') || skilled, patch = on('patch') || skilled, shotArg = flag('shot', skilled ? 'auto' : 'round'), gather = !on('no-gather');
 const ship = args[0] ?? 'brig', waves = +(args[1] ?? 4), skies = args[2] ?? 'cross', first = +(args[3] ?? 1);
 const GIANTS = ['galleon', 'manowar'];
 const owns = ownsArg === 'none' ? [] : ownsArg ? ownsArg.split(',').filter((g) => GIANTS.includes(g)) : GIANTS.slice(0, GIANTS.indexOf(ship) + 1);
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 // (her tactics make her a skilled Captain; how she steers and the road she takes are said after, either way)
 const tools = [dodge && `dodging ${react} s after a warning`, shotArg !== 'round' && `${shotArg} shot`, patch && 'patching'].filter(Boolean);
-const ways = [policy === 'cross' && 'crossing bows', policy === 'fortress' && 'over a Man-o\'-war\'s stern quarter', road && `taking the ${road} road`, heightArg !== null && `back to ${heightArg} m between waves`].filter(Boolean);
+const ways = [!gather && 'never steering for shards', policy === 'cross' && 'crossing bows', policy === 'fortress' && 'over a Man-o\'-war\'s stern quarter', road && `taking the ${road} road`, heightArg !== null && `back to ${heightArg} m between waves`].filter(Boolean);
 const seed0 = seedArg !== null ? Math.floor(+seedArg) : Math.floor(Math.random() * 1e9);
 console.log(`${smartArg !== null || warnArg !== null || rakeArg !== null || sets.length ? `(tuning: ${smartArg !== null ? `smart ${smartArg} ` : ''}${warnArg !== null ? `warning ${warnArg} s ` : ''}${rakeArg !== null ? `raking ×${rakeArg} ` : ''}${sets.join(' ')}) ` : ''}the ${ship}, waves ${first} to ${first + waves - 1} on ${skies}, owning ${owns.length ? owns.join(' and ') : 'no giants'}, upgrades ${mods} of 3, crystal power ${power}; ${tools.length ? `a skilled Captain (${tools.join(', ')})` : 'a plain Captain (no dodging, round shot only, no patching)'}${ways.length ? `; ${ways.join(', ')}` : ''}; seed ${seed0}${runs > 1 ? ` to ${seed0 + runs - 1}` : ''}${jobs > 1 ? `, ${jobs} at a time` : ''}`);
 // one voyage, in a fresh page of its own (its own storage too), the dice seeded for it (a page slow to open on a busy
@@ -74,13 +77,13 @@ async function voyage(run, tries = 3) {
   try {
     await page.goto('file://' + (pageArg ? new URL(pageArg, 'file://' + process.cwd() + '/').pathname : root + 'dist/game.html'), { timeout: 180000 });
     await page.waitForFunction(() => window.__game?.ready, null, { timeout: 180000 });
-    return await page.evaluate(VOYAGE, [ship, waves, skies, first, owns, mods, power, dodge, patch, shotArg, policy, react, smartArg, warnArg, rakeArg, road, seed0 + run, heightArg, sets]);
+    return await page.evaluate(VOYAGE, [ship, waves, skies, first, owns, mods, power, dodge, patch, shotArg, policy, react, smartArg, warnArg, rakeArg, road, seed0 + run, heightArg, sets, gather]);
   } catch (e) {
     if (tries > 1 && e.name === 'TimeoutError') return voyage(run, tries - 1);
     throw e;
   } finally { await context.close(); }
 }
-const VOYAGE = ([ship, waves, skies, first, owns, mods, power, dodge, patch, shotArg, policy, react, smartArg, warnArg, rakeArg, road, seed, height, sets]) => {
+const VOYAGE = ([ship, waves, skies, first, owns, mods, power, dodge, patch, shotArg, policy, react, smartArg, warnArg, rakeArg, road, seed, height, sets, gather]) => {
   // (the dice, seeded for this voyage: mulberry32)
   let s32 = seed >>> 0;
   Math.random = () => { s32 = (s32 + 0x6d2b79f5) >>> 0; let t = s32; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
@@ -103,9 +106,21 @@ const VOYAGE = ([ship, waves, skies, first, owns, mods, power, dodge, patch, sho
   const where = () => `; fought ${Math.round(W.high / Math.max(0.25, W.t))} m up, her target lost ${Math.round((100 * W.lost) / Math.max(0.25, W.t))}% of it, she in cloud ${Math.round((100 * W.cloud) / Math.max(0.25, W.t))}%`;
   const took = { broadside: 0, light: 0 }, rakes = { player: 0, raider: 0 }, count = { warns: 0, patches: 0, shots: 0 };
   const nerve = { struck: 0, ran: 0, away: 0, flares: 0, help: 0, captains: 0, roads: 0 };
-  // (the shards she could have had: every one spilled, and each wave's bonus. She seldom flies through a wreck's
-  // shards, as a real Captain would, so what she gathers says little of what a road is worth)
-  const could = { spilled: 0, bonus: 0 };
+  // (the shards she could have had: every one spilled, and each wave's bonus; and those she gathered, and the time she
+  // spent steering for them)
+  const could = { spilled: 0, bonus: 0, got: 0, steer: 0 };
+  // the nearest shards she can reach before they fall away (turning to them at her own rate, then sailing at least at
+  // 20 m/s till they're drawn to her, 140 m off), within 700 m: whenever no raider is left within 500 m of her
+  const shardsFor = (P, live) => {
+    if (!gather || P.down || live.some((r) => r.f.pos.distanceTo(P.pos) < 500)) return null;
+    let best = null, bd = 700;
+    for (const s of g.pickups.list) {
+      if (s.pulled) continue;
+      const d = s.p.distanceTo(P.pos), a = Math.atan2(s.p.x - P.pos.x, s.p.z - P.pos.z) - P.heading, w = Math.abs(Math.atan2(Math.sin(a), Math.cos(a)));
+      if (d < bd && s.life > w / P.H.turn + Math.max(0, d - 140) / Math.max(20, P.speed) + 1) { bd = d; best = s; }
+    }
+    return best;
+  };
   let dodgeFrom = -1, dodgeUntil = -1, dodgeDir = 1, changed = -99;
   const last = first - 1 + waves, most = 240 * waves + 60; // (sim seconds: a fortress, or a treasure ship running, can take minutes)
   // each treasure ship caught (her colours struck, or blown up) or got away, so a treasure wave says how it went; the
@@ -118,7 +133,7 @@ const VOYAGE = ([ship, waves, skies, first, owns, mods, power, dodge, patch, sho
     g.events.on('raider:escaped', (e) => { if (e.raider.role === 'prize') { away++; out.push(`  t=${t.toFixed(0)} the treasure ${e.raider.R.cls} got away`); } else nerve.away++; }),
     g.events.on('raider:run', () => nerve.ran++), g.events.on('flare', (e) => { if (e.stage === 'fired') nerve.flares++; else if (e.stage === 'answered') nerve.help += e.raider.flare.n; }),
     g.events.on('road', (e) => { if (e.kind !== 'steady') nerve.roads++; }),
-    g.events.on('shards:spill', (e) => { could.spilled += e.total; }), g.events.on('wave:cleared', (e) => { could.bonus += e.bonus; }),
+    g.events.on('shards:spill', (e) => { could.spilled += e.total; }), g.events.on('wave:cleared', (e) => { could.bonus += e.bonus; }), g.events.on('shards:gather', (e) => { could.got += e.value; }),
     g.events.on('hit', (e) => { if (e.target === 'player') took[e.size > 1.2 ? 'broadside' : 'light'] += e.damage; if (e.raked) rakes[e.owner]++; }),
     g.events.on('warn', (e) => { count.warns++; if (dodge && !g.player.down) { dodgeFrom = t + react; dodgeUntil = t + e.time + 1.2; dodgeDir = g.player.pos.y > 2000 ? -1 : 1; } }),
     g.events.on('patch', (e) => { if (e.stage === 'start') count.patches++; }),
@@ -167,6 +182,13 @@ const VOYAGE = ([ship, waves, skies, first, owns, mods, power, dodge, patch, sho
       // (breakers on a fortress are fired from above her: climb over her)
       if (shot === 'breaker') ctl.climb = Math.max(-1, Math.min(1, (r.f.pos.y + 70 - P.pos.y) / 40));
     }
+    // a wreck's shards, with no raider near: steering through them under full sail (her guns still on the nearest raider)
+    const shard = shardsFor(P, live);
+    if (shard) {
+      const a = Math.atan2(shard.p.x - P.pos.x, shard.p.z - P.pos.z) - P.heading;
+      Object.assign(ctl, { turn: Math.max(-1, Math.min(1, -Math.atan2(Math.sin(a), Math.cos(a)) * 2)), climb: Math.max(-1, Math.min(1, (shard.p.y - P.pos.y) / 40)), sail: 1 });
+      could.steer += 0.25;
+    }
     // dodging a broadside: climbing (or diving) out of the aim of the raider readying it
     if (dodge && t >= dodgeFrom && t < dodgeUntil && !P.down) ctl.climb = dodgeDir;
     if (patch && !P.down && P.frac(P.worst()) < 0.5 && !P.patch.cd) (ctl.pressed ??= new Set()).add('x');
@@ -183,11 +205,11 @@ const VOYAGE = ([ship, waves, skies, first, owns, mods, power, dodge, patch, sho
   if (!g.waves.sunk) g.step(1 / 60, {}); // (a raider that went down as the last wave was beaten is counted a frame later)
   offs.forEach((off) => off());
   const perMin = (n) => Math.round(n / Math.max(1, fightT / 60));
-  out.push(`  downed ${g.downed}, hits ${g.hits}, shards this voyage ◆ ${Math.round(g.voyage.shards)} (◆ ${Math.round(could.spilled + could.bonus)} had she gathered every shard spilled), sim time ${t} s (${Math.round(fightT)} s fighting)`);
+  out.push(`  downed ${g.downed}, hits ${g.hits}, shards this voyage ◆ ${Math.round(g.voyage.shards)} (of ◆ ${Math.round(could.spilled)} spilled she gathered ◆ ${Math.round(could.got)}, steering for them ${Math.round(could.steer)} s; ◆ ${Math.round(could.spilled + could.bonus)} had she gathered every one), sim time ${t} s (${Math.round(fightT)} s fighting)`);
   out.push(`  damage taken a minute of fighting: broadsides ${perMin(took.broadside)}, light guns ${perMin(took.light)}; raked: her ${rakes.player} hits, the raiders' ${rakes.raider}; ${count.warns} broadside warnings, ${count.patches} patches, ${count.shots} shot changes`);
   out.push(`  her target lost in cloud ${Math.round((100 * lostT) / Math.max(1, fightT))}% of the fighting; she fought ${Math.round(highT / Math.max(1, fightT))} m up on average`);
   out.push(`  nerve: ${nerve.struck} struck their colours, ${nerve.ran} ran (${nerve.away} got away), ${nerve.flares} flares (${nerve.help} came to help); ${nerve.captains} raider captains brought down${road ? `; the ${road} road taken ${nerve.roads} times` : ''}`);
-  return { text: out.join('\n'), beaten: g.waves.n - (first - 1), sank, shards: Math.round(g.voyage.shards), could: Math.round(could.spilled + could.bonus), caught, away, fightT, took, rakes, patches: count.patches, nerve, t, lostT, highT };
+  return { text: out.join('\n'), beaten: g.waves.n - (first - 1), sank, shards: Math.round(g.voyage.shards), could: Math.round(could.spilled + could.bonus), spilled: could.spilled, got: could.got, caught, away, fightT, took, rakes, patches: count.patches, nerve, t, lostT, highT };
 };
 // the voyages, `jobs` at a time, each said as soon as it and those before it are done
 const results = [];
@@ -204,7 +226,8 @@ if (runs > 1) {
   const mins = results.reduce((a, r) => a + r.fightT, 0) / 60, sum = (f) => results.reduce((a, r) => a + f(r), 0);
   const home = Math.round(results.reduce((a, r) => a + r.shards * (r.sank ? 0.5 : 1), 0) / runs); // (sunk, her crew get her home with half)
   const could = Math.round(results.reduce((a, r) => a + r.could, 0) / runs), couldHome = Math.round(results.reduce((a, r) => a + r.could * (r.sank ? 0.5 : 1), 0) / runs);
-  console.log(`summary: all ${waves} waves beaten ${all} of ${runs} times; sank in wave ${sank.length ? sank.join(', ') : '(never)'}; the middle voyage reached wave ${median}${median > first + waves - 1 ? ' (all beaten)' : ''}; ◆ ${mean} a voyage on average (◆ ${home} brought home: half when she sank; gathering every shard spilled, ◆ ${could}, and ◆ ${couldHome} home)${caught + away ? `; treasure ships caught ${caught}, got away ${away}` : ''}`);
+  const gotPart = Math.round((100 * sum((r) => r.got)) / Math.max(1, sum((r) => r.spilled)));
+  console.log(`summary: all ${waves} waves beaten ${all} of ${runs} times; sank in wave ${sank.length ? sank.join(', ') : '(never)'}; the middle voyage reached wave ${median}${median > first + waves - 1 ? ' (all beaten)' : ''}; ◆ ${mean} a voyage on average (◆ ${home} brought home: half when she sank; she gathered ${gotPart}% of the shards spilled; gathering every one, ◆ ${could}, and ◆ ${couldHome} home)${caught + away ? `; treasure ships caught ${caught}, got away ${away}` : ''}`);
   console.log(`  damage taken a minute of fighting: broadsides ${Math.round(sum((r) => r.took.broadside) / mins)}, light guns ${Math.round(sum((r) => r.took.light) / mins)}; raking hits: hers ${sum((r) => r.rakes.player)}, the raiders' ${sum((r) => r.rakes.raider)}; ${sum((r) => r.patches)} patches`);
   console.log(`  her target lost in cloud ${Math.round((100 * sum((r) => r.lostT)) / Math.max(1, sum((r) => r.fightT)))}% of the fighting; she fought ${Math.round(sum((r) => r.highT) / Math.max(1, sum((r) => r.fightT)))} m up on average`);
   console.log(`  nerve, a voyage on average: ${(sum((r) => r.nerve.struck) / runs).toFixed(1)} struck their colours, ${(sum((r) => r.nerve.ran) / runs).toFixed(1)} ran (${(sum((r) => r.nerve.away) / runs).toFixed(1)} got away), ${(sum((r) => r.nerve.flares) / runs).toFixed(1)} flares (${(sum((r) => r.nerve.help) / runs).toFixed(1)} came to help); a voyage took ${Math.round(sum((r) => r.t) / runs)} s on average`);
