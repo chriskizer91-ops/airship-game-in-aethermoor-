@@ -9,8 +9,9 @@
 > and **the ships up close** https://claude.ai/artifact/PjsAJrsX7TngKRUuKoZhFC (from `stage4/dist/hangar.artifact.html`).
 > Never publish `stage4/` to `polished/`'s links or the original game's. Stage 4 runs in four parts, each published
 > when its gate passes: 4a (D0, D1: done October 9), 4b (D2-touchups, D2a: done October 12), 4c (D2b-touchups,
-> D2b: done October 13), 4d (D3-touchups, D3). **Paused after 4c at Chris's request (October 13): don't start 4d
-> until he says so.** The stage script is
+> D2b: done October 13), 4d (D3-touchups, D3: done October 14). It paused after 4c (October 13); 4d was then built on
+> branch `claude/laughing-fermat-ow3rfs`, carried on from this branch's head, and published October 14. **Stage 4 is
+> done**: what its last gate left open is `docs/plan/specs/E0-touchups.md`, for whenever Chris wants more. The stage script is
 > `docs/plan/build-stage.js` (its args now include `branch` and `trailer`; builders push every commit at once).
 
 For a fresh session picking this up. Read this first, then `docs/plan/chris-decisions.md`, `README.md` and
@@ -232,6 +233,12 @@ which were made from this repository only):
    port.js has the Colours tab, the quartermaster's `advice()` and the Log button. The checks switch the tips off for the
    older checks (`tipsOff`) and test them on their own and in every layout; `tools/sim-fight.mjs` sails a Captain with a
    voyage behind her (no gentle first raider).
+   **Stage 4d's gate** (October 14, for D3-touchups and D3): the full check passed (30 minutes on its own), with three
+   small fixes (the coming-home card's Maelstrom line counts everything she keeps; the log shows only the best wave for
+   skies sailed before records were kept; a toast's grammar). The balance runs were measured again, in fresh pages with
+   their own dice, and "How hard it is" gained "Measured again at stage 4d's gate": the one real shift is the Galleon's
+   waves 21 to 25 (11 in 24, against 8 in 12 at 4c's gate), harder because the simulated Captain now steers for shards
+   among the raiders (12 in 12 without). The gate's other open points are `docs/plan/specs/E0-touchups.md`.
 
 Run them in that order (each builds on the last), with the gate's `shots` asking for each new feature at laptop,
 upright-phone and sideways-phone sizes.
