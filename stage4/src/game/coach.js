@@ -4,8 +4,9 @@
 // guns, and the ring locks on; how to fire; that her side guns fire when she looks to the side; to gather a wreck's
 // shards; what a red fan means; how to patch her and keep out of a broadside's way; what the card between waves offers;
 // and from her second voyage, the Surge; and the shot button or keys once she has more than round shot. Each shows for
-// a few seconds (until she's done what it says, or it's had its time), and once given it's never given again, on any
-// device (the save keeps them: progress.js TIP_IDS). Settings can switch them off, or give them all again.
+// a few seconds (until she's done what it says, or it's had its time; a fight's tip goes as the fight ends), and once
+// given it's never given again, on any device (the save keeps them: progress.js TIP_IDS). Settings can switch them off,
+// or give them all again.
 // On a laptop the tip sits at the bottom, in the middle (just over the card between waves); on a phone in the hint's
 // place, low on the steering side, the hint making way for it (game.html). No tips on a sea trial (it changes nothing in
 // the save). Its looks are checked ten times a second (main.js hud), never each frame.
@@ -13,6 +14,8 @@ import { on } from './events.js';
 
 const MIN = 3.5, FADE = 400; // (each tip shows at least this long, seconds; and fades in and out over this, ms)
 const QUIET = 8; // (after a tip has made way for a crowd of raiders' tags, no tip for this long, seconds: makeWay)
+// (the tips about a fight: gone at once when it ends, the wave beaten, rather than giving advice about a fight that's over)
+const FIGHT_TIPS = { find: true, aim: true, fire: true, guns: true, fan: true, broadside: true };
 const deg = (r) => (r * 180) / Math.PI, wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 // Each tip: when it's wanted (`when`), when she's done what it says (`done`), the most it shows (`most`, seconds), and
 // its words: `all` on every device, or `laptop` and `phone` (a function of the coach's state for words that change,
@@ -56,7 +59,7 @@ export const TIP_ORDER = ['steer', 'find', 'aim', 'fire', 'fan', 'shards', 'guns
 // so the raiders' tags keep clear of it (main.js layout)
 export function makeCoach({ progress, settings, touch, el, see, placed, trial, clock }) {
   // this voyage: on (tips wanted), when it began, the tip showing and since when, and what's been seen to happen
-  const C = { on: false, id: null, at: 0, quiet: -99, t0: 0, turned: 0, held: 0, free: 0, hits: 0, killed: false, gathered: false, sideVolley: false, surged: false, picked: false, since: { warn: 99, run: 99 }, warnAt: -99, runAt: -99, waveAt: -99 };
+  const C = { on: false, id: null, at: 0, fight: false, quiet: -99, t0: 0, turned: 0, held: 0, free: 0, hits: 0, killed: false, gathered: false, sideVolley: false, surged: false, picked: false, since: { warn: 99, run: 99 }, warnAt: -99, runAt: -99, waveAt: -99 };
   let fade = null;
   const tips = () => progress.data.tips;
   const wanted = () => settings.data.tips !== false;
@@ -65,7 +68,7 @@ export function makeCoach({ progress, settings, touch, el, see, placed, trial, c
     return typeof w === 'function' ? w(c) : w;
   }
   function show(id, c = state()) {
-    C.id = id; C.at = clock();
+    C.id = id; C.at = clock(); C.fight = c.fight;
     el.textContent = words(id, c); el.dataset.tip = id;
     fade?.cancel(); el.hidden = false; document.body.classList.add('tipping');
     fade = el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: FADE, easing: 'ease-out' }); // (fading only: its place, where the tags keep clear of it, is where it is from the start)
@@ -118,8 +121,14 @@ export function makeCoach({ progress, settings, touch, el, see, placed, trial, c
     if (Math.abs(controls?.turn ?? 0) > 0.3) C.turned += dt;
     if (S.locked) { C.held += dt; C.free = 0; } else { C.free += dt; C.held = 0; }
     if (C.id) {
-      const T = TIPS[C.id], up = clock() - C.at;
-      if ((up >= MIN && T.done(S)) || up >= T.most) hide();
+      const T = TIPS[C.id], up = clock() - C.at, ended = C.fight && !S.fight;
+      C.fight = S.fight;
+      // (a fight's tip, the fight just ended: gone now, given if she's done what it says or it's had its time)
+      if (ended && FIGHT_TIPS[C.id]) { hide(T.done(S) || up >= MIN); return; }
+      if ((up >= MIN && T.done(S)) || up >= T.most) { hide(); return; }
+      // (its words kept true as things change: the mouse taken hold of, say, on a laptop)
+      const w = words(C.id, S);
+      if (w !== el.textContent) { el.textContent = w; placed?.(); }
       return;
     }
     if (!wanted() || clock() < C.quiet) return;
@@ -132,7 +141,8 @@ export function makeCoach({ progress, settings, touch, el, see, placed, trial, c
     clear();
     Object.assign(C, { on: !e.trial && !trial(), quiet: -99, t0: clock(), turned: 0, held: 0, free: 0, hits: 0, killed: false, gathered: false, sideVolley: false, surged: false, picked: false, warnAt: -99, runAt: -99, waveAt: -99 });
   });
-  on('voyage:end', () => { C.on = false; hide(false); });
+  // (home: the tip showing given if it's had its time, or it's the card's, whose words offer going home)
+  on('voyage:end', () => { C.on = false; hide(C.id === 'card' || clock() - C.at >= MIN); });
   on('wave:start', () => { C.waveAt = clock(); });
   on('hit', (e) => { if (e.owner === 'player' && e.target === 'raider') C.hits++; });
   on('raider:down', (e) => { if (e.raider.role !== 'prize' || e.why === 'struck') C.killed = true; });
@@ -147,7 +157,7 @@ export function makeCoach({ progress, settings, touch, el, see, placed, trial, c
     get showing() { return C.id; },
     // a tip shown at once, whatever's happening (for the checks: its place, at its longest)
     show: (id) => show(id), hide: () => hide(false), clear, makeWay,
-    // every tip to be given again (Settings: "Show the tips again")
+    // every tip to be given again (Settings: "Show the tips again", which switches them on too: main.js)
     again() { for (const id in tips()) tips()[id] = 0; progress.save(); },
   };
 }

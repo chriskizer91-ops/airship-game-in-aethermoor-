@@ -108,6 +108,11 @@
   #pp-next .short { display: none; }
   #pp-next:empty { display: none; }
   #port.noting #pp-next { visibility: hidden; }
+  /* (and under it, dim: today's harbour orders and the commendation she's nearest; on a phone held upright, whose Log
+     button is just the book, her rank opening the short words) */
+  #pp-next .more { display: block; margin-top: 2px; font-size: 12.5px; color: var(--dim); }
+  #pp-next .more i { font-style: normal; white-space: nowrap; }
+  #pp-next .rank { display: none; color: var(--cream); }
   /* (a gold dot on what it means: a ship's button, an upgrade, a kind of shot) */
   #port-ships button.advised b::after, .mod.advised b::before, .buyshot.advised b::before { content: ''; display: inline-block; width: 7px; height: 7px; margin: 0 0 0 5px; border-radius: 50%; background: var(--gold);
     box-shadow: 0 0 6px var(--gold); vertical-align: 2px; }
@@ -170,6 +175,7 @@
   .buyshot b svg { width: 14px; height: 14px; margin-right: 5px; vertical-align: -2px; }
   .sail-out { position: sticky; bottom: 0; display: grid; gap: 6px; justify-items: center; padding: 12px 0 14px; margin-top: 10px;
     background: linear-gradient(rgba(24, 12, 30, 0), rgba(24, 12, 30, 0.95) 22%); text-align: center; }
+  .sail-out.dyeing { background: linear-gradient(rgba(24, 12, 30, 0), rgba(24, 12, 30, 0.97) 10px); } /* (a colour tried on: solid behind its note, never words over the swatches) */
   .sail-out .big, #pp-buy { width: 100%; }
   /* a ship you don't own: the big button buys her (gold filling up with the shards you have towards her price), and
      setting sail in your own ship is a plain line under it */
@@ -194,8 +200,9 @@
   /* coming home, and the Captain's log (record.js): a card over the port, its words scrolling between its heading and
      its buttons, which always show; ribbons for what's been won (gold), and those still to win (dim) */
   #homecoming, #log { z-index: 15; background: rgba(6, 4, 12, 0.62); }
-  #homecoming .card, #log .card { display: flex; flex-direction: column; width: min(94vw, 520px); max-height: calc(100% - 4px); padding: 0; overflow: hidden; text-align: left; background: rgb(24, 12, 30);
+  #homecoming .card, #log .card, #settings .card { display: flex; flex-direction: column; width: min(94vw, 520px); max-height: calc(100% - 4px); padding: 0; overflow: hidden; text-align: left; background: rgb(24, 12, 30);
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6); }
+  #log .card { height: min(760px, calc(100% - 4px)); } /* (the same height whichever page it shows, so its tabs stay under the finger) */
   .card-head { padding: 12px 16px 6px; text-align: center; }
   .card-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px 16px 10px; touch-action: pan-y; }
   .card-foot { padding: 8px 16px 12px; border-top: 1px solid rgba(236, 220, 184, 0.15); text-align: center; }
@@ -477,11 +484,13 @@
   .gear-text { display: inline-flex; align-items: center; gap: 6px; }
   .gear-text svg { width: 16px; height: 16px; }
   #settings, #howto { z-index: 20; background: rgba(6, 4, 12, 0.6); }
-  /* (solid, so the pause card under it doesn't show through its rows) */
-  #settings .card, #howto .card { max-height: calc(100% - 4px); overflow-y: auto; overscroll-behavior: contain; text-align: left; background: rgb(24, 12, 30);
+  /* (solid, so the pause card under it doesn't show through its rows; Settings' rows scrolling, as coming home's card
+     does, between its heading and its buttons, which always show) */
+  #howto .card { max-height: calc(100% - 4px); overflow-y: auto; overscroll-behavior: contain; text-align: left; background: rgb(24, 12, 30);
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6); }
   #settings h2, #howto h2 { text-align: center; }
   #settings .card { width: min(94vw, 470px); }
+  #settings .card-head { padding-bottom: 0; }
   #settings-rows { display: grid; gap: 2px 18px; margin: 10px 0 6px; }
   .setting { display: grid; grid-template-columns: 7.2em 1fr auto; gap: 12px; align-items: center; min-height: 44px; color: var(--cream); font-size: 15px; }
   .setting output { min-width: 3.4em; text-align: right; color: var(--dim); font-size: 13px; }
@@ -496,7 +505,7 @@
   .setting .pick button[aria-checked='true'] { background: var(--plum); border-color: var(--gold); color: var(--gold); }
   .setting .note { grid-column: 1 / -1; margin: -6px 0 4px; font-size: 12px; color: var(--dim); }
   .settings-note { margin: 4px 0 10px; font-size: 12.5px; color: var(--dim); text-align: center; }
-  #settings .choices, #howto .choices { margin-top: 6px; }
+  #howto .choices { margin-top: 6px; }
   #howto dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 12px 0; font-size: 14px; }
   #howto dt { color: var(--gold); font-weight: 500; white-space: nowrap; }
   #howto dl.touch-only { display: none; }
@@ -638,19 +647,20 @@
     #calm .big { font-size: 16px; padding: 9px 10px; }
     .card h2 { font-size: 22px; }
     .setting { min-height: 40px; }
-    #settings .card { padding: 12px 14px; }
     #btn-log span { display: none; } /* (just the book: the top line stays on one line) */
+    #pp-next .more { font-size: 11.5px; }
     .ribbons { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
     #hc-rows, .records { font-size: 13.5px; gap: 3px 10px; }
   }
-  /* a phone held upright: no room for the port's name beside the Log button; the quartermaster's line in short words, and
-     only over her ship's own tab or her colours (her upgrades, or a ship to buy, need the room for her panel); the tip
+  /* a phone held upright: no room for the port's name beside the Log button; the quartermaster's line in short words,
+     opened by her rank, and only over her ship's own tab or her colours (her upgrades, or a ship to buy, need the room for her panel); the tip
      in the hint's place beside the buttons */
   @media (max-width: 700px) and (min-height: 501px) {
     .port-top h1 { display: none; }
     #pp-next { max-width: calc(100% - 2 * var(--gutter)); font-size: 13px; padding: 4px 10px; }
     #pp-next .long { display: none; }
     #pp-next .short { display: inline; }
+    #pp-next .rank { display: inline; } /* (her rank, which the Log button has no room for here, opens the line instead) */
     #port.buying #pp-next, #port[data-tab='upgrades'] #pp-next { display: none; }
     body.touch #tip { max-width: calc(100% - 2 * var(--gutter) - 186px); }
   }
@@ -765,10 +775,10 @@
     .card { padding: 10px 14px; }
     .card h2 { font-size: 21px; }
     .card p { margin: 6px 0 8px; }
-    #settings .card { width: min(96vw, 760px); padding: 8px 14px 10px; }
+    #settings .card { width: min(96vw, 760px); }
     #settings h2 { font-size: 19px; }
     #settings-rows { grid-template-columns: 1fr 1fr; grid-auto-flow: dense; margin: 6px 0 2px; }
-    #settings-rows [data-setting='aim'], #settings-rows [data-setting='picture'] { grid-column: 1 / -1; }
+    #settings-rows [data-setting='aim'], #settings-rows [data-setting='picture'], #settings-rows [data-setting='tips'] { grid-column: 1 / -1; } /* (the tips' note on one line) */
     .setting { min-height: 38px; font-size: 14px; grid-template-columns: 7.4em 1fr auto; gap: 8px; }
     .setting .pick button { min-height: 32px; padding: 4px 9px; font-size: 13px; }
     .setting .note { margin: -4px 0 2px; font-size: 11.5px; }
@@ -780,6 +790,7 @@
     #pp-next { top: calc(var(--top) + 50px); max-width: calc(50vw - var(--gutter) - 24px); font-size: 12.5px; padding: 3px 10px; }
     #pp-next .long { display: none; }
     #pp-next .short { display: inline; }
+    #pp-next .more { margin-top: 1px; font-size: 11.5px; }
     body.touch #tip { max-width: 164px; font-size: 12px; padding: 4px 8px; } /* (the hint's own size, in its place) */
     #homecoming .card, #log .card { width: min(96vw, 720px); }
     .card-head { padding: 6px 14px 2px; }
@@ -1164,10 +1175,12 @@
 <!-- settings (src/game/settings.js builds the rows); kept on this device -->
 <section id="settings" class="screen dim" hidden>
   <div class="panel card" role="dialog" aria-modal="true" aria-labelledby="settings-title">
-    <h2 id="settings-title">Settings</h2>
-    <div id="settings-rows"></div>
-    <p class="touch-only settings-note">No sound? Check your phone isn't on silent, and its volume is up.</p>
-    <div class="choices"><button id="btn-settings-done" class="big" type="button">Done</button><button id="btn-tips-again" class="plain" type="button">Show the tips again</button></div>
+    <header class="card-head"><h2 id="settings-title">Settings</h2></header>
+    <div class="card-body">
+      <div id="settings-rows"></div>
+      <p class="touch-only settings-note">No sound? Check your phone isn't on silent, and its volume is up.</p>
+    </div>
+    <footer class="card-foot"><div class="choices"><button id="btn-settings-done" class="big" type="button">Done</button><button id="btn-tips-again" class="plain" type="button">Show the tips again</button></div></footer>
   </div>
 </section>
 <!-- home from a voyage: what it did, what it won, and Sail again (record.js) -->

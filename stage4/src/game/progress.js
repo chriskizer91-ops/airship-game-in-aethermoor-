@@ -139,9 +139,17 @@ function rankDyes(d) { for (const r in RANK_DYES) if (d.rank >= +r) d.dyes[RANK_
 // its stars, paid once now as back pay (with the Maelstrom's colours); the waves of her best voyage on each are
 // credited as renown, so a Captain who has sailed far starts at a fitting rank (raised to it without its purses, which
 // pay for rising at sea); everything else counted (the raiders, the shots, the voyages' log) starts now, as it can't be
-// known. Returns the back pay (0 when there's nothing to do)
+// known. A Captain who has clearly sailed (voyages, shards, a best wave, or a ship besides the Skiff) isn't taught the
+// beginner's tips again (only the Surge's and the shot's, which teach later things: BEGINNER_TIPS), and counts as one
+// who has been to sea, even if her save is from before voyages were counted (so no gentle first raider, no "your first
+// ship is ready", and harbour orders from now on). Returns the back pay (0 when there's nothing to do)
+const BEGINNER_TIPS = TIP_IDS.filter((id) => id !== 'surge' && id !== 'shot');
 function migrate(d) {
   if (d.v >= 2) return 0;
+  if (d.voyages > 0 || d.shards > 0 || Object.values(d.best).some((n) => n > 0) || IDS.some((id) => id !== 'skiff' && d.ships[id].owned)) {
+    for (const id of BEGINNER_TIPS) d.tips[id] = 1;
+    d.voyages = Math.max(d.voyages, 1);
+  }
   let pay = 0, renown = 0;
   for (const k of SKIES_IDS) {
     const n = d.best[k];

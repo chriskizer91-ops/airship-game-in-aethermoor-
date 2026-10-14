@@ -163,7 +163,7 @@ async function main() {
   // the Captain's record, counted from the news (deeds.js), and shown in port and coming home (record.js)
   const deeds = makeDeeds({ progress, player: () => player, clock: () => time, wave: () => W.wave, trial: () => trial });
   const port = makePort({ renderer, env: dayLight, progress, shipFor, touch, onSail: (id) => sail(id), onTrial: (id) => sail(id, false, true), onMode: (m) => enter(m), deeds, onLog: () => record.openLog() });
-  const record = makeRecord({ progress, deeds, onSail: (id) => sail(id), advice: () => port.advice().long });
+  const record = makeRecord({ progress, deeds, onSail: (id) => sail(id), advice: () => port.advice().long, onClose: () => setTimeout(pumpNotes, 0) }); // (closed, the port's notes waiting for it are told: pumpNotes; a moment later, so Sail again's voyage keeps them for the next port)
   const title = makeTitle({ renderer, scene, world, lights, art, raiders, shipFor, progress, dayLight: () => dayLight, touch });
   // a phone can drop the drawing context after a long time in the background (or a laptop's graphics can restart).
   // three.js puts back the ships, the map and the shadows by itself, but not the pictures drawn once at start-up: the
@@ -197,7 +197,7 @@ async function main() {
     mode = m; document.body.dataset.mode = m;
     if (m === 'title') { fx.clear(); title.enter(); } // (no smoke left hanging in its sky from the last fight)
     // (an old save brought up to version 2 was given back pay for the stars its best waves had earned: said in port)
-    if (m === 'port') { const back = progress.takeBackPay(); if (back) noteLater(`Back pay for your earlier voyages' stars: ◆ ${fmt(back)}`); }
+    if (m === 'port') { const back = progress.takeBackPay(); if (back) noteLater(`Back pay for your earlier voyages' stars: ◆ ${fmt(back)}`); pumpNotes(); }
     if (told !== m) { told = m; payload('mode').mode = m; emit('mode'); }
     input.active = m === 'voyage' && !paused;
     if (m !== 'voyage' && document.pointerLockElement) document.exitPointerLock();
@@ -285,7 +285,7 @@ async function main() {
     setText($('wave-word'), trial ? 'Sea trial' : 'Wave '); setText(H['wave-n'], trial ? '' : '1');
     newWind();
     setPaused(false); $('paused').hidden = true; $('howto').hidden = true;
-    port.mode = 'voyage'; $('title').hidden = true; $('port').hidden = true;
+    port.leave(); $('title').hidden = true; $('port').hidden = true; // (and a colour tried on in port, not bought, comes off her: port.js)
     enter('voyage');
     // on a laptop, the keys show for this device's first two voyages, until the first wave comes; after that they're
     // folded away (H brings them back). On a phone, the hint shows for the first three. (A sea trial isn't counted)
@@ -303,7 +303,7 @@ async function main() {
   // voyage is added to the Captain's record first (deeds.js finish: what it did, and anything it won), and with `card`
   // (the game's own ways home: Back to port, the pause card's, or To port when her ship's lost) coming home's card shows
   // it over the port (record.js)
-  let summary = null; // (the last voyage's, for the card)
+  let summary = null, homing = false; // (the last voyage's, for the card; and its card about to show: pumpNotes)
   function endVoyage(keep, card = false) {
     const tried = trial, got = tried ? 0 : Math.round(V.shards * keep);
     summary = tried ? null : deeds.finish({ got, keep, sunk: W.sunk || !!player.down, gathered: V.shards - V.bonus, bonus: V.bonus });
@@ -315,7 +315,7 @@ async function main() {
     setPaused(false); // (leaving from the pause menu ends the pause, and that's told before the voyage's end)
     const E = payload('voyage:end'); E.kept = got; E.sunk = W.sunk; E.waves = W.n; E.trial = !!tried; emit('voyage:end');
     $('paused').hidden = true; $('howto').hidden = true; calmUp(false); bigMap(false); document.body.classList.remove('sinking');
-    port.setMode('port');
+    homing = card && !!summary; port.setMode('port'); homing = false;
     if (tried) {
       // (what she costs, and the ship to own first if the port sells her only after another)
       note(`Back from her sea trial: the ${SHIPS.find((s) => s.id === tried).name} costs ${price(tried)}${needs(tried)}`);
@@ -330,7 +330,9 @@ async function main() {
     return from > 125 ? 'the wind behind you' : from < 55 ? 'a head wind' : `a wind from your ${wrap(WIND.dir + Math.PI - player.heading) < 0 ? 'right' : 'left'}`;
   };
   // the port's note: shown at once, for five seconds, the quartermaster's line making way for it meanwhile (game.html);
-  // a commendation won in port waits (noteLater) until the note showing has had 2.6 s, so both are read
+  // a commendation won in port waits (noteLater) until the note showing has had 2.6 s, so both are read. And those
+  // waiting are held while coming home's card is up over the port (or about to be), or away from port, and told once
+  // it's closed (record.js onClose) or the port is entered again: never under the card's dimming
   let noteAt = -1e9, notingT = 0, laterT = 0;
   const laterNotes = [];
   function note(text) {
@@ -340,7 +342,7 @@ async function main() {
   function noteLater(text) { laterNotes.push(text); pumpNotes(); }
   function pumpNotes() {
     clearTimeout(laterT);
-    if (!laterNotes.length) return;
+    if (!laterNotes.length || mode !== 'port' || homing || record.shown) return;
     const wait = noteAt + 2600 - performance.now();
     if (wait > 0) laterT = setTimeout(pumpNotes, wait); else { note(laterNotes.shift()); if (laterNotes.length) laterT = setTimeout(pumpNotes, 2600); }
   }
@@ -1011,7 +1013,7 @@ async function main() {
     if (on && !$('help').hidden) toggleHelp();
     layout();
   }
-  const goHome = () => { if (W.state === 'choose') endVoyage(1, true); };
+  const goHome = () => { if (mode === 'voyage' && W.state === 'choose') endVoyage(1, true); };
   $('btn-sail-on').addEventListener('click', () => sailOn(0));
   road.addEventListener('click', () => sailOn(1));
   $('btn-go-port').addEventListener('click', goHome);
@@ -1073,7 +1075,8 @@ async function main() {
       SEE.shots = D?.chain && D?.breaker ? 'both' : D?.chain ? 'chain' : D?.breaker ? 'breaker' : '';
       return SEE;
     } });
-  $('btn-tips-again').addEventListener('click', () => { coach.again(); $('btn-tips-again').textContent = 'The tips will show again'; setTimeout(() => { $('btn-tips-again').textContent = 'Show the tips again'; }, 2500); });
+  // ("Show the tips again" switches them back on too, if they were off: it does what it says)
+  $('btn-tips-again').addEventListener('click', () => { coach.again(); if (settings.data.tips === false) settings.set('tips', true); $('btn-tips-again').textContent = 'The tips will show again'; setTimeout(() => { $('btn-tips-again').textContent = 'Show the tips again'; }, 2500); });
   // the touch hint (a phone's first voyages) fades a few seconds after the first touch at sea (drags in port turn the
   // ship, and don't count)
   const hint = $('touch-hint');
@@ -1967,6 +1970,9 @@ async function main() {
       else if (k === 'shot' || k === 'v') cycleShot();
       else if (k === 'x') patchUp();
     }
+    // (a key that ended the voyage, B between waves: nothing more of it this step, or her flight would carry her ship
+    // back out of the port's berth, where she now stands)
+    if (mode !== 'voyage') return;
     player.update(dt, inp);
     player.ship.root.updateMatrixWorld(true);
     const gone = raiders.update(dt, player, camera);

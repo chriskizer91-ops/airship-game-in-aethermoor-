@@ -15,7 +15,8 @@
 //   she hasn't is shown on her ship on the berth, with what it costs (or what wins it) and a button to buy it.
 //   The quartermaster's advice: one gold line under the top bar saying what's worth doing next (a ship or an upgrade
 //   she can afford, marked with a gold dot, or how many shards more the nearest goal needs, and what her voyages bring
-//   home), and the Log button by the shards (her rank, on a screen with room for it) opens the Captain's log
+//   home; on a phone held upright, opened by her rank), and a dim line under it: today's harbour orders and the
+//   commendation she's nearest. The Log button by the shards (her rank, on a screen with room for it) opens the Captain's log
 //   (record.js). On the title, the line under the game's name says her rank and her shards, and each skies its record
 //   and its three stars (deeds.js).
 import * as THREE from 'three';
@@ -240,7 +241,13 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
     if (!cfg.owned) return;
     if (d.dyes[id]) { preview = null; if (cfg.paint[D.kind] !== id) { cfg.paint[D.kind] = id; progress.save(); painted(D.kind, id, false); } }
     else preview = { kind: D.kind, id };
-    dress(); refresh();
+    dress(); refresh(); clearOfFoot();
+  }
+  // (a colour tried on: the panel's foot grows with its note and Buy button, so the panel is scrolled on by as much,
+  // never leaving the swatches under it)
+  function clearOfFoot() {
+    const foot = panel.querySelector('.sail-out').getBoundingClientRect(), row = pennantsEl.getBoundingClientRect();
+    if (row.height && row.bottom + 6 > foot.top) panel.scrollTop += row.bottom + 6 - foot.top;
   }
   $('btn-dye').addEventListener('click', () => {
     const d = progress.data, D = preview && DYES[preview.id];
@@ -318,6 +325,18 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
     const L = d.log.slice(-5), avg = L.length >= 2 ? Math.round(L.reduce((a, e) => a + e.s, 0) / L.length / 10) * 10 : 0;
     return { long: `◆ ${fmt(more)} more for ${g.what}.${avg ? ` Your last voyages brought home about ◆ ${fmt(avg)} each.` : ''}`, short: `◆ ${fmt(more)} more for ${g.what}`, target: null };
   }
+  // and under it, dim, for a Captain who has been to sea: how today's harbour orders stand (so she knows there are
+  // some: the log lists them), and the commendation she's nearest, half way or more (deeds.js nearest); each [long,
+  // short], the short for a phone
+  function nearly() {
+    const d = progress.data, out = [];
+    if (!d.voyages || !deeds) return out;
+    const O = deeds.today(), all = O.picks.filter((p) => p >= 0).length, n = O.done.filter((x, i) => x && O.picks[i] >= 0).length;
+    if (all) out.push(n >= all ? ['Today\'s orders: all done', 'Orders: all done'] : [`Today's orders: ${n} of ${all} done`, `Orders: ${n} of ${all} done`]);
+    const N = deeds.nearest();
+    if (N) out.push([`Nearly there: ${N.M.name}, ${fmt(N.have)} of ${fmt(N.need)}`, `${N.M.name}: ${fmt(N.have)} of ${fmt(N.need)}`]);
+    return out;
+  }
 
   function refresh() {
     remeasure();
@@ -358,8 +377,11 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
     if (!owned && panel.dataset.tab !== 'ship') tab('ship');
     // the quartermaster's line, and a gold dot on what it means (a ship's button; an upgrade of the ship she's looking
     // at, if it's the one she sails)
-    const A = advice();
-    adviceEl.innerHTML = `<span class="long">${A.long}</span><span class="short">${A.short}</span>`;
+    // (on a phone held upright, whose Log button is just the book, her rank opens the short words, so the port shows it:
+    // game.html)
+    const A = advice(), N = nearly();
+    adviceEl.innerHTML = `<span class="long">${A.long}</span><span class="short">${fresh ? '' : `<span class="rank">${rankName} · </span>`}${A.short}</span>`
+      + (N.length ? `<span class="more"><span class="long">${N.map((x) => x[0]).join(' · ')}</span><span class="short">${N.map((x) => `<i>${x[1]}</i>`).join(' · ')}</span></span>` : '');
     for (const b of shipsEl.children) b.classList.toggle('advised', A.target?.ship === b.dataset.ship);
     // a ship you don't own: the big button buys her, and fills with gold as you earn towards her price (its price kept
     // in one piece, never broken over two lines). One sold only once another is owned says so, and doesn't fill
@@ -418,17 +440,22 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
     const P = preview && DYES[preview.id], dyeBtn = $('btn-dye');
     $('pp-dye-note').textContent = P ? `${P.name} ${P.kind === 'sails' ? 'sails' : 'pennants'}: ${P.price ? `${d.shards < P.price ? `you have ◆ ${fmt(d.shards)}` : 'once bought, for every ship'}` : howGot(preview.id, RANKS)}` : '';
     $('pp-dye-buy').hidden = !P;
-    if (P) { dyeBtn.innerHTML = P.price ? `Buy ${P.name} <span class="price">· ◆ ${fmt(P.price)}</span>` : 'Not for sale: won'; dyeBtn.disabled = !P.price || d.shards < P.price; }
+    // (one that's won, not bought: the button says how, greyed)
+    if (P) { dyeBtn.innerHTML = P.price ? `Buy ${P.name} <span class="price">· ◆ ${fmt(P.price)}</span>` : P.rank ? `Win it at ${RANKS[P.rank]}` : `Win it on the ${SKIES[P.star[0]].name}`; dyeBtn.disabled = !P.price || d.shards < P.price; }
+    panel.querySelector('.sail-out').classList.toggle('dyeing', !!P); // (its foot solid behind the note: game.html)
   }
 
-  // the title (its sky is title.js's) or the port (her ship on the berth)
+  // the title (its sky is title.js's) or the port (her ship on the berth). The screen is entered first (main.js), so a
+  // commendation her fleet wins as she comes into port is told in port (deeds.inPort)
   function setMode(m) {
     if (m !== 'port' && preview) { preview = null; dress(); } // (a colour tried on and not bought: off again, before she sails)
     mode = m;
     $('title').hidden = m !== 'title'; $('port').hidden = m !== 'port';
-    if (m === 'port') { deeds?.inPort(); show(viewing); } else if (m === 'title') { deeds?.today(); refresh(); }
     if (m === 'title' || m === 'port') onMode?.(m);
+    if (m === 'port') { deeds?.inPort(); show(viewing); } else if (m === 'title') { deeds?.today(); refresh(); }
   }
+  // setting sail (main.js): a colour tried on and not bought comes off her first, so she never sails in one that isn't hers
+  function leave() { if (preview) { preview = null; dress(); } mode = 'voyage'; }
   progress.onLoad(() => { viewing = progress.data.flying; if (mode === 'port') show(viewing); else refresh(); });
 
   function update(dt) {
@@ -453,5 +480,5 @@ export function makePort({ renderer, env, progress, shipFor, touch = false, onSa
     return box;
   }
   function resize() { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); remeasure(); }
-  return { scene, camera, show, setMode, update, render, resize, refresh, setShadow, tab, shipBox, advice, pickDye, get preview() { return preview; }, get viewing() { return viewing; }, get mode() { return mode; }, set mode(m) { mode = m; }, get spin() { return spin; } };
+  return { scene, camera, show, setMode, leave, update, render, resize, refresh, setShadow, tab, shipBox, advice, pickDye, get preview() { return preview; }, get viewing() { return viewing; }, get mode() { return mode; }, set mode(m) { mode = m; }, get spin() { return spin; } };
 }

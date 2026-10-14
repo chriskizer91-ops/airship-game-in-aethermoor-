@@ -6,7 +6,7 @@
 //   Commendations (MEDALS): a deed done once (a first raider, a broadside that sinks her, a Man-o'-war brought down,
 //   a wave beaten without a hit...) or a tally reached (raiders downed, shards brought home, voyages, treasure ships),
 //   each paid in shards at once, straight into the purse in port, so it's kept even if her ship goes down after; a few
-//   about her fleet (every upgrade on one ship...) are seen to in port.
+//   about her fleet (every upgrade on one ship...) are seen to in port, and as she comes home (on the homecoming card).
 //   Renown and ranks (RANKS): each raider brought down and each wave beaten earns renown, more on harder skies (the
 //   skies' `renown`); a rank only goes up, and each rise pays a purse, told on the homecoming card (never mid-fight);
 //   every other rank wins a colour for her sails or pennants (progress.js RANK_DYES).
@@ -25,6 +25,7 @@ import { SKIES, PRICES, MEDAL_IDS, STAR_WAVES, STAR_PAY, STAR_DYES, RANK_AT, RAN
 import { BOUNTY } from './raiders.js';
 import { CAPTAIN_ORDER } from './tactics.js';
 import { MODS, STEPS } from './mods.js';
+import { SHIPS } from '../ships/index.js';
 
 const BIG = { brig: true, frigate: true, galleon: true, manowar: true }, GIANT = { frigate: true, galleon: true, manowar: true };
 const fmt = (n) => Math.round(n).toLocaleString('en');
@@ -95,7 +96,7 @@ export const ORDERS = [
   { text: 'Bring home ◆ 1,000 in one voyage', kind: 'bank', id: 1000, need: 1, reward: 120, ok: (b) => b >= 6 },
   { text: 'Bring down a raider under the clouds', kind: 'under', need: 1, reward: 70, ok: () => true },
   { text: 'Beat a wave without being hit', kind: 'clean', need: 1, reward: 90, ok: (b) => b >= 2 },
-  { text: 'Bring a raider down with a broadside', kind: 'broadside', need: 1, reward: 60, ok: (b, d) => ['brig', 'frigate', 'galleon', 'manowar'].some((id) => d.ships[id].owned) },
+  { text: 'Bring a raider down with a broadside', kind: 'broadside', need: 1, reward: 60, ok: (b, d) => SHIPS.some((s) => s.ports && d.ships[s.id]?.owned) }, // (a ship with broadside guns: the Cutter on)
   { text: 'Bring down a raider on the Maelstrom', kind: 'mael', need: 1, reward: 150, ok: (b, d) => d.best.cross >= 5 || d.best.mael >= 1 },
   { text: 'Bring down a raider captain', kind: 'captain', need: 1, reward: 150, ok: (b) => b >= 5 },
   { text: 'Make a raider crew give up', kind: 'struck', need: 1, reward: 100, ok: (b) => b >= 4 },
@@ -143,11 +144,12 @@ export function makeDeeds({ progress, player, clock, wave, trial }) {
     return true;
   }
   // the record as it would stand with this voyage's counts added (for the tallies, as they're reached at sea), until
-  // they're added to it (`added`, at home), the voyage counted as one more then
+  // they're added to it (`added`, at home), the voyage counted as one more then, while it's being finished (after that
+  // the save has counted it: progress.bank)
   const S = { downed: 0, prizes: 0, banked: 0, voyages: 0 };
   function record() {
     const d = D(), st = d.stats, add = T.on && !T.added;
-    S.downed = st.downed + (add ? T.downed : 0); S.prizes = st.prizes + (add ? T.prizes : 0); S.banked = st.banked; S.voyages = d.voyages + (T.added ? 1 : 0);
+    S.downed = st.downed + (add ? T.downed : 0); S.prizes = st.prizes + (add ? T.prizes : 0); S.banked = st.banked; S.voyages = d.voyages + (T.on && T.added ? 1 : 0);
     return S;
   }
   function tallies() { const d = D(), R = record(); for (const M of MEDALS) if (M.of && !d.medals[M.id] && M.of(R, d) >= M.need) award(M.id); }
@@ -265,6 +267,9 @@ export function makeDeeds({ progress, player, clock, wave, trial }) {
     d.log.push({ d: dayNumber(), ship: T.ship, skies: k, w: T.waves, k: T.downed, s: got, sunk: sunk ? 1 : 0 }); d.log = d.log.slice(-LOG_KEEP);
     if (!sunk && got > 0) award('home');
     tallies();
+    // (and any her fleet has earned that port sees to, won as she comes in: an old save's fleet, say. Counted here, so
+    // it's on the homecoming card with the rest, not told under it: inPort finds nothing more)
+    for (const M of MEDALS) if (M.port && !d.medals[M.id] && M.port(d)) award(M.id);
     // a rank risen: a purse for each rank risen through, and the colours they win
     const was = d.rank, now = rankFor(st.renown);
     let purse = 0;

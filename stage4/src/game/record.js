@@ -48,8 +48,9 @@ function rankBar(R) {
 const ribbon = (name, line, won = true, kind = '') => `<div class="ribbon${won ? '' : ' dim'}${kind ? ` ${kind}` : ''}"><b>${esc(name)}</b>${line ? `<small>${line}</small>` : ''}</div>`;
 const EARNED = { medal: 'Commendation', star: 'Star', order: 'Order done', orders: 'All three orders', rank: 'Rank' };
 
-// `deeds`, `progress`; `onSail(ship)`: set sail again; `advice()`: the quartermaster's line (port.js), in words
-export function makeRecord({ progress, deeds, onSail, advice }) {
+// `deeds`, `progress`; `onSail(ship)`: set sail again; `advice()`: the quartermaster's line (port.js), in words;
+// `onClose()`: told as coming home's card closes (the port's notes wait for it: main.js)
+export function makeRecord({ progress, deeds, onSail, advice, onClose }) {
   const card = $('homecoming'), log = $('log');
   let counting = null;
   // ---------- coming home ----------
@@ -61,13 +62,14 @@ export function makeRecord({ progress, deeds, onSail, advice }) {
     const rows = [];
     const row = (k, v) => rows.push(`<dt>${k}</dt><dd>${v}</dd>`);
     row('Waves beaten', `${S.waves}${S.newBest && S.waves ? ` <b class="gold">· a new best on ${sk.name}!</b>` : ''}`);
-    row('Raiders downed', S.downed ? `${S.downed}: ${classWords(S.by)}${S.captains ? ` (${S.captains === 1 ? 'one' : NUMBER[S.captains]} a raider captain)` : ''}` : 'none');
+    row('Raiders downed', S.downed ? `${S.downed}: ${classWords(S.by)}${S.captains ? ` (${S.captains === 1 ? 'one a raider captain' : `${NUMBER[S.captains] ?? fmt(S.captains)} of them raider captains`})` : ''}` : 'none');
     if (S.prizes || S.escaped) row('Treasure ships', `${S.prizes} caught${S.escaped ? `, ${S.escaped} got away` : ''}`);
     row('Shots', `${fmt(S.shots)} fired, ${fmt(S.hits)} hit`);
     row('Hits taken', fmt(S.taken));
     const gathered = Math.max(0, Math.round(S.gathered)), bonus = Math.round(S.bonus);
-    const took = [gathered ? `${gem(gathered)} gathered` : '', bonus ? `${gem(bonus)} for the waves` : ''].filter(Boolean).join(' + ') || 'none';
-    row('Shards', `${took}. ${S.keep < 1 ? 'You keep half' : 'You keep it all'}: <b class="gold" id="hc-got">${gem(S.got)}</b>`);
+    // (what came in, and what she keeps of it; with nothing at all, just that)
+    const took = [gathered ? `${gem(gathered)} gathered` : '', bonus ? `${gem(bonus)} for the wave${S.waves === 1 ? '' : 's'}` : ''].filter(Boolean).join(' + ');
+    row('Shards', took || S.got ? `${took || 'none'}. ${S.keep < 1 ? 'You keep half' : 'You keep it all'}: <b class="gold" id="hc-got">${gem(S.got)}</b>` : 'none this time');
     $('hc-rows').innerHTML = rows.join('');
     // what she won, as ribbons (commendations, stars, orders, her rank)
     $('hc-ribbons').innerHTML = S.earned.map((e) => ribbon(e.kind === 'rank' ? `Raised to ${e.name}` : e.name, `${EARNED[e.kind]} · ${gem(e.reward)}`, true, e.kind === 'order' ? 'order' : '')).join('');
@@ -156,6 +158,6 @@ export function makeRecord({ progress, deeds, onSail, advice }) {
   log.addEventListener('click', (e) => { if (e.target === log) log.hidden = true; });
   addEventListener('keydown', (e) => { if (e.key === 'Escape' && !log.hidden) { log.hidden = true; e.stopPropagation(); } }, true);
   // (any change of screen closes both)
-  function hide() { card.hidden = true; log.hidden = true; counting?.(); }
+  function hide() { const was = !card.hidden; card.hidden = true; log.hidden = true; counting?.(); if (was) onClose?.(); }
   return { homecoming, openLog, hide, draw, get shown() { return !card.hidden; }, get logShown() { return !log.hidden; }, ribbon };
 }

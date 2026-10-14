@@ -21,7 +21,7 @@ export const DYES = {
   plum: { kind: 'pennant', name: 'Plum', rgb: [0.42, 0.1, 0.3], price: 0 },
   teal: { kind: 'pennant', name: 'Sky teal', rgb: [0.2, 0.62, 0.7], price: 80 },
   silver: { kind: 'pennant', name: 'Silver', rgb: [0.85, 0.86, 0.9], price: 120 },
-  sunrise: { kind: 'pennant', name: 'Sunrise', rgb: [0.95, 0.62, 0.2], price: 120 },
+  sunrise: { kind: 'pennant', name: 'Sunrise', rgb: [0.9, 0.24, 0.015], price: 120 }, // (a true orange: a golden one read as cream in the berth's warm light, like her hoist, and gold is a raider captain's)
   emerald: { kind: 'pennant', name: 'Emerald', rgb: [0.12, 0.55, 0.32], rank: 2 },
   royal: { kind: 'pennant', name: 'Royal blue', rgb: [0.12, 0.32, 0.62], rank: 6 },
   lightning: { kind: 'pennant', name: 'Lightning', rgb: [0.55, 0.85, 1], star: ['mael', 15] },
@@ -30,16 +30,19 @@ const CREAM = new THREE.Color(0xfff2dc), HOIST = 0.12; // (the canvas's own glow
 const sail = new THREE.Color(), glow = new THREE.Color();
 // a dye's colour as red, green and blue from 0 to 1 (a sail's as painted, a pennant's as light)
 export const rgbOf = (D) => (D.rgb ? D.rgb : [(D.hex >> 16 & 255) / 255, (D.hex >> 8 & 255) / 255, (D.hex & 255) / 255]);
-// what a dye looks like on a swatch in port: a sail's over the cream canvas, a pennant's light as the screen shows it
+// and as the screen shows it: a sail's as painted, a pennant's light brought to the screen's
+const onScreen = (D) => (D.rgb ? D.rgb.map((x) => x ** (1 / 2.2)) : rgbOf(D));
+// what a dye looks like on a swatch in port: a sail's over the cream canvas, a pennant's as the screen shows it
 export function swatch(id) {
-  const D = DYES[id], [r, g, b] = rgbOf(D), C = D.rgb ? [r, g, b].map((x) => x ** (1 / 2.2)) : [r * 0.93, g * 0.86, b * 0.72];
+  const D = DYES[id], [r, g, b] = onScreen(D), C = D.rgb ? [r, g, b] : [r * 0.93, g * 0.86, b * 0.72];
   return `rgb(${C.map((x) => Math.round(Math.min(1, x) * 255)).join(', ')})`;
 }
 // whether a dye could be mistaken for a raider's: a red hue (within 25 degrees of red, more than a little coloured: a
 // crew's rust, a captain's crimson, a treasure ship's wine), or too dark (a captain's black). Hue, saturation and
-// lightness as in CSS. The two she's built with (sailcloth and her plum) are hers, and not held to it
+// lightness as in CSS, of the colour as the screen shows it (a pennant's light, judged as it is, read redder than it
+// looks: an orange one seemed red). The two she's built with (sailcloth and her plum) are hers, and not held to it
 export function notRaider(id) {
-  const [r, g, b] = rgbOf(DYES[id]), mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
+  const [r, g, b] = onScreen(DYES[id]), mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
   const s = d ? d / (1 - Math.abs(2 * l - 1)) : 0;
   let h = 0;
   if (d) h = mx === r ? ((g - b) / d) * 60 : mx === g ? (2 + (b - r) / d) * 60 : (4 + (r - g) / d) * 60;
