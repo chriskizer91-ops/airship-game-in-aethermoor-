@@ -1,0 +1,195 @@
+{
+ "voyage_test": "ROOT CAUSE: the game is at fault, not the test's Captain. src/game/main.js keeps the next wave in W.next. It is set when a wave is beaten (line 225) and used when the next wave spawns (line 211: `W.next ?? waveAt(...)`). But sail() (line 93) resets n, state, timer, lost, choose and sunk, and never clears W.next. So a voyage that ends on the \"Wave N beaten\" card (W.state 'choose') hands its next wave to the following voyage, which then spawns it as \"wave 1\".\n\nEVIDENCE (scripts in /tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/bugs/):\n(1) leak.mjs runs check.mjs's big \"flown\" block verbatim (sliced out of the file). Every time, it leaves W={n:15, state:'choose', next:waveAt(15)}. The treasure-ship test strikes the last raider while the wave is in 'fight', so waveAt(15) draws three random ships from the late-game pool. The next voyage's wave 1 was then \"brig cutter skiff\", \"frigate cutter cutter\" and \"frigate brig cutter\", each with the banner \"Raiders, wave 1\".\n(2) fullvoyage.mjs runs the flown block and then the whole-voyage block, both verbatim, three times. Two of three failed. Leftover \"galleon frigate skiff\" gave exactly the reported result {wave1:200, choose:false, shards:0, wave2:false, sunk:true, half:0, home:true, banked:0}. Leftover \"galleon frigate frigate\" also failed. Leftover \"cutter cutter skiff\" passed in 101 s. With `W.next = null` set before sailing (the fix), 3 of 3 passed in 28-29 s.\n(3) The failure is random because the leftover wave is a random draw (11-ship pool, 3 picks). The previous session passed on a weak draw.\n\nTHE GAME ITSELF IS FINE AT WAVE 1. voyage.mjs and wave1.mjs ran fresh voyages, where wave 1 is one raider Skiff. The scripted Skiff won every time:\n- Crosswinds (4 runs): 27-31 s\n- Fair Winds: 23 s\n- Maelstrom: 31 s\n- It needed 14-18 hits from about 24-30 shots, lock-on held on 23 of 24 shots, and the Captain kept at least 75% hull.\n- The raider's break-off (inside about 100 m, turning away for 3-5.5 s) only costs the bow gun a few seconds, and the swivels take over.\n- The test's `{sail: 0.6}` is a rate (like holding W), so the Skiff reaches full sail in about 2 s and stays there. That's harmless; `sailTo: 0.6` would say what was meant.\n\nPLAYERS HIT THE SAME BUG. \"Back to port\" from the wave-beaten card is the main loop. After banking at wave 4, the next voyage opens with \"Wave 1: a raider captain\": a captain Brig with double toughness, even in a Skiff. After banking at wave 7, it opens with a Frigate and two Cutters.\n\nFIX (game): put every voyage reset in one place called by sail():\nObject.assign(W, {n:0, state:'calm', timer:5, lost:0, choose:0, sunk:false, next:null}); Object.assign(V, {shards:0, downed:0, hits:0}); hurt=0; cam.shake=0;\nAlso add next:null to W's initializer (line 69). In endVoyage, set W.state='over' so nothing stale stays live.\n\nFIX (test hardening): in the whole-voyage block, record g.raiders.list ids when wave 1 spawns and fail with \"wave 1 should be one Skiff, got \u2026\". Optionally call g.endVoyage(0) at the end of the flown block so later blocks start clean.",
+ "findings": [
+  {
+   "id": "F01",
+   "title": "The next wave leaks into the next voyage: banking from the 'Wave N beaten' card makes the next voyage open with wave N+1 (also breaks the check)",
+   "file": "src/game/main.js",
+   "line": 93,
+   "severity": "high",
+   "kind": "bug",
+   "failure_scenario": "Beat wave 4 and tap 'Back to port' on the card. At that point W.state is 'choose' and W.next = waveAt(4), a Brig captain. Set sail again in any ship. sail() at line 93 doesn't clear W.next, so after 5 s waves() at line 211 spawns W.next with its captain index: 'Wave 1: a raider captain', a captain Brig against a Skiff. Verified in the browser. This is also why the check's whole-voyage test fails at random. endVoyage (lines 103-111) also leaves W.state, V.shards, hurt and cam.shake as they were, so the red damage vignette flashes at the start of the next voyage.",
+   "fix": "Add one resetVoyage() called from sail(): Object.assign(W,{n:0,state:'calm',timer:5,lost:0,choose:0,sunk:false,next:null}); Object.assign(V,{shards:0,downed:0,hits:0}); hurt=0; cam.shake=0. Add next:null to the initializer at line 69. Set W.state='over' in endVoyage. In tools/check.mjs, assert wave 1 is ['skiff']."
+  },
+  {
+   "id": "F02",
+   "title": "The cloud-cover noise is worked out up to 4 times per ground pixel (sea, map tile, deck twice): the biggest GPU cost on phones",
+   "file": "src/game/world.js",
+   "line": 56,
+   "severity": "high",
+   "kind": "phone",
+   "failure_scenario": "In flight, about 65% of the frame is ground below the horizon. Each ground pixel inside the map runs cover() once for the sea plane (line 97, drawn full-screen underneath with renderOrder -5), once for the tile (lines 79-88), and twice for the deck (lines 107-108). Each cover() is 2 fbm \u00d7 5 octaves \u00d7 4 sin-hashes, so a pixel costs about 160 sin() and roughly 1,000-1,500 ALU operations. At the phone's 1.6 pixel ratio (390x844 becomes 624x1350, 0.84 MP) that is about 0.5-0.7 GFLOP per frame, or 30-45 GFLOP/s at 60 fps. That's most of a Mali-G52/G57 or Adreno 610-class GPU before any ship is drawn. This is an estimate: measure on the phone with a toggle. Also, the fract(sin(dot*311.7)*43758) hash loses precision on some mobile GPUs at large arguments, which shows as blocky or banded clouds.",
+   "fix": "Bake cover() into a tileable texture. Over time p only slides, so a 256\u00b2 or 512\u00b2 periodic fbm DataTexture (made once in JS on a torus, RepeatWrapping) reproduces it exactly: cover = smoothstep(0.44,0.64, tex(p/P).r*0.85 + tex((p*3.3+7)/P).r*0.25), two fetches instead of 40 hashes. Share it between the ground's onBeforeCompile (add uniform sampler2D uCloud) and the deck. On touch, drop the deck's second 'lit' cover and leave the sea plane without cloud shadows."
+  },
+  {
+   "id": "F03",
+   "title": "A full-detail ship is left frozen in the sky: the previous ship stays in the voyage scene when you next sail a different one",
+   "file": "src/game/main.js",
+   "line": 86,
+   "severity": "high",
+   "kind": "bug",
+   "failure_scenario": "In port, look at the Cutter (not owned) and tap 'Set sail in the Zephyr'. Come home: port.setMode('port') calls show('cutter'), which only removes the port's own ship (port.js line 68), so the Zephyr's root stays in the voyage scene. Buy the Cutter and sail it. sail() line 86 adds the Gale without removing the Zephyr. Verified: the voyage scene held ['Tempest','Zephyr','Gale'] with 5 point lights. The ghost hangs where the last voyage ended, tilted mid-fall if she sank, with no tag. It costs 100k triangles when in view, and its lamps add to every lit pixel's light loop and force all ship shaders to recompile. It happens exactly when a player upgrades after browsing the next ship.",
+   "fix": "In endVoyage call scene.remove(player.ship.root). Or in sail(), before scene.add, remove the previous root if player && player.ship !== ship && player.ship.root.parent === scene. port.show() re-parents the root as needed."
+  },
+  {
+   "id": "F04",
+   "title": "About 2.5-4.2 MB of garbage per second in fights, from per-frame Vector3, Color and array allocations: GC hitches on phones",
+   "file": "src/game/guns.js",
+   "line": 120,
+   "severity": "medium",
+   "kind": "performance",
+   "failure_scenario": "Measured with Chrome's sampling heap profiler on an unminified build, 60 ticks/s, no drawing:\n- Frigate against a wave-10 line-up (22 bolts in flight): 2.5 MB/s.\n- Hit-heavy fight (40 hits in 8 s, about 143 glow points): 4.2 MB/s, about 70 KB per frame.\nTop allocation sites:\n- guns.js:120, put(): two 3-element arrays per glow per frame (855 KB/s).\n- guns.js:122, s.c.clone() per spark per frame (760 KB/s).\n- guns.js:115, b.p.clone() and V(size,size,len) per bolt per frame.\n- raiders.js:197-207, shoot(): calls muzzle() (guns.js:143-147, two clones plus an object) and reaches() (which calls muzzle again, aim.clone, and clampToArc's three new vectors) for every ready battery every frame, even while holding fire. About 400-600 KB/s.\n- intercept (guns.js:45, two clones), damage.js:240 V(), flight.js:45 forward() (per flyer per frame), main.js:134/143/396, pickups.js:118.\nSparks and bolts live 0.5-3 s, so they survive young-generation collections and get promoted. On a mid-range phone, expect frequent scavenges plus major-GC pauses of about 5-20 ms in big fights. In a wave-12 fight the 500-spark pool was also full about 1% of the time, so hit flashes were dropped.",
+   "fix": "Sparks: struct-of-arrays in a Float32Array pool (pos, vel, life, max, size, rgb) with swap-remove, writing gpos/gcol/gsize directly with no arrays or closures. Bolts: an object pool with preallocated Vector3s, and shared per-owner Color constants for body and head. Use scratch vectors in the instance loop. Give muzzle/intercept/clampToArc out-parameters and compute each battery's muzzle once per frame, passing it to reaches(). Have flyer.move set velocity from sin/cos directly. Target: under 100 KB/s."
+  },
+  {
+   "id": "F05",
+   "title": "Sun shadows never land: the light sits 400 m from the ship but the shadow camera only reaches 54-272 m, so the shadow pass and PCF sampling are wasted",
+   "file": "src/game/main.js",
+   "line": 87,
+   "severity": "medium",
+   "kind": "bug",
+   "failure_scenario": "Line 404 puts the sun at player.pos + SUN*400. Lines 87-89 set near 1, far r*8, with r = 0.85L. Measured: the player is at depth 400 for every ship, while far is 54 (Skiff), 102 (Cutter), 170 (Brig) and 272 (Frigate). The ship never casts or receives a shadow (no sail shadows on deck), yet every frame renders a 1024-2048\u00b2 shadow pass, and every lit pixel samples it. Line 40 also asks for PCFSoftShadowMap, which three r186 has removed (it warns and falls back to PCF). On phones, port.js line 57 still uses a 2048\u00b2 map for the title and port.",
+   "fix": "Place the light inside the frustum: sun.position = player.pos + SUN*(r*4), with shadow near 0.5 and far r*8 (or keep 400 and set near=400-2r, far=400+2r). Use PCFShadowMap. On touch, either keep 1024 or turn shadows off (renderer.shadowMap.enabled = !touch), and use 1024 for the port key light. This gives real self-shadows on the laptop, which is a visible upgrade."
+  },
+  {
+   "id": "F06",
+   "title": "The corner map goes blank after any resize on the title screen or in port, and the big map is a stretched low-resolution canvas",
+   "file": "src/game/main.js",
+   "line": 272,
+   "severity": "medium",
+   "kind": "bug",
+   "failure_scenario": "resize() sets the minimap canvas size from getBoundingClientRect(), but #hud is display:none on the title screen and in port (game.html line 40), so the canvas becomes 0x0. Verified: after resizing the window in port and setting sail, the canvas was [0,0] while shown at 220x147, so the map stays blank for the whole voyage. Real triggers: turning the phone on the title screen, iOS settling its viewport after load, and claude.ai resizing the artifact frame after the page loads. Separately, the .big toggle (line 262 and the 'm' key) never resizes the canvas, so the big map is a blurry upscale.",
+   "fix": "Size the canvas lazily where it's drawn (hud(), at 10 Hz): const w = Math.round(mini.clientWidth*devicePixelRatio), h likewise; if (w && (w !== mini.width || h !== mini.height)) { mini.width = w; mini.height = h; }. Then the toggles and mode changes are covered too."
+  },
+  {
+   "id": "F07",
+   "title": "On a phone you can't aim and fire together, and the camera swings back while your aiming thumb rests on the screen",
+   "file": "src/game/main.js",
+   "line": 127,
+   "severity": "medium",
+   "kind": "phone",
+   "failure_scenario": "The left thumb holds the stick, so the right thumb must choose between dragging to aim and holding Fire. The view is tied to the ship's heading (line 132: a = heading + cam.yaw), so steering with the stick swings the crosshair off the target. Lock-on tolerance (line 145) is about 0.05 rad, and a Skiff turns about 0.34 rad/s, so the lock is lost within about 0.15 s of turning. Also, input.js line 189 only updates lastLook when a finger moves. A thumb resting still on the aim area counts as idle, so after 3.5 s without firing the camera eases back behind the ship (lines 127-131) while the player is lining up a shot.",
+   "fix": "(a) Let a drag that starts on Fire also aim: in input.js hold('#btn-fire'), add pointermove deltas \u00d71.6 to s.look, as the aim fingers do. (b) In read(), set s.lastLook = now() when aims.size > 0. (c) For more drama, a sticky lock: on touch, while a raider is locked and no aim finger is moving, ease cam.yaw and cam.pitch toward the locked raider's bearing in placeCamera."
+  },
+  {
+   "id": "F08",
+   "title": "After the phone drops the WebGL context (common after a long time in the background), the ships lose their environment light for good",
+   "file": "src/game/main.js",
+   "line": 51,
+   "severity": "medium",
+   "kind": "robustness",
+   "failure_scenario": "There are no webglcontextlost or webglcontextrestored handlers. three.js rebuilds buffers and image textures on restore, but the PMREM environment (lines 49-51, also passed to the port at port.js line 53) is a render target drawn once at start-up, and it comes back black. Measured with WEBGL_lose_context on the port view: pixels lit by the environment averaged 83 before, 43 after restore, and 44 with no environment at all. The brass and hulls go flat and dark until the page is reloaded.",
+   "fix": "canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); pause(true); }). On 'webglcontextrestored', make a new PMREMGenerator(renderer), set env = fromScene(envScene,0.04,1,60000).texture, and assign it to both scene.environment and port.scene.environment."
+  },
+  {
+   "id": "F09",
+   "title": "A tab left open writes its old save over newer progress made on another device",
+   "file": "src/game/progress.js",
+   "line": 181,
+   "severity": "medium",
+   "kind": "robustness",
+   "failure_scenario": "connect() reads the claude.ai store only once, at page load. push() then blindly calls set() with the whole local save stamped Date.now(). Example: Chris leaves the game open in port on the laptop, plays on his phone (buys the Brig, earns shards), then comes back to the laptop tab and taps a skies button or moves the crystal-power slider. That save() pushes the laptop's old data with a newer timestamp. Next time the phone loads, the remote looks newer and replaces its progress. The Brig and the shards are gone on both devices. Clock differences between devices can do the same.",
+   "fix": "Track remoteSaved, the stamp last read or written. In push(), get() the doc first. If its saved stamp is newer than remoteSaved, someone else wrote it: adopt it (merge, notify listeners, refresh the port) instead of overwriting. Also call connect() again on visibilitychange to visible and when entering port. Better still, use a revision counter instead of wall-clock time."
+  },
+  {
+   "id": "F10",
+   "title": "The first raider captain of each class is built mid-fight, freezing the game as the wave appears",
+   "file": "src/game/raiders.js",
+   "line": 114,
+   "severity": "low",
+   "kind": "performance",
+   "failure_scenario": "Start-up only builds the plain templates (line 109). Captain colours are built on first use inside spawn(), so waves 5 (Brig captain) and 10 (Frigate captain), and later random captains such as a Galleon, build two ship models at the moment the banner shows. Measured here: Brig captain 34 ms (then 1 ms), Frigate captain 50 ms. On a mid-range phone, about 4-6\u00d7 slower, that's roughly 150-300 ms of freeze at the start of the fight.",
+   "fix": "Expose raiders.prepare(id, captain) (it just calls template()). In waves(), when entering 'choose' with next.captain >= 0, call prepare(next.ids[next.captain], true). Or warm the Brig and Frigate captains in requestIdleCallback after the title screen shows."
+  },
+  {
+   "id": "F11",
+   "title": "A raider brought down below about 290 m vanishes in the same frame instead of going down",
+   "file": "src/game/raiders.js",
+   "line": 225,
+   "severity": "low",
+   "kind": "bug",
+   "failure_scenario": "The removal test is `r.f.down && (pos.y < CLOUD_Y-140 || down.t > 16)`. The player can fly down to 60 m, and raiders follow down to 150 m (steer clamps wantY to 150-2200). A raider shot down or striking her colours at 150-290 m is counted and removed in the same update. The sinking roll, the smoke trail and a treasure ship striking her colours never show.",
+   "fix": "Remember the height at going down (in flight.js s.hit, set down.y0 = pos.y). Remove when pos.y < Math.min(CLOUD_Y-140, down.y0-150) or down.t > 16."
+  },
+  {
+   "id": "F12",
+   "title": "The HUD rewrites raider tags and labels every frame (text, widths, querySelector, child scans)",
+   "file": "src/game/main.js",
+   "line": 305,
+   "severity": "low",
+   "kind": "performance",
+   "failure_scenario": "For each raider, every frame, tags() sets the distance text (a new text node, then relayout), three meter widths, a transform and two classList toggles, plus querySelector('.arrow') when at the edge. It also scans [...$('tags').children] with raiders.list.some (line 314). hud() rewrites battery-name and battery-count text, the reload width, the #hurt opacity and #aim.className every frame. The 'Sail on (N)' text is rewritten every frame of the 25 s countdown. With 6 raiders that's about 40 DOM writes per frame plus style and layout work, which costs phone main-thread time. Measured: 130-170 KB/s of string and closure garbage from tags().",
+   "fix": "Cache child references on the tag when it's created (el._d, el._m[3], el._arrow). Update the transform every frame, but distance and meters at 10 Hz (piggyback hudTimer), and write only when the value changes. Cache the $() lookups once in main(). Remove a tag when its raider is removed instead of scanning children."
+  },
+  {
+   "id": "F13",
+   "title": "'Drag to turn the ship' never works on the title screen or in port: full-screen sections cover the canvas",
+   "file": "src/game/port.js",
+   "line": 95,
+   "severity": "low",
+   "kind": "bug",
+   "failure_scenario": "#title and #port are .screen elements (position fixed, inset 0, game.html lines 47 and 51) with the default pointer-events, so they catch every press. Verified with elementFromPoint: the top of the element stack is 'title', 'port' or 'port-panel', never the canvas. A 150 px mouse drag over the ship turned it only by its slow automatic spin (0.07 rad). The pointerdown handler at line 95 never fires.",
+   "fix": "In CSS: #title, #port { pointer-events: none } and #title .title-card, #port-ships, #port-panel, #port-note { pointer-events: auto } (.port-top > * already has it). After that fix, main.js line 265's once-only touch-hint listener would be used up by port drags, so register it on entering a voyage instead."
+  },
+  {
+   "id": "F14",
+   "title": "Any error inside a frame stops the game for good with no message, and save data isn't checked",
+   "file": "src/game/main.js",
+   "line": 410,
+   "severity": "low",
+   "kind": "robustness",
+   "failure_scenario": "frame() calls requestAnimationFrame only at its end (line 414), so one exception in tick() ends the loop and freezes the screen. progress.js merge() (lines 149-157) accepts any string for skies and flying. A save with an unknown skies id (for example after a future rename) makes skies() undefined: sail() throws after entering 'voyage', and every tick throws at waves()'s skies().extra, so the game freezes silently.",
+   "fix": "Schedule requestAnimationFrame first. Wrap tick() in try/catch that shows #error once ('Something went wrong: \u2026') and stops ticking. In makeProgress, after merge, check that skies is a SKIES key, flying is in ships and owned, and ships.skiff.owned is true; otherwise fall back to fresh() values."
+  },
+  {
+   "id": "F15",
+   "title": "On browsers without AVIF the whole game fails to start, with the message 'The game couldn't start: undefined'",
+   "file": "src/game/world.js",
+   "line": 64,
+   "severity": "low",
+   "kind": "robustness",
+   "failure_scenario": "The nine map tiles are AVIF. Safari only reads AVIF from version 16 (iOS 16), and a single failed tile rejects the Promise.all in makeWorld, so main() fails. TextureLoader rejects with an Event that has no .message, so the error line (main.js line 436) reads 'The game couldn't start: undefined'.",
+   "fix": "In loadTexture, resolve with a plain sea-blue 1x1 DataTexture on error and log it, so the game still runs. Show err?.message ?? 'a picture couldn't be read'. Optionally ship the tiles as WebP (Safari 14+); there's room in the 16 MB budget."
+  },
+  {
+   "id": "F16",
+   "title": "Touch movement keeps adding up while paused, so the camera jumps on Resume; blur leaves the stick and Fire state behind",
+   "file": "src/game/input.js",
+   "line": 189,
+   "severity": "low",
+   "kind": "phone",
+   "failure_scenario": "The pointermove handler (lines 180-190) doesn't check s.active, and while paused the game never calls input.read(). An aiming finger captured by the canvas keeps moving over the pause card, so s.look grows and is applied in one jump on the first frame after Resume. Separately, 'blur' (line 132) clears keys and mouse fire but not stick.x/y, aims, touchFire or sailHold. If the browser doesn't send pointercancel (for example when the notification shade is pulled down), the ship keeps turning or firing on return.",
+   "fix": "In pointermove, update a.x and a.y but skip adding to s.look when !s.active. In main.js pause(false), zero input.look and input.zoom. On 'blur', also reset the stick (id, x, y, knob hidden), aims.clear(), touchFire=false and sailHold=0."
+  },
+  {
+   "id": "F17",
+   "title": "Trackpad scroll zooms from closest to farthest in one flick",
+   "file": "src/game/input.js",
+   "line": 166,
+   "severity": "low",
+   "kind": "bug",
+   "failure_scenario": "The wheel handler adds Math.sign(deltaY) per event. A laptop trackpad's two-finger scroll sends 30-60 small wheel events, and main.js line 125 multiplies the zoom by 1.12 per unit. About 13 events cover the whole 0.55-2.6 range, so one gentle swipe slams the camera all the way in or out.",
+   "fix": "s.zoom += e.deltaY * (e.deltaMode === 1 ? 0.33 : 0.01), so a notched mouse wheel (about 100 per notch) gives about 1 step and a trackpad gives fine steps."
+  },
+  {
+   "id": "F18",
+   "title": "Gathering shards is meant to flash the shard counter, but there's no style for it, so nothing shows",
+   "file": "src/game/main.js",
+   "line": 397,
+   "severity": "low",
+   "kind": "bug",
+   "failure_scenario": "flash($('score')) toggles class 'on', but demos/game.html only defines .on animations for #port-note, #region, #banner, #toast and the buttons. #score.on has none. Flying through shards gives no feedback on the counter, and each gathering frame still forces a layout through void el.offsetWidth.",
+   "fix": "Add #score.on { animation: pop 0.5s ease-out } (scale and gold glow keyframes), or animate the \u25c6 figure itself. That's a good place to hang a shard-pickup sound later."
+  },
+  {
+   "id": "F19",
+   "title": "Whole dynamic buffers are uploaded to the GPU every frame even when nearly empty",
+   "file": "src/game/guns.js",
+   "line": 118,
+   "severity": "low",
+   "kind": "performance",
+   "failure_scenario": "needsUpdate re-uploads the full arrays every frame:\n- bolt matrices, 400\u00d764 B (guns.js line 118)\n- bolt colours\n- 900-point glow buffers (line 124)\n- 900 smoke puffs (effects.js line 44)\n- 200 pickups (pickups.js lines 120-121)\nThat's about 92 KB per frame, about 5.5 MB/s of uploads, even with three bolts in flight. On phone drivers that's avoidable bus traffic every frame.",
+   "fix": "Before needsUpdate, call attr.clearUpdateRanges(); attr.addUpdateRange(0, count*itemSize) (three r186), with count the live bolts, glows, puffs or shards. Skip the upload entirely when count is 0 and was 0 last frame."
+  }
+ ]
+}

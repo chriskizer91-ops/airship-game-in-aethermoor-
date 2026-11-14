@@ -1,0 +1,265 @@
+{
+ "summary": "Today a fight is a damage race decided by who stays alongside longer. Raider broadsides land with no warning and make up about 91% of the damage the Captain takes. In my sim, a Brig fighting waves 5-10 on Crosswinds over 8 runs took 1,117 damage a minute from broadsides and 108 from the light guns. Raider AI has three modes: chase, sit alongside, run. Wave 12's Man-o'-war is a 60-second race the Frigate wins half the time whatever it does. Nothing rewards being in the right place, holding back a shot, catching a runner or retreating.\n\nI measured each idea with an instrumented copy of tools/sim-fight.mjs that patches the game at runtime, so nothing was rebuilt. Everything is in /tmp/claude-0/-home-user/7e489355-d0a0-5ded-9e0b-bc551db36d16/scratchpad/survey/fight-depth2/: sim.mjs, batch.mjs, cover.mjs, cover-check.mjs and the logs.\n\nResults:\n- **Broadside warning.** A 0.8 s warning, where the raider aims at the spot you'd reach if you held your course, plus 35% faster raider broadside reloads, leaves a Captain who ignores it exactly as challenged as today (the median run still ends at wave 8). A Captain who climbs out of it takes 74% less broadside damage, reaches wave 10 and earns 2.5 times the shards.\n- **Cloud floor.** My JavaScript copy of the cloud floor's pattern matches the graphics card's picture (mean difference 0.011 on a 0-1 scale; 62 of 64 points agree on thick or thin). Thick cloud covers about half the map, and 80% of places are within about 450-510 m of some. A ship can really hide in it, and the game can test that for almost nothing.\n- **Man-o'-war.** With her plated sides halving hull hits from abeam, the side-to-side fight is lost 4 out of 4. From above, with crystal breakers and raking, it is won 4 out of 4 at no extra difficulty. Position decides it.\n\nTop recommendation: build the broadside warning first, because it turns the biggest source of damage into the game's main skill. Then raking fire (S) and shot types (M), which give placement and loadout choices. Then raiders that strike, run or call for help, and the cloud floor. The captains, the fortress, the line of battle and choosing the next wave are built from those parts.\n\nNote: another agent is editing polished/src/game (main.js, guns.js, flight.js, effects.js and pickups.js changed at 13:27-13:30). Line numbers below are from about 13:30. Go by the function names.",
+ "architecture": "One new module, src/game/tactics.js. It holds the fight rules so that raiders.js stays the AI and main.js the loop:\n- `SHOTS`: per shot type, a multiplier for each part plus speed, life, reload and colour.\n- `RAKE = { cos: 0.906, mul: 1.5 }` and `rakeMul(bolt, body)`.\n- `cover(x, z, t)`, `hidden(flyer, t, revealUntil)` and `HIDE = { top: CLOUD_Y+6, bottom: CLOUD_Y-40, thick: 0.7 }`. cover() is the JavaScript copy of world.js makeCloudBake + CLOUD_GLSL cover(): hash h2, value noise n2, N = [16, 33, 68, 141, 293], two layers, smoothstep(0.44, 0.64). It is already written and checked against the graphics card in scratch cover.mjs.\n- Morale rules: `strikeRule(r)` (when she gives up), `shouldRun(r)` (when she flees), the flare timer.\n- `CAPTAINS` (the named captains) and `roadFor(n)` (the second way on between waves).\n\nChanges to existing modules:\n\n1. **damage.js firstHit** (about lines 55-80). tryBox(box, part, i) also records the box index. The result becomes `{ part, t, at, i, local }`, where `local` is a copy of the hit point in the ship's own frame. `i` says which crystal column or mast was hit. Needed for raking, gun decks and per-column health.\n\n2. **guns.js.** All four changes are backwards compatible.\n   - makeBolts.fire(from, dir, kind, owner, inherit, weight, shot = 'round', src = null): each bolt carries `b.kind`, `b.shot` and `b.src` (the flyer that fired it).\n   - makeGunnery gains:\n     - `shot` and `setShot(s)`. Changing shot reloads every battery.\n     - `rate` in update(dt, rate = 1), for crew patching.\n     - Per-gun `alive` flags: fire(), count() and muzzle() skip dead guns.\n     - `kindReload = { broadside: k }` for raider broadsides.\n     - Optional `pitchUp[b]`. clampToArc takes separate up and down limits.\n\n3. **Event names.** Use the feel survey's fx.emit bus (fx-core) if it lands first. Otherwise add a 10-line `on/emit` in tactics.js. Names: warn, raked, strike, run, escape, flare, help, hidden, revealed, ram, patch, shot, column, silenced, act. The HUD (toasts, tags, markers) and sound listen there, so the rules never touch the page.\n\n4. **Save** (progress.js fresh() and merge()). Add `shots: { chain: false, breaker: false }` and `captains: {}`. Each sky in SKIES gains `warn`, `sight`, `flee` and `smart`.\n\n5. **Input** (input.js). Keys '1', '2', '3' and 'x'. Mouse button 2 while the pointer is locked adds 'shot'. #btn-shot and #btn-patch pointerdown add 'shot' and 'x'. They are handled in main.js tick's pressed loop, next to 'r'.\n\n6. **Test hooks.** `__game.tactics` (cover, hidden, SHOTS) and `__game.world` (for the cloud check). `__game.waves.next` / `W.roads` accept `{ ids, captain, how, captainId }`.\n\n7. **Simulated Captain.** tools/sim-fight.mjs takes flags, ported from my scratch sim.mjs: `dodge`, `shot=`, `patch`, `hide`, `road=`, `policy=fortress|cross`, `target=prize|big`. It prints broadside and light-gun damage per minute, raked hits, ran, escaped, flares, help and patches. With those, docs/game.md \"How hard it is\" can state the plain Captain and a skilled one separately.\n\nThe phone touch cluster becomes `[Patch?] [Shot / Surge column] [Fire]` above the Sail \u2212/+ row. On narrow screens #battery moves up from bottom +200 px to +224 px. Every new action has a laptop key (1/2/3, right-click, X; 1/2/Enter on the card) and a phone button. Dodging, hiding and ramming use the existing climb, dive and Surge.",
+ "proposals": [
+  {
+   "id": "broadside-warning-dodge",
+   "title": "A raider's broadside gives a warning, and she aims where you're heading: climb, dive or turn out of the red and it misses",
+   "chris_sees": "Just before a raider fires her side at you, her gun ports glow, a soft red fan opens off her side showing exactly where her guns can reach, and her tag flashes \"Broadside!\" with a ring that closes in under a second. Her gunners aim where you're going. Climb, dive or turn out of the red and the whole broadside goes where you were. Sit still in it and it hits as hard as today.",
+   "why": "Raider broadsides cause about 91% of the damage you take (my sim, Brig, waves 5-10, Crosswinds, 8 runs: 1,117 a minute from broadsides against 108 from the light guns). Today they come with no warning, so the game's own advice (\"stay off her beam\") can't be acted on in the moment.\n\nThe feel survey's 'raider-broadside-warning' only adds a glow. That isn't enough on its own. If the raider re-aims at the moment she fires, escaping needs about 64 m of height change in 0.8 s at 400 m (her guns tilt \u00b10.16 rad), and a Brig climbs 15.6 m/s. What makes dodging a skill is the rule that she commits to her aim when the warning starts.\n\nMeasured (8 runs each, Brig, waves 5-10):\n- **Today:** median run ends at wave 8, 1,117 broadside damage a minute.\n- **Warning plus 35% faster raider broadside reload, Captain ignores it:** median still wave 8, 908 a minute. As hard as today.\n- **Same, Captain climbs away on the warning:** broadside damage 294 a minute (\u221274%), median wave 10, \u25c6 1,071 against \u25c6 399.\n\nThe sim reacts instantly, so expect a real player to save perhaps half of that. That is the skill gap we want.",
+   "how": "1. **Settings.** In progress.js SKIES, add `warn`: Fair 1.0 s, Crosswinds 0.8 s, Maelstrom 0.6 s. In raiders.js, `RAIDER.broadside = 0.65`, passed to makeGunnery as `kindReload: { broadside: 0.65 }`. A raider broadside then cycles 2.6\u00d71.5\u00d70.65 + 0.8 = 3.34 s, against 3.9 s today.\n\n2. **Charging** (raiders.js shoot(), about line 200). For port and starboard only, when `r.gun.count(b) >= 3` and the battery is ready and reaches:\n   - If `!r.charge[b]`, set `r.charge[b] = { t: S.warn, k: 0, p0: foe.aimAt().clone(), v0: foe.velocity.clone(), t0: clock }`, emit 'warn', and don't fire.\n   - Bow and stern guns and the Skiff's swivels fire as now, with no warning (they're light).\n   - In update(), for each charge, count t down. At 0:\n     - `pred = p0 + v0*(clock - t0)`\n     - `aim = intercept(muzzle.p, r.f.velocity, pred, v0, K.speed)`\n     - add today's spread `e = dist*r.aim + 1.5`\n     - fire, then delete the charge.\n   - Cancel the charge if she goes down, or after 2 s.\n   - Keep the vectors in a pool, so nothing new is made each frame.\n\n3. **Danger fan.** In guns.js, `fanGeometry(K, reach)` builds the wedge once per class and kind, in the gun's own frame:\n   - 16 segments across \u00b1K.yaw, top and bottom faces at \u00b1K.pitch, out to reach = K.speed\u00d7K.life\u00d70.7 = 582 m.\n   - Each vertex carries alpha `(1 - (r/reach)^2)`.\n   - Material: additive red 0xff3a2a, `uK` opacity 0.16\u00d7charge progress, depthWrite false, renderOrder 4.\n   - Each raider lazily gets two fans as children of `r.ship.body`, at the middle gun's spot and pointing its way. They lean and roll with her, and show only while that battery is charging.\n\n4. **Gun ports glowing.** Port glows as the feel survey describes: bolts.glowAt at each muzzle, size 1.5 + 5k, red going to amber.\n\n5. **The tag** (main.js tags()). If `r.charge` is set, add class 'warn' to the tag. The CSS adds a red pulse, the text \"Broadside!\" and a conic ring set from the charge's progress. If the feel survey's incoming-fire arcs are built, also flash the arc on her side at the start.\n\n6. **Words.** docs/game.md \"The raiders\": \"Before a broadside her gun ports glow and a red fan shows where her guns reach. Her gunners aim where you're heading: climb, dive or turn out of the red and they miss. Climbing is safest: diving puts your sails where they aimed at your hull.\" The phone and laptop help get one line: \"Red fan: get out of it.\"",
+   "files": [
+    "src/game/raiders.js",
+    "src/game/guns.js",
+    "src/game/progress.js",
+    "src/game/main.js",
+    "demos/game.html",
+    "docs/game.md",
+    "tools/check.mjs",
+    "tools/sim-fight.mjs"
+   ],
+   "size": "M",
+   "phone_cost": "At most 2-4 fans on screen at once, each about 64 triangles: one draw call apiece, and a thin low-opacity layer for 0.8 s of every 3.3 s. Up to 24 glow points per charging ship. One intercept per charging battery per frame, with no allocations if vectors are pooled. About 3 KB more.",
+   "test": "check.mjs:\n1. Spawn a Frigate raider with AI on, 300 m abeam of a still Captain at the same height, and step in 0.05 s slices until the first raider broadside bolt exists. Assert `r.charge` started at least 0.75 s earlier, and the fan was visible while it charged.\n2. Repeat. On 'warn', hold `climb: 1` for 2.5 s. Over 3 volleys, assert broadside hits on the Captain are at most 1, against at least 3 when she holds still. This uses the bolt count, with a margin.\n3. The existing \"raiders hurt the Captain in a minute\" check still passes.\n\nsim-fight.mjs gets a `dodge` flag: on a warning aimed at the Captain, climb (or dive above 2,000 m) for warn + 1.2 s. Expect the median wave 8 without it and about 10 with it (Brig, waves 5-10, Crosswinds). Put both in docs/game.md \"How hard it is\".",
+   "priority": 1
+  },
+  {
+   "id": "raking-fire",
+   "title": "Raking fire: broadside shots down a ship's length do half as much again",
+   "chris_sees": "Cross ahead of a raider's bow, or behind her stern, and fire your broadside down her length. The hits land with a bigger burst and the word \"Raked!\", and do half as much damage again. Raiders can do it to you, so don't let one cross your bow.",
+   "why": "This is the classic sea-battle move (crossing the T). It gives broadside ships a place to aim for beyond \"keep her alongside\", and it pays off in the line of battle and the Man-o'-war fights below.\n\nIn the sim with raking on (Brig, waves 5-9, 4 runs), the plain Captain raked 26 times against the raiders' 4. It dealt 28% more damage and got about as far, so the rule rewards placement without breaking the balance. Raiders rake more once they're taught to cross your bow (proposal smarter-raiders).",
+   "how": "1. In tactics.js (or guns.js): `RAKE = { cos: 0.906, mul: 1.5 }` (that is, within 25\u00b0).\n2. In main.js hitTest (about line 180), for both sides, when `b.kind === 'broadside'`:\n   - Read the target body's forward from `body.matrixWorld.elements[8..10]`, normalized.\n   - If `|dot(normalize(b.v), fwd)| > RAKE.cos`, multiply the damage by 1.5, enlarge the burst by 1.6\u00d7, and emit 'raked'.\n   - Light-gun bolts are excluded, or a chasing Skiff would rake with every shot.\n3. Show a \"Raked!\" hit marker next to the feel survey's hit-markers.\n4. If a raider rakes the Captain, show a stronger hurt flash. The first time in a voyage, toast: \"Raked! Don't let them cross your bow.\"\n5. Optional: the Galleon's stern windows take \u00d72 from astern (\"shoot up her stern\").\n6. docs/game.md \"Aiming and the guns\" gets a bullet: \"Fire your broadside down a ship's length, from across her bow or stern, and every hit does half as much again.\"",
+   "files": [
+    "src/game/main.js",
+    "src/game/guns.js",
+    "src/game/tactics.js",
+    "docs/game.md",
+    "tools/check.mjs",
+    "tools/sim-fight.mjs"
+   ],
+   "size": "S",
+   "phone_cost": "One dot product per hit, and nothing per frame.",
+   "test": "check.mjs: freeze a Brig raider 260 m away. Fire 3 port broadsides from her beam, then 3 from dead ahead of her, her bow pointing at the Captain. Assert the mean damage per hit ahead is 1.5\u00d7 the beam's, within 10%, and a 'raked' event fired.\n\nsim-fight.mjs: a `rake` count in the output, and a `policy=cross` that steers across a raider's bow at 350 m to show the payoff.",
+   "priority": 1
+  },
+  {
+   "id": "shot-types",
+   "title": "Shot chosen in flight: round shot, chain shot that tears sails, and crystal breakers for the big ships",
+   "chris_sees": "Your guns can load three kinds of shot:\n- **Round shot** works as now.\n- **Chain shot** is spinning pairs of silver bolts that shred sails. A ship with no sails crawls and turns badly, and treasure ships give up.\n- **Crystal breakers** are pale blue bolts that crack crystals, for bringing big ships down from above. You carry five volleys a voyage.\n\nOn a laptop press 1, 2 or 3, or right-click while aiming. On a phone, tap the shot button above Surge. The gun label says what's loaded, and changing shot means reloading. Chain shot is yours the first time a treasure ship gives up to you; crystal breakers the first time you sink a raider captain's Frigate. Either can also be bought in port.",
+   "why": "Changing shot is a real decision in flight, and it fits age-of-sail fighting. Measured:\n- **Wave 6 treasure ship (Brig):** she gives up in 20-22 s with chain shot, against 31-35 s with round shot. Her Cutter escort takes 3-4 minutes with chain shot alone (hull \u00d70.25), so you have to switch.\n- **Breakers against the Man-o'-war (Frigate, from 70 m above):** at \u00d72.2 she sank in 29-33 s, against 55-59 s with round shot. That's far too strong, and breakers aimed at the crystals also fell small ships 3-4 times faster. So they're set to \u00d71.6 and limited to five volleys.",
+   "how": "1. **The table** (tactics.js):\n\n| Shot | Hull | Sails | Crystals | Speed | Life (reach) | Reload | Colour |\n|---|---|---|---|---|---|---|---|\n| round (\"Round shot\") | 1 | 1 | 1 | 1 | 1 | 1 | gold |\n| chain (\"Chain shot\") | 0.25 | 2.5 | 0.25 | 0.85 | 0.8 (about 0.68 of round shot's reach) | 1 | 0xd8e0ff |\n| breaker (\"Crystal breakers\") | 0.5 | 0.3 | 1.6 | 1 | 1 | 1.25 | 0x9fe7ff, 5 volleys |\n\n2. **Bolts** (guns.js). makeBolts.fire takes `shot` and scales speed and life by it. A chain bolt draws two glow heads circling its path (two `put()` calls in the glow loop, radius 1.2 m, 14 turns a second).\n\n3. **Guns** (guns.js makeGunnery):\n   - `shot = 'round'`.\n   - `setShot(s)` sets every `ready[b] = reload(b)`, so the old shot is drawn and the new one loaded.\n   - fire() passes the shot along.\n   - Breakers count down by one per battery fired. At 0 the guns switch back to round shot, with the toast \"Out of crystal breakers\".\n\n4. **What the guns lock on to** (raiders.js spawn, about line 113). Keep three spots on her own frame:\n   - round: `zones.aim` (or the treasure ship's fore sails, as today)\n   - chain: the centre of the middle sail box\n   - breaker: the top centre of the middle crystal box\n\n   `f.aimAt(shot = 'round')` fills a reused vector. If that part is gone, it falls back to the hull. In main.js aimFor, `locked.f.aimAt(gunnery.shot)`.\n\n5. **Damage.** In hitTest, damage = `b.damage \u00d7 SHOTS[b.shot][part]`, times raking.\n\n6. **Controls.**\n   - input.js: '1', '2' and '3' pick a shot if it's unlocked. Mouse button 2 while locked cycles. On a phone, #btn-shot (50 px round, showing \u25cf / \u221e / \u2726 and the name) sits above #btn-surge, and is hidden until chain shot is unlocked.\n   - #battery reads e.g. \"Port broadside \u00b7 6 guns \u00b7 Chain shot\", and the reload bar takes the shot's colour.\n\n7. **Unlocking.** progress.data.shots = { chain, breaker }.\n   - Chain shot: the first treasure ship that gives up to you (toast: \"Her crew left chain shot in the hold: press 2\").\n   - Breakers: the first raider captain's Frigate you sink.\n   - Or in port: chain \u25c6 200, breakers \u25c6 600. The port row belongs to the port lens.\n\n8. **Raiders.** Only the Sail-Ripper captain (named-captains) fires chain shot.\n\n9. **Words.** docs/game.md gets a \"Shot\" table.",
+   "files": [
+    "src/game/tactics.js",
+    "src/game/guns.js",
+    "src/game/raiders.js",
+    "src/game/main.js",
+    "src/game/input.js",
+    "src/game/progress.js",
+    "src/game/port.js",
+    "demos/game.html",
+    "docs/game.md",
+    "tools/check.mjs",
+    "tools/sim-fight.mjs"
+   ],
+   "size": "M",
+   "phone_cost": "One more glow point per chain bolt (bolts are capped at 400). Nothing else per frame. One more button. About 3 KB.",
+   "test": "check.mjs:\n1. With chain shot unlocked, press '2'. Assert gunnery.shot is 'chain' and every battery's ready equals a full reload.\n2. Freeze a Brig raider abeam at 260 m and fire 3 chain volleys. Assert sail damage is at least 2\u00d7 hull damage, and the lock point sits inside her sail boxes.\n3. Breakers from 60 m above: crystals damaged, the count drops by 1 per volley, and at 0 the guns go back to round shot.\n4. Phone: tapping #btn-shot cycles the shot.\n5. The existing treasure-ship test, run with chain shot: she gives up sooner than with round shot.\n\nsim-fight.mjs `shot=`, plus an auto policy: chain on a raider that is running or a treasure ship, breakers on the Man-o'-war.",
+   "priority": 1
+  },
+  {
+   "id": "raider-nerve",
+   "title": "Raiders with nerve: beaten ones give up for a prize, hurt ones run for the clouds, big ones fire a flare for help",
+   "chris_sees": "Raiders don't all fight to the end:\n- **Giving up.** A raider with her sails shot away and her hull below half strikes her colours. A white flag goes up, she stops firing and drifts down, and she gives up her whole hold: half as many shards again. (This works well with chain shot, then round shot.)\n- **Running.** A hurt Skiff, Cutter or Brig left on her own may turn and run for the cloud floor. Her tag says \"Running\". Catch her with a Surge or chain shot, or she's gone with her shards.\n- **Flares.** A Brig or Frigate below half hull fires a red flare, and the toast says \"Sink her in 20 seconds or help comes\". Miss it and a Skiff joins the fight.",
+   "why": "Sea battles end with ships giving up and running, not only sinking. This adds choices: disable her for a prize or just sink her, chase her or let her go, finish the ship with the flare first.\n\nPrototyped in the sim (Brig, waves 1-7, 4 runs each):\n- **Running at 35% hull:** 4 raiders ran per voyage. All were caught at today's 3.6 km escape distance, but the voyage took 36% longer (462 s against 340 s). So the escape distance should be 2.4 km, with the cloud floor as a way out, so running is a real threat that's quick to resolve.\n- **A flare bringing a Cutter after 20 s:** 2 of 4 runs sank at wave 5, because the captain's Brig fired a flare. So captains are left out, and the help is a Skiff on Fair Winds and Crosswinds, a Cutter on Maelstrom.",
+   "how": "1. **Giving up** (flight.js s.hit, about line 50). Make `s.strikes` a function `(s) => bool`.\n   - Treasure ship: sails \u2264 0, or hull \u2264 25% (as today).\n   - Regular raiders (not captains, not the Man-o'-war): `(sails <= 0 && hull <= 0.5*full) || (hull <= 0.15*full && lastOfWave)`, where raiders.js passes a lastOfWave getter.\n   - In main.js waves(), when a regular raider strikes, the shards spilled are bounty \u00d7 1.5, and the toast is \"The Cutter strikes her colours: half as many shards again\".\n   - White flag: on strike, add a small white glow and a white quad at her masthead.\n\n2. **Running** (raiders.js update).\n   - Once per raider (not captains, Galleons or the Man-o'-war): when hull falls below 35% and she's alone or below 20% hull, run if `Math.random() < S.flee` (Fair 0.3, Crosswinds 0.5, Maelstrom 0.6).\n   - She sets `r.mode = 'run'`, calls `r.f.startSurge()` and emits 'run'.\n   - In steer(), 'run' works like the treasure ship's flight (bearing+\u03c0, weaving, sailTo 1). If cover-floor finds thick cloud within 1.2 km, she steers for it and sets `wantY = CLOUD_Y - 15`. She only fires her stern guns.\n   - She gets away (`r.gone`, `r.escaped`, no shards) when she's more than 2,400 m from the Captain, or hidden in the cloud floor more than 700 m away for 6 s. Generalise the escape check (about line 224) from `role === 'prize'` to `r.mode === 'run' || r.fleeing`.\n   - Toast: \"The Skiff got away\".\n\n3. **Flares.** A Brig or Frigate (not a captain) fires one, once, when her hull falls below 50%: `r.flare = clock + 20`.\n   - Effect: a glow rising 120 m/s for 2.5 s, then a red burst (bolts.burst 0xff3030, 40, 2).\n   - Her tag shows a countdown ring \"Help 20\".\n   - If she's down or has given up first, toast \"No help coming\".\n   - Otherwise spawn `S.extra ? 'cutter' : 'skiff'` 1.4 km beyond her, heading in, toast \"A Skiff answers the flare\". It counts as part of the wave.\n\n4. **The wave counts as beaten** when every raider is down, has given up, or got away.",
+   "files": [
+    "src/game/flight.js",
+    "src/game/raiders.js",
+    "src/game/main.js",
+    "src/game/progress.js",
+    "src/game/tactics.js",
+    "demos/game.html",
+    "docs/game.md",
+    "tools/check.mjs",
+    "tools/sim-fight.mjs"
+   ],
+   "size": "M",
+   "phone_cost": "A few glow points per flare, and a handful of comparisons per raider per frame.",
+   "test": "check.mjs:\n- **(a)** A frozen Cutter at 40% hull, sails shot to 0: down.why is 'struck', and the shards spilled are 1.5\u00d7 her bounty (with the wave and sky bonuses).\n- **(b)** AI on, a lone Skiff at 30% hull, Math.random stubbed to 0: r.mode is 'run'. Step 40 s with the Captain still: escaped, with no shards spilled.\n- **(c)** A Brig at 45% hull: r.flare is set, and after 21 s a new Skiff is in raiders.list. Sink her at 10 s on a second run: no Skiff comes.\n\nsim-fight.mjs prints ran, escaped, flares and help per voyage, and the voyage time.",
+   "priority": 1
+  },
+  {
+   "id": "cloud-floor-hiding",
+   "title": "Hide in the cloud floor: dive in and far-off raiders lose you, until your first broadside gives you away",
+   "chris_sees": "Dive into the thick white cloud floor below and your ship sinks into it, masts showing above the top. The screen goes misty, and \"Hidden in the cloud\" shows on your panel. Raiders more than about 250 m away lose you: they stop firing and come looking where they last saw you. Your guns still work from in there, but your first broadside gives you away for a few seconds. Raiders can hide there too; their tag shows where they were last seen.",
+   "why": "The lens asked about flying into the big clouds. I'd say no to the drifting cloud puffs: they're flat pictures that fade out within 260 m of the camera (world.js makePuffs, `vFade *= smoothstep(60, 260, -mv.z)`), so flying into one shows nothing, and making them solid would cost a lot of drawing on phones.\n\nThe cloud floor at 430 m (CLOUD_Y) is already drawn from one pattern, and I copied that pattern into JavaScript and checked it against the graphics card's: mean difference 0.011, and 62 of 64 points agree on thick or thin. Measured over the map:\n- 50.5% of it has thick cloud (cover above 0.75).\n- 80% of places are within 450-510 m of thick cloud, 95% within about 940 m.\n- Patches are a median 1.1 km across (90th percentile 4.2 km), drifting 5.3 m/s.\n- One check costs 0.5 microseconds.\n\nIt makes a place to break off, patch up and ambush from, like a ship running into a fog bank, and it gives running raiders somewhere to go.",
+   "how": "1. **The test.** New src/game/clouds.js (or inside tactics.js):\n   - Port h2/n2/bake/cover from the scratch file cover.mjs, with `t = world.time.value`, the same clock the floor's picture uses.\n   - `HIDE = { top: CLOUD_Y + 6, bottom: CLOUD_Y - 40, thick: 0.7 }`.\n   - `hidden(f, t) = f.pos.y < top && f.pos.y > bottom && cover(f.pos.x, f.pos.z, t) > thick`.\n   - Export the noise sizes from world.js, so the two can't drift apart.\n\n2. **The Captain** (main.js tick):\n   - `player.hidden = hidden(player, time) && time > player.revealUntil`.\n   - When gunnery.fire returns more than 0, set `player.revealUntil = time + 4`.\n   - Emit 'hidden' and 'revealed' when it changes.\n\n3. **Raiders** (raiders.js):\n   - shoot(): if `foe.hidden && dist > S.sight` (Fair 180, Crosswinds 250, Maelstrom 350), don't fire. `r.lastSeen` is updated only while she can see you.\n   - steer(): while the foe is hidden and far off, head for `lastSeen` plus a 200 m circle, at `wantY = lastSeen.y + 60`.\n   - Raiders can be hidden too (`r.hidden`, from the same test). placeCamera skips them for lock-on beyond 250 m. Their tag gets class 'lost', frozen at the spot she was last seen, with the words \"Lost in the cloud\".\n\n4. **The mist.** If the camera is between CLOUD_Y\u221250 and CLOUD_Y+12 and cover at the camera is above 0.6, ease k towards 1:\n   - `scene.fog.near = lerp(4000, 120, k)`, `far = lerp(34000, 1600, k)`\n   - #mist (a full-screen radial white gradient, pointer-events none) at opacity 0.5k\n   - The ship panel shows a row \"Hidden in the cloud\" while player.hidden.\n\n5. **Words.** docs/game.md gets a bullet \"The cloud floor\". Help line: \"Dive into thick cloud to hide.\"",
+   "files": [
+    "src/game/clouds.js",
+    "src/game/world.js",
+    "src/game/raiders.js",
+    "src/game/main.js",
+    "demos/game.html",
+    "docs/game.md",
+    "tools/check.mjs"
+   ],
+   "size": "M",
+   "phone_cost": "cover() runs once per ship per frame, under 0.01 ms in all. Changing the fog is free, since it's worked out anyway. #mist is one composited layer, only while inside. About 2 KB.",
+   "test": "check.mjs:\n1. Port my scratch cover-check.mjs. Draw cover() at 64 points with the floor's own baked picture (64 points of size 3, textureLod at level 0; read pixels at the middle of each point, because of antialiasing). Assert the mean difference from the JavaScript version is under 0.03.\n2. Find a spot near the origin with cover above 0.85. Put the Captain there at CLOUD_Y\u221215, and a Brig raider with AI on 500 m away at the same height. Step 10 s: zero raider bolts.\n3. Move the Captain to CLOUD_Y+250: the raider fires within 10 s.\n4. Fire one volley from inside the cloud: player.hidden is false for 4 s.",
+   "priority": 1
+  },
+  {
+   "id": "crew-patch",
+   "title": "The crew patch her mid-fight, at the cost of slower guns",
+   "chris_sees": "Press X on a laptop, or on a phone tap the Patch button that appears beside Surge when she's hurt. The crew patch whatever's worst off (hull, sails or crystals) by a third over six seconds, and that row on your panel glows. While they work the guns reload at half speed. Then the crew need 30 seconds before they can do it again; a ring on the button fills up as they get ready.",
+   "why": "A decision in the middle of a fight: firepower now, or staying afloat. It pairs with hiding in the cloud floor (patch while hidden) and with chain shot (raiders that tear your sails).\n\nMeasured (Brig, waves 5-9, patching a third of a part when it falls below half, 4 runs): the runs reached waves 8, 9, 8 and 8, against a median of 8 without it. With dodging as well they reached 9, 10, 9 and 10. It's a modest tool, so it can't replace good flying, and it won't upset the balance.",
+   "how": "1. **flight.js** makeFlyer: `s.patch = { t: 0, cd: 0, part: null }`.\n   - `s.startPatch()`: refuse if down or `cd > 0`. Otherwise `part` = the part with the lowest health fraction, `t = 6`, `cd = 36`, and return the part.\n   - In update: while `t > 0`, `health[part] += full[part]*0.33*dt/6`. Count down t and cd.\n\n2. **guns.js** makeGunnery: `update(dt, rate = 1)` does `ready -= dt*rate`.\n\n3. **main.js** tick:\n   - `gunnery.update(dt, player.patch.t > 0 ? 0.5 : 1)`\n   - Pressed 'x' \u2192 startPatch \u2192 toast \"The crew patch the sails\", emit 'patch'.\n\n4. **Controls** (input.js and the page):\n   - #btn-patch (50 px, left of the Surge/Shot column) adds 'x' on pointerdown.\n   - The page hides it unless the lowest part is below 70%, and greys it with a conic-gradient ring `--k = 1 - cd/36`.\n   - Laptop help gets \"X: patch her up\".\n\n5. **Between waves**, the free full repair (main.js waves(), 0.12 a second) stays as it is.\n\n6. **Later, a port idea:** a fifth upgrade \"Carpenter's crew\" (+10% patch, 5 s shorter wait).",
+   "files": [
+    "src/game/flight.js",
+    "src/game/guns.js",
+    "src/game/main.js",
+    "src/game/input.js",
+    "demos/game.html",
+    "docs/game.md",
+    "tools/check.mjs",
+    "tools/sim-fight.mjs"
+   ],
+   "size": "S",
+   "phone_cost": "Nothing per frame. One button, hidden most of the time.",
+   "test": "check.mjs:\n1. Laptop: a Captain with sails at 40% presses 'x' (page.keyboard). After 6 s her sails are 73% \u00b12. A battery reload during the patch took about twice as long. A second press within 30 s does nothing.\n2. Phone: #btn-patch is hidden at full health. It shows at hull 60%, and a tap starts the patch.\n\nsim-fight.mjs `patch` flag.",
+   "priority": 2
+  },
+  {
+   "id": "choose-the-road",
+   "title": "Between waves, choose the next one from two ways on",
+   "chris_sees": "After a wave, the card offers two ways on. For example:\n- \"Steady course: a Frigate and two Cutters\"\n- \"Into the storm: the same and a Brig, shards half as much again\"\n\nSometimes the second is a treasure ship's trail or an early captain's hunt. Tap one, or press 1 or 2 (Enter takes the steady course). Wait and she takes the steady course by herself. Back to port is still there.",
+   "why": "It adds a real choice at the \"one more go\" moment: push your luck for shards, or play it safe. It also makes the voyage feel like a journey, not a list. The card already has a countdown and the next wave (W.next in main.js waves()), so it's cheap.\n\nThe playtest found the card needs Esc to click on a laptop with the mouse locked. Releasing the mouse when the card shows fixes that too.",
+   "how": "1. **Two ways** (main.js waves(), the 'fight' \u2192 'choose' branch, about line 236):\n   - `W.roads = [{ kind: 'steady', wave: waveAt(n), mult: 1 }, roadFor(n)]`.\n   - On captain waves there's only one way: \"A raider captain bars the way\".\n\n2. **The second way.** roadFor (tactics.js) rotates through the ones that apply:\n   - **storm:** the planned ships plus one, the class above the smallest in the wave, at most a Frigate. Raider sturdiness \u00d71.1, shards \u00d71.5, wave bonus \u00d72.\n   - **treasure:** if no treasure ship came in the last 3 waves: ['galleon', 'cutter', 'cutter'], shards \u00d71.\n   - **hunt:** the next captain comes early, bounty \u00d71.25. The captain's own wave then becomes a normal one.\n\n3. **Shards.** `W.mult` is used in pickups.spill and in the wave bonus.\n\n4. **The card** (#calm): two big buttons with a title and a line each, plus #btn-go-port.\n   - When the card shows, `document.exitPointerLock()`.\n   - Keys '1' and '2' while `W.state === 'choose'`, and Enter for steady (sailOn).\n   - The 25 s countdown picks steady.\n\n5. **Words.** docs/game.md \"After each wave\".",
+   "files": [
+    "src/game/main.js",
+    "src/game/tactics.js",
+    "src/game/raiders.js",
+    "demos/game.html",
+    "docs/game.md",
+    "tools/check.mjs",
+    "tools/sim-fight.mjs"
+   ],
+   "size": "S",
+   "phone_cost": "Nothing during the fight. Two buttons on the card.",
+   "test": "check.mjs, in the whole-voyage block after wave 1:\n1. Both road buttons exist. Clicking the second gives a next wave with one more ship, and W.mult is 1.5.\n2. Pressing '2' does the same.\n3. Letting the 25 s run out gives steady.\n4. The mouse is no longer locked while the card shows.\n\nsim-fight.mjs `road=storm` reports waves reached and shards: expect 1-2 fewer waves and about the same shards.",
+   "priority": 2
+  },
+  {
+   "id": "wave-arrivals",
+   "title": "Waves arrive in different ways: up through the clouds, out of the sun, from both sides, high and low",
+   "chris_sees": "Waves come in different ways, and the banner says so in plain words, using left and right:\n- \"Rising through the clouds below you!\": raiders burst up through the cloud floor in a ring of mist.\n- \"Out of the sun, above you to your left!\": no tag until they're close.\n- \"From both sides!\"\n- \"High and low!\": small raiders coming at you from above and below at once, so you can't keep both out of reach.",
+   "why": "Every wave today comes 1.5-1.9 km ahead at your height (raiders.js spawnWave, about line 142), and the playtest found first contact slow, with about 20 s of sailing at a tag. How a wave arrives changes how you fight it, using height, the clouds and the sun without new controls. The closer starts (700-1,100 m) also shorten the dead time before contact.",
+   "how": "1. **The plan.** waveAt (raiders.js, about line 37) returns `{ ids, captain, how }`.\n   - Designed for waves 1-15: 1 ahead \u00b7 2 pincer \u00b7 3 below \u00b7 4 stack \u00b7 5 captain (her own way) \u00b7 6 treasure ahead \u00b7 7 sun \u00b7 8 stack \u00b7 9 line (two Brigs) with Skiffs below \u00b7 10 captain \u00b7 11 treasure plus a Frigate from the sun \u00b7 12 fortress \u00b7 13 line of three \u00b7 14 pincer \u00b7 15 Man-o'-war plus a captain.\n   - After wave 15, weighted at random from ahead, below, sun, pincer, stack and line.\n\n2. **spawnWave(wave, foe)**, by how:\n   - **pincer:** ships alternate between two groups at `base` and `base+\u03c0`, 1.3-1.6 km off.\n   - **below:** 700-900 m off, at `y = max(120, CLOUD_Y - 110)`, `r.alt = +30`, climbing at full rate. The tag reads \"below the clouds\". When a raider crosses CLOUD_Y, emit a ring of 8 pale puffs (smoke.emit with shade 1, size 20\u219270 m, life 3 s) and 'burst'.\n   - **sun:** in the sun's direction, `atan2(SUN.x, SUN.z)`, 900-1,100 m off, at `y = min(THINNING - 150, foe.y + 600)`. `r.alt = +150` until she's within 500 m. `r.unseen = 6` hides the tag until she's within 700 m or 6 s have passed.\n   - **stack:** small raiders alternate `r.alt = +140 / -140` until within 300 m. Their bow guns tilt 15\u00b0, so they can fire from about 100 m above at 400 m. Your broadside (9\u00b0) can't answer, so you have to change height.\n   - **line:** see line-of-battle.\n\n3. **The banner** (main.js waves(), about line 228) says where they're coming from relative to your heading (ahead, to your left, behind) rather than only the compass, as the playtest asked.",
+   "files": [
+    "src/game/raiders.js",
+    "src/game/main.js",
+    "src/game/world.js",
+    "docs/game.md",
+    "tools/check.mjs",
+    "tools/sim-fight.mjs"
+   ],
+   "size": "M",
+   "phone_cost": "8 extra smoke puffs per raider coming up through the cloud floor, once. Nothing else.",
+   "test": "check.mjs: for each way of arriving, `Object.assign(g.waves, { n: 3, state: 'calm', timer: 0.1, next: { ids: ['cutter', 'cutter'], captain: -1, how } })`, then step 0.2 s. Assert:\n- below: all raiders under CLOUD_Y, and after 30 s with AI on, above it\n- sun: raiders more than 300 m above the Captain, bearing within 30\u00b0 of the sun's\n- pincer: two groups about 180\u00b0 apart\n- stack: alt is \u00b1140\n\nsim-fight.mjs: the same Captain, reporting waves reached, to retune spawn distances.",
+   "priority": 2
+  },
+  {
+   "id": "named-captains",
+   "title": "Named raider captains, each with a title and a trick to learn",
+   "chris_sees": "Each raider captain has a name, a title and a trick you learn to beat. For example: \"Wave 5: Veska Thorn, the Cloud Fox. She hides in the cloud floor and comes up under you.\" Their gold tag shows their name. Beat one and it's remembered.\n\nThe names are placeholders for Chris to change: they're meant to fit Aethermoor, and none uses the Magpie's or the Witch's names.",
+   "why": "Captains today are only tougher ships with black sails (raiders.js CAPTAIN). A name and a trick turn waves 5, 10 and 15 into small boss fights with a story. Every trick reuses another proposal's rules, so each costs little code.",
+   "how": "1. **The list.** tactics.js `CAPTAINS = [{ id, name, title, trick, line }]`, placeholders:\n\n| id | Name, title | Trick |\n|---|---|---|\n| fox | Veska Thorn, the Cloud Fox | 'cloud': dives to CLOUD_Y\u221215 when below 70% hull or every 40 s, then comes up within 300 m below you (alt \u221260 \u2192 0) |\n| ripper | Orrin Gall, the Sail-Ripper | 'chain': every second broadside is chain shot at your sails |\n| bell | Mother Hesk, the Bell | 'help': flares at 66% and 33% hull, two Skiffs each (one on Fair) |\n| diver | Dace Morrow, the Sun-Diver | 'sun': arrives out of the sun, then climbs 400 m after each pass to dive again |\n| iron | Brannoc Hale, Ironsides | 'iron': hull hits from the side do \u00d70.5 and raking does \u00d72, which teaches raking |\n| ghost | Sela Wyn, the Ghost | 'smoke': at 50% hull, 14 big pale puffs (8 on phones) around her; she's hidden 8 s and comes back 600 m off on your other side |\n\n2. **Who leads which wave** (raiders.js waveAt): waves 5, 10 and 15 are fox, ripper and bell in that order. After that they cycle through diver, iron and ghost, then come at random. waveAt also returns `captainId`.\n\n3. **Spawning.** spawn(\u2026, captain, who) sets `r.who`. Tricks are short branches in steer() and shoot() keyed by `r.who.trick`, using the cloud floor, chain shot, flares, sun arrivals and hiding.\n\n4. **The page:**\n   - Tag: `${who.name} \u00b7 ${cls}`.\n   - Banner: `Wave 5: ${name}, ${title}`, with the line `who.line`.\n   - The toast when she sinks names her.\n   - `progress.data.captains[id] = (beaten count)`. A \"Wanted\" board in port belongs to the port lens.\n\n5. **Ask Chris** in chat to approve or rename the six names and titles.",
+   "files": [
+    "src/game/tactics.js",
+    "src/game/raiders.js",
+    "src/game/main.js",
+    "src/game/progress.js",
+    "docs/game.md",
+    "tools/check.mjs"
+   ],
+   "size": "M",
+   "phone_cost": "The Ghost's smoke screen is the only cost: 8 large puffs on phones for 8 s, kept below the smoke cap. Everything else is reused.",
+   "test": "check.mjs:\n1. Wave 5's captain has r.who.id === 'fox', and the banner text includes the name.\n2. Spawn the Sail-Ripper with AI on beside the Captain: her broadside bolts alternate shot 'chain'.\n3. The Ghost at 49% hull: r.hidden is true, and the Captain can't lock on beyond 250 m.\n4. The Bell at 60% hull: 2 Skiffs come after 20 s.\n\nsim-fight.mjs `5 5` and `10 10`: keep a Brig beating wave 5 and a Frigate beating wave 10 about as often as today.",
+   "priority": 2
+  },
+  {
+   "id": "manowar-fortress",
+   "title": "The Man-o'-war becomes a fortress battle in three acts, with weak points",
+   "chris_sees": "The Man-o'-war is a boss fight:\n- **First** she comes on bow-first, her four bow guns firing from far off. Her plated sides shrug off half of every hit from the side, so you go for her weak points:\n  - her five glowing crystal columns, from above; each one you break goes dark with a crack of light\n  - her rows of gun ports; knock out a block of six guns and that block goes dark and quiet\n  - her stern windows, where raking shots do double\n- **At two-thirds** she launches two Skiffs from her stern.\n- **With three columns gone** she's sinking, and fires everything: her upper guns tilt up to reach above her, so you finish her from astern.\n\nA bar along the top shows her hull, her five columns and her guns.",
+   "why": "Today wave 12 is a 60-second damage race. The sim's Frigate wins half the time whether it fights level or from 70 m above (4 runs each), because she sinks after about 55 s of broadsides while dealing 2,400-3,000 damage a minute.\n\nWith her sides plated (hull hits from the side \u00d70.5):\n- side-to-side, the Frigate lost 4 of 4\n- from above, with crystal breakers \u00d71.6 and raking, it won 4 of 4 in about 58 s, taking half the broadside damage\n\nSo where you are decides it, as the docs already promise. The acts and the column health should stretch it to the 2-3 minutes a fortress deserves.",
+   "how": "1. **damage.js** firstHit returns `i` and `local` (see the architecture).\n\n2. **Her weak points** (raiders.js spawn('manowar')). Clone her glow and ember geometry once, so the templates stay untouched. Set `r.fort`:\n   - `cols`: 5 \u00d7 crystals/5, with her crystals \u00d71.5 (3,900 on Crosswinds)\n   - `blocks`: 8 blocks of 6 guns (port and starboard \u00d7 upper and lower deck \u00d7 fore and aft, from her recipe's ports z and y), 450 each\n   - `act: 1`\n\n3. **guns.js:**\n   - Per-gun `alive`. fire() and count() skip dead guns.\n   - clampToArc takes `pitchUp` and `pitchDown`.\n   - `gun.pitchUp[b]` can be set to 0.45.\n\n4. **Hits on her** (main.js hitTest):\n   - Turn the bolt's direction into her frame.\n   - Hull hit with `|d.x| > |d.z|` (from the side): \u00d70.5.\n   - If `local` falls inside a gun block's box (ports' z \u00b12 m, the deck's y \u00b11.5 m, her side): the block takes full damage and the hull half. At 0 the block's guns die, their muzzle glows go to size 0, and the toast says \"Six of her guns silenced\".\n   - From astern (d.z > 0.9, local z < \u221230): \u00d72.\n   - Crystal hit on column i: `cols[i] -= dmg`. At 0, that column's gem glows and embers go to 0, 3 bursts play, and the toast says \"A crystal column breaks: 4 left\".\n\n5. **Acts** (raiders.update for `r.fort`):\n   - **Act 2,** at hull below 66% or the first broken column: spawn 2 Skiffs at `pos - fwd*50`, heading her heading+\u03c0. Banner: \"She launches her boats\".\n   - **Act 3,** at 3 or more columns broken: upper deck `pitchUp 0.45`, reload \u00d70.8. Banner: \"She's sinking, and fires everything she has\".\n   - She goes down when her crystals reach 0, or as `'crystals'` when she sinks below CLOUD_Y\u221260. Bounty as now.\n\n6. **The bar.** #boss across the top: hull bar, 5 pips, \"Guns 48\". Updated 10 times a second.",
+   "files": [
+    "src/game/damage.js",
+    "src/game/guns.js",
+    "src/game/raiders.js",
+    "src/game/main.js",
+    "demos/game.html",
+    "docs/game.md",
+    "tools/check.mjs",
+    "tools/sim-fight.mjs"
+   ],
+   "size": "L",
+   "phone_cost": "Geometry is changed only when a column or gun block breaks (one small upload). One more frame conversion per hit on her. The bar is a little DOM, 10 times a second. She's already drawn at middle or far detail.",
+   "test": "check.mjs, with a frozen Man-o'-war 400 m off:\n1. Hull damage per hit from her side is 0.5\u00d7 \u00b115% of the damage from 30\u00b0 off her stern quarter.\n2. Volleys into one gun block: gunnery.count('port') drops by 6, with fewer bolts per volley after.\n3. Firing at her columns from 60 m above lowers cols[i]. At 0 that column's glow sizes are 0.\n4. Act 2 adds 2 Skiffs. In act 3 her upper deck can reach a point 25\u00b0 above her.\n\nsim-fight.mjs `policy=fortress` (stay above and off her stern quarter, breakers on her columns): a Frigate on Crosswinds should win in 2-3 minutes, and the side-to-side policy should lose. Write both into docs/game.md \"How hard it is\".",
+   "priority": 2
+  },
+  {
+   "id": "line-of-battle",
+   "title": "Raider flotillas in a line of battle",
+   "chris_sees": "Some waves come as a line: two or three big raiders sailing nose to tail, turning together, and firing one after another all down the line, a wall of red. Cross ahead of the line and only the leader's bow guns can reach you, while your broadside rakes her down her length. Sink the leader, or make her give up, and the line breaks up.",
+   "why": "A battle line is the iconic sea-battle picture, and the counter (crossing ahead of it) is a real tactic that raking makes pay. It turns waves 9 and 13, today just more ships, into a puzzle with a clear plan.",
+   "how": "1. **Forming the line** (raiders.js spawnWave, how 'line'):\n   - The first ship is the leader. The others are set 3.2\u00d7L behind along her heading.\n   - Each follower gets `r.lead = leader` and `r.slot = k`.\n\n2. **Keeping station** (steer(), about line 155). If `r.lead` is afloat:\n   - Slot point = `lead.pos - lead.forward()*(k*3.2*L)`, looked 2 s ahead along her velocity.\n   - `want` = the bearing to the slot point.\n   - `sailTo = clamp(0.75 + alongError/150, 0.3, 1)`.\n   - `wantY = lead.pos.y`.\n   - The leader fights broadside but keeps 80 m further off and turns at 70%, so the line holds.\n\n3. **Firing.** Each ship gets its own warning and fan (broadside-warning). A follower holds fire until the ship ahead of her has fired, so volleys ripple down the line.\n\n4. **Breaking up.** When the leader is down or has given up, set every follower's `r.lead = null`. Toast: \"The line breaks\". One may run (raider-nerve).\n\n5. **Waves:** wave 9 is two Brigs in line with two Skiffs coming up from below. Wave 13 is two Frigates and a Brig in line. After that, at random.\n\n6. **Words.** docs/game.md wave table.",
+   "files": [
+    "src/game/raiders.js",
+    "src/game/main.js",
+    "docs/game.md",
+    "tools/check.mjs",
+    "tools/sim-fight.mjs"
+   ],
+   "size": "M",
+   "phone_cost": "One slot point per follower per frame. Nothing new is drawn.",
+   "test": "check.mjs:\n1. Spawn a line of 3 Brigs with AI on and the Captain still 1.5 km off. After 20 s, each follower is within 60 m of her slot, heading within 20\u00b0 of the leader.\n2. Sink the leader: every r.lead is null within one tick.\n\nsim-fight.mjs: the plain Captain on wave 13 against `policy=cross` (pass across the leader's bow at 350 m). Cross should win more often and take less broadside damage a minute.",
+   "priority": 2
+  },
+  {
+   "id": "ramming",
+   "title": "Ram her: Surge your bow into a raider's side",
+   "chris_sees": "Every ship has a ram on its bow. Surge straight into a raider's side and you ram her: a crunch, splinters, both ships jolt. She takes a huge blow (a Brig ramming a Brig at full Surge takes about 40% of her hull), and your bow takes a quarter as much. When your bow points at a raider close by and the Surge is ready, the Surge button says \"Ram!\". Ships no longer pass through each other. And don't cross a Man-o'-war's bow: her ram is the biggest.",
+   "why": "All six models carry rams (the `ram` entry in src/ships/*.js), but nothing uses them, and today ships fly straight through each other. A Surge ram is the most epic thing a phone player can do with one button, and it's a risk: you end up point-blank in her broadside.",
+   "how": "1. **The check** (main.js tick, after raiders.update). For each live raider within (L_me + L_her)\u00d70.6:\n   - `tip = player.ship.body.localToWorld(v.set(0, R.ram.y, R.ram.to))`.\n   - Bring it into her frame (cache her matrixWorld inverse once per tick).\n   - Test `r.zones.inHull(local)`.\n\n2. **A ram.** If the tip is inside and `player.ramCD <= 0`:\n   - Closing speed `vc = (player.velocity - r.f.velocity)\u00b7player.forward()`.\n   - If vc > 12 m/s: her hull takes `vc*9*RAM_W[my class]`, with RAM_W skiff 0.6, cutter 0.8, brig 1, frigate 1.3. Your hull takes a quarter of that.\n   - Both ships' speed \u00d70.4, pushed 3 m apart, camera shake, wood burst, emit 'ram', toast \"Rammed!\", `ramCD = 2`.\n   - Example: a Brig surging at 55 m/s rams for about 500 (42% of a Brig).\n\n3. **No passing through.** If vc is 12 or less, or the hulls overlap side to side: push the Captain out along the line between the two centres and halve her speed. No damage.\n\n4. **The Man-o'-war's ram.** The same test the other way round: her ram tip inside your hull does `vc*9*2` to you.\n\n5. **The hint.** When the Surge is ready and a raider within 160 m is within 12\u00b0 of your bow, #btn-surge reads \"Ram!\" and the gun label hints \"R: ram her\".",
+   "files": [
+    "src/game/main.js",
+    "src/game/tactics.js",
+    "demos/game.html",
+    "docs/game.md",
+    "tools/check.mjs"
+   ],
+   "size": "M",
+   "phone_cost": "One frame conversion and an inHull test per nearby raider per frame (usually 0-2). Negligible.",
+   "test": "check.mjs:\n1. Freeze a Brig raider broadside-on 120 m ahead. The Captain's Brig points at her middle, presses 'r' and steps 4 s at full sail. Her hull drops at least 30%; the Captain's drops at least 5% and under 20%.\n2. Without the Surge, at low speed: the distance between the two centres stays above 6 m (no passing through).",
+   "priority": 3
+  },
+  {
+   "id": "smarter-raiders",
+   "title": "Raiders that fight like sailors",
+   "chris_sees": "On Crosswinds and Maelstrom the raiders fight smarter. Big ones try to cross your bow to rake you; small ones come at your stern, where your guns are few. On Maelstrom they climb or dive out of your broadside when it's loaded and pointed at them. On Fair Winds they stay simple.",
+   "why": "Raking, the broadside warning and dodging all work both ways. A raider that uses them makes the fight a dance instead of a slugging match, and gives Maelstrom a real difference beyond numbers. With raking on, raiders managed only 4 rakes against the Captain's 26, because their AI never tries for one.",
+   "how": "1. **Settings.** SKIES `smart`: Fair 0, Crosswinds 1, Maelstrom 2.\n\n2. **steer()** (raiders.js, about line 155):\n   - **Big raiders, smart \u2265 1:** if the Captain's heading points at the raider within 30\u00b0 and she's within 700 m, steer for `foe.pos + foe.forward()*250`, then turn her side to bear. That's a rake.\n   - **Small raiders, smart \u2265 1:** make the attack run at `foe.pos - foe.forward()*200` (the stern quarter).\n   - **Smart 2:** if `locked === r`, the Captain's battery is ready and it reaches her, then with a 0.35-a-second chance set `r.alt += \u00b160` for 2.5 s, a dodge.\n\n3. **Words.** docs/game.md skies table.",
+   "files": [
+    "src/game/raiders.js",
+    "src/game/progress.js",
+    "docs/game.md",
+    "tools/sim-fight.mjs"
+   ],
+   "size": "S",
+   "phone_cost": "A few vector operations per raider per frame.",
+   "test": "sim-fight.mjs with the rake count:\n- Crosswinds: raider rakes on the Captain rise from about 4 to 10 or more per voyage (Brig, waves 5-9).\n- Maelstrom: waves reached drop by about 1. Retune RAIDER.slow if more.\n\ncheck.mjs: a Brig raider with smart 1, put dead ahead of a Captain who points at her, ends up off the Captain's bow quarter within 15 s.",
+   "priority": 3
+  }
+ ]
+}
