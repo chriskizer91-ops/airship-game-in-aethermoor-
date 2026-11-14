@@ -5341,10 +5341,16 @@ if (!demoOnly) {
       g.step(1.5, {}); out.aim = tip();
       for (let t = 0; t < 4.5 && r; t += 0.25) { aim(r); g.step(0.25, { sail: -1 }); }
       out.locked = g.locked === r; out.fire = tip(); out.before = g.bolts.bolts.filter((b) => b.owner === 'raider').length;
-      // (firing 5 s, and on until a shot has hit and the tip's been given, 12 s at most: at nearly a kilometre a Skiff's
-      // bow guns miss most volleys, and one voyage in ten or so none of the first five seconds' landed, by luck alone)
-      for (let t = 0; t < 12 && r && (t < 5 || !g.hits || !d0().tips.fire); t += 0.25) { aim(r); g.step(0.25, { fire: true, sail: -1 }); }
+      // (firing 5 s, and on until a shot has hit and the tip's been given, 30 s at most: at nearly a kilometre a Skiff's
+      // bow guns miss most volleys, and one voyage in ten or so none of the first five seconds' landed, by luck alone;
+      // of 260 such voyages played alone in stage 5 the slowest first hit took 12 s, and the full check once saw none
+      // in 12: how many volleys she fired and how far off her raider was by then are said, should it happen again)
+      let volleys = 0; const offV = g.events.on('fire', (e) => { if (e.owner === 'player') volleys++; });
+      let fireT = 0;
+      for (; fireT < 30 && r && (fireT < 5 || !g.hits || !d0().tips.fire); fireT += 0.25) { aim(r); g.step(0.25, { fire: true, sail: -1 }); }
+      offV();
       out.hits = g.hits; out.fired = d0().tips.fire; out.shotFirst = shotFirst; g.input.lastLook = 0;
+      out.firing = { seconds: fireT, shots: volleys, off: r ? Math.round(r.f.pos.distanceTo(P.pos)) : null, locked: g.locked === r, shot: g.gunnery.shot };
       // her first raider down: First Prize, once, its toast waiting its turn
       let s0 = d0().shards; r.f.hit('hull', 1e9); g.step(0.2, {});
       out.first = { medal: d0().medals.first > 0, paid: +(deeds.find((x) => x.startsWith('medal:first:'))?.split(':')[2] ?? 0), saying: g.saying.join(' | ') };
