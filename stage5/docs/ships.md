@@ -80,7 +80,15 @@ Added in stage 5 (November 14), for all six ships from the one recipe (`docs/gam
 
 | Ship | Crew | Triangles with her crew (full) |
 |---|---|---|
-CREWTABLE
+| Skiff (Zephyr) | 3: the Captain and two hands | 99,958 |
+| Cutter (Gale) | 5: the Captain, a gunner, three hands | 102,818 |
+| Brig (Tradewind) | 9: the Captain, two gunners, a lookout, four hands, an officer | 105,956 |
+| Frigate (Tempest) | 10: the Captain, two gunners, a lookout, five hands, an officer | 108,619 |
+| Galleon (Doldrums) | 10: the Captain, a gunner, a lookout, six hands, an officer | 104,827 |
+| Man-o'-war (Thunderhead) | 14: the Captain, two gunners, a lookout, nine hands, an officer | 106,675 |
+
+(A hand is a deckhand at the rail or the capstan. The smallest decks have room for few: every ship has three aboard at least.)
+
 ## What the stats mean
 
 There are three things to shoot at. Each has its own health bar:

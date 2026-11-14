@@ -23,6 +23,16 @@
 > - **the picture's pace** (`src/game/pace.js`, `rescale` and `frame` in main.js; `__game.pace.feed` plays it frames).
 > - **a closer look in port** (`look` in port.js: `place`, the wheel and pinch).
 > - checks for all of it in `tools/check.mjs` (search "stage 5"), and `tools/closeups.mjs` gained `helm` and `watch`.
+> Learned the hard way in stage 5: **never read anything back from the graphics card while building** (a read-back
+> waits for every frame still queued; in the check's software drawing that was 16 seconds a ship, and timed out the
+> port's clicks). **A seeded test still feels every new object**: three.js names each new object with `Math.random`,
+> so a new mesh on a model (the crew) shifts a seeded test's dice. Two of the check's tests turned out to pass or fail
+> by their dice: the crystal breakers' aim (now 1,800 shots each way, not 300: the same claim, measured steadily) and,
+> on the phone, a drag while paused (the test now waits for the drag to reach the page before Resume: the browser
+> hands touches over a frame at a time, and a software frame can take a second; it failed over half the time on
+> stage 4's build too, run alone). The third, your own gunsmoke over a locked raider on a phone, was real: the darker
+> creases made pale smoke show more (9% of her hidden on average against stage 4's 6%, the limit 10%), so the smoke
+> now thins to a tenth (effects.js `CLEAR`), about 5% hidden.
 > Not done, for whenever Chris wants more: `docs/plan/specs/E0-touchups.md` (stage 4's open points, untouched); a hint
 > in port that scrolling or pinching looks closer; faces on the crew; the crew doing things (running to the guns as a
 > wave arrives); and a story (Chris offered it as one way to go: it needs his lore first).

@@ -88,32 +88,35 @@ function figure(batch, m, { pose = 'idle', captain = false, seed = 1, low = fals
 export function crew(hull, batch, R, q, opts = {}) {
   if (q.level === 'far') return [];
   const low = q.level !== 'full', L = R.length, k = clamp(L / 25, 0.6, 1.3), out = [];
-  // what's in the way on her deck: [x, z, radius]
-  const block = [];
-  for (const C of R.clusters ?? []) block.push([0, C.z, (R.cluster.spread + 0.35) * (C.scale ?? 1) + 0.25]);
-  for (const M of R.masts ?? []) block.push([0, M.z, (0.11 + 0.0045 * L) * 4.2 + 0.45]);
-  for (const H of R.hatches ?? []) block.push([0, H.z, Math.max(H.len, H.wid) / 2 + 0.4]);
-  if (R.capstan) block.push([0, R.capstan.z, 0.95 * clamp(L / 25, 0.7, 1.2) + 0.2]);
-  if (R.wheel) block.push([0, R.wheel.z, R.wheel.r + 0.45]);
+  // what's in the way on her deck: [x, z, radius, whose] (a gunner may stand by her own gun)
+  const block = [], fr = (0.11 + 0.0045 * L) * 4.2; // (the rail round each mast's foot is that far out)
+  for (const C of R.clusters ?? []) block.push([0, C.z, R.cluster.r * 1.2 * (C.scale ?? 1) + 0.12]);
+  for (const M of R.masts ?? []) block.push([0, M.z, fr * 1.25]);
+  for (const H of R.hatches ?? []) block.push([0, H.z, Math.max(H.len, H.wid) / 2 + 0.15]);
+  const cap = clamp(L / 25, 0.7, 1.2);
+  if (R.capstan) block.push([0, R.capstan.z, 0.9 * cap + 0.05, 'capstan']);
+  if (R.wheel) block.push([0, R.wheel.z, R.wheel.r + 0.3]);
   const C = R.cargo ?? {}, ck = clamp(L / 25, 0.65, 1.1);
-  for (const [x, z] of [...(C.barrels ?? []), ...(R.treasure ?? [])]) block.push([x, z, 1.0 * ck + 0.3]);
-  for (const [x, z] of C.coils ?? []) block.push([x, z, 0.3 * ck + 0.35]);
-  for (const [x, z] of C.crates ?? []) block.push([x, z, 0.5 * ck + 0.35]);
-  for (const G of [...(R.bowGuns ?? []), ...(R.swivels ?? [])]) for (const t of [0, 0.5, 1]) block.push([G.x, G.z + t * G.len * 0.6, 0.5]);
-  for (const Lt of R.lanterns ?? []) if (Lt.post) block.push([Lt.at[0], Lt.at[2], 0.4]);
+  for (const [x, z] of [...(C.barrels ?? []), ...(R.treasure ?? [])]) block.push([x, z, 0.78 * ck]);
+  for (const [x, z] of C.coils ?? []) block.push([x, z, 0.3 * ck + 0.1]);
+  for (const [x, z] of C.crates ?? []) block.push([x, z, 0.45 * ck + 0.1]);
+  for (const G of [...(R.bowGuns ?? []), ...(R.swivels ?? [])]) for (const t of [0, 0.5, 1]) block.push([G.x, G.z + t * G.len * 0.6, 0.35, G]);
+  for (const Lt of R.lanterns ?? []) if (Lt.post) block.push([Lt.at[0], Lt.at[2], 0.2]);
   // the stairs up to her castles, and the step itself
   const steps = [];
   for (const [edge, St, dir] of [[R.quarterdeck?.front, R.quarterdeck?.stairs, 1], [R.forecastle?.back, R.forecastle?.stairs, -1]]) {
     if (edge == null) continue;
-    steps.push([Math.min(edge - dir * 0.7, St ? St.bottom + dir * 0.5 : edge + dir * 0.7), Math.max(edge - dir * 0.7, St ? St.bottom + dir * 0.5 : edge + dir * 0.7)]);
+    steps.push([Math.min(edge - dir * 0.6, St ? St.bottom + dir * 0.4 : edge + dir * 0.6), Math.max(edge - dir * 0.6, St ? St.bottom + dir * 0.4 : edge + dir * 0.6)]);
   }
   const taken = [];
-  const free = (x, z, r = 0.38) => {
-    if (z < hull.zs + 0.45 || z > hull.zb - 0.5 || Math.abs(x) > hull.deckHalf(z) - 0.36) return false;
-    if (Math.abs(hull.deckY(z + 0.35) - hull.deckY(z - 0.35)) > 0.12) return false;
+  // whether someone can stand at (x, z): on her deck inside her rail, off her steps, clear of what's in the way (but
+  // for `own`, whose it is) and a pace from everyone else
+  const free = (x, z, r = 0.28, own = null) => {
+    if (z < hull.zs + 0.4 || z > hull.zb - 0.4 || Math.abs(x) > hull.deckHalf(z) - 0.3) return false;
+    if (Math.abs(hull.deckY(z + 0.3) - hull.deckY(z - 0.3)) > 0.12) return false;
     for (const [a, b] of steps) if (z > a && z < b) return false;
-    for (const [bx, bz, br] of block) if (Math.hypot(x - bx, z - bz) < br + r) return false;
-    for (const [tx, tz] of taken) if (Math.hypot(x - tx, z - tz) < 1.1) return false;
+    for (const [bx, bz, br, whose] of block) if (!(own && whose === own) && Math.hypot(x - bx, z - bz) < br + r) return false;
+    for (const [tx, tz] of taken) if (Math.hypot(x - tx, z - tz) < 1.0) return false;
     return true;
   };
   let n = 0;
@@ -128,22 +131,24 @@ export function crew(hull, batch, R, q, opts = {}) {
     const reach = clamp(W.z + 0.02 - z, 0.25, 0.5);
     stand('captain', 0, z, 0, { pose: 'helm', captain: true, at: V(clamp(0.62 * W.r, 0.14, 0.3), clamp(cy + 0.42 * W.r, 0.8, 1.38), reach) });
   }
-  // a gunner behind each bow gun (two at most)
+  // a gunner at each bow gun (two at most): behind it, or beside it where there's no room behind
   for (const G of (R.bowGuns ?? []).slice(0, 2)) {
-    const x = G.x + (G.x >= 0 ? 0.42 : -0.42) * (G.x ? 1 : 0), z = G.z - 0.75;
-    for (const dz of [0, -0.4, -0.8]) if (free(x, z + dz, 0.2)) { stand('gunner', x, z + dz, 0, { pose: 'gun' }); break; }
+    const out0 = G.x >= 0 ? 1 : -1;
+    for (const [dx, dz, yaw] of [[0.42 * out0 * (G.x ? 1 : 0), -0.75, 0], [0.42 * out0 * (G.x ? 1 : 0), -1.15, 0], [-0.42 * out0, -0.75, 0], [0.5, -0.15, -0.5], [-0.5, -0.15, 0.5], [0.55, 0.3, -0.9], [-0.55, 0.3, 0.9]]) {
+      if (free(G.x + dx, G.z + dz, 0.2, dx ? G : null)) { stand('gunner', G.x + dx, G.z + dz, yaw, { pose: 'gun' }); break; }
+    }
   }
   // the lookout, as far forward as there's room, a little to one side, her spyglass ahead
-  look: for (let z = hull.zb - 0.7; z > hull.zb - 0.2 * L; z -= 0.35) for (const x of [0.55 * k, -0.55 * k, 0]) if (free(x, z)) { stand('lookout', x, z, x * 0.25, { pose: 'spy' }); break look; }
+  look: for (let z = hull.zb - 0.45; z > hull.zb - 0.22 * L; z -= 0.3) for (const x of [0.55 * k, -0.55 * k, 0, 0.9 * k, -0.9 * k]) if (free(x, z)) { stand('lookout', x, z, x * 0.25, { pose: 'spy' }); break look; }
   // one at the capstan, pushing a bar
-  if (R.capstan) { const r = 0.95 * clamp(L / 25, 0.7, 1.2) + 0.3; for (const a of [2.2, -0.9, 0.7, -2.4]) { const x = Math.sin(a) * r, z = R.capstan.z + Math.cos(a) * r; if (free(x, z, 0.1)) { stand('hand', x, z, a + Math.PI, { pose: 'push' }); break; } } }
+  if (R.capstan) { const r = 0.9 * cap + 0.32; for (const a of [2.2, -0.9, 0.7, -2.4, 1.5, -1.6]) { const x = Math.sin(a) * r, z = R.capstan.z + Math.cos(a) * r; if (free(x, z, 0.1, 'capstan')) { stand('hand', x, z, a + Math.PI, { pose: 'push' }); break; } } }
   // deckhands along her rails, looking out: more of them the longer she is, on alternate sides
   const hands = Math.max(1, Math.round(L / 9)), z0 = hull.zs + 0.14 * L, z1 = hull.zb - 0.16 * L;
   for (let i = 0; i < hands; i++) {
     const side = i % 2 ? -1 : 1, zc = z0 + ((i + 0.5) / hands) * (z1 - z0);
-    for (const dz of [0, 0.7, -0.7, 1.4, -1.4, 2.1, -2.1]) {
-      const z = zc + dz, x = side * (hull.deckHalf(clamp(z, hull.zs, hull.zb)) - 0.5);
-      if (free(x, z)) { stand('hand', x, z, side * Math.PI / 2, { pose: i % 3 === 1 ? 'hips' : 'rail' }); break; }
+    place: for (const dz of [0, 0.5, -0.5, 1, -1, 1.5, -1.5, 2.2, -2.2]) for (const sd of [side, -side]) {
+      const z = zc + dz, x = sd * (hull.deckHalf(clamp(z, hull.zs, hull.zb)) - 0.42);
+      if (free(x, z)) { stand('hand', x, z, sd * Math.PI / 2, { pose: i % 3 === 1 ? 'hips' : 'rail' }); break place; }
     }
   }
   // an officer of the watch beside the Captain, on ships with a quarterdeck
@@ -151,5 +156,7 @@ export function crew(hull, batch, R, q, opts = {}) {
     const x = dx * Math.max(1, k * 0.9), z = R.wheel.z + dz * Math.max(1, k * 0.9);
     if (free(x, z)) { stand('officer', x, z, -dx * 0.12, { pose: 'hips' }); break; }
   }
+  // (the smallest ships: three aboard at least, wherever there's room, stern to bow)
+  for (let z = hull.zs + 0.6; n < 3 && z < hull.zb - 0.4; z += 0.3) for (const x of [0.5, -0.5, 0.9, -0.9, 0]) if (free(x, z)) { stand('hand', x, z, x ? Math.sign(x) * 1.2 : 0, { pose: 'hips' }); break; }
   return out;
 }

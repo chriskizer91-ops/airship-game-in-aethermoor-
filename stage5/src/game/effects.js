@@ -63,7 +63,9 @@ const DRAG = [0.6, 0.6, 1.5, 0.6, 0.45], GROW = [0, 1, 2, 1, 2], SHOW = [6, 14, 
 // the raider her guns are locked on to (`keepClear`), it thins to a CLEAR share of itself and drifts aside off that
 // line, so a volley's hits can be seen landing through her own smoke; the rest of the bank stays as thick as ever, and
 // raiders' smoke is never touched
-export const CLEAR = { thin: 0.15, push: 9, margin: 1.25 };
+// (stage 5: it thins to a tenth, not 15%, and over a slightly wider line: the ships' creases are shaded darker now, and
+// pale smoke showed more against them)
+export const CLEAR = { thin: 0.1, push: 9, margin: 1.4 };
 // `max` puffs at once; `cap`: the most pixels across one may be drawn (a phone's limit is how much it fills)
 export function makeSmoke(scene, max = 900, cap = 700) {
   const pos = new Float32Array(max * 3), size = new Float32Array(max), shade = new Float32Array(max), alpha = new Float32Array(max), look = new Float32Array(max), heat = new Float32Array(max);

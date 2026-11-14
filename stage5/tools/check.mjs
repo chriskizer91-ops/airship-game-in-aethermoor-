@@ -2320,7 +2320,10 @@ const BREAKER_AIM = () => {
   try {
     for (const way of ['aimed', 'tops']) {
       const tot = { shots: 0, crystals: 0, hull: 0, sails: 0, locked: 0, volleys: 0 };
-      for (const seed of [17, 99, 1234]) {
+      // (eighteen voyages' worth, 1,800 shots each way: with three, 300 shots, the share that missed moved by a tenth
+      // either way with the dice alone, which any new part on a model shifts, as the crew did in stage 5: three.js
+      // names each new object with the same dice)
+      for (const seed of [17, 99, 1234, 5, 77, 4242, 31337, 2026, 808, 6502, 911, 12, 345, 6789, 1010, 55555, 321, 8086]) {
         let s = seed; Math.random = () => (s = (s * 16807) % 2147483647) / 2147483647;
         d.skies = 'cross'; d.shots.breaker = true; g.fly('frigate'); g.wind.strength = 0; g.waves.timer = 1e9; g.raiders.setAI(false); g.raiders.clear(); g.bolts.clear(); g.waves.state = 'fight';
         const P = g.player, V = P.pos.constructor; P.pos.set(3000, 900, 2000); P.heading = 0; P.speed = 0.01; P.sail = 0;
@@ -5729,8 +5732,12 @@ if (!quick && !demoOnly) {
   await touch('touchEnd');
   // moving the aiming thumb while paused: nothing of it lands on Resume
   await page.evaluate(() => { window.__game.cam.yaw = 0; });
+  // (the browser hands touches to the page a frame at a time, and drawn in software a frame can take a second: the
+  // drag is waited for, so it's sure to have been made while paused, and not after Resume)
+  await page.evaluate(() => { window.__dragX = null; addEventListener('touchmove', (e) => { window.__dragX = e.touches[0]?.clientX; }, { capture: true, passive: true }); });
   await touch('touchStart', [300, 400]); await page.evaluate(() => window.__game.pause(true));
   await touch('touchMove', [200, 400]); await touch('touchMove', [100, 400]);
+  await wait(page, () => window.__dragX !== null && window.__dragX <= 101, null, 'phone: a drag while paused reaching the page');
   await page.evaluate(() => window.__game.pause(false)); await page.waitForTimeout(1500);
   const jumped = await page.evaluate(() => Math.abs(window.__game.cam.yaw));
   if (jumped > 0.05) problems.push(`phone: a drag while paused swings the camera on Resume (${jumped.toFixed(2)})`);
