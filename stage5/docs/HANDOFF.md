@@ -36,7 +36,12 @@
 > Not done, for whenever Chris wants more: `docs/plan/specs/E0-touchups.md` (stage 4's open points, untouched); a hint
 > in port that scrolling or pinching looks closer; faces on the crew; the crew doing things (running to the guns as a
 > wave arrives); and a story (Chris offered it as one way to go: it needs his lore first).
-> **Stage 5's links:** STAGE5_LINKS
+> **Stage 5's links** (private to Chris, published November 14 after the full check ended "all good" in 27.9 minutes):
+> **play it** https://claude.ai/artifact/YFb8aD29JKjRbkco8TXerq (from `stage5/dist/game.artifact.html`, with
+> `capabilities: {db: {}, user: {}}`; on later publishes pass the `url` and leave `capabilities` out to keep them) and
+> **the ships up close** https://claude.ai/artifact/Dn3hLSW9WCDKH69nrc72PA (from `stage5/dist/hangar.artifact.html`,
+> no capabilities). A new link keeps its own saves: a Captain's progress on stage 4's link stays there (it wasn't
+> copied across; Chris was offered that).
 
 > **This copy is `stage4/` (October 8).** It's the `polished/` folder as stage 3 left it (commit `3570f8b`), copied so
 > stage 4 is built in a folder of its own. Wherever this note says `polished/`, read `stage4/`: work only inside

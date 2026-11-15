@@ -10,6 +10,9 @@ smoothly or more so): a crew on every ship, shade in every crease, boards and br
 shines through, a closer look in port, and at sea a picture that keeps its own pace on a slow phone and lighter
 shadows. `docs/game.md`, "The shipwright's pass", says it in full.
 
+**Play it:** https://claude.ai/artifact/YFb8aD29JKjRbkco8TXerq, and **the ships up close:**
+https://claude.ai/artifact/Dn3hLSW9WCDKH69nrc72PA (both private to Chris; stage 5's own links, with their own saves).
+
 Before it: `stage4/` was a copy of `polished/` (commit `3570f8b`, October 7), and the polished version itself began
 as a separate copy of the airship game, made October 6 to polish it and add to it (from commit `1887984`: the port, the
 three skies, Crystal Shards, and the Galleon and the Man-o'-war as raiders; since stage 4 they're the Captain's
